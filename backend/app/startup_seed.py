@@ -11,7 +11,7 @@ import httpx
 from sqlmodel import Session, col, func, select
 
 from .config import settings
-from .models import PARENT_ROLE_HQ_ADMIN, AutoKeyJob, Customer, CustomerAccount, Invoice, InvoiceNumberCounter, MobileSuburbRoute, ParentAccount, Payment, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
+from .models import PARENT_ROLE_HQ_ADMIN, AutoKeyJob, Customer, CustomerAccount, MobileSuburbRoute, ParentAccount, Quote, RepairJob, ShoeRepairJob, ShoeRepairJobItem, Suburb, Tenant, User, Watch
 from .parent_network import grant_parent_role, link_site
 from .minit_provision import ensure_minit_pilot_account
 from .security import hash_password
@@ -154,11 +154,11 @@ def _parse_date(raw: str) -> date | None:
     raw = raw.strip()
 
     for pattern, groups in [
-        (r"^(\d{1,2})/(\d{1,2})/(\d{2})$", "dmy2"),
-        (r"^(\d{1,2})/(\d{1,2})/(\d{4})$", "dmy4"),
-        (r"^(\d{4})-(\d{1,2})-(\d{1,2})$", "ymd"),
-        (r"^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$", "dmy_dot"),
-        (r"^(\d{1,2})/+(\d{1,2})/+(\d{2,4})$", "dmy_slash"),
+        (r"^(\\d{1,2})/(\\d{1,2})/(\\d{2})$", "dmy2"),
+        (r"^(\\d{1,2})/(\\d{1,2})/(\\d{4})$", "dmy4"),
+        (r"^(\\d{4})-(\\d{1,2})-(\\d{1,2})$", "ymd"),
+        (r"^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{2,4})$", "dmy_dot"),
+        (r"^(\\d{1,2})/+(\\d{1,2})/+(\\d{2,4})$", "dmy_slash"),
     ]:
         m = re.match(pattern, raw)
         if not m:
@@ -180,7 +180,7 @@ def _parse_date(raw: str) -> date | None:
 def _normalize_phone(raw: str) -> str | None:
     if not raw or not raw.strip():
         return None
-    digits = re.sub(r"\D", "", raw.strip())
+    digits = re.sub(r"\\D", "", raw.strip())
     if len(digits) > 12:
         digits = digits[:10]
     if len(digits) == 9 and digits[0] in ("4", "3"):
@@ -216,7 +216,7 @@ def _dollars_to_cents(raw: str) -> int:
 def _clean_name(raw: str) -> str | None:
     if not raw or not raw.strip():
         return None
-    name = re.sub(r"\s+", " ", raw.strip())
+    name = re.sub(r"\\s+", " ", raw.strip())
     lower_name = name.lower()
     invalid_name_fragments = [
         "already collected",
@@ -227,9 +227,9 @@ def _clean_name(raw: str) -> str | None:
     ]
     if any(fragment in lower_name for fragment in invalid_name_fragments):
         return None
-    if re.match(r"^\d+$", name):
+    if re.match(r"^\\d+$", name):
         return None
-    if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}", name):
+    if re.match(r"^\\d{1,2}/\\d{1,2}/\\d{2,4}", name):
         return None
     if len(name) < 2:
         return None
@@ -766,31 +766,6 @@ def seed_from_csv_if_empty(session: Session) -> None:
     imported = 0
     skipped = 0
 
-    # The CSV is a real historical book whose newest entry is fixed in the past,
-    # so importing it verbatim leaves every dashboard window empty however long
-    # ago that was. Shift the whole book forward by a single offset instead: the
-    # newest job lands today and every earlier job keeps its true spacing, so the
-    # trends keep the shape of the real history and the demo reads as current
-    # whenever it is run. Rows with no usable date are spread over the recent
-    # weeks rather than all being stamped with the moment of import.
-    parsed_dates = [
-        parsed
-        for parsed in (_parse_date(_get_first(_normalize_row_keys(dict(r)), ["date_in", "created_at", "created", "intake_date", "date"])) for r in rows)
-        if parsed is not None
-    ]
-    today = datetime.now(timezone.utc).date()
-    date_offset = timedelta(days=0)
-    if parsed_dates:
-        # Anchor on the newest date that is not already in the future: the book
-        # contains a few mistyped years, and anchoring on one of those would
-        # cancel the shift and leave the rest of the history stale.
-        past_dates = [d for d in parsed_dates if d <= today]
-        anchor = max(past_dates) if past_dates else min(parsed_dates)
-        if anchor < today:
-            date_offset = timedelta(days=(today - anchor).days)
-    undated_seq = 0
-    used_job_numbers: set[str] = set()
-
     for row in rows:
         row = _normalize_row_keys(row)
         original_job_id = _get_first(row, ["original_job_id", "job_id", "ticket", "ticket_number", "job_number"])
@@ -834,33 +809,17 @@ def seed_from_csv_if_empty(session: Session) -> None:
         session.flush()
 
         job_seq += 1
-        # Only a clean ticket number becomes the job number. Ragged rows in the
-        # source book spill note text into this column, and a prefix match would
-        # happily turn a whole paragraph into "IMP-<paragraph>".
-        ticket = (original_job_id or "").strip()
-        if re.fullmatch(r"\d{2,12}", ticket):
-            job_number = f"IMP-{ticket}"
+        if original_job_id and re.match(r"^\\d+", original_job_id):
+            job_number = f"IMP-{original_job_id}"
         else:
             job_number = f"IMP-{job_seq:05d}"
-        # The source book reuses a handful of ticket numbers, and job_number is
-        # unique per tenant, so a repeat would abort the whole import.
-        if job_number in used_job_numbers:
-            suffix = 2
-            while f"{job_number}-{suffix}" in used_job_numbers:
-                suffix += 1
-            job_number = f"{job_number}-{suffix}"
-        used_job_numbers.add(job_number)
 
         title = f"Repair: {brand_case}" if brand_case else "Watch Repair"
-        if date_in:
-            created_at = datetime(date_in.year, date_in.month, date_in.day, tzinfo=timezone.utc) + date_offset
-            # A mistyped year must not produce a job created in the future.
-            created_at = min(created_at, datetime.now(timezone.utc))
-        else:
-            # No usable date on the row: place it in the recent past so it still
-            # counts as activity without clustering on the import timestamp.
-            undated_seq += 1
-            created_at = datetime.now(timezone.utc) - timedelta(days=undated_seq % 90, hours=undated_seq % 24)
+        created_at = (
+            datetime(date_in.year, date_in.month, date_in.day, tzinfo=timezone.utc)
+            if date_in
+            else datetime.now(timezone.utc)
+        )
 
         job = RepairJob(
             tenant_id=tenant_id,
@@ -903,276 +862,11 @@ def seed_from_csv_if_empty(session: Session) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Demo financials — invoices, payments and quoted values
-#
-# Operational demo data (jobs, customers, vehicles) seeded richly, but the money
-# did not: three flat $99.99 invoices, no payment rows at all, and no quoted
-# value on open jobs. The dashboard therefore opened on a negative gross profit,
-# an empty receivables tile and a $0.00 average job, which is the first thing
-# anyone sees. These helpers build a coherent ledger instead, anchored to the
-# current date so it stays current however long after seeding the demo is shown.
-# ---------------------------------------------------------------------------
-
-#: Australian GST. Applied two ways, matching how the amount was set: added on
-#: top of a figure quoted ex-GST, or recorded as the component already inside a
-#: counter price. Either way the GST report finally has something to total.
-_DEMO_GST_RATE_PERCENT = 10
-
-#: Realistic ex-GST watch service prices, used only to give an open job a quoted
-#: value when it has none, so "outstanding work value" is not $0.00 beside a
-#: count of jobs awaiting approval.
-_DEMO_WATCH_PRICE_CENTS = (18500, 24500, 32000, 15000, 45000, 28500, 21000, 38000, 19500, 26000)
-
-#: Counter trade is settled on collection, so most invoices are paid and a small
-#: tail is still owed — enough for receivables and the open-invoice count to show
-#: something real without implying the shop cannot collect. Only "paid" and
-#: "unpaid" exist in the UI, so no other status is used here.
-_DEMO_INVOICE_PAID_CYCLE = (True,) * 9 + (False,)
-
-#: Parts and materials as a share of the price. The source book records almost no
-#: cost, which would otherwise report a ~98% margin — an artefact of the missing
-#: column rather than a real one. This keeps gross profit in the range a service
-#: business actually runs at; it is demo data, not a claim about the shop.
-_DEMO_COST_SHARE_PERCENT = (32, 28, 35, 25, 38, 30, 27, 34, 29, 36)
-
-#: Ceiling on the demo ledger. The dashboard derives its open-invoice tile from
-#: the newest 500 invoices it can fetch, so a larger ledger makes that tile
-#: disagree with the unpaid count beside it. Staying under that window keeps
-#: every figure on the opening screen consistent with every other.
-_DEMO_INVOICE_MAX_TOTAL = 450
-
-#: Upper bound on invoices raised in one pass, so a large imported book cannot
-#: turn a startup into a long write. Anything left over is picked up next run.
-_DEMO_INVOICE_LIMIT = 450
-
-
-def _as_utc(value: datetime) -> datetime:
-    """Treat a stored timestamp as UTC. SQLite hands back naive datetimes."""
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-
-
-def _demo_gst_split(subtotal_cents: int) -> tuple[int, int, int]:
-    """Return (subtotal, gst, total) for a GST-exclusive amount."""
-    tax = int(round(subtotal_cents * _DEMO_GST_RATE_PERCENT / 100))
-    return subtotal_cents, tax, subtotal_cents + tax
-
-
-def _sync_invoice_number_counter(session: Session, tenant_id) -> None:
-    """Point the invoice counter past every number already on disk.
-
-    Seeded invoices are written with explicit ``INV-000NN`` numbers but the
-    counter that ``/v1/invoices`` allocates from is a separate row. Left alone it
-    still starts at 1, so the first invoice raised from the UI collides with a
-    seeded number and the request fails on the unique constraint — during a live
-    demo, on the "Raise an invoice" step of the launch checklist.
-    """
-    numbers = session.exec(select(Invoice.invoice_number).where(Invoice.tenant_id == tenant_id)).all()
-    highest = 0
-    for number in numbers:
-        match = re.search(r"(\d+)\s*$", number or "")
-        if match:
-            highest = max(highest, int(match.group(1)))
-    if highest <= 0:
-        return
-
-    counter = session.exec(
-        select(InvoiceNumberCounter).where(InvoiceNumberCounter.tenant_id == tenant_id)
-    ).first()
-    if counter is None:
-        session.add(InvoiceNumberCounter(tenant_id=tenant_id, next_number=highest + 1))
-    elif int(counter.next_number) <= highest:
-        counter.next_number = highest + 1
-        session.add(counter)
-    session.flush()
-
-
-def ensure_demo_shoe_items(session: Session, tenant_id) -> int:
-    """Give every shoe job its catalogue service items. Returns rows created.
-
-    A shoe job with no items shows "0 services · $0.00" on the board, and shoe
-    revenue is summed from these rows, so any job left without them is invisible
-    to both the board and the reports. Idempotent per job, because the shoe jobs
-    themselves are created by a later seeding pass than the startup refresh.
-    """
-    shoe_jobs = session.exec(
-        select(ShoeRepairJob).where(ShoeRepairJob.tenant_id == tenant_id)
-    ).all()
-    if not shoe_jobs:
-        return 0
-
-    already = set(
-        session.exec(
-            select(ShoeRepairJobItem.shoe_repair_job_id).where(ShoeRepairJobItem.tenant_id == tenant_id)
-        ).all()
-    )
-    created = 0
-    for idx, job in enumerate(shoe_jobs):
-        if job.id in already:
-            continue
-        # 1–3 services per job, rotating the catalogue so the mix varies.
-        for k in range((idx % 3) + 1):
-            item_def = _DEMO_SHOE_ITEMS[(idx + k) % len(_DEMO_SHOE_ITEMS)]
-            session.add(ShoeRepairJobItem(
-                tenant_id=tenant_id,
-                shoe_repair_job_id=job.id,
-                catalogue_key=item_def["catalogue_key"],
-                catalogue_group=item_def["catalogue_group"],
-                item_name=item_def["item_name"],
-                pricing_type=item_def["pricing_type"],
-                unit_price_cents=item_def["unit_price_cents"],
-                quantity=1.0,
-            ))
-            created += 1
-    if created:
-        session.flush()
-    return created
-
-
-def ensure_demo_financials(session: Session, tenant: Tenant, *, commit: bool = True) -> dict[str, int]:
-    """Build the demo tenant a believable invoice and payment ledger.
-
-    Idempotent: it only invoices approved quotes that have none yet and leaves
-    existing rows alone, so it is safe on every startup and every demo login.
-    Returns what it created.
-    """
-    tenant_id = tenant.id
-    now = datetime.now(timezone.utc)
-    created_invoices = 0
-    created_payments = 0
-    quoted_jobs = 0
-
-    # This writes invoices and payments, and fills a derived cost onto jobs that
-    # have none. On a demo database that is the point; on production the demo
-    # tenant may also carry real work, and neither the rows nor the backfilled
-    # costs would be easy to unpick. So production seeds only when asked to.
-    if settings.app_env.lower() == "production" and not settings.allow_demo_financials_seed:
-        # The counter is still worth correcting: it only moves past invoice
-        # numbers that already exist, and leaving it behind is what makes
-        # raising an invoice fail.
-        _sync_invoice_number_counter(session, tenant_id)
-        if commit:
-            session.commit()
-        return {"invoices": 0, "payments": 0, "quoted_jobs": 0}
-
-    # ── 1. Quoted value on open jobs ─────────────────────────────────────────
-    # "Outstanding work value" and the approval funnel read the quoted figure on
-    # jobs still awaiting a decision. Imported jobs carry none, which is why the
-    # tile read $0.00 next to a count of jobs waiting.
-    open_jobs = session.exec(
-        select(RepairJob)
-        .where(RepairJob.tenant_id == tenant_id)
-        .where(col(RepairJob.status).in_(["awaiting_quote", "awaiting_go_ahead", "awaiting_parts"]))
-        .limit(60)
-    ).all()
-    for idx, job in enumerate(open_jobs):
-        if not job.pre_quote_cents:
-            job.pre_quote_cents = _DEMO_WATCH_PRICE_CENTS[idx % len(_DEMO_WATCH_PRICE_CENTS)]
-            session.add(job)
-            quoted_jobs += 1
-    if quoted_jobs:
-        session.flush()
-
-    # ── 2. Invoice + payment ledger ──────────────────────────────────────────
-    # Built from the approved quotes the imported book already carries, which is
-    # the product's own path: quote → approved → invoiced → paid. That keeps the
-    # money consistent with the work on screen and sized to the real price list,
-    # instead of a handful of invented invoices sitting next to 900-odd jobs.
-    existing_invoices = int(
-        session.exec(select(func.count()).select_from(Invoice).where(Invoice.tenant_id == tenant_id)).one()
-    )
-    room = max(_DEMO_INVOICE_MAX_TOTAL - existing_invoices, 0)
-    quotes_to_invoice = session.exec(
-        select(Quote)
-        .where(Quote.tenant_id == tenant_id)
-        .where(Quote.status == "approved")
-        .where(col(Quote.id).not_in(select(Invoice.quote_id).where(col(Invoice.quote_id).is_not(None))))
-        .order_by(col(Quote.created_at).desc())
-        .limit(min(_DEMO_INVOICE_LIMIT, room))
-    ).all() if room else []
-
-    if quotes_to_invoice:
-        next_seq = 1
-        for number in session.exec(
-            select(Invoice.invoice_number).where(Invoice.tenant_id == tenant_id)
-        ).all():
-            match = re.search(r"(\d+)\s*$", number or "")
-            if match:
-                next_seq = max(next_seq, int(match.group(1)) + 1)
-
-        for idx, quote in enumerate(quotes_to_invoice):
-            total = int(quote.total_cents or 0)
-            if total <= 0:
-                continue
-            # The book's prices are counter prices, so GST sits inside them.
-            # Recording the included component keeps the GST report truthful
-            # without inflating what the customer was actually charged.
-            gst_component = total - int(round(total / (1 + _DEMO_GST_RATE_PERCENT / 100)))
-            issued_at = min(_as_utc(quote.created_at) + timedelta(days=1 + (idx % 5)), now)
-            is_paid = _DEMO_INVOICE_PAID_CYCLE[idx % len(_DEMO_INVOICE_PAID_CYCLE)]
-
-            # The book has no usable cost column, so a plausible parts cost is
-            # derived from the price. Only filled where the job has none.
-            job = session.get(RepairJob, quote.repair_job_id)
-            if job is not None and not job.cost_cents:
-                share = _DEMO_COST_SHARE_PERCENT[idx % len(_DEMO_COST_SHARE_PERCENT)]
-                job.cost_cents = int(round(total * share / 100))
-                session.add(job)
-
-            invoice = Invoice(
-                tenant_id=tenant_id,
-                repair_job_id=quote.repair_job_id,
-                quote_id=quote.id,
-                invoice_number=f"INV-{next_seq + idx:05d}",
-                status="paid" if is_paid else "unpaid",
-                subtotal_cents=total,
-                tax_cents=gst_component,
-                gst_enabled=True,
-                gst_inclusive=True,
-                total_cents=total,
-                currency="AUD",
-                created_at=issued_at,
-            )
-            session.add(invoice)
-            session.flush()
-            created_invoices += 1
-
-            if is_paid:
-                # A real payment row, not just a "paid" flag: revenue reporting
-                # counts payments first and only falls back to flagged invoices.
-                session.add(
-                    Payment(
-                        tenant_id=tenant_id,
-                        invoice_id=invoice.id,
-                        amount_cents=total,
-                        currency="AUD",
-                        status="succeeded",
-                        provider="manual",
-                        provider_reference=f"DEMO-{invoice.invoice_number}",
-                        created_at=min(issued_at + timedelta(days=2 + (idx % 6)), now),
-                    )
-                )
-                created_payments += 1
-        session.flush()
-
-    # ── 3. Keep live invoice creation working ────────────────────────────────
-    _sync_invoice_number_counter(session, tenant_id)
-
-    if commit:
-        session.commit()
-    return {
-        "invoices": created_invoices,
-        "payments": created_payments,
-        "quoted_jobs": quoted_jobs,
-    }
-
-
-# ---------------------------------------------------------------------------
 # Demo data top-up — runs on every startup, idempotent
-# Fixes demo-data gaps without wiping existing tenant data:
+# Fixes 3 demo-data gaps without wiping existing tenant data:
 #   1. Quote Status Distribution chart empty  → seed demo quotes
 #   2. Mobile Services "This Month" = 0       → refresh AutoKeyJob dates
 #   3. Shoe board "0 services · $0.00"        → seed ShoeRepairJobItem rows
-#   4. Revenue, margin and receivables empty  → build the invoice/payment ledger
 # ---------------------------------------------------------------------------
 
 _DEMO_SHOE_ITEMS = [
@@ -1238,16 +932,13 @@ def ensure_demo_supplemental_data(session: Session) -> None:
             amount = _DEMO_QUOTE_AMOUNTS_CENTS[i % len(_DEMO_QUOTE_AMOUNTS_CENTS)]
             status = _DEMO_QUOTE_STATUSES[i % len(_DEMO_QUOTE_STATUSES)]
             created_at = now - timedelta(days=30 - i * 3)
-            subtotal, tax, total = _demo_gst_split(amount)
             session.add(Quote(
                 tenant_id=tenant_id,
                 repair_job_id=job.id,
                 status=status,
-                subtotal_cents=subtotal,
-                tax_cents=tax,
-                gst_enabled=True,
-                gst_inclusive=False,
-                total_cents=total,
+                subtotal_cents=amount,
+                tax_cents=0,
+                total_cents=amount,
                 currency="AUD",
                 created_at=created_at,
             ))
@@ -1272,9 +963,32 @@ def ensure_demo_supplemental_data(session: Session) -> None:
             session.flush()
 
     # ── 3. Seed ShoeRepairJobItem rows for shoe job board cards ──────────────
-    ensure_demo_shoe_items(session, tenant_id)
-
-    # ── 4. Invoices, payments, quoted values and the invoice counter ─────────
-    ensure_demo_financials(session, tenant, commit=False)
+    shoe_item_count = int(
+        session.exec(select(func.count()).select_from(ShoeRepairJobItem).where(ShoeRepairJobItem.tenant_id == tenant_id)).one()
+    )
+    if shoe_item_count == 0:
+        shoe_jobs = session.exec(
+            select(ShoeRepairJob)
+            .where(ShoeRepairJob.tenant_id == tenant_id)
+            .limit(5)
+        ).all()
+        if shoe_jobs:
+            items = _DEMO_SHOE_ITEMS
+            for idx, job in enumerate(shoe_jobs):
+                # Assign 1–3 items per job (rotate through the catalogue list)
+                num_items = (idx % 3) + 1
+                for k in range(num_items):
+                    item_def = items[(idx + k) % len(items)]
+                    session.add(ShoeRepairJobItem(
+                        tenant_id=tenant_id,
+                        shoe_repair_job_id=job.id,
+                        catalogue_key=item_def["catalogue_key"],
+                        catalogue_group=item_def["catalogue_group"],
+                        item_name=item_def["item_name"],
+                        pricing_type=item_def["pricing_type"],
+                        unit_price_cents=item_def["unit_price_cents"],
+                        quantity=1.0,
+                    ))
+            session.flush()
 
     session.commit()

@@ -63,11 +63,6 @@ class Settings(BaseSettings):
     minit_hq_owner_email: str = "minit-hq@test.mainspring.au"
     minit_hq_owner_password: str = "MinitPilot2026!"
     allow_ensure_minit_pilot: bool = False  # Enables POST /auth/ensure-minit-pilot (one-off prod seed)
-    # Demo financials write invoices, payments and derived job costs into the
-    # demo tenant. Harmless on a throwaway database, but on production that
-    # tenant may hold real work, so there it stays off until switched on
-    # deliberately. Non-production environments seed as normal.
-    allow_demo_financials_seed: bool = False
 
     # Optional global platform admin account (cross-tenant visibility)
     platform_admin_enabled: bool = False

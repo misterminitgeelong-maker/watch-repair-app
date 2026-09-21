@@ -33,7 +33,6 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `PLATFORM_ADMIN_*` | (empty) | No | Optional platform admin account (email, password, etc.). |
 | `TESTING_TENANT_SLUG` / `TESTING_OWNER_EMAIL` / `TESTING_OWNER_PASSWORD` | (empty) | No | Optional testing tenant for QA. When set, creates a separate tenant at startup; testing login has no demo prompts. |
 | `STARTUP_SEED_*` | (varies) | No | One-time CSV seed and demo tenant settings. |
-| `ALLOW_DEMO_FINANCIALS_SEED` | `false` | No | Let the demo tenant's invoice/payment ledger and derived job costs be seeded on production. Off by default: that tenant may hold real work. Non-production seeds regardless. |
 | `SENTRY_DSN` | (empty) | No | Sentry DSN for backend error reporting. Leave blank to disable. |
 | `ENABLE_EMAIL_NOTIFICATIONS` | `false` | No | When `true`, sends Mobile Services quote/invoice email (and watch-repair quote/invoice/job-ready) via Twilio SendGrid. |
 | `SENDGRID_API_KEY` | (empty) | No | API key from **Twilio Console → Email** (SendGrid). Not the same as `TWILIO_ACCOUNT_SID`. |
