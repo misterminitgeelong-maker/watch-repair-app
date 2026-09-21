@@ -160,7 +160,7 @@ def all_sweeps() -> list[Sweep]:
         ),
         Sweep(
             name="mobile_weekly_report",
-            enabled=settings.mobile_weekly_report_email_enabled,
+            enabled=settings.mobile_weekly_report_email_enabled and not settings.mobile_kpi_close_enabled,
             interval_minutes=settings.mobile_weekly_report_check_interval_minutes,
             load=_mobile_weekly_report,
             notable_keys=("sent",),

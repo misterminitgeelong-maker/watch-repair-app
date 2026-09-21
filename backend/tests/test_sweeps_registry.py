@@ -69,6 +69,17 @@ def test_enabled_sweeps_is_a_subset_driven_by_settings():
     assert all(s.enabled for s in enabled_sweeps())
 
 
+def test_kpi_close_does_not_run_alongside_the_old_weekly_sweep():
+    """Both used to call run_mobile_kpi_close under different advisory locks,
+    so startup compiled the same daily snapshot twice and Postgres raised
+    UniqueViolation. With close enabled, the legacy weekly sweep stays registered
+    (lock key unchanged) but does not start."""
+    by_name = {s.name: s for s in all_sweeps()}
+    assert by_name["mobile_kpi_close"].enabled is True
+    assert by_name["mobile_weekly_report"].enabled is False
+    assert "mobile_weekly_report" in EXPECTED_SWEEPS
+
+
 def _probe_sweep(name: str, fn, interval_minutes: int = 1) -> Sweep:
     return Sweep(
         name=name,

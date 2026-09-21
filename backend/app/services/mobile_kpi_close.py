@@ -16,8 +16,10 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
 
 from .. import email_client
+from ..minit_email_lead_parser import bookable_operators_for_parent
 from ..mobile_network_kpis import (
     NETWORK_TIMEZONE_NAME,
     build_network_kpis,
@@ -45,6 +47,16 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _persist_ignoring_conflict(session: Session, row) -> bool:
+    """Insert ``row``. Return False when a racing sweep already wrote the unique key."""
+    try:
+        with session.begin_nested():
+            session.add(row)
+        return True
+    except IntegrityError:
+        return False
+
+
 def compile_daily_snapshot(
     session: Session,
     parent: ParentAccount,
@@ -53,6 +65,9 @@ def compile_daily_snapshot(
     now: datetime | None = None,
 ) -> list[MobileKpiDailySnapshot]:
     """Idempotent: skip operators that already have a row for this trade date."""
+    operators = bookable_operators_for_parent(session, parent.id)
+    if not operators:
+        return []
     existing = {
         row.operator_tenant_id
         for row in session.exec(
@@ -61,6 +76,8 @@ def compile_daily_snapshot(
             .where(MobileKpiDailySnapshot.trade_date == trade_date)
         ).all()
     }
+    if existing and all(tenant.id in existing for tenant in operators):
+        return []
     start, end = trade_day_snapshot_window(trade_date)
     prior_start, prior_end = trade_day_snapshot_window(trade_date - timedelta(days=7))
 
@@ -85,10 +102,15 @@ def compile_daily_snapshot(
             payload_json=json.dumps(row.to_dict()),
             compiled_at=compiled_at,
         )
-        session.add(snap)
-        written.append(snap)
+        if _persist_ignoring_conflict(session, snap):
+            written.append(snap)
+            existing.add(row.operator_tenant_id)
     if written:
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            return []
     return written
 
 
@@ -148,8 +170,19 @@ def compile_weekly_snapshot(
         csv_sha256=digest,
         compiled_at=now,
     )
-    session.add(snap)
-    session.commit()
+    if not _persist_ignoring_conflict(session, snap):
+        raced = _weekly_snapshot_for(session, parent.id, start_ymd)
+        if raced is not None:
+            return raced
+        raise RuntimeError(f"weekly snapshot conflicted for {start_ymd} but no row exists")
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raced = _weekly_snapshot_for(session, parent.id, start_ymd)
+        if raced is not None:
+            return raced
+        raise
     session.refresh(snap)
     return snap
 
@@ -316,6 +349,7 @@ def run_mobile_kpi_close(session: Session, parent_id: UUID | None = None) -> dic
                 written = compile_daily_snapshot(session, parent, trade_date, now=now)
                 summary["daily_compiled"] += len(written)
         except Exception:
+            session.rollback()
             logger.exception("mobile_kpi_close.daily_failed parent=%s", parent.id)
 
         if not weekly_compile_due(now):
@@ -335,6 +369,7 @@ def run_mobile_kpi_close(session: Session, parent_id: UUID | None = None) -> dic
             else:
                 summary["skipped"] += 1
         except Exception:
+            session.rollback()
             logger.exception("mobile_kpi_close.weekly_failed parent=%s", parent.id)
             summary["skipped"] += 1
 

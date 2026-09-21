@@ -226,6 +226,32 @@ def test_daily_snapshot_is_idempotent():
     assert second == []
 
 
+def test_daily_snapshot_duplicate_insert_is_ignored():
+    token = _ensure_hq()
+    headers = {"Authorization": f"Bearer {token}"}
+    operator_id = _link_operator(headers, "Race Van")
+    now = datetime.now(timezone.utc)
+    _seed_job(operator_id, created_at=now, total_cents=2500, job_type="Diagnostic")
+    trade_date = now.astimezone(NETWORK_TZ).date()
+
+    from app.models import MobileKpiDailySnapshot
+    from app.services.mobile_kpi_close import _persist_ignoring_conflict
+
+    with Session(engine) as session:
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == HQ_EMAIL)).one()
+        written = compile_daily_snapshot(session, parent, trade_date, now=now)
+        assert written
+        duplicate = MobileKpiDailySnapshot(
+            parent_account_id=parent.id,
+            operator_tenant_id=UUID(operator_id),
+            trade_date=trade_date,
+            payload_json="{}",
+            compiled_at=now,
+        )
+        assert _persist_ignoring_conflict(session, duplicate) is False
+        session.commit()
+
+
 def test_live_kpis_include_tech_sourced_jobs():
     token = _ensure_hq()
     headers = {"Authorization": f"Bearer {token}"}
