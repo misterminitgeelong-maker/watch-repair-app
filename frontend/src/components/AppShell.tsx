@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { PostLoginLoadingScreen } from './PostLoginLoadingScreen'
 import { clearJustLoggedIn, peekJustLoggedIn } from '@/lib/postLoginGate'
+import { prefetchAllPages, whenIdle } from '@/lib/routePrefetch'
 import { useTheme } from '@/context/ThemeContext'
 import {
   defaultHomePathForMinit,
@@ -479,6 +480,17 @@ export default function AppShell() {
   // /parent-account, MinitHqGate, ...) — each one remounts AppShell, so the flag has to survive
   // being peeked more than once. Cleared for real in onDone below, once the gate actually finishes.
   const [showPostLoginGate, setShowPostLoginGate] = useState(peekJustLoggedIn)
+
+  // Once the user is actually in (gate finished, or a plain refresh with no gate),
+  // pull the rest of the route chunks down in the background so moving around the
+  // app is instant instead of waiting on a chunk per screen. Held until the gate
+  // is gone so the landing page's own requests get the bandwidth first.
+  useEffect(() => {
+    if (showPostLoginGate) return
+    return whenIdle(() => {
+      void prefetchAllPages()
+    })
+  }, [showPostLoginGate])
   const [switchingSite, setSwitchingSite] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
