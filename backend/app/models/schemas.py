@@ -213,6 +213,13 @@ class ParentAccountSiteRead(SQLModel):
     owner_user_id: UUID
     owner_email: str
     owner_full_name: str
+    #: The shop owner's own mobile, when one is on file (set by the directory
+    #: import from the franchisee record). Used to SMS an invite.
+    owner_mobile: Optional[str] = None
+    #: True when this site still logs in with the shared HQ credentials rather
+    #: than a real franchisee identity — so HQ can see at a glance which shops
+    #: have no one to invite yet.
+    owner_is_shared_hq_login: bool = False
 
 
 class ParentAccountSiteUpdateRequest(SQLModel):
@@ -494,6 +501,11 @@ class ParentProvisionShopRequest(SQLModel):
     shop_number: str = Field(..., min_length=1, max_length=10)
     tenant_name: str = Field(..., min_length=1, max_length=200)
     business_address: Optional[str] = Field(default=None, max_length=2000)
+    #: "physical" (a shopfront, booking_only) or "mobile" (a van operator,
+    #: basic_auto_key). Decides both the plan the shop starts on and its place
+    #: in the network. Defaults to physical, which is what this endpoint
+    #: always created before the choice existed.
+    shop_type: str = Field(default="physical")
 
 class ParentImportShopsResponse(SQLModel):
     created_count: int = 0

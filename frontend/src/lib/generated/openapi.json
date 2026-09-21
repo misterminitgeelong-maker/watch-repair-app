@@ -14946,7 +14946,7 @@
           "parent-accounts"
         ],
         "summary": "Provision Minit Retail Shop",
-        "description": "Create a booking_only Minit retail shop (slug minit-{shop_number}) under this parent.",
+        "description": "Create a Minit shop (slug minit-{shop_number}) under this parent \u2014 a\nphysical shopfront on booking_only, or a mobile van operator on\nbasic_auto_key.",
         "operationId": "provision_minit_retail_shop_v1_parent_accounts_me_provision_shop_post",
         "requestBody": {
           "content": {
@@ -27518,6 +27518,22 @@
           "owner_full_name": {
             "type": "string",
             "title": "Owner Full Name"
+          },
+          "owner_mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Mobile"
+          },
+          "owner_is_shared_hq_login": {
+            "type": "boolean",
+            "title": "Owner Is Shared Hq Login",
+            "default": false
           }
         },
         "type": "object",
@@ -28624,6 +28640,11 @@
               }
             ],
             "title": "Business Address"
+          },
+          "shop_type": {
+            "type": "string",
+            "title": "Shop Type",
+            "default": "physical"
           }
         },
         "type": "object",

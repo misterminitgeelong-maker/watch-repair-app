@@ -503,3 +503,84 @@ def test_regions_normalise_tss_strings_and_carry_a_manager():
         site = db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == UUID(moved_tid))).one()
         assert site.region_id is None
         assert db.exec(select(Region).where(Region.code == "QLD WEST")).first() is None
+
+
+# ── 7. "+ Add shop" makes a mobile shop as well as a physical one ────────────
+
+
+def test_provision_shop_creates_a_mobile_operator_or_a_physical_shop():
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+    base = int(suffix[:4], 16) % 8000 + 1000
+
+    physical_num = str(base + 11)
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={"shop_number": physical_num, "tenant_name": f"Shopfront {suffix}"},
+    )
+    assert made.status_code == 200, made.text
+    physical = next(s for s in made.json()["sites"] if s["shop_number"] == physical_num)
+    assert physical["network_role"] == "retail"
+    assert physical["plan_code"] == "booking_only"
+
+    mobile_num = str(base + 12)
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={"shop_number": mobile_num, "tenant_name": f"Van {suffix}", "shop_type": "mobile"},
+    )
+    assert made.status_code == 200, made.text
+    mobile = next(s for s in made.json()["sites"] if s["shop_number"] == mobile_num)
+    assert mobile["network_role"] == "operator"
+    assert mobile["plan_code"] == "basic_auto_key"
+
+    # The two shops land in the lists HQ browses them by.
+    retail = client.get("/v1/parent-accounts/me/sites", headers=hq_h, params={"plan_kind": "retail"}).json()
+    operators = client.get("/v1/parent-accounts/me/sites", headers=hq_h, params={"plan_kind": "operator"}).json()
+    assert physical_num in {s["shop_number"] for s in retail["sites"]}
+    assert mobile_num in {s["shop_number"] for s in operators["sites"]}
+
+    bad = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={"shop_number": str(base + 13), "tenant_name": "Nope", "shop_type": "franchise"},
+    )
+    assert bad.status_code == 400
+
+
+# ── 8. Owner contact details are visible without opening each shop ───────────
+
+
+def test_sites_carry_owner_contact_and_flag_the_shared_hq_login():
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+
+    # A shop provisioned by HQ shares HQ's login — there is no franchisee to invite.
+    num = str(int(suffix[:4], 16) % 8000 + 1000 + 21)
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={"shop_number": num, "tenant_name": f"Shared {suffix}"},
+    )
+    assert made.status_code == 200, made.text
+    shared = next(s for s in made.json()["sites"] if s["shop_number"] == num)
+    assert shared["owner_email"] == net["hq_email"]
+    assert shared["owner_is_shared_hq_login"] is True
+
+    # A shop with its own franchisee login reports that owner's email and mobile.
+    with Session(engine) as db:
+        owner = db.exec(select(User).where(User.tenant_id == UUID(net["op_id"]))).first()
+        owner.mobile = "0412 345 678"
+        db.add(owner)
+        db.commit()
+
+    operators = client.get(
+        "/v1/parent-accounts/me/sites", headers=hq_h, params={"plan_kind": "operator"}
+    ).json()
+    op = next(s for s in operators["sites"] if s["tenant_id"] == net["op_id"])
+    assert op["owner_email"] == net["op_email"]
+    assert op["owner_mobile"] == "0412 345 678"
+    assert op["owner_is_shared_hq_login"] is False

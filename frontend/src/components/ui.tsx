@@ -377,7 +377,17 @@ export function Modal({ title, children, onClose, size = 'default', mobileFullSc
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  // Callers pass inline arrows, so these change identity on every render.
+  // Kept in refs the keydown handler reads, so a re-render never re-runs the
+  // focus effect below — that used to steal focus back out of an input on
+  // every keystroke.
+  const onCloseRef = useRef(onClose)
+  const closeDisabledRef = useRef(closeDisabled)
+  onCloseRef.current = onClose
+  closeDisabledRef.current = closeDisabled
 
+  // Mount/unmount only: lock the page, focus into the panel, and hand focus
+  // back to whatever opened us on the way out.
   useEffect(() => {
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const previousOverflow = document.body.style.overflow
@@ -386,11 +396,19 @@ export function Modal({ title, children, onClose, size = 'default', mobileFullSc
     const initial = panel ? focusableIn(panel)[0] : undefined
     ;(initial ?? panel)?.focus()
 
+    return () => {
+      document.body.style.overflow = previousOverflow
+      previousFocusRef.current?.focus?.()
+    }
+  }, [])
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const panel = panelRef.current
       if (event.key === 'Escape') {
-        if (!closeDisabled) {
+        if (!closeDisabledRef.current) {
           event.preventDefault()
-          onClose()
+          onCloseRef.current()
         }
         return
       }
@@ -413,12 +431,8 @@ export function Modal({ title, children, onClose, size = 'default', mobileFullSc
     }
 
     document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
-      previousFocusRef.current?.focus?.()
-    }
-  }, [onClose, closeDisabled])
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return createPortal(
     <div

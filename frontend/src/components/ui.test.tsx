@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -61,6 +62,31 @@ describe('Modal', () => {
     unmount()
     expect(document.activeElement).toBe(trigger)
     trigger.remove()
+  })
+
+  it('keeps focus in a field while typing, even with a fresh onClose each render', async () => {
+    const user = userEvent.setup()
+
+    // Mirrors how every caller uses Modal: an inline arrow for onClose, and a
+    // parent that re-renders on each keystroke. The focus effect must not
+    // re-run, or focus is yanked back to the first field on every letter.
+    function Harness() {
+      const [value, setValue] = useState('')
+      return (
+        <Modal title="Add shop" onClose={() => {}}>
+          <input aria-label="First field" />
+          <input aria-label="Shop name" value={value} onChange={e => setValue(e.target.value)} />
+        </Modal>
+      )
+    }
+
+    render(<Harness />)
+    const field = screen.getByLabelText('Shop name')
+    await user.click(field)
+    await user.keyboard('Chadstone')
+
+    expect(field).toHaveValue('Chadstone')
+    expect(document.activeElement).toBe(field)
   })
 })
 

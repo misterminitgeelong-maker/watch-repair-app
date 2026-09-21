@@ -153,6 +153,13 @@ def _site_reads_for_sites(
     if regions_by_id is None:
         regions_by_id = _regions_by_id(session, sites[0].parent_account_id)
 
+    # Sites provisioned by hand (or by the pilot seed) get a copy of the HQ
+    # login rather than a franchisee identity — the directory import is what
+    # fills in real names, emails and mobiles. Flag those so HQ does not send
+    # an owner invite straight back to itself.
+    hq_parent = session.get(ParentAccount, sites[0].parent_account_id)
+    hq_login_email = (hq_parent.owner_email or "").strip().lower() if hq_parent else ""
+
     reads: list[ParentAccountSiteRead] = []
     for site in sites:
         tenant = tenants_by_id.get(site.tenant_id)
@@ -175,6 +182,10 @@ def _site_reads_for_sites(
                 owner_user_id=user.id,
                 owner_email=user.email,
                 owner_full_name=user.full_name,
+                owner_mobile=user.mobile,
+                owner_is_shared_hq_login=bool(
+                    hq_login_email and (user.email or "").strip().lower() == hq_login_email
+                ),
             )
         )
     return sorted(reads, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
@@ -1524,14 +1535,33 @@ def import_mobile_territory_routes(
     )
 
 
+#: What "+ Add shop" can create: shop_type -> (starting plan, network role).
+#: A mobile operator is a van, not a shopfront, so it starts on the Auto Key
+#: Basic plan and sits under the network's operator roll-up.
+_PROVISION_SHOP_TYPES: dict[str, tuple[str, str]] = {
+    "physical": ("booking_only", NETWORK_ROLE_RETAIL),
+    "mobile": ("basic_auto_key", NETWORK_ROLE_OPERATOR),
+}
+
+
 @router.post("/me/provision-shop", response_model=ParentAccountSummaryResponse)
 def provision_minit_retail_shop(
     payload: ParentProvisionShopRequest,
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    """Create a booking_only Minit retail shop (slug minit-{shop_number}) under this parent."""
+    """Create a Minit shop (slug minit-{shop_number}) under this parent — a
+    physical shopfront on booking_only, or a mobile van operator on
+    basic_auto_key."""
     current_user, parent = _parent_for_write(session, auth)
+
+    shop_type = (payload.shop_type or "physical").strip().lower()
+    if shop_type not in _PROVISION_SHOP_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"shop_type must be one of: {', '.join(sorted(_PROVISION_SHOP_TYPES))}",
+        )
+    plan_code, network_role = _PROVISION_SHOP_TYPES[shop_type]
 
     shop_number = validate_shop_number_format(payload.shop_number)
     if not shop_number:
@@ -1553,7 +1583,7 @@ def provision_minit_retail_shop(
     tenant = Tenant(
         name=tenant_name,
         slug=tenant_slug,
-        plan_code="booking_only",
+        plan_code=plan_code,
         business_address=business_address,
         shop_number=shop_number,
     )
@@ -1571,7 +1601,7 @@ def provision_minit_retail_shop(
     session.add(new_owner)
     session.flush()
 
-    link_site(session, parent_id=parent.id, tenant=tenant)
+    link_site(session, parent_id=parent.id, tenant=tenant, network_role=network_role)
     _record_event(
         session,
         parent_account_id=parent.id,
@@ -1579,7 +1609,7 @@ def provision_minit_retail_shop(
         actor_user_id=current_user.id,
         actor_email=current_user.email,
         event_type="provision_shop",
-        event_summary=f"Provisioned Minit shop '{tenant.name}' ({tenant.slug})",
+        event_summary=f"Provisioned {shop_type} Minit shop '{tenant.name}' ({tenant.slug})",
     )
     session.commit()
     session.refresh(parent)

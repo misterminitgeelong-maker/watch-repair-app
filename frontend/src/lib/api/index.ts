@@ -139,6 +139,10 @@ export interface ParentAccountSite {
   owner_user_id: string
   owner_email: string
   owner_full_name: string
+  /** The owner's own mobile, when the franchisee record supplied one. */
+  owner_mobile?: string | null
+  /** True when the shop still uses the shared HQ login — no franchisee to invite yet. */
+  owner_is_shared_hq_login?: boolean
 }
 
 export interface ParentAccountUser {
@@ -477,10 +481,20 @@ export interface ShopBookingUsage {
 export const getParentShopBookingUsage = (month: string) =>
   api.get<ShopBookingUsage>('/parent-accounts/me/shop-booking-usage', { params: { month } })
 
+/** A shopfront starts on booking_only and counts as retail; a mobile operator
+ * starts on basic_auto_key and joins the network's operator roll-up. */
+export type MinitShopType = 'physical' | 'mobile'
+
+export const MINIT_SHOP_TYPE_OPTIONS: Array<{ value: MinitShopType; label: string }> = [
+  { value: 'physical', label: 'Physical shop (shopfront)' },
+  { value: 'mobile', label: 'Mobile shop (van operator)' },
+]
+
 export const provisionMinitShop = (payload: {
   shop_number: string
   tenant_name: string
   business_address?: string
+  shop_type?: MinitShopType
 }) => api.post<ParentAccountSummary>('/parent-accounts/me/provision-shop', payload)
 
 export interface ParentImportShopsResult {

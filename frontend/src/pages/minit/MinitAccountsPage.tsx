@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Copy, KeyRound, LogIn } from 'lucide-react'
+import { Copy, Download, KeyRound, LogIn } from 'lucide-react'
 import {
   createShopOwnerInvite,
   formatTenantLabel,
   getApiErrorMessage,
   linkTenantToParentAccount,
   MINIT_INVITE_PLAN_OPTIONS,
+  MINIT_SHOP_TYPE_OPTIONS,
   provisionMinitShop,
   unlinkTenantFromParentAccount,
   updateLinkedSite,
+  type MinitShopType,
   type ParentAccountSite,
   type PlanCode,
   type ShopOwnerInvite,
@@ -26,6 +28,64 @@ function formatAreaRegion(area?: string | null, region?: string | null) {
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
+/** The owner contact line under each shop: who an invite would actually reach. */
+function OwnerContact({ site }: { site: ParentAccountSite }) {
+  const mobile = site.owner_mobile?.trim()
+  if (site.owner_is_shared_hq_login) {
+    return (
+      <p className="text-xs mt-1" style={{ color: '#8A5010' }}>
+        Shared HQ login — no franchisee contact on file yet
+      </p>
+    )
+  }
+  return (
+    <p className="text-xs mt-1" style={{ color: 'var(--ms-text)' }}>
+      {site.owner_full_name ? `${site.owner_full_name} · ` : ''}
+      <a href={`mailto:${site.owner_email}`} style={{ textDecoration: 'underline' }}>
+        {site.owner_email}
+      </a>
+      {mobile ? (
+        <>
+          {' · '}
+          <a href={`tel:${mobile.replace(/\s+/g, '')}`} style={{ textDecoration: 'underline' }}>
+            {mobile}
+          </a>
+        </>
+      ) : (
+        <span style={{ color: 'var(--ms-text-muted)' }}> · no mobile on file</span>
+      )}
+    </p>
+  )
+}
+
+function csvCell(value: string | null | undefined) {
+  const text = (value ?? '').toString()
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+/** Download every loaded shop's owner contact details, for working through invites. */
+function downloadContactsCsv(sites: ParentAccountSite[]) {
+  const header = ['Shop number', 'Shop name', 'Type', 'Area', 'Region', 'Owner name', 'Owner email', 'Owner mobile', 'Has franchisee contact']
+  const rows = sites.map(site => [
+    site.shop_number ?? '',
+    site.tenant_name,
+    site.network_role === 'operator' ? 'Mobile' : 'Physical',
+    site.area ?? '',
+    site.region ?? '',
+    site.owner_is_shared_hq_login ? '' : site.owner_full_name,
+    site.owner_is_shared_hq_login ? '' : site.owner_email,
+    site.owner_is_shared_hq_login ? '' : (site.owner_mobile ?? ''),
+    site.owner_is_shared_hq_login ? 'No — shared HQ login' : 'Yes',
+  ])
+  const csv = [header, ...rows].map(cols => cols.map(csvCell).join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `minit-shop-contacts-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function MinitAccountsPage() {
   const { refreshSession, sessionUserId } = useAuth()
   const qc = useQueryClient()
@@ -39,6 +99,7 @@ export default function MinitAccountsPage() {
   const [linkSlug, setLinkSlug] = useState('')
   const [linkEmail, setLinkEmail] = useState('')
   const [addMode, setAddMode] = useState<'provision' | 'link'>('provision')
+  const [shopType, setShopType] = useState<MinitShopType>('physical')
   const [removingId, setRemovingId] = useState('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -112,6 +173,7 @@ export default function MinitAccountsPage() {
         shop_number: shopNumber.trim(),
         tenant_name: tenantName.trim(),
         business_address: businessAddress.trim() || undefined,
+        shop_type: shopType,
       }).then(r => r.data),
     onSuccess: () => {
       setError('')
@@ -119,6 +181,7 @@ export default function MinitAccountsPage() {
       setShopNumber('')
       setTenantName('')
       setBusinessAddress('')
+      setShopType('physical')
       void refreshSession()
       qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
       qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
@@ -228,6 +291,19 @@ export default function MinitAccountsPage() {
           <span className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
             Retail shops ({retailTotal})
           </span>
+          {retailSites.length + operators.length > 0 && (
+            <Button
+              variant="secondary"
+              className="text-xs px-3 py-1.5"
+              onClick={() => downloadContactsCsv([...retailSites, ...operators])}
+              title="Download the owner name, email and mobile for every shop loaded below"
+            >
+              <span className="inline-flex items-center gap-1">
+                <Download size={13} />
+                Export contacts
+              </span>
+            </Button>
+          )}
           {retailTotal > 0 && (
             <div className="w-full sm:w-64">
               <Input
@@ -263,6 +339,7 @@ export default function MinitAccountsPage() {
                 <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                   {areaRegion ? `${areaRegion} · ` : ''}login {site.tenant_slug} · {site.plan_code}
                 </p>
+                <OwnerContact site={site} />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {canEdit && regions.length > 0 && (
@@ -342,6 +419,7 @@ export default function MinitAccountsPage() {
                 <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                   {areaRegion ? `${areaRegion} · ` : ''}{site.tenant_slug} · {site.plan_code}
                 </p>
+                <OwnerContact site={site} />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {openShopButton(site)}
@@ -389,9 +467,27 @@ export default function MinitAccountsPage() {
             </Select>
             {addMode === 'provision' ? (
               <>
+                <Select
+                  label="Shop type"
+                  value={shopType}
+                  onChange={e => setShopType(e.target.value as MinitShopType)}
+                >
+                  {MINIT_SHOP_TYPE_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </Select>
                 <Input label="Minit shop number" value={shopNumber} onChange={e => setShopNumber(e.target.value)} placeholder="3269" />
                 <Input label="Shop name" value={tenantName} onChange={e => setTenantName(e.target.value)} placeholder="Chadstone" />
-                <Input label="Address (optional)" value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} />
+                <Input
+                  label={shopType === 'mobile' ? 'Base address (optional)' : 'Address (optional)'}
+                  value={businessAddress}
+                  onChange={e => setBusinessAddress(e.target.value)}
+                />
+                <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                  {shopType === 'mobile'
+                    ? 'Starts on Auto Key Basic and joins the mobile operator roll-up.'
+                    : 'Starts on booking-only and joins the retail shops list.'}
+                </p>
               </>
             ) : (
               <>

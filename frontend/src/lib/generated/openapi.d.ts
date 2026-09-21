@@ -4579,7 +4579,9 @@ export interface paths {
         put?: never;
         /**
          * Provision Minit Retail Shop
-         * @description Create a booking_only Minit retail shop (slug minit-{shop_number}) under this parent.
+         * @description Create a Minit shop (slug minit-{shop_number}) under this parent — a
+         *     physical shopfront on booking_only, or a mobile van operator on
+         *     basic_auto_key.
          */
         post: operations["provision_minit_retail_shop_v1_parent_accounts_me_provision_shop_post"];
         delete?: never;
@@ -8490,6 +8492,13 @@ export interface components {
             owner_email: string;
             /** Owner Full Name */
             owner_full_name: string;
+            /** Owner Mobile */
+            owner_mobile?: string | null;
+            /**
+             * Owner Is Shared Hq Login
+             * @default false
+             */
+            owner_is_shared_hq_login: boolean;
         };
         /** ParentAccountSiteUpdateRequest */
         ParentAccountSiteUpdateRequest: {
@@ -8952,6 +8961,11 @@ export interface components {
             tenant_name: string;
             /** Business Address */
             business_address?: string | null;
+            /**
+             * Shop Type
+             * @default physical
+             */
+            shop_type: string;
         };
         /** ParentRegionDashboardStat */
         ParentRegionDashboardStat: {
