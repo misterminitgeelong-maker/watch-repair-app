@@ -595,3 +595,24 @@ def test_backfill_is_safe_to_run_twice():
         second = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=True)
         assert second["matched_count"] == 0
         assert second["skipped_owner_already_real"] == 1
+
+
+def test_backfill_separates_who_can_be_texted_from_who_can_only_be_emailed():
+    """An invite goes out by email and by text; a franchisee with no mobile on
+    file can only be emailed. The preview has to say so up front."""
+    hq_email = _fresh_hq()
+    textable = _shop("3101", franchisee_id="franchisee:gail")
+    email_only = _shop("3102", franchisee_id="franchisee:hank")
+    gail = _franchisee("gail", "Gail Ito", "gail@example.com", ["shop:3101"], mobile="0412 999 888")
+    hank = _franchisee("hank", "Hank Poole", "hank@example.com", ["shop:3102"])  # no mobile
+    directory = DirectoryData(shops=[textable, email_only], franchisees=[gail, hank])
+
+    with Session(engine) as session:
+        _shop_on_hq_login(session, hq_email, "3101")
+        _shop_on_hq_login(session, hq_email, "3102")
+
+    with Session(engine) as session:
+        result = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=False)
+        assert result["matched_count"] == 2
+        assert result["matched_with_mobile"] == 1
+        assert result["matched_without_mobile"] == 1

@@ -512,6 +512,11 @@ def backfill_shared_login_owners(
     skipped_missing_email = 0
     skipped_email_collision = 0
     mobiles_filled = 0
+    # An invite goes out by email and by text. A franchisee with no mobile on
+    # file can only be emailed, so count that separately rather than leaving it
+    # to be discovered one silent invite at a time.
+    matched_with_mobile = 0
+    matched_without_mobile = 0
 
     for shop in directory.shops:
         if shop.status != "Open" or not shop.shop_number:
@@ -565,8 +570,15 @@ def backfill_shared_login_owners(
                 }
             )
         updated_count += 1
-        if target_mobile and not (owner.mobile or "").strip():
-            mobiles_filled += 1
+        if target_mobile:
+            matched_with_mobile += 1
+            if not (owner.mobile or "").strip():
+                mobiles_filled += 1
+        elif (owner.mobile or "").strip():
+            # Nothing in the export, but this shop already has one on file.
+            matched_with_mobile += 1
+        else:
+            matched_without_mobile += 1
 
         if apply:
             owner.email = target_email
@@ -585,6 +597,10 @@ def backfill_shared_login_owners(
         #: Shops that qualify. With apply=false this is what *would* change.
         "matched_count": updated_count,
         "mobiles_filled": mobiles_filled,
+        #: Of those matched, how many can be texted an invite as well as
+        #: emailed, and how many can only be emailed.
+        "matched_with_mobile": matched_with_mobile,
+        "matched_without_mobile": matched_without_mobile,
         "skipped_owner_already_real": skipped_owner_is_real,
         "skipped_not_in_network": skipped_not_in_network,
         "skipped_no_franchisee_on_file": skipped_no_franchisee,
