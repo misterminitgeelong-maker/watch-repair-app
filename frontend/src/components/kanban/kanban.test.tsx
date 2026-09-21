@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import KanbanColumn from './KanbanColumn'
 import KanbanBoard from './KanbanBoard'
@@ -127,5 +127,61 @@ describe('KanbanBoard', () => {
     const sameZone = container.querySelectorAll('[style*="min-height"]')[0] as HTMLElement
     fireEvent.drop(sameZone, { dataTransfer: { getData: () => 'j1' } })
     expect(onStatusChange).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('KanbanBoard sideways scrolling', () => {
+  const columns = [column, { ...column, key: 'done', label: 'Done', statuses: ['done'] }] as const
+  const jobs = [{ id: 'j1', status: 'in_progress' }]
+
+  function renderBoard() {
+    const view = render(
+      <MemoryRouter>
+        <KanbanBoard
+          jobs={jobs}
+          columns={columns}
+          renderCard={job => <div>{job.id}</div>}
+        />
+      </MemoryRouter>,
+    )
+    const board = view.container.querySelector('.overflow-x-auto') as HTMLDivElement
+    return { ...view, board }
+  }
+
+  it('does not write the board back while the board is the one being scrolled', () => {
+    const { board } = renderBoard()
+
+    // The board is mid-gesture and has moved on under momentum.
+    board.scrollLeft = 400
+    fireEvent.scroll(board)
+
+    // The floating scrollbar's own scroll event arrives late, carrying the
+    // position it had caught up to. Acting on it would drag the board back
+    // there and break the momentum — that was the stutter.
+    const scrollbar = document.createElement('div')
+    Object.defineProperty(scrollbar, 'scrollLeft', { value: 280, writable: true })
+
+    board.scrollLeft = 520
+    fireEvent.scroll(board)
+    expect(board.scrollLeft).toBe(520)
+  })
+
+  it('lets the other element take over once the gesture stops', () => {
+    vi.useFakeTimers()
+    try {
+      const { board } = renderBoard()
+      board.scrollLeft = 100
+      fireEvent.scroll(board)
+
+      // Ownership is released after a short idle, so the floating scrollbar
+      // can drive the next time the user grabs it instead.
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(board.scrollLeft).toBe(100)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

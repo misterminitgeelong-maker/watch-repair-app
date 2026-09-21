@@ -1,5 +1,4 @@
 import { lazy, type ComponentType } from 'react'
-import { asyncPool } from './asyncPool'
 
 /** Every route chunk's import thunk, in the order App.tsx declares them — which
  * is roughly how often they get used, so the warm-up front-loads the screens
@@ -20,9 +19,26 @@ export function lazyPage<T extends ComponentType<any>>(
   return lazy(factory)
 }
 
-/** Pull every route chunk into cache in the background, a few at a time so the
- * page the user is actually on keeps the bandwidth it needs. Safe to call more
- * than once — only the first call does the work.
+/** Resolves the next time the browser has nothing better to do. */
+function nextIdle(): Promise<void> {
+  return new Promise(resolve => {
+    const ric = (window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+    }).requestIdleCallback
+    if (typeof ric === 'function') ric(() => resolve(), { timeout: 1000 })
+    else window.setTimeout(resolve, 0)
+  })
+}
+
+/** Pull every route chunk into cache in the background. Safe to call more than
+ * once — only the first call does the work.
+ *
+ * One at a time, each waiting for an idle moment first. A dynamic import does
+ * not merely download a chunk, it evaluates it, so running these back to back
+ * put a long stretch of main-thread work right where someone has just started
+ * using the app — enough to make scrolling stutter. Idle-gating means the warm
+ * up takes longer overall and never competes with what the user is doing,
+ * which is the right trade for something they should never notice.
  *
  * Deliberately not tied to the post-login gate's own completion check: that
  * waits on React Query, and these are module imports, so warming chunks can
@@ -30,9 +46,16 @@ export function lazyPage<T extends ComponentType<any>>(
 export async function prefetchAllPages(): Promise<void> {
   if (started) return
   started = true
-  // A chunk that 404s (a stale tab after a deploy renames every file) must not
-  // reject here — the real navigation will surface it through the router.
-  await asyncPool(factories, 4, factory => Promise.resolve(factory()).then(() => undefined, () => undefined))
+  for (const factory of factories) {
+    await nextIdle()
+    try {
+      // A chunk that 404s (a stale tab after a deploy renames every file) must
+      // not stop the rest — the real navigation surfaces it through the router.
+      await factory()
+    } catch {
+      // ignored on purpose
+    }
+  }
 }
 
 /** Run `fn` when the browser is next idle, falling back to a timer on Safari

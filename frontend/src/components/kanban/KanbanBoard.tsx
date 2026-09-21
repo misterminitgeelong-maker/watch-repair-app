@@ -63,22 +63,51 @@ export default function KanbanBoard<J extends { id: string; status: string }>({
     measure()
   }, [jobs, columns, measure])
 
-  // Mirror scroll position between the real board and the floating scrollbar.
-  // Writing scrollLeft fires a scroll event on the target, which would call
-  // straight back into the other handler — the two elements pushed each other
-  // back and forth for every scroll, fighting trackpad momentum and the smooth
-  // scrolling the arrow buttons ask for. Skipping the write when the two are
-  // already in step breaks that loop after the first hop.
-  const mirrorScroll = React.useCallback(
-    (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
-      if (!from || !to) return
-      if (Math.abs(to.scrollLeft - from.scrollLeft) >= 1) to.scrollLeft = from.scrollLeft
+  // Whichever of the two the user is actually scrolling owns the position
+  // until they stop; see mirrorScroll.
+  const scrollOwner = React.useRef<'board' | 'float' | null>(null)
+  const releaseTimer = React.useRef<number | undefined>(undefined)
+  const edgeFrame = React.useRef(0)
+
+  // Reading scrollWidth/clientWidth forces layout, so do it once a frame at
+  // most rather than on every scroll event.
+  const scheduleEdgeMeasure = React.useCallback(() => {
+    if (edgeFrame.current) return
+    edgeFrame.current = requestAnimationFrame(() => {
+      edgeFrame.current = 0
       measureScrollEdges()
+    })
+  }, [measureScrollEdges])
+
+  React.useEffect(() => () => {
+    window.clearTimeout(releaseTimer.current)
+    if (edgeFrame.current) cancelAnimationFrame(edgeFrame.current)
+  }, [])
+
+  // Mirror scroll position between the real board and the floating scrollbar.
+  // Writing scrollLeft fires a scroll event on the target, so the two used to
+  // write back and forth. Comparing positions is not enough to catch that: by
+  // the time the echo arrives the board has already moved on under momentum,
+  // so the positions differ and the echo writes the board back to where the
+  // scrollbar had got to — which is the stutter. Instead, the element the user
+  // is actually scrolling takes ownership and the other one's events are
+  // ignored until the gesture stops.
+  const mirrorScroll = React.useCallback(
+    (owner: 'board' | 'float', from: HTMLDivElement | null, to: HTMLDivElement | null) => {
+      if (!from || !to) return
+      if (scrollOwner.current && scrollOwner.current !== owner) return
+      scrollOwner.current = owner
+      window.clearTimeout(releaseTimer.current)
+      releaseTimer.current = window.setTimeout(() => {
+        scrollOwner.current = null
+      }, 150)
+      if (to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft
+      scheduleEdgeMeasure()
     },
-    [measureScrollEdges],
+    [scheduleEdgeMeasure],
   )
-  const syncFromBoard = () => mirrorScroll(scrollRef.current, floatRef.current)
-  const syncFromFloat = () => mirrorScroll(floatRef.current, scrollRef.current)
+  const syncFromBoard = () => mirrorScroll('board', scrollRef.current, floatRef.current)
+  const syncFromFloat = () => mirrorScroll('float', floatRef.current, scrollRef.current)
   const scrollByStep = (direction: 1 | -1) => {
     scrollRef.current?.scrollBy({ left: direction * SCROLL_STEP, behavior: 'smooth' })
   }
