@@ -2,6 +2,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlmodel import Session, func, select
 
 from ..database import get_session
@@ -51,8 +52,18 @@ def list_customers(
 ):
     query = select(Customer).where(Customer.tenant_id == auth.tenant_id)
     if q:
-        pattern = f"%{q.lower()}%"
-        query = query.where(func.lower(Customer.full_name).like(pattern))
+        raw = q.strip()
+        if raw:
+            pattern = f"%{raw.lower()}%"
+            phone_pattern = f"%{raw}%"
+            query = query.where(
+                or_(
+                    func.lower(Customer.full_name).like(pattern),
+                    func.lower(func.coalesce(Customer.email, "")).like(pattern),
+                    func.coalesce(Customer.phone, "").like(phone_pattern),
+                    func.coalesce(Customer.phone_normalized, "").like(phone_pattern),
+                )
+            )
     sort_fields = {
         "created_at": Customer.created_at,
         "full_name": Customer.full_name,

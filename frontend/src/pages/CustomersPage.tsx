@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
@@ -89,28 +89,30 @@ export default function CustomersPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [showMerge, setShowMerge] = useState(false)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sortBy, setSortBy] = useState<'created_at' | 'full_name'>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 250)
+    return () => window.clearTimeout(handle)
+  }, [search])
+
   const customersQuery = useOffsetPaginatedQuery({
-    queryKey: ['customers', 'paged', sortBy, sortDir],
+    queryKey: ['customers', 'paged', sortBy, sortDir, debouncedSearch],
     queryFn: (offset) =>
       listCustomers({
         limit: DEFAULT_PAGE_SIZE,
         offset,
         sort_by: sortBy,
         sort_dir: sortDir,
+        q: debouncedSearch || undefined,
       }).then((r) => r.data),
   })
 
   const customers = useMemo(() => flattenInfinitePages(customersQuery.data), [customersQuery.data])
   const isLoading = customersQuery.isLoading
-
-  const filtered = customers.filter(c =>
-    c.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.includes(search)
-  )
+  const filtered = customers
 
   return (
     <div>
@@ -148,36 +150,28 @@ export default function CustomersPage() {
             border: '1px solid var(--ms-border-strong)',
             color: 'var(--ms-text)',
           }}
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'created_at' | 'full_name')}
+          value={`${sortBy}:${sortDir}`}
+          onChange={(e) => {
+            const [nextSort, nextDir] = e.target.value.split(':') as ['created_at' | 'full_name', SortDir]
+            setSortBy(nextSort)
+            setSortDir(nextDir)
+          }}
           aria-label="Sort customers"
         >
-          <option value="created_at">Sort: Date added</option>
-          <option value="full_name">Sort: Name</option>
-        </select>
-        <select
-          className="h-11 rounded-lg px-3 text-base outline-none transition sm:h-9 sm:text-sm"
-          style={{
-            backgroundColor: 'var(--ms-surface)',
-            border: '1px solid var(--ms-border-strong)',
-            color: 'var(--ms-text)',
-          }}
-          value={sortDir}
-          onChange={(e) => setSortDir(e.target.value as SortDir)}
-          aria-label="Sort direction"
-        >
-          <option value="desc">Descending</option>
-          <option value="asc">Ascending</option>
+          <option value="created_at:desc">Newest first</option>
+          <option value="created_at:asc">Oldest first</option>
+          <option value="full_name:asc">Name A–Z</option>
+          <option value="full_name:desc">Name Z–A</option>
         </select>
       </div>
 
       {customersQuery.error && (
         <p className="text-sm mb-3" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(customersQuery.error)}</p>
       )}
-      {(customersQuery.hasNextPage || search.trim()) && (
+      {(customersQuery.hasNextPage || debouncedSearch) && (
         <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-          {search.trim()
-            ? 'Search applies to customers already loaded. Load more to include additional rows in search.'
+          {debouncedSearch
+            ? `Searching the full customer book for “${debouncedSearch}”.`
             : customersQuery.hasNextPage
               ? 'More customers are available — use Load more.'
               : null}

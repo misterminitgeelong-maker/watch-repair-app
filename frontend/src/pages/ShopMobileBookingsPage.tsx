@@ -304,6 +304,9 @@ export default function ShopMobileBookingsPage() {
             )}
           </div>
           <Input label="Preferred date & time" type="datetime-local" value={preferredAt} onChange={e => setPreferredAt(e.target.value)} />
+          <p className="text-xs -mt-2 mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+            Optional. Tap the field to pick a date and time if the native control looks empty.
+          </p>
           <div className="md:col-span-2">
             <Textarea label="Notes for operator" value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
           </div>

@@ -26,6 +26,7 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { isDemoModeEnabled } from '@/lib/onboarding'
 import {
   isMinitHqUi,
   isMinitBookingOnlyPlan,
@@ -54,6 +55,13 @@ const bookingOnlyNav: NavLinkItem[] = [
   { to: '/accounts', label: 'Account', icon: UserCog },
 ]
 
+const demoNav: NavLinkItem[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/customers', label: 'Customers', icon: Users },
+  { to: '/jobs', label: 'Watch', icon: Wrench, feature: 'watch' },
+  { to: '/shoe-repairs', label: 'Shoe', icon: Scissors, feature: 'shoe' },
+]
+
 const navBeforeMobile: NavLinkItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile services', icon: KeyRound, feature: 'shop_mobile_booking' },
@@ -74,6 +82,12 @@ const navAfterMobile: NavLinkItem[] = [
   { to: '/accounts', label: 'Accounts', icon: UserCog },
 ]
 
+const demoNavAfterMobile: NavLinkItem[] = [
+  { to: '/invoices', label: 'Invoices', icon: Receipt },
+  { to: '/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/accounts', label: 'Accounts', icon: UserCog },
+]
+
 interface SidebarProps {
   className?: string
   mobile?: boolean
@@ -84,6 +98,7 @@ interface SidebarProps {
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature, planCode, product, tenantSlug, minitHqUi } = useAuth()
+  const demoModeEnabled = isDemoModeEnabled()
   const hqCtx = {
     product,
     planCode,
@@ -110,7 +125,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const showInstall = showInstallAffordance
   const { theme } = useTheme()
 
-  if (isMinitHq) {
+  if (isMinitHq && !demoModeEnabled) {
     return (
       <MinitHqSidebar
         className={className}
@@ -121,16 +136,20 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
       />
     )
   }
-  const logoSrc = theme === 'minit' ? '/minit-logo.svg' : '/mainspring-logo.svg'
-  const logoAlt = theme === 'minit' ? 'Mister Minit' : 'Mainspring'
+  const logoSrc = demoModeEnabled || theme !== 'minit' ? '/mainspring-logo.svg' : '/minit-logo.svg'
+  const logoAlt = demoModeEnabled || theme !== 'minit' ? 'Mainspring' : 'Mister Minit'
 
   const filterItems = (items: NavLinkItem[]) =>
     items.filter((item) => !item.feature || hasFeature(item.feature))
 
-  const filteredBefore = isBookingOnly
+  const filteredBefore = demoModeEnabled
+    ? filterItems(demoNav)
+    : isBookingOnly
     ? filterItems(bookingOnlyNav)
     : filterItems(navBeforeMobile)
-  const filteredAfter = isMinitUi ? [] : filterItems(navAfterMobile)
+  const filteredAfter = demoModeEnabled
+    ? filterItems(demoNavAfterMobile)
+    : isMinitUi ? [] : filterItems(navAfterMobile)
   const showMobile = !isMinitUi && hasFeature('auto_key')
   const insideMobile = pathname.startsWith('/auto-key')
 
@@ -162,7 +181,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
         style={{ borderBottom: '1px solid var(--ms-sidebar-border)' }}
       >
         <div className="flex items-center justify-between gap-3">
-          {theme === 'minit' ? (
+          {theme === 'minit' && !demoModeEnabled ? (
             <div style={{
               backgroundColor: '#fff',
               borderRadius: 8,

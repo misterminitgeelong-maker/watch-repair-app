@@ -302,6 +302,7 @@ export default function AccountsPage() {
   }
 
   const stripeConfigured = Boolean(billing?.stripe_configured)
+  const hasStripeSubscription = Boolean(billing?.stripe_subscription_id)
   const demoModeEnabled = isDemoModeEnabled()
   const showStripeCheckout = stripeConfigured && !demoModeEnabled
   const usage = billing?.usage
@@ -403,7 +404,9 @@ export default function AccountsPage() {
         </div>
         {showStripeCheckout && (
           <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
-            Stripe is active. Use Checkout to subscribe or change plan; access updates after Stripe confirms payment.
+            {hasStripeSubscription
+              ? 'Stripe billing is connected. Use Checkout to change plan; access updates after Stripe confirms payment.'
+              : 'Stripe Checkout is available for plan changes. This shop’s current plan is managed on the account — there is no separate Stripe subscription on file.'}
           </p>
         )}
         {!canManagePlan && (
@@ -1226,7 +1229,7 @@ function BillingCard() {
 
       {stripe_configured && !stripe_subscription_id && (
         <p className="text-xs mt-3" style={{ color: 'var(--ms-text-muted)' }}>
-          No active Stripe subscription. Contact support or configure billing to subscribe.
+          Plan access is active on this shop. There is no Stripe subscription ID on file, so Checkout is for plan changes rather than a missing subscription.
         </p>
       )}
     </Card>

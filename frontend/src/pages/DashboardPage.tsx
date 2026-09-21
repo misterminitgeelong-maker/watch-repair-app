@@ -225,6 +225,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [checklistDismissed, setChecklistDismissedState] = useState(false)
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
+  const [refreshingNow, setRefreshingNow] = useState(false)
   const canViewAccountMetrics = role === 'owner' || role === 'platform_admin'
 
   const invoicesQ = useQuery({
@@ -365,16 +366,9 @@ export default function DashboardPage() {
       widgetsQ.dataUpdatedAt,
     ],
   )
-  const isRefreshing =
-    invoicesQ.isFetching ||
-    reportsQ.isFetching ||
-    widgetsQ.isFetching ||
-    recentWatchJobsQ.isFetching ||
-    shoeJobsQ.isFetching ||
-    autoKeyJobsQ.isFetching ||
-    inboxAlertsQ.isFetching ||
-    reportsQ.isPending ||
-    invoicesQ.isPending
+  const reportsReady = reportsQ.isSuccess
+  const kpisLoading = reportsQ.isPending && !reportsQ.data
+  const dashValue = (ready: boolean, value: string) => (ready ? value : '—')
   const followUpRoute = useMemo(() => {
     if (!widgets) return null
     if ((widgets.overdue_jobs_count ?? 0) > 0) return '/jobs?status=awaiting_go_ahead&older_than_days=14'
@@ -394,14 +388,14 @@ export default function DashboardPage() {
     {
       label: 'All Active Jobs',
       mobileLabel: 'Active Jobs',
-      value: String(totalServiceJobs),
+      value: dashValue(!hasFeature('watch') || reportsReady || reportsQ.isError, String(totalServiceJobs)),
       helper: serviceBreakdown || `${urgentAcrossServiceLines} high-priority across service lines`,
       to: '/jobs',
       icon: Wrench,
     },
     {
       label: 'Customers',
-      value: String(reports?.counts.customers ?? 0),
+      value: dashValue(reportsReady, String(reports?.counts.customers ?? 0)),
       helper: `${customerAccounts?.length ?? 0} business account groups`,
       to: '/customers',
       icon: Users,
@@ -409,23 +403,23 @@ export default function DashboardPage() {
     {
       label: 'Quotes Awaiting Action',
       mobileLabel: 'Quotes',
-      value: String(quotesPendingCount),
-      helper: `${reports?.sales_funnel.approval_rate_percent ?? 0}% approval rate`,
+      value: dashValue(reportsReady, String(quotesPendingCount)),
+      helper: reportsReady ? `${reports?.sales_funnel.approval_rate_percent ?? 0}% approval rate` : 'Loading quotes…',
       to: '/quotes',
       icon: FileText,
     },
     {
       label: 'Open Invoices',
       mobileLabel: 'Invoices',
-      value: String(invoicesOpen.length),
-      helper: `${formatCents(invoicesOpenValue)} awaiting payment`,
+      value: dashValue(invoicesQ.isSuccess, String(invoicesOpen.length)),
+      helper: invoicesQ.isSuccess ? `${formatCents(invoicesOpenValue)} awaiting payment` : 'Loading invoices…',
       to: '/invoices',
       icon: Receipt,
     },
     {
       label: 'Outstanding Work Value',
       mobileLabel: 'Work Value',
-      value: formatCents(reports?.financials.outstanding_cents ?? 0),
+      value: dashValue(reportsReady, formatCents(reports?.financials.outstanding_cents ?? 0)),
       helper: `${watchAwaitingGoAheadCount} watch jobs waiting for approval`,
       to: '/reports',
       icon: DollarSign,
@@ -453,6 +447,7 @@ export default function DashboardPage() {
             type="button"
             className="!py-1.5 !px-3 !text-xs"
             onClick={() => {
+              setRefreshingNow(true)
               void Promise.all([
                 invoicesQ.refetch(),
                 reportsQ.refetch(),
@@ -461,11 +456,11 @@ export default function DashboardPage() {
                 shoeJobsQ.refetch(),
                 autoKeyJobsQ.refetch(),
                 inboxAlertsQ.refetch(),
-              ])
+              ]).finally(() => setRefreshingNow(false))
             }}
-            disabled={isRefreshing}
+            disabled={refreshingNow}
           >
-            {isRefreshing ? 'Refreshing…' : 'Refresh now'}
+            {refreshingNow ? 'Refreshing…' : 'Refresh now'}
           </Button>
         </div>
 
@@ -506,7 +501,9 @@ export default function DashboardPage() {
                 All your repairs, one place.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7" style={{ color: 'var(--ms-sidebar-text)' }}>
-                {totalServiceJobs > 0
+                {kpisLoading
+                  ? 'Loading shop totals…'
+                  : totalServiceJobs > 0
                   ? `${totalServiceJobs} active ${totalServiceJobs === 1 ? 'job' : 'jobs'} across your service lines.`
                   : 'No active jobs right now — ready for the next one.'}
               </p>
@@ -523,13 +520,13 @@ export default function DashboardPage() {
               <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Revenue</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
-                  {formatCents(reports?.financials.revenue_cents ?? 0)}
+                  {kpisLoading ? '—' : formatCents(reports?.financials.revenue_cents ?? 0)}
                 </p>
               </div>
               <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Gross Profit</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
-                  {formatCents(reports?.financials.gross_profit_cents ?? 0)}
+                  {kpisLoading ? '—' : formatCents(reports?.financials.gross_profit_cents ?? 0)}
                 </p>
                 {(reports?.financials.cost_outlier_jobs ?? 0) > 0 && (
                   <p className="mt-1 text-[10px] sm:text-xs" style={{ color: 'var(--ms-error)' }}>
@@ -540,13 +537,13 @@ export default function DashboardPage() {
               <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Approval Rate</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
-                  {reports?.sales_funnel.approval_rate_percent ?? 0}%
+                  {kpisLoading ? '—' : `${reports?.sales_funnel.approval_rate_percent ?? 0}%`}
                 </p>
               </div>
               <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--ms-surface)' }}>
                 <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Avg / Job</p>
                 <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold" style={{ color: 'var(--ms-text)' }}>
-                  {formatCents(reports?.operations.avg_revenue_per_job_cents ?? 0)}
+                  {kpisLoading ? '—' : formatCents(reports?.operations.avg_revenue_per_job_cents ?? 0)}
                 </p>
               </div>
             </div>
@@ -731,19 +728,19 @@ export default function DashboardPage() {
               <div className="mt-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span style={{ color: 'var(--ms-text-mid)' }}>Billed total</span>
-                  <strong style={{ color: 'var(--ms-text)' }}>{formatCents(reports?.financials.billed_cents ?? 0)}</strong>
+                  <strong style={{ color: 'var(--ms-text)' }}>{kpisLoading ? '—' : formatCents(reports?.financials.billed_cents ?? 0)}</strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <span style={{ color: 'var(--ms-text-mid)' }}>Revenue received</span>
-                  <strong style={{ color: 'var(--ms-text)' }}>{formatCents(reports?.financials.revenue_cents ?? 0)}</strong>
+                  <strong style={{ color: 'var(--ms-text)' }}>{kpisLoading ? '—' : formatCents(reports?.financials.revenue_cents ?? 0)}</strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <span style={{ color: 'var(--ms-text-mid)' }}>Outstanding</span>
-                  <strong style={{ color: 'var(--ms-text)' }}>{formatCents(reports?.financials.outstanding_cents ?? 0)}</strong>
+                  <strong style={{ color: 'var(--ms-text)' }}>{kpisLoading ? '—' : formatCents(reports?.financials.outstanding_cents ?? 0)}</strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <span style={{ color: 'var(--ms-text-mid)' }}>Gross margin</span>
-                  <strong style={{ color: 'var(--ms-text)' }}>{reports?.financials.gross_margin_percent ?? 0}%</strong>
+                  <strong style={{ color: 'var(--ms-text)' }}>{kpisLoading ? '—' : `${reports?.financials.gross_margin_percent ?? 0}%`}</strong>
                 </div>
               </div>
             </Card>

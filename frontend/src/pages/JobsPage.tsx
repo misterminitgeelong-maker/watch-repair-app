@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { applyOptimisticStatus, rollbackStatus } from '@/lib/optimisticStatus'
 import { Plus, Search, X, ListOrdered, Download } from 'lucide-react'
 import {
@@ -47,6 +47,7 @@ export default function JobsPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const trade = searchParams.get('trade')
   const initialStatus = searchParams.get('status')
   const statusIsClosed = initialStatus != null && (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(initialStatus as JobStatus)
   const initialCostOutlier = searchParams.get('cost_outlier') === '1' || searchParams.get('cost_outlier') === 'true'
@@ -244,6 +245,7 @@ export default function JobsPage() {
   }, [filtered])
 
   useEffect(() => {
+    if (trade === 'shoe' || trade === 'auto_key' || trade === 'mobile') return
     const next = new URLSearchParams()
     if (statusFilter !== 'all') next.set('status', statusFilter)
     if (costOutlierOnly) next.set('cost_outlier', '1')
@@ -251,10 +253,13 @@ export default function JobsPage() {
     if (pastCollectionOnly) next.set('past_collection', '1')
     if (view === 'list') next.set('view', 'list')
     setSearchParams(next, { replace: true })
-  }, [costOutlierOnly, olderThanDays, pastCollectionOnly, setSearchParams, statusFilter, view])
+  }, [costOutlierOnly, olderThanDays, pastCollectionOnly, setSearchParams, statusFilter, trade, view])
+
+  if (trade === 'shoe') return <Navigate to="/shoe-repairs" replace />
+  if (trade === 'auto_key' || trade === 'mobile') return <Navigate to="/auto-key" replace />
 
   return (
-    <div>
+    <div className="pb-24 sm:pb-0">
       <PageHeader
         title="Watch Repairs"
         action={
@@ -367,7 +372,7 @@ export default function JobsPage() {
                 border: '1px solid var(--ms-border)',
                 color: 'var(--ms-text)',
               }}
-              placeholder="Search by title, job #, or customer…"
+              placeholder="Search jobs…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -649,7 +654,51 @@ function ListView({
 }) {
   const today = new Date().toISOString().slice(0, 10)
   return (
-    <Card style={{ padding: 0, overflow: 'hidden' }}>
+    <>
+    <div className="md:hidden space-y-3 pb-4">
+      {jobs.map((j) => {
+        const days = daysInShop(j.created_at)
+        const pastCollection = j.collection_date && j.collection_date < today
+        const tech = assigneeName.get(j.assigned_user_id ?? '') ?? null
+        return (
+          <Card key={j.id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Link to={`/jobs/${j.id}`} className="inline-flex min-h-11 items-center font-semibold sm:min-h-0" style={{ color: 'var(--ms-accent)' }}>
+                  #{j.job_number}
+                </Link>
+                <p className="mt-1 text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{j.title}</p>
+                {j.customer_name && (
+                  <p className="mt-1 text-sm" style={{ color: 'var(--ms-text)' }}>{j.customer_name}</p>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge status={j.status} />
+                  <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{days}d in shop</span>
+                  {j.collection_date && (
+                    <span className="text-xs" style={{ color: pastCollection ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>
+                      Due {formatDate(j.collection_date)}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
+                  Quote ${(displayQuoteCents(j) / 100).toFixed(2)}{tech ? ` · ${tech}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={`Delete job ${j.job_number}`}
+                onClick={() => onDelete(j)}
+                className="h-11 w-11 rounded-full flex items-center justify-center shrink-0"
+                style={{ color: 'var(--ms-error)', border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </Card>
+        )
+      })}
+    </div>
+    <Card className="hidden md:block" style={{ padding: 0, overflow: 'hidden' }}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
           <thead>
@@ -722,6 +771,7 @@ function ListView({
         </table>
       </div>
     </Card>
+    </>
   )
 }
 

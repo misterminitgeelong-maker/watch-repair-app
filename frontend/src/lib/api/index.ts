@@ -1194,6 +1194,8 @@ export interface Quote {
   subtotal_cents: number; tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean
   total_cents: number; currency: string
   approval_token: string; sent_at?: string; created_at: string
+  customer_name?: string | null
+  job_number?: string | null
 }
 export const listQuotes = (repairJobId?: string, params?: { limit?: number; offset?: number; sort_by?: string; sort_dir?: 'asc' | 'desc' }) =>
   api.get<Quote[]>('/quotes', { params: { ...(repairJobId ? { repair_job_id: repairJobId } : {}), ...params } })
@@ -1558,6 +1560,7 @@ export interface Invoice {
   invoice_number: string; status: string; subtotal_cents: number
   tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean
   total_cents: number; currency: string; created_at: string
+  customer_name?: string | null
   xero_invoice_id?: string | null
   xero_sync_status?: string | null
   xero_sync_error?: string | null
@@ -2322,6 +2325,8 @@ export interface AutoKeyInvoice {
   xero_sync_status?: string | null
   xero_sync_error?: string | null
   xero_synced_at?: string | null
+  customer_name?: string | null
+  job_number?: string | null
 }
 
 export interface AutoKeyQuoteCreatePayload {
@@ -2352,6 +2357,11 @@ export const sendAutoKeyQuote = (quoteId: string) =>
     `/auto-key-jobs/quotes/${quoteId}/send`,
   )
 export const listAutoKeyInvoices = (jobId: string) => api.get<AutoKeyInvoice[]>(`/auto-key-jobs/${jobId}/invoices`)
+export const listAllAutoKeyInvoices = (params?: { limit?: number; offset?: number }) =>
+  api.get<AutoKeyInvoice[]>(
+    '/auto-key-jobs/invoices',
+    params && Object.keys(params).length ? { params } : undefined,
+  )
 export const createAutoKeyInvoiceFromQuote = (jobId: string, quoteId: string) =>
   api.post<AutoKeyInvoice>(`/auto-key-jobs/${jobId}/invoices/from-quote/${quoteId}`)
 export const sendAutoKeyInvoice = (invoiceId: string, channel: InvoiceSendChannel = 'both') =>

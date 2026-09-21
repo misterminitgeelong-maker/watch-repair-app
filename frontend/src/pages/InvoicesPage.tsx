@@ -2,11 +2,63 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, CheckCircle, Printer, Send, ExternalLink } from 'lucide-react'
-import { listInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, retryInvoiceXeroSync, getXeroConnectionStatus, getApiErrorMessage, type Invoice } from '@/lib/api'
+import { listInvoices, listAllAutoKeyInvoices, getInvoice, getInvoiceLineItems, recordPayment, sendWatchInvoice, retryInvoiceXeroSync, getXeroConnectionStatus, getApiErrorMessage, type Invoice, type AutoKeyInvoice } from '@/lib/api'
 import { Card, PageHeader, Badge, Button, Modal, Input, Spinner, EmptyState, MobileActionMenu } from '@/components/ui'
 import MobileFilterBar, { type ActiveFilter } from '@/components/mobile/MobileFilterBar'
 import { formatCents, formatDate } from '@/lib/utils'
 import { dollarsToCents } from '@/lib/money'
+import { isDemoModeEnabled } from '@/lib/onboarding'
+import { useAuth } from '@/context/AuthContext'
+
+type InvoiceSource = 'watch' | 'auto_key'
+
+type ListedInvoice = {
+  id: string
+  invoice_number: string
+  status: string
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
+  created_at: string
+  customer_name?: string | null
+  source: InvoiceSource
+  jobHref: string
+  detailHref: string
+  watchInvoice?: Invoice
+}
+
+function toWatchListedInvoice(inv: Invoice): ListedInvoice {
+  return {
+    id: inv.id,
+    invoice_number: inv.invoice_number,
+    status: inv.status,
+    subtotal_cents: inv.subtotal_cents,
+    tax_cents: inv.tax_cents,
+    total_cents: inv.total_cents,
+    created_at: inv.created_at,
+    customer_name: inv.customer_name,
+    source: 'watch',
+    jobHref: `/jobs/${inv.repair_job_id}`,
+    detailHref: `/invoices/${inv.id}`,
+    watchInvoice: inv,
+  }
+}
+
+function toAutoKeyListedInvoice(inv: AutoKeyInvoice): ListedInvoice {
+  return {
+    id: inv.id,
+    invoice_number: inv.invoice_number,
+    status: inv.status,
+    subtotal_cents: inv.subtotal_cents,
+    tax_cents: inv.tax_cents,
+    total_cents: inv.total_cents,
+    created_at: inv.created_at,
+    customer_name: inv.customer_name,
+    source: 'auto_key',
+    jobHref: `/auto-key/${inv.auto_key_job_id}?tab=financial`,
+    detailHref: `/auto-key/${inv.auto_key_job_id}?tab=financial`,
+  }
+}
 
 function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const qc = useQueryClient()
@@ -43,33 +95,55 @@ function PaymentModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 }
 
 export function InvoicesPage() {
+  const { hasFeature } = useAuth()
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialStatusFilter = searchParams.get('status') ?? ''
+  const initialTypeFilter = (searchParams.get('type') === 'watch' || searchParams.get('type') === 'auto_key')
+    ? searchParams.get('type') as InvoiceSource
+    : ''
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter)
+  const [typeFilter, setTypeFilter] = useState<InvoiceSource | ''>(initialTypeFilter)
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') ?? '')
-  const { data: invoices, isLoading } = useQuery({ queryKey: ['invoices'], queryFn: () => listInvoices({ limit: 500 }).then(r => r.data.items) })
+  const watchInvoicesQ = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => listInvoices({ limit: 500 }).then(r => r.data.items),
+  })
+  const autoKeyInvoicesQ = useQuery({
+    queryKey: ['auto-key-invoices', 'all'],
+    queryFn: () => listAllAutoKeyInvoices({ limit: 500 }).then(r => r.data),
+    enabled: hasFeature('auto_key'),
+  })
+  const isLoading = watchInvoicesQ.isLoading || autoKeyInvoicesQ.isLoading
+  const invoices = useMemo<ListedInvoice[]>(() => {
+    const watch = (watchInvoicesQ.data ?? []).map(toWatchListedInvoice)
+    const autoKey = (autoKeyInvoicesQ.data ?? []).map(toAutoKeyListedInvoice)
+    return [...watch, ...autoKey].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+  }, [autoKeyInvoicesQ.data, watchInvoicesQ.data])
   const filteredInvoices = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
-    return (invoices ?? []).filter((inv) => {
+    return invoices.filter((inv) => {
       if (statusFilter && inv.status !== statusFilter) return false
+      if (typeFilter && inv.source !== typeFilter) return false
       if (!term) return true
-      return inv.invoice_number.toLowerCase().includes(term)
+      return inv.invoice_number.toLowerCase().includes(term) || (inv.customer_name ?? '').toLowerCase().includes(term)
     })
-  }, [invoices, statusFilter, searchTerm])
+  }, [invoices, statusFilter, typeFilter, searchTerm])
 
   const activeFilters: ActiveFilter[] = [
     ...(statusFilter ? [{ key: 'status', label: `Status: ${statusFilter}`, onClear: () => setStatusFilter('') }] : []),
+    ...(typeFilter ? [{ key: 'type', label: typeFilter === 'auto_key' ? 'Type: Mobile' : 'Type: Watch', onClear: () => setTypeFilter('') }] : []),
     ...(searchTerm.trim() ? [{ key: 'q', label: `Search: ${searchTerm.trim()}`, onClear: () => setSearchTerm('') }] : []),
   ]
 
   useEffect(() => {
     const next = new URLSearchParams()
     if (statusFilter) next.set('status', statusFilter)
+    if (typeFilter) next.set('type', typeFilter)
     if (searchTerm.trim()) next.set('q', searchTerm.trim())
     setSearchParams(next, { replace: true })
-  }, [setSearchParams, statusFilter, searchTerm])
+  }, [setSearchParams, statusFilter, typeFilter, searchTerm])
 
   return (
     <div>
@@ -86,31 +160,57 @@ export function InvoicesPage() {
               placeholder: 'Search invoice number…',
             }}
             primary={
-              <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
-                {([
-                  { key: '', label: 'All' },
-                  { key: 'unpaid', label: 'Unpaid' },
-                  { key: 'paid', label: 'Paid' },
-                ] as const).map(option => (
-                  <button
-                    key={option.key || 'all'}
-                    type="button"
-                    aria-pressed={statusFilter === option.key}
-                    onClick={() => setStatusFilter(option.key)}
-                    className="min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold sm:min-h-9 sm:flex-none sm:text-xs"
-                    style={{
-                      backgroundColor: statusFilter === option.key ? '#F3EADF' : 'var(--ms-surface)',
-                      color: 'var(--ms-text)',
-                      border: '1px solid var(--ms-border)',
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
+                  {([
+                    { key: '', label: 'All' },
+                    { key: 'unpaid', label: 'Unpaid' },
+                    { key: 'paid', label: 'Paid' },
+                  ] as const).map(option => (
+                    <button
+                      key={option.key || 'all'}
+                      type="button"
+                      aria-pressed={statusFilter === option.key}
+                      onClick={() => setStatusFilter(option.key)}
+                      className="min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold sm:min-h-9 sm:flex-none sm:text-xs"
+                      style={{
+                        backgroundColor: statusFilter === option.key ? '#F3EADF' : 'var(--ms-surface)',
+                        color: 'var(--ms-text)',
+                        border: '1px solid var(--ms-border)',
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {hasFeature('auto_key') && (
+                  <div role="group" aria-label="Filter by type" className="flex flex-wrap gap-2">
+                    {([
+                      { key: '', label: 'All types' },
+                      { key: 'watch', label: 'Watch' },
+                      { key: 'auto_key', label: 'Mobile' },
+                    ] as const).map(option => (
+                      <button
+                        key={option.key || 'all-types'}
+                        type="button"
+                        aria-pressed={typeFilter === option.key}
+                        onClick={() => setTypeFilter(option.key)}
+                        className="min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold sm:min-h-9 sm:flex-none sm:text-xs"
+                        style={{
+                          backgroundColor: typeFilter === option.key ? '#F3EADF' : 'var(--ms-surface)',
+                          color: 'var(--ms-text)',
+                          border: '1px solid var(--ms-border)',
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             }
             activeFilters={activeFilters}
-            onClearAll={activeFilters.length > 0 ? () => { setStatusFilter(''); setSearchTerm('') } : undefined}
+            onClearAll={activeFilters.length > 0 ? () => { setStatusFilter(''); setTypeFilter(''); setSearchTerm('') } : undefined}
             resultSummary={
               invoices && activeFilters.length > 0
                 ? `${filteredInvoices.length} of ${invoices.length} invoices`
@@ -131,21 +231,27 @@ export function InvoicesPage() {
             <>
               {/* Mobile card list */}
               <div className="md:hidden space-y-3">
-                {filteredInvoices.map((inv: Invoice) => (
-                  <Card key={inv.id} className="p-4">
+                {filteredInvoices.map((inv) => (
+                  <Card key={`${inv.source}-${inv.id}`} className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            to={`/invoices/${inv.id}`}
+                            to={inv.detailHref}
                             className="inline-flex min-h-11 items-center font-mono text-base font-semibold sm:min-h-0"
                             style={{ color: 'var(--ms-accent)' }}
                           >
                             #{inv.invoice_number}
                           </Link>
                           <Badge status={inv.status} />
+                          <span className="text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5" style={{ backgroundColor: inv.source === 'auto_key' ? '#E7F0E4' : '#E8E6F0', color: inv.source === 'auto_key' ? '#2F6A3D' : '#4A4566' }}>
+                            {inv.source === 'auto_key' ? 'Mobile' : 'Watch'}
+                          </span>
                         </div>
                         <p className="mt-1 text-sm" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(inv.created_at)}</p>
+                        {inv.customer_name && (
+                          <p className="mt-1 text-sm" style={{ color: 'var(--ms-text)' }}>{inv.customer_name}</p>
+                        )}
                         <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
                           Subtotal {formatCents(inv.subtotal_cents)} · Tax {formatCents(inv.tax_cents)}
                         </p>
@@ -154,25 +260,23 @@ export function InvoicesPage() {
                         {formatCents(inv.total_cents)}
                       </p>
                     </div>
-                    {/* The next action gets a full-width 44px row; everything
-                        else lives in the overflow menu. */}
                     <div className="mt-3 flex items-center gap-2">
-                      {inv.status === 'unpaid' ? (
-                        <Button className="flex-1" onClick={() => setPayInvoice(inv)}>
+                      {inv.status === 'unpaid' && inv.watchInvoice ? (
+                        <Button className="flex-1" onClick={() => setPayInvoice(inv.watchInvoice!)}>
                           <CheckCircle size={15} />Record payment
                         </Button>
                       ) : (
-                        <Button variant="secondary" className="flex-1" onClick={() => navigate(`/invoices/${inv.id}`)}>
-                          View invoice
+                        <Button variant="secondary" className="flex-1" onClick={() => navigate(inv.detailHref)}>
+                          {inv.source === 'auto_key' ? 'Open job invoice' : 'View invoice'}
                         </Button>
                       )}
                       <MobileActionMenu
                         hiddenFrom="md"
                         label={`More actions for invoice ${inv.invoice_number}`}
                         actions={[
-                          { label: 'Open invoice', onClick: () => navigate(`/invoices/${inv.id}`) },
-                          { label: 'Open job', onClick: () => navigate(`/jobs/${inv.repair_job_id}`) },
-                          { label: 'Print / PDF', onClick: () => navigate(`/invoices/${inv.id}/print`) },
+                          { label: inv.source === 'auto_key' ? 'Open job invoice' : 'Open invoice', onClick: () => navigate(inv.detailHref) },
+                          { label: 'Open job', onClick: () => navigate(inv.jobHref) },
+                          ...(inv.source === 'watch' ? [{ label: 'Print / PDF', onClick: () => navigate(`/invoices/${inv.id}/print`) }] : []),
                         ]}
                       />
                     </div>
@@ -187,6 +291,7 @@ export function InvoicesPage() {
                     <tr className="text-left text-xs uppercase tracking-widest" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                       <th className="px-5 py-3 font-medium">Source</th>
                       <th className="px-5 py-3 font-medium">Invoice #</th>
+                      <th className="px-5 py-3 font-medium">Customer</th>
                       <th className="px-5 py-3 font-medium">Job</th>
                       <th className="px-5 py-3 font-medium">Status</th>
                       <th className="px-5 py-3 font-medium">Subtotal</th>
@@ -197,17 +302,19 @@ export function InvoicesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredInvoices.map((inv: Invoice) => (
-                      <tr key={inv.id} style={{ borderBottom: '1px solid var(--ms-border)', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
+                    {filteredInvoices.map((inv) => (
+                      <tr key={`${inv.source}-${inv.id}`} style={{ borderBottom: '1px solid var(--ms-border)', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ms-hover)')} onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}>
                         <td className="px-5 py-3">
-                          <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: '#E8E6F0', color: '#4A4566' }}>Watch</span>
+                          <span className="text-xs font-semibold rounded-full px-2 py-0.5" style={{ backgroundColor: inv.source === 'auto_key' ? '#E7F0E4' : '#E8E6F0', color: inv.source === 'auto_key' ? '#2F6A3D' : '#4A4566' }}>
+                            {inv.source === 'auto_key' ? 'Mobile' : 'Watch'}
+                          </span>
                         </td>
                         <td
                           className="px-5 py-3 cursor-pointer"
-                          onClick={() => navigate(`/invoices/${inv.id}`)}
+                          onClick={() => navigate(inv.detailHref)}
                         >
                           <Link
-                            to={`/invoices/${inv.id}`}
+                            to={inv.detailHref}
                             className="inline-block font-mono transition-colors"
                             style={{ color: 'var(--ms-accent)' }}
                             onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')}
@@ -216,12 +323,13 @@ export function InvoicesPage() {
                             #{inv.invoice_number}
                           </Link>
                         </td>
+                        <td className="px-5 py-3" style={{ color: 'var(--ms-text-mid)' }}>{inv.customer_name ?? '—'}</td>
                         <td
                           className="px-5 py-3 cursor-pointer"
-                          onClick={() => navigate(`/jobs/${inv.repair_job_id}`)}
+                          onClick={() => navigate(inv.jobHref)}
                         >
                           <Link
-                            to={`/jobs/${inv.repair_job_id}`}
+                            to={inv.jobHref}
                             className="inline-block text-xs font-mono transition-colors"
                             style={{ color: 'var(--ms-accent)' }}
                             onMouseEnter={e => (e.currentTarget.style.color = 'var(--ms-accent-hover)')}
@@ -236,8 +344,8 @@ export function InvoicesPage() {
                         <td className="px-5 py-3 font-semibold">{formatCents(inv.total_cents)}</td>
                         <td className="px-5 py-3" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(inv.created_at)}</td>
                         <td className="px-5 py-3">
-                          {inv.status === 'unpaid' && (
-                            <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => setPayInvoice(inv)}>
+                          {inv.status === 'unpaid' && inv.watchInvoice && (
+                            <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => setPayInvoice(inv.watchInvoice!)}>
                               Record Payment
                             </Button>
                           )}
@@ -321,7 +429,7 @@ export function InvoiceDetailPage() {
               <Send size={15} />{sendMut.isPending ? 'Sending…' : 'Email Customer'}
             </Button>
             <Button variant="secondary" onClick={() => navigate(`/invoices/${id}/print`)}><Printer size={15} />Print / PDF</Button>
-            {invoice.xero_online_invoice_url && (
+            {invoice.xero_online_invoice_url && !isDemoModeEnabled() && (
               <Button variant="secondary" onClick={() => window.open(invoice.xero_online_invoice_url!, '_blank', 'noopener')}>
                 <ExternalLink size={15} />Pay online (Xero)
               </Button>
@@ -366,11 +474,17 @@ export function InvoiceDetailPage() {
               <span style={{ color: 'var(--ms-text-muted)' }}>Invoice #</span>
               <span className="font-mono" style={{ color: 'var(--ms-text)' }}>{invoice.invoice_number}</span>
             </div>
+            {invoice.customer_name && (
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--ms-text-muted)' }}>Customer</span>
+                <span style={{ color: 'var(--ms-text)' }}>{invoice.customer_name}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span style={{ color: 'var(--ms-text-muted)' }}>Date</span>
               <span style={{ color: 'var(--ms-text)' }}>{formatDate(invoice.created_at)}</span>
             </div>
-            {xero?.configured && (
+            {xero?.configured && !isDemoModeEnabled() && (
               <div className="flex justify-between items-center gap-2">
                 <span style={{ color: 'var(--ms-text-muted)' }}>Xero</span>
                 <span className="flex items-center gap-2 text-right" style={{ color: 'var(--ms-text)' }}>
@@ -398,7 +512,7 @@ export function InvoiceDetailPage() {
                 </span>
               </div>
             )}
-            {xero?.configured && invoice.xero_sync_status === 'failed' && invoice.xero_sync_error && (
+            {xero?.configured && !isDemoModeEnabled() && invoice.xero_sync_status === 'failed' && invoice.xero_sync_error && (
               <p className="text-xs" style={{ color: '#C9772A' }}>{invoice.xero_sync_error.slice(0, 120)}</p>
             )}
           </div>

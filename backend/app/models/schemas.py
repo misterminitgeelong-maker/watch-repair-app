@@ -1206,6 +1206,8 @@ class QuoteRead(SQLModel):
     approval_token: str
     sent_at: Optional[datetime] = None
     created_at: datetime
+    customer_name: Optional[str] = None
+    job_number: Optional[str] = None
 
 class QuoteSendResponse(SQLModel):
     id: UUID
@@ -1236,6 +1238,7 @@ class InvoiceRead(SQLModel):
     total_cents: int
     currency: str
     created_at: datetime
+    customer_name: Optional[str] = None
     xero_invoice_id: Optional[str] = None
     xero_sync_status: Optional[str] = None
     xero_sync_error: Optional[str] = None
@@ -1700,6 +1703,8 @@ class AutoKeyInvoiceRead(SQLModel):
     xero_sync_status: Optional[str] = None
     xero_sync_error: Optional[str] = None
     xero_synced_at: Optional[datetime] = None
+    customer_name: Optional[str] = None
+    job_number: Optional[str] = None
 
 class AutoKeyQuoteSendResponse(SQLModel):
     quote: AutoKeyQuoteRead

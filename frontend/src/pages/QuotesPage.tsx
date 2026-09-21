@@ -446,8 +446,11 @@ export default function QuotesPage() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1.5 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-                          Created {formatDate(q.created_at)}
+                        <p className="mt-1.5 text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+                          {q.customer_name || (q.job_number ? `Job #${q.job_number}` : 'Watch quote')}
+                        </p>
+                        <p className="mt-0.5 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                          {q.job_number ? `#${q.job_number} · ` : ''}Created {formatDate(q.created_at)}
                           {q.status === 'sent' ? ' · awaiting response' : ''}
                         </p>
                       </div>
@@ -482,7 +485,7 @@ export default function QuotesPage() {
                         hiddenFrom="md"
                         label={`More actions for this quote`}
                         actions={[
-                          { label: 'Open job', onClick: () => navigate(`/jobs/${q.repair_job_id}`) },
+                          { label: 'View quote / job', onClick: () => navigate(`/jobs/${q.repair_job_id}`) },
                           ...(q.status === 'sent' || q.status === 'draft'
                             ? [{
                                 label: copiedId === q.id ? 'Approval link copied' : 'Copy approval link',

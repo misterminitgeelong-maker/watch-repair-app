@@ -134,7 +134,28 @@ function AutoKeySection() {
 
 function LocationBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>
+  const inShopShell = [
+    '/dashboard',
+    '/customers',
+    '/jobs',
+    '/catalogue',
+    '/quotes',
+    '/invoices',
+    '/inbox',
+    '/reports',
+    '/stocktakes',
+    '/database',
+    '/accounts',
+    '/auto-key',
+    '/shoe-repairs',
+    '/parent-account',
+    '/customer-accounts',
+    '/customer-orders',
+    '/shop-mobile-bookings',
+    '/toolkit',
+    '/minit',
+  ].some((prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`))
+  return <ErrorBoundary key={inShopShell ? 'shop-shell' : location.pathname}>{children}</ErrorBoundary>
 }
 
 export default function App() {

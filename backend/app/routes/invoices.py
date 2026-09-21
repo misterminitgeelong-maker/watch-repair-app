@@ -35,6 +35,23 @@ _logger = logging.getLogger("mainspring.loyalty")
 router = APIRouter(prefix="/v1/invoices", tags=["invoices", "payments"])
 
 
+def _invoice_customer_name(session: Session, invoice: Invoice) -> str | None:
+    job = session.get(RepairJob, invoice.repair_job_id)
+    if not job or not job.watch_id:
+        return None
+    watch = session.get(Watch, job.watch_id)
+    if not watch:
+        return None
+    customer = session.get(Customer, watch.customer_id)
+    return customer.full_name if customer else None
+
+
+def _to_invoice_read(session: Session, invoice: Invoice) -> InvoiceRead:
+    payload = InvoiceRead.model_validate(invoice, from_attributes=True)
+    payload.customer_name = _invoice_customer_name(session, invoice)
+    return payload
+
+
 def _next_invoice_number(session: Session, tenant_id: UUID) -> str:
     for _ in range(20):
         counter = session.exec(
@@ -80,7 +97,7 @@ def list_invoices(
         base.order_by(Invoice.created_at.desc()).offset(offset).limit(limit)
     ).all()
     return InvoicePageResponse(
-        items=[InvoiceRead.model_validate(inv, from_attributes=True) for inv in invoices],
+        items=[_to_invoice_read(session, inv) for inv in invoices],
         total=total,
         limit=limit,
         offset=offset,
@@ -140,7 +157,7 @@ def create_invoice_from_quote(
     sync_repair_invoice_after_create(session, invoice)
 
     return InvoiceCreateFromQuoteResponse(
-        invoice=InvoiceRead.model_validate(invoice, from_attributes=True)
+        invoice=_to_invoice_read(session, invoice)
     )
 
 
@@ -159,7 +176,7 @@ def get_invoice(
     ).all()
 
     return InvoiceWithPayments(
-        invoice=InvoiceRead.model_validate(invoice, from_attributes=True),
+        invoice=_to_invoice_read(session, invoice),
         payments=[
             PaymentRead(
                 id=p.id,
@@ -184,6 +201,7 @@ def _line_items_payload(session: Session, quote_id: UUID | None) -> list[dict]:
     ).all()
     return [
         {
+            "item_type": li.item_type,
             "description": li.description,
             "quantity": li.quantity,
             "unit_price_cents": li.unit_price_cents,
@@ -408,4 +426,4 @@ def retry_invoice_xero_sync(
 
     sync_repair_invoice_after_create(session, invoice)
     session.refresh(invoice)
-    return InvoiceRead.model_validate(invoice, from_attributes=True)
+    return _to_invoice_read(session, invoice)

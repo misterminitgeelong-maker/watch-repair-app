@@ -100,3 +100,11 @@ export function resetDemoTour(): void {
   localStorage.removeItem(DEMO_TOUR_MODE_KEY)
   localStorage.removeItem(DEMO_TOUR_STEP_KEY)
 }
+
+export const DEMO_STORY = {
+  customerEmail: 'elena.rossi@example.com',
+  watchJobNumber: 'JOB-10001',
+  shoeJobNumber: 'SHO-10001',
+  keyJobNumber: 'K-1001',
+  invoiceNumber: 'INV-10001',
+} as const

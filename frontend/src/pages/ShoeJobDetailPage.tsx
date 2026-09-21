@@ -392,7 +392,7 @@ function ServicesCard({ job, onAddServices }: { job: ShoeRepairJob; onAddService
     0,
   )
   return (
-    <Card>
+    <Card data-tour="shoe-services">
       <div
         className="flex items-center gap-2 px-5 py-3.5"
         style={{ borderBottom: '1px solid var(--ms-border)' }}
@@ -484,7 +484,7 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
 
   const RESEND_EVENTS = [
     { label: 'Job live', event: 'job_live' },
-    { label: `Status: ${job.status}`, event: `status_${job.status}` },
+    { label: STATUS_LABELS[job.status] ?? job.status.replace(/_/g, ' '), event: `status_${job.status}` },
   ]
 
   return (
@@ -823,7 +823,7 @@ export default function ShoeJobDetailPage() {
                   : 'var(--ms-accent)',
               }}
             >
-              {job.quote_status}
+              {job.quote_status.replace(/_/g, ' ')}
             </span>
           </span>
         )}

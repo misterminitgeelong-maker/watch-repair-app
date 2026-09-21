@@ -123,6 +123,14 @@ def test_auto_invoice_created_once_when_job_completed():
     assert invoices_after_second.status_code == 200
     assert len(invoices_after_second.json()) == 1
 
+    all_invoices = client.get("/v1/auto-key-jobs/invoices", headers=headers)
+    assert all_invoices.status_code == 200, all_invoices.text
+    all_items = all_invoices.json()
+    assert len(all_items) == 1
+    assert all_items[0]["invoice_number"] == first_list[0]["invoice_number"]
+    assert all_items[0]["customer_name"] == "Auto Key Customer"
+    assert all_items[0]["job_number"]
+
 
 def test_completion_reports_already_invoiced_when_invoice_preexists():
     """A job invoiced before completion (e.g. manually from a quote) must not be

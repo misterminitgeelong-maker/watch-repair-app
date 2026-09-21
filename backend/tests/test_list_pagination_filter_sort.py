@@ -105,6 +105,17 @@ def test_customers_pagination_and_sort():
     assert res2.status_code == 200
     assert [c["full_name"] for c in res2.json()] == ["Charlie"]
 
+    ryan = client.post(
+        "/v1/customers",
+        headers=headers,
+        json={"full_name": "Ryan Cole", "email": "ryan@example.com", "phone": "0400111222"},
+    )
+    assert ryan.status_code == 201
+    search = client.get("/v1/customers", headers=headers, params={"q": "Ryan", "sort_by": "full_name", "sort_dir": "asc"})
+    assert search.status_code == 200
+    names = [c["full_name"] for c in search.json()]
+    assert names == ["Ryan Cole"]
+
 
 def test_repair_jobs_quotes_watches_attachments_filter_sort_and_pagination():
     token = _bootstrap_and_login("list-b", "listb@example.com", "Admin123!")

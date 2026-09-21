@@ -17,7 +17,7 @@ import { PostLoginLoadingScreen } from './PostLoginLoadingScreen'
 import { clearJustLoggedIn, peekJustLoggedIn } from '@/lib/postLoginGate'
 import { prefetchAllPages, whenIdle } from '@/lib/routePrefetch'
 import { prefetchKeyScreenData } from '@/lib/dataPrefetch'
-import { useTheme } from '@/context/ThemeContext'
+import { persistTheme, useTheme } from '@/context/ThemeContext'
 import {
   defaultHomePathForMinit,
   effectiveMinitPlanCode,
@@ -37,6 +37,7 @@ import {
   getDemoTourStep,
   hasSeenPageTutorial,
   isDemoModeEnabled,
+  DEMO_STORY,
   setDemoTourMode,
   setDemoTourStep,
   setPageTutorialSeen,
@@ -47,6 +48,7 @@ import { HqReturnBanner } from '@/lib/hqEnterShop'
 import { Search } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 import OfflineQueueBanner from './OfflineQueueBanner'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 function SubscriptionBanner({
   subscriptionStatus,
@@ -113,6 +115,7 @@ function SubscriptionBanner({
 const PAYOUT_NUDGE_DISMISS_KEY = 'mainspring.payoutNudgeDismissed.v1'
 
 function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAutoKey: boolean }) {
+  const demoModeEnabled = isDemoModeEnabled()
   const qc = useQueryClient()
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -136,6 +139,7 @@ function StripeConnectNudge({ role, hasAutoKey }: { role: string | null; hasAuto
     onSettled: () => qc.invalidateQueries({ queryKey: ['billing-limits'] }),
   })
 
+  if (demoModeEnabled) return null
   if (dismissed || !billing?.stripe_configured) return null
   if (!hasAutoKey) return null
   if (role !== 'owner') return null
@@ -189,8 +193,7 @@ type GuidedTourStep = {
   intro: string
   task: string
   highlights: string[]
-  actionLabel?: string
-  actionPath?: string
+  targetSelector?: string
 }
 
 function getTutorialForPath(pathname: string): PageTutorial | null {
@@ -487,15 +490,13 @@ export default function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
-  const [showGuidedModal, setShowGuidedModal] = useState(false)
-  const [lastGuidedModalKey, setLastGuidedModalKey] = useState<string | null>(null)
   const [tourMode, setTourMode] = useState<'self' | 'guided' | null>(() =>
     demoModeEnabled ? getDemoTourMode() : null,
   )
   const [guidedStep, setGuidedStep] = useState(() =>
     demoModeEnabled ? getDemoTourStep() : 0,
   )
-  const guidedTourDataEnabled = demoModeEnabled && (tourMode === 'guided' || showGuidedModal || showWelcomeModal)
+  const guidedTourDataEnabled = demoModeEnabled && (tourMode === 'guided' || showWelcomeModal)
 
   const { data: customers } = useQuery({
     queryKey: ['customers', 'guided-tour'],
@@ -541,25 +542,18 @@ export default function AppShell() {
   })
 
   const guidedTourSteps = useMemo<GuidedTourStep[]>(() => {
-    const firstCustomer = customers?.[0]
-    const firstWatchJob = jobs?.[0]
-    const firstShoeJob = shoeJobs?.[0]
-    const firstAutoKeyJob = autoKeyJobs?.[0]
-    const firstInvoice = invoices?.[0]
-    const firstQuote = quotes?.[0]
+    const storyCustomer = customers?.find((c) => c.email === DEMO_STORY.customerEmail) ?? customers?.[0]
+    const storyWatchJob = jobs?.find((j) => j.job_number === DEMO_STORY.watchJobNumber) ?? jobs?.[0]
+    const storyShoeJob = shoeJobs?.find((j) => j.job_number === DEMO_STORY.shoeJobNumber) ?? shoeJobs?.[0]
+    const storyKeyJob = autoKeyJobs?.find((j) => j.job_number === DEMO_STORY.keyJobNumber) ?? autoKeyJobs?.[0]
+    const storyInvoice = invoices?.find((inv) => inv.invoice_number === DEMO_STORY.invoiceNumber) ?? invoices?.[0]
 
-    const customerDetailPath = firstCustomer ? `/customers/${firstCustomer.id}` : '/customers'
-    const watchJobDetailPath = firstWatchJob ? `/jobs/${firstWatchJob.id}` : '/jobs'
-    const shoeJobDetailPath = firstShoeJob ? `/shoe-repairs/${firstShoeJob.id}` : '/shoe-repairs'
-    const autoKeyDetailPath = firstAutoKeyJob ? `/auto-key/${firstAutoKeyJob.id}` : '/auto-key'
-    const invoiceDetailPath = firstInvoice ? `/invoices/${firstInvoice.id}` : '/invoices'
-
-    const shoeItemsPreview = (firstShoeJob?.items ?? []).slice(0, 2).map((item) => item.item_name).join(' and ')
-    const watchJobLabel = firstWatchJob ? `Open watch job #${firstWatchJob.job_number}` : 'Open a watch repair'
-    const shoeJobLabel = firstShoeJob ? `Open shoe job #${firstShoeJob.job_number}` : 'Open a shoe repair'
-    const autoKeyLabel = firstAutoKeyJob ? `Open job #${firstAutoKeyJob.job_number}` : 'Open a Mobile Services job'
-    const quoteLabel = firstQuote ? 'Go to quotes in progress' : 'Go to quotes'
-    const invoiceLabel = firstInvoice ? `Open invoice #${firstInvoice.invoice_number}` : 'Go to invoices'
+    const customerDetailPath = storyCustomer ? `/customers/${storyCustomer.id}` : '/customers'
+    const watchJobDetailPath = storyWatchJob ? `/jobs/${storyWatchJob.id}` : '/jobs'
+    const shoeJobDetailPath = storyShoeJob ? `/shoe-repairs/${storyShoeJob.id}` : '/shoe-repairs'
+    const autoKeyDetailPath = storyKeyJob ? `/auto-key/${storyKeyJob.id}` : '/auto-key'
+    const invoiceDetailPath = storyInvoice ? `/invoices/${storyInvoice.id}` : '/invoices'
+    const shoeItemsPreview = (storyShoeJob?.items ?? []).slice(0, 2).map((item) => item.item_name).join(' and ')
 
     const steps: GuidedTourStep[] = [
       {
@@ -568,14 +562,13 @@ export default function AppShell() {
         label: 'Dashboard',
         routePath: '/dashboard',
         matcher: exactMatcher('/dashboard'),
+        targetSelector: '[data-tour="dashboard-kpis"]',
         intro: 'This is the best opening view for a demo because it shows the health of the whole workshop at once.',
         task: 'Take a quick look at the KPI row, then jump into a real customer record.',
         highlights: [
           'The dashboard pulls together customers, jobs, quotes, invoices, billing, and reports.',
           'This is where an owner or manager sees pressure points before drilling into detail.',
         ],
-        actionLabel: 'Take me to customers',
-        actionPath: '/customers',
       },
       {
         key: 'guided-customers-list',
@@ -584,13 +577,13 @@ export default function AppShell() {
         routePath: '/customers',
         matcher: exactMatcher('/customers'),
         intro: 'Every repair starts with the customer. This list is the CRM layer for the business.',
-        task: 'Open a demo customer so you can see how repairs stay connected to the person.',
+        task: storyCustomer
+          ? `Find ${storyCustomer.full_name} — she has watch, shoe, and mobile work on file.`
+          : 'Open a demo customer so you can see how repairs stay connected to the person.',
         highlights: [
           'You can search the entire customer book quickly during intake.',
           'Each profile becomes the anchor for watch, shoe, and key work.',
         ],
-        actionLabel: firstCustomer ? `Open ${firstCustomer.full_name}` : 'Open a demo customer',
-        actionPath: customerDetailPath,
       },
       {
         key: 'guided-customer-detail',
@@ -599,13 +592,13 @@ export default function AppShell() {
         routePath: customerDetailPath,
         matcher: (pathname: string) => /^\/customers\/[^/]+$/.test(pathname),
         intro: 'This is where staff see prior work, contact context, and what is currently live for that customer.',
-        task: 'Jump into a real watch repair from here so the demo feels connected rather than abstract.',
+        task: storyWatchJob
+          ? `Jump into ${storyWatchJob.job_number} from here so the demo stays on one customer.`
+          : 'Jump into a real watch repair from here so the demo feels connected rather than abstract.',
         highlights: [
           'The customer profile reduces duplicate records and keeps job history easy to follow.',
           'In a real intake flow, this is where a returning client gets recognized instantly.',
         ],
-        actionLabel: watchJobLabel,
-        actionPath: watchJobDetailPath,
       },
       {
         key: 'guided-watch-list',
@@ -619,8 +612,6 @@ export default function AppShell() {
           'Statuses map to the real bench lifecycle: quote, approval, parts, service, completion, collection.',
           'This is the page most techs and intake staff live in during the day.',
         ],
-        actionLabel: watchJobLabel,
-        actionPath: watchJobDetailPath,
       },
       {
         key: 'guided-watch-detail',
@@ -634,8 +625,6 @@ export default function AppShell() {
           'This page supports quote creation, status changes, and intake evidence in one place.',
           'It is designed to avoid fragmented tools or off-system notes.',
         ],
-        actionLabel: 'Show me shoe repairs',
-        actionPath: '/shoe-repairs',
       },
       {
         key: 'guided-shoe-list',
@@ -649,8 +638,6 @@ export default function AppShell() {
           'The catalogue keeps pricing and naming consistent across repeated shoe services.',
           'This makes quoting faster at the counter and cleaner for the customer.',
         ],
-        actionLabel: shoeJobLabel,
-        actionPath: shoeJobDetailPath,
       },
       {
         key: 'guided-shoe-detail',
@@ -658,14 +645,13 @@ export default function AppShell() {
         label: 'Shoe repair detail',
         routePath: shoeJobDetailPath,
         matcher: (pathname: string) => /^\/shoe-repairs\/[^/]+$/.test(pathname),
+        targetSelector: '[data-tour="shoe-services"]',
         intro: 'Instead of a vague job note, shoe repairs can carry a structured list of service items and costs.',
         task: `Look at the service items${shoeItemsPreview ? ` like ${shoeItemsPreview}` : ''} and imagine how easy it is to explain the work to a customer at pickup.`,
         highlights: [
           'This gives the demo a tactile feel because the service mix is visible, not hidden.',
           'It is a strong differentiator when showing the app to repair businesses with multiple service types.',
         ],
-        actionLabel: 'Take me to Mobile Services',
-        actionPath: '/auto-key',
       },
       {
         key: 'guided-auto-list',
@@ -679,8 +665,6 @@ export default function AppShell() {
           'The programming status sits alongside the commercial job status.',
           'That split makes the workflow clearer for technicians and front-desk staff.',
         ],
-        actionLabel: autoKeyLabel,
-        actionPath: autoKeyDetailPath,
       },
       {
         key: 'guided-auto-detail',
@@ -694,8 +678,6 @@ export default function AppShell() {
           'This step helps prospects see the app covers more than one repair vertical well.',
           'The same customer and billing system still wraps around the technical workflow.',
         ],
-        actionLabel: quoteLabel,
-        actionPath: '/quotes',
       },
       {
         key: 'guided-quotes',
@@ -704,13 +686,13 @@ export default function AppShell() {
         routePath: '/quotes',
         matcher: exactMatcher('/quotes'),
         intro: 'This workspace is where quoted work becomes an approved commercial job instead of just a note in the system.',
-        task: 'Look at how quotes link back to the job, then open an invoice to see the handoff after approval.',
+        task: (quotes?.length ?? 0) > 0
+          ? `There are ${quotes?.length} quotes in this workspace — open one to see how it links back to the job.`
+          : 'Look at how quotes link back to the job, then open an invoice to see the handoff after approval.',
         highlights: [
           'Quotes can be created from active jobs and sent for customer approval.',
           'The approval flow is what connects workshop diagnostics to cash flow.',
         ],
-        actionLabel: invoiceLabel,
-        actionPath: invoiceDetailPath,
       },
       {
         key: 'guided-invoice-detail',
@@ -724,8 +706,6 @@ export default function AppShell() {
           'The invoice is customer-facing but still linked back to the operational work.',
           'This is the clearest place to explain how the app helps with both workshop flow and revenue collection.',
         ],
-        actionLabel: 'Show me the reports',
-        actionPath: '/reports',
       },
       {
         key: 'guided-reports',
@@ -739,8 +719,6 @@ export default function AppShell() {
           'Reports show revenue, margin, approval rates, and activity history.',
           'That makes the product feel like a business system, not only a job tracker.',
         ],
-        actionLabel: 'Finish in Accounts',
-        actionPath: '/accounts',
       },
       {
         key: 'guided-accounts',
@@ -754,8 +732,6 @@ export default function AppShell() {
           'You can show team setup, roles, and billing limits without leaving the app.',
           'That closes the story: intake, production, approval, payment, reporting, and account control.',
         ],
-        actionLabel: 'Start your shop →',
-        actionPath: '/signup',
       },
     ]
 
@@ -766,14 +742,7 @@ export default function AppShell() {
     })
   }, [autoKeyJobs, customers, hasFeature, invoices, jobs, quotes, shoeJobs])
 
-  const currentGuidedStepIndex = useMemo(
-    () => guidedTourSteps.findIndex((step) => step.matcher(location.pathname)),
-    [guidedTourSteps, location.pathname],
-  )
-
-  const currentGuidedStep = currentGuidedStepIndex >= 0
-    ? guidedTourSteps[currentGuidedStepIndex]
-    : guidedTourSteps[guidedStep] ?? null
+  const currentGuidedStep = guidedTourSteps[guidedStep] ?? guidedTourSteps[0] ?? null
 
   const minitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
   const effectivePlan = effectiveMinitPlanCode(planCode, tenantSlug)
@@ -807,6 +776,7 @@ export default function AppShell() {
   }, [showPostLoginGate, sessionReady, minitHq, minitUi, hasFeature, qc])
 
   useEffect(() => {
+    if (demoModeEnabled) return
     if (!minitUi) return
     if (location.pathname === '/dashboard') {
       navigate(defaultHomePathForMinit(planCode, tenantSlug), { replace: true })
@@ -824,9 +794,10 @@ export default function AppShell() {
         navigate('/minit/lead-routing', { replace: true })
       }
     }
-  }, [minitUi, minitHq, planCode, tenantSlug, location.pathname, navigate])
+  }, [demoModeEnabled, minitUi, minitHq, planCode, tenantSlug, location.pathname, navigate])
 
   useEffect(() => {
+    if (demoModeEnabled) return
     if (!minitUi) return
     const allowed = minitHq
       ? minitHqAllowedPath(location.pathname)
@@ -836,7 +807,12 @@ export default function AppShell() {
     if (!allowed) {
       navigate(defaultHomePathForMinit(planCode, tenantSlug), { replace: true })
     }
-  }, [minitUi, minitHq, effectivePlan, planCode, tenantSlug, location.pathname, navigate])
+  }, [demoModeEnabled, minitUi, minitHq, effectivePlan, planCode, tenantSlug, location.pathname, navigate])
+
+  useEffect(() => {
+    if (!demoModeEnabled) return
+    if (theme === 'minit') persistTheme('warm')
+  }, [demoModeEnabled, theme])
 
   useEffect(() => {
     if (!token) return
@@ -850,10 +826,6 @@ export default function AppShell() {
     }
 
     if (currentMode === 'guided') {
-      if (currentGuidedStepIndex !== -1) {
-        setGuidedStep(currentGuidedStepIndex)
-        setDemoTourStep(currentGuidedStepIndex)
-      }
       setTourMode('guided')
       setActiveTutorial(null)
       return
@@ -870,18 +842,18 @@ export default function AppShell() {
       return
     }
     setActiveTutorial(tutorial)
-  }, [activeSiteTenantId, currentGuidedStepIndex, demoModeEnabled, location.pathname, token])
+  }, [activeSiteTenantId, demoModeEnabled, location.pathname, token])
 
   useEffect(() => {
-    if (tourMode !== 'guided' || !currentGuidedStep) {
-      setShowGuidedModal(false)
-      return
-    }
-    if (currentGuidedStep.key !== lastGuidedModalKey) {
-      setShowGuidedModal(true)
-      setLastGuidedModalKey(currentGuidedStep.key)
-    }
-  }, [currentGuidedStep, lastGuidedModalKey, tourMode])
+    if (tourMode !== 'guided' || !currentGuidedStep?.targetSelector) return
+    const timer = window.setTimeout(() => {
+      document.querySelector(currentGuidedStep.targetSelector!)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [currentGuidedStep, location.pathname, tourMode])
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -905,7 +877,6 @@ export default function AppShell() {
     setDemoTourMode(mode)
     setTourMode(mode)
     setShowWelcomeModal(false)
-    setLastGuidedModalKey(null)
     if (mode === 'guided') {
       setGuidedStep(0)
       setDemoTourStep(0)
@@ -926,7 +897,7 @@ export default function AppShell() {
     if (next >= guidedTourSteps.length) {
       setDemoTourMode(null)
       setTourMode(null)
-      setShowGuidedModal(false)
+      navigate('/signup')
       return
     }
     goToGuidedStep(next)
@@ -941,7 +912,6 @@ export default function AppShell() {
   function exitGuidedTour() {
     setDemoTourMode(null)
     setTourMode(null)
-    setShowGuidedModal(false)
   }
 
   if (initializing) {
@@ -956,7 +926,7 @@ export default function AppShell() {
     // Preserve the destination (e.g. a job link scanned from a ticket QR) so
     // login can return to it instead of dumping the user on the landing page.
     const next = encodeURIComponent(location.pathname + location.search)
-    return <Navigate to={`/login?next=${next}`} replace />
+    return <Navigate to={demoModeEnabled ? '/login?demo=1' : `/login?next=${next}`} replace />
   }
 
   if (sessionReady && signupPaymentPending && role !== 'platform_admin' && location.pathname !== '/subscription-required') {
@@ -1000,8 +970,8 @@ export default function AppShell() {
           }}
         >
           <img
-            src={theme === 'minit' ? '/minit-logo.jpg' : '/mainspring-logo.svg'}
-            alt={theme === 'minit' ? 'Mister Minit' : 'Mainspring'}
+            src={demoModeEnabled || theme !== 'minit' ? '/mainspring-logo.svg' : '/minit-logo.jpg'}
+            alt={demoModeEnabled || theme !== 'minit' ? 'Mainspring' : 'Mister Minit'}
             style={{
               height: 28,
               width: 'auto',
@@ -1024,7 +994,7 @@ export default function AppShell() {
             safe-area inset, so scrolled-to-bottom content/buttons never sit
             underneath it. Desktop has no tab bar, so pb-7 is enough there. */}
         <main className={`app-shell-main min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7 pb-[calc(var(--ms-mobile-bar-h)+1rem)] md:pb-7${tourMode === 'guided' ? ' pb-[calc(var(--ms-mobile-bar-h)+5rem)]' : ''}`}>
-          {availableSites.length > 1 && (
+          {availableSites.length > 1 && !demoModeEnabled && (
             <div className="print-hide mb-4 hidden items-center justify-end gap-2 md:flex">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
                 Active site
@@ -1062,11 +1032,14 @@ export default function AppShell() {
               role={role}
               onManage={() => navigate('/accounts')}
             />
-            <StripeConnectNudge
-              role={role}
-              hasAutoKey={hasFeature('auto_key')}
-            />
+            {location.pathname === '/accounts' && (
+              <StripeConnectNudge
+                role={role}
+                hasAutoKey={hasFeature('auto_key')}
+              />
+            )}
           </div>
+          <ErrorBoundary key={location.pathname}>
           <Suspense fallback={(
             <div className="space-y-4 animate-pulse" aria-label="Loading page">
               <div className="h-8 w-52 rounded-lg" style={{ backgroundColor: 'var(--ms-border)' }} />
@@ -1078,10 +1051,11 @@ export default function AppShell() {
           )}>
             <Outlet />
           </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
 
-      <div className="print-hide">{minitHq ? <MinitHqBottomTabBar /> : !minitUi ? <BottomTabBar /> : null}</div>
+      <div className="print-hide">{demoModeEnabled ? <BottomTabBar /> : minitHq ? <MinitHqBottomTabBar /> : !minitUi ? <BottomTabBar /> : null}</div>
 
       {showWelcomeModal && (
         <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>
@@ -1136,129 +1110,82 @@ export default function AppShell() {
         </Modal>
       )}
 
-      {tourMode === 'guided' && showGuidedModal && currentGuidedStep && (
-        <Modal title={currentGuidedStep.title} onClose={() => setShowGuidedModal(false)}>
-          <div className="space-y-4 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-            <p style={{ color: 'var(--ms-text)' }}>{currentGuidedStep.intro}</p>
-            <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>
-                Try this now
-              </p>
-              <p className="mt-1" style={{ color: 'var(--ms-text)' }}>{currentGuidedStep.task}</p>
-            </div>
-            <div>
-              <p className="font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>What to notice</p>
-              <ul className="list-disc pl-5 space-y-1">
-                {currentGuidedStep.highlights.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={() => setShowGuidedModal(false)}>
-                I will look around first
-              </Button>
-              {currentGuidedStep.actionPath ? (
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    setShowGuidedModal(false)
-                    navigate(currentGuidedStep.actionPath!)
-                  }}
-                >
-                  {currentGuidedStep.actionLabel ?? 'Do it'}
-                </Button>
-              ) : (
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    setShowGuidedModal(false)
-                    exitGuidedTour()
-                  }}
-                >
-                  Finish guided tour
-                </Button>
-              )}
-            </div>
-          </div>
-        </Modal>
-      )}
-
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {tourMode === 'guided' && !showWelcomeModal && currentGuidedStep && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-50"
+          className="pointer-events-none fixed z-40 px-3"
           style={{
-            backgroundColor: 'var(--cafe-espresso-2)',
-            borderTop: '2px solid var(--ms-accent)',
-            boxShadow: '0 -4px 24px rgba(0,0,0,0.4)',
-            paddingBottom: 'env(safe-area-inset-bottom)',
+            right: 16,
+            bottom: 'calc(var(--ms-mobile-bar-h, 0px) + 16px + env(safe-area-inset-bottom, 0px))',
+            maxWidth: 420,
           }}
         >
-          <div className="h-1" style={{ backgroundColor: 'var(--ms-border)' }}>
-            <div
-              className="h-1 transition-all duration-300"
-              style={{
-                backgroundColor: 'var(--ms-accent)',
-                width: `${((guidedStep + 1) / guidedTourSteps.length) * 100}%`,
-              }}
-            />
-          </div>
-          <div className="px-4 py-3 sm:px-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ms-accent)' }}>
-                    Step {guidedStep + 1} of {guidedTourSteps.length}
-                  </span>
-                  <span className="text-xs font-medium" style={{ color: 'var(--ms-text-mid)' }}>
-                    - {currentGuidedStep.label}
-                  </span>
-                </div>
-                <p className="text-sm line-clamp-2" style={{ color: 'var(--ms-text-muted)' }}>
-                  {currentGuidedStep.task}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+          <div
+            className="pointer-events-auto w-full rounded-2xl p-4 shadow-xl"
+            style={{
+              backgroundColor: 'var(--cafe-espresso-2)',
+              border: '1px solid var(--ms-accent)',
+              color: 'var(--ms-text)',
+            }}
+          >
+            <div className="h-1 rounded-full mb-3" style={{ backgroundColor: 'var(--ms-border)' }}>
+              <div
+                className="h-1 rounded-full transition-all duration-300"
+                style={{
+                  backgroundColor: 'var(--ms-accent)',
+                  width: `${((guidedStep + 1) / guidedTourSteps.length) * 100}%`,
+                }}
+              />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ms-accent)' }}>
+              Step {guidedStep + 1} of {guidedTourSteps.length} · {currentGuidedStep.label}
+            </p>
+            <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
+              {currentGuidedStep.title}
+            </p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+              {currentGuidedStep.task}
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+              {currentGuidedStep.highlights.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center justify-end gap-2">
+              {guidedStep > 0 && (
                 <button
-                  onClick={() => setShowGuidedModal(true)}
-                  className="px-3 py-1.5 rounded-lg text-sm"
-                  style={{ color: 'var(--ms-text-muted)' }}
-                >
-                  Show tip
-                </button>
-                {guidedStep > 0 && (
-                  <button
-                    onClick={retreatGuidedTour}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium"
-                    style={{
-                      backgroundColor: 'var(--ms-surface)',
-                      color: 'var(--ms-text-mid)',
-                      border: '1px solid var(--ms-border-strong)',
-                    }}
-                  >
-                    Back
-                  </button>
-                )}
-                <button
-                  onClick={exitGuidedTour}
-                  className="px-3 py-1.5 rounded-lg text-sm"
-                  style={{ color: 'var(--ms-text-muted)' }}
-                >
-                  Exit Tour
-                </button>
-                <button
-                  onClick={advanceGuidedTour}
-                  className="px-4 py-1.5 rounded-lg text-sm font-bold"
+                  type="button"
+                  onClick={retreatGuidedTour}
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium"
                   style={{
-                    backgroundColor: 'var(--ms-accent)',
-                    color: 'var(--ms-sidebar-act-text)',
+                    backgroundColor: 'var(--ms-surface)',
+                    color: 'var(--ms-text-mid)',
+                    border: '1px solid var(--ms-border-strong)',
                   }}
                 >
-                  {guidedIsLast ? 'Finish Tour' : `Next: ${guidedNextLabel} ->`}
+                  Back
                 </button>
-              </div>
+              )}
+              <button
+                type="button"
+                onClick={exitGuidedTour}
+                className="rounded-lg px-3 py-1.5 text-sm"
+                style={{ color: 'var(--ms-text-muted)' }}
+              >
+                Exit
+              </button>
+              <button
+                type="button"
+                onClick={advanceGuidedTour}
+                className="rounded-lg px-4 py-1.5 text-sm font-bold"
+                style={{
+                  backgroundColor: 'var(--ms-accent)',
+                  color: 'var(--ms-sidebar-act-text)',
+                }}
+              >
+                {guidedIsLast ? 'Finish Tour' : `Next: ${guidedNextLabel}`}
+              </button>
             </div>
           </div>
         </div>

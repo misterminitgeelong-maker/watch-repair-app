@@ -9,6 +9,7 @@ import {
   Users,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { isDemoModeEnabled } from '@/lib/onboarding'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -55,6 +56,7 @@ function pickServiceTabs(hasWatch: boolean, hasShoe: boolean, hasMobile: boolean
 
 export default function BottomTabBar() {
   const { hasFeature, logout, availableSites, activeSiteTenantId, switchSite } = useAuth()
+  const demoModeEnabled = isDemoModeEnabled()
   const navigate = useNavigate()
   const [showMore, setShowMore] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
@@ -72,10 +74,10 @@ export default function BottomTabBar() {
     { to: '/customers', label: 'Customers', icon: Users },
     { to: '/invoices', label: 'Invoices', icon: Receipt },
     { to: '/reports', label: 'Reports', icon: BarChart3 },
-    { to: '/stocktakes', label: 'Stocktake', icon: ClipboardList },
-    hasFeature('customer_accounts') && { to: '/customer-accounts', label: 'Accounts', icon: Building2 },
-    hasFeature('multi_site') && { to: '/parent-account', label: 'Parent', icon: Building2 },
-    { to: '/database', label: 'Database', icon: Database },
+    !demoModeEnabled && { to: '/stocktakes', label: 'Stocktake', icon: ClipboardList },
+    !demoModeEnabled && hasFeature('customer_accounts') && { to: '/customer-accounts', label: 'Accounts', icon: Building2 },
+    !demoModeEnabled && hasFeature('multi_site') && { to: '/parent-account', label: 'Parent', icon: Building2 },
+    !demoModeEnabled && { to: '/database', label: 'Database', icon: Database },
     { to: '/accounts', label: 'Settings', icon: UserCog },
   ].filter(Boolean) as TabItem[]
 
@@ -87,14 +89,18 @@ export default function BottomTabBar() {
     <>
       {/* More menu overlay */}
       {showMore && (
-        <div className="fixed inset-0 z-40 md:hidden" onClick={() => setShowMore(false)}>
+        <div
+          className="fixed inset-x-0 top-0 z-40 md:hidden"
+          style={{ bottom: 'var(--ms-mobile-bar-h)' }}
+          onClick={() => setShowMore(false)}
+        >
           <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} />
           <div
-            className="absolute bottom-[calc(var(--ms-mobile-bar-h)+0.5rem)] left-0 right-0 mx-3 rounded-2xl overflow-hidden shadow-2xl"
+            className="absolute bottom-2 left-0 right-0 mx-3 rounded-2xl overflow-hidden shadow-2xl"
             style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            {availableSites.length > 1 && (
+            {availableSites.length > 1 && !demoModeEnabled && (
               <div className="px-3 py-3" style={{ borderBottom: '1px solid var(--ms-border)' }}>
                 <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }} htmlFor="mobile-active-site">
                   Active site
@@ -145,16 +151,16 @@ export default function BottomTabBar() {
                 <Sparkles size={20} />
                 <span className="text-xs font-medium leading-tight">What's new</span>
               </button>
-              <button
-                type="button"
-                onClick={() => { logout(); setShowMore(false) }}
-                className="flex flex-col items-center gap-1.5 py-4 px-2 text-center transition-colors active:opacity-60"
-                style={{ color: 'var(--ms-error)' }}
-              >
-                <LogOut size={20} />
-                <span className="text-xs font-medium leading-tight">Sign out</span>
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => { logout(); setShowMore(false) }}
+              className="flex min-h-12 w-full items-center justify-center gap-2 text-sm font-medium"
+              style={{ color: 'var(--ms-error)', borderTop: '1px solid var(--ms-border)' }}
+            >
+              <LogOut size={16} />
+              Sign out
+            </button>
           </div>
         </div>
       )}
@@ -185,6 +191,7 @@ export default function BottomTabBar() {
         </NavLink>
 
         {/* Inbox */}
+        {!demoModeEnabled && (
         <NavLink
           to="/inbox"
           className="flex flex-1 flex-col items-center justify-center gap-1 pt-2 transition-colors active:opacity-60"
@@ -204,6 +211,21 @@ export default function BottomTabBar() {
             </>
           )}
         </NavLink>
+        )}
+        {demoModeEnabled && (
+        <NavLink
+          to="/customers"
+          className="flex flex-1 flex-col items-center justify-center gap-1 pt-2 transition-colors active:opacity-60"
+          style={({ isActive }) => tabStyle(isActive)}
+        >
+          {({ isActive }) => (
+            <>
+              <Users size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+              <span className="text-[10px] font-medium">Customers</span>
+            </>
+          )}
+        </NavLink>
+        )}
 
         {/* Service tabs (up to 2) */}
         {primaryServiceTabs.map((tab) => (

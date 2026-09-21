@@ -68,6 +68,13 @@ function doRefresh(): Promise<string | null> {
     .catch(() => {
       clearStoredTokens()
       window.dispatchEvent(new Event('auth:token-cleared'))
+      try {
+        if (localStorage.getItem('mainspring_demo_mode_enabled') === '1' && !window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login?demo=1')
+        }
+      } catch {
+        /* ignore */
+      }
       return null
     })
     .finally(() => {

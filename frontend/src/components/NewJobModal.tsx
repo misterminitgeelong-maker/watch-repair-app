@@ -849,7 +849,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
         <div className="space-y-4">
           {watchCount === 1 ? (
             <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-              Take or upload two photos of the watch — one of the <strong>front</strong> (dial) and one of the <strong>back</strong> (caseback).
+              Front and back photos are required for a single ticket so the bench has both sides on file. Create stays disabled until both photos are added.
             </p>
           ) : (
             <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
@@ -995,6 +995,11 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
               {loading ? 'Creating…' : photoLoading ? 'Processing photo…' : watchCount > 1 ? `Create ${watchCount} Tickets` : 'Create Job Ticket'}
             </Button>
           </div>
+          {watchCount === 1 && (!photos[0]?.front || !photos[0]?.back) && (
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+              Create stays disabled until you add both a front (dial) photo and a back (caseback) photo.
+            </p>
+          )}
         </div>
       )}
     </Modal>

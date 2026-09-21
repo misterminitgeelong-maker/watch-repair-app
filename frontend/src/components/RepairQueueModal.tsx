@@ -625,15 +625,17 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(31,23,18,0.92)' }}>
-      <Spinner />
+    <div className="pointer-events-none fixed inset-0 z-40 flex items-end justify-end p-3 sm:p-4">
+      <div className="pointer-events-auto rounded-2xl p-6 shadow-xl" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+        <Spinner />
+      </div>
     </div>
   )
 
   // ── Empty / done ──────────────────────────────────────────────────────────
   if (!current) return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(31,23,18,0.97)' }}>
-      <div className="rounded-2xl p-6 w-full max-w-sm" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+    <div className="pointer-events-none fixed inset-0 z-40 flex items-end justify-end p-3 sm:p-4">
+      <div className="pointer-events-auto rounded-2xl p-6 w-full max-w-sm shadow-xl" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
         <h2 className="text-xl font-bold mb-4 text-center" style={{ color: 'var(--ms-text)' }}>
           Queue Clear 👌
         </h2>
@@ -662,7 +664,8 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
     const detail = detailQuery.data
     const detailJob = jobMap[detailJobId]
     return (
-      <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: '#1F1712' }}>
+      <div className="pointer-events-none fixed inset-0 z-40 flex items-end justify-end p-3 sm:p-4">
+        <div className="pointer-events-auto flex max-h-[min(88vh,720px)] w-full max-w-md flex-col overflow-hidden rounded-2xl shadow-xl" style={{ backgroundColor: '#1F1712' }}>
         <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <span className="font-bold" style={{ color: '#FCFAF6' }}>
             {detailJob?.job_number} — Details
@@ -731,12 +734,14 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           )}
         </div>
       </div>
+      </div>
     )
   }
 
   // ── Main ──────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: '#1F1712' }}>
+    <div className="pointer-events-none fixed inset-0 z-40 flex items-end justify-end p-3 sm:p-4">
+      <div className="pointer-events-auto flex max-h-[min(88vh,720px)] w-full max-w-md flex-col overflow-y-auto rounded-2xl shadow-xl" style={{ backgroundColor: '#1F1712' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
@@ -1203,6 +1208,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
           </button>
         </div>
       )}
+      </div>
     </div>
   )
 }

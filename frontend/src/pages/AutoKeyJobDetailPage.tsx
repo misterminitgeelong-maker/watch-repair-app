@@ -382,8 +382,11 @@ export default function AutoKeyJobDetailPage() {
   const [editTotal, setEditTotal] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
   const toast = useToast()
+  const tabFromUrl = searchParams.get('tab')
   const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos' | 'messages' | 'activity'>(
-    searchParams.get('tab') === 'messages' ? 'messages' : searchParams.get('tab') === 'activity' ? 'activity' : 'info',
+    tabFromUrl === 'messages' || tabFromUrl === 'activity' || tabFromUrl === 'financial' || tabFromUrl === 'vehicle' || tabFromUrl === 'photos' || tabFromUrl === 'info'
+      ? tabFromUrl
+      : 'info',
   )
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [sendInvoiceFeedback, setSendInvoiceFeedback] = useState('')
@@ -906,7 +909,7 @@ export default function AutoKeyJobDetailPage() {
 
       {detailTab !== 'messages' && detailTab !== 'activity' && (
       <div className='grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-12 gap-5 lg:gap-6'>
-        <Card className='p-5 space-y-4 xl:col-span-4'>
+        <Card className={`p-5 space-y-4 xl:col-span-4${detailTab === 'financial' ? ' hidden' : ''}`}>
           {/* Info tab: customer, job info, status, assign, schedule */}
           <div className={detailTab !== 'info' ? 'hidden' : ''}>
           {/* Customer section */}
@@ -1350,7 +1353,7 @@ export default function AutoKeyJobDetailPage() {
           {error && <p className='text-sm' style={{ color: 'var(--ms-error)' }}>{error}</p>}
           </div>{/* end info tab group (status/assign/schedule) */}
           {job && (
-            <div className="pt-4 mt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
+            <div className={detailTab !== 'info' ? 'hidden' : 'pt-4 mt-2'} style={detailTab === 'info' ? { borderTop: '1px solid var(--ms-border)' } : undefined}>
               <JobCustomFields jobType="auto_key_job" jobId={job.id} initialJson={job.custom_fields_json} />
             </div>
           )}

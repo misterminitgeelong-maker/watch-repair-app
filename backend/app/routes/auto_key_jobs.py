@@ -901,6 +901,31 @@ def send_day_before_reminders(
     return {"sent": sent}
 
 
+@router.get("/invoices", response_model=list[AutoKeyInvoiceRead])
+def list_all_auto_key_invoices(
+    limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    rows = session.exec(
+        select(AutoKeyInvoice, AutoKeyJob.job_number, Customer.full_name)
+        .join(AutoKeyJob, AutoKeyJob.id == AutoKeyInvoice.auto_key_job_id)
+        .join(Customer, Customer.id == AutoKeyJob.customer_id)
+        .where(AutoKeyInvoice.tenant_id == auth.tenant_id)
+        .order_by(AutoKeyInvoice.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    items: list[AutoKeyInvoiceRead] = []
+    for invoice, job_number, customer_name in rows:
+        payload = _to_invoice_read(invoice)
+        payload.job_number = job_number
+        payload.customer_name = customer_name
+        items.append(payload)
+    return items
+
+
 @router.patch("/invoices/{invoice_id}", response_model=AutoKeyInvoiceRead)
 def update_auto_key_invoice(
     invoice_id: UUID,

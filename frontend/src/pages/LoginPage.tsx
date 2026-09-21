@@ -6,7 +6,8 @@ import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData,
 import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
 import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
-import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
+import { enableDemoMode, isDemoModeEnabled, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
+import { persistTheme, readStoredTheme } from '@/context/ThemeContext'
 import { safeNextPath } from '@/lib/safeNext'
 import { markJustLoggedIn } from '@/lib/postLoginGate'
 import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
@@ -48,7 +49,8 @@ export default function LoginPage() {
   const nextPath = safeNextPath(searchParams.get('next'))
 
   if (token && sessionReady) {
-    return <Navigate to={nextPath ?? defaultHomePathForMinit(planCode, tenantSlug)} replace />
+    const demoLanding = isDemoModeEnabled() || searchParams.get('demo') === '1'
+    return <Navigate to={nextPath ?? (demoLanding ? '/dashboard' : defaultHomePathForMinit(planCode, tenantSlug))} replace />
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -90,23 +92,23 @@ export default function LoginPage() {
       setRememberMe(true)
       const { data } = await login(demoCreds.slug, demoCreds.email, demoCreds.password)
       enableDemoMode(true)
+      if (readStoredTheme() === 'minit') persistTheme('warm')
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
-      // Run seed in background — don't block login if it hangs or fails
-      seedDemoData()
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['customer-accounts'] })
-          queryClient.invalidateQueries({ queryKey: ['jobs'] })
-          queryClient.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
-          queryClient.invalidateQueries({ queryKey: ['auto-key-jobs'] })
-          queryClient.invalidateQueries({ queryKey: ['customers'] })
-          queryClient.invalidateQueries({ queryKey: ['inbox'] })
-        })
-        .catch(() => { /* Non-fatal */ })
+      try {
+        await Promise.race([
+          seedDemoData().then(() => {
+            void queryClient.invalidateQueries()
+          }),
+          new Promise<void>((resolve) => setTimeout(resolve, 20000)),
+        ])
+      } catch {
+        /* Non-fatal: dashboard still opens; seed can be retried from the shop. */
+      }
       resetDemoTour()
       resetAllPageTutorials()
       seedLoginTenantHint(demoCreds.slug)
       markJustLoggedIn()
-      navigate(nextPath ?? homePathAfterLogin(demoCreds.slug))
+      navigate(nextPath ?? '/dashboard')
     } catch {
       setError('Demo login is currently unavailable. Please try again shortly.')
     } finally {

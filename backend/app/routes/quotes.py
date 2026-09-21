@@ -23,6 +23,7 @@ from ..models import (
     QuoteLineItem,
     QuoteRead,
     QuoteSendResponse,
+    RepairJob,
     Tenant,
     Watch,
 )
@@ -31,6 +32,22 @@ from ..tenant_helpers import get_tenant_quote, get_tenant_repair_job
 from .. import sms
 
 router = APIRouter(prefix="/v1", tags=["quotes"])
+
+
+def _to_quote_read(session: Session, quote: Quote) -> QuoteRead:
+    payload = QuoteRead.model_validate(quote, from_attributes=True)
+    job = session.get(RepairJob, quote.repair_job_id)
+    if not job:
+        return payload
+    payload.job_number = job.job_number
+    if not job.watch_id:
+        return payload
+    watch = session.get(Watch, job.watch_id)
+    if not watch:
+        return payload
+    customer = session.get(Customer, watch.customer_id)
+    payload.customer_name = customer.full_name if customer else None
+    return payload
 
 
 def get_public_quote_rate_limit() -> str:
@@ -82,7 +99,7 @@ def list_quotes(
     query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
     set_total_count(response, query_total(session, query.order_by(None)))
     query = query.offset(offset).limit(limit)
-    return session.exec(query).all()
+    return [_to_quote_read(session, quote) for quote in session.exec(query).all()]
 
 
 @router.get("/quotes/{quote_id}/line-items")
