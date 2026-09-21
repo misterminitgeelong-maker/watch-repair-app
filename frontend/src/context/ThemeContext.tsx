@@ -1,17 +1,24 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
-export type Theme = 'warm' | 'neutral' | 'dark' | 'minit'
+/** 'warm' is the default, daylight palette (no data-theme attribute); 'ink'
+ * is the near-black-sidebar look it replaced, kept selectable. */
+export type Theme = 'warm' | 'ink' | 'neutral' | 'dark' | 'minit'
 
 const STORAGE_KEY = 'ms-theme'
+
+const THEMES: readonly Theme[] = ['warm', 'ink', 'neutral', 'dark', 'minit']
+
+export function isTheme(value: unknown): value is Theme {
+  return typeof value === 'string' && (THEMES as readonly string[]).includes(value)
+}
 
 export const THEME_PERSISTED_EVENT = 'ms-theme-persisted'
 
 export function readStoredTheme(): Theme {
   if (typeof window === 'undefined') return 'warm'
   const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (raw === 'warm' || raw === 'neutral' || raw === 'dark' || raw === 'minit') return raw
-  return 'warm'
+  return isTheme(raw) ? raw : 'warm'
 }
 
 export function applyTheme(theme: Theme) {
@@ -57,7 +64,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     function onThemePersisted(e: Event) {
       const next = (e as CustomEvent<{ theme: Theme }>).detail?.theme
-      if (next === 'warm' || next === 'neutral' || next === 'dark' || next === 'minit') {
+      if (isTheme(next)) {
         setThemeState(next)
       }
     }

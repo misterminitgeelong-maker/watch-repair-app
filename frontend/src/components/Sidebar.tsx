@@ -159,7 +159,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     >
       <div
         className={mobile ? 'px-6 py-6' : 'px-6 pt-8 pb-7'}
-        style={{ borderBottom: '1px solid var(--cafe-espresso-3)' }}
+        style={{ borderBottom: '1px solid var(--ms-sidebar-border)' }}
       >
         <div className="flex items-center justify-between gap-3">
           {theme === 'minit' ? (
@@ -219,7 +219,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             style={({ isActive }) => linkStyle(isActive)}
             onMouseEnter={(e) => {
               const el = e.currentTarget
-              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget
@@ -264,7 +264,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
               style={({ isActive }) => linkStyle(isActive)}
               onMouseEnter={(e) => {
                 const el = e.currentTarget
-                if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
               }}
               onMouseLeave={(e) => {
                 const el = e.currentTarget
@@ -305,7 +305,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                   style={({ isActive }) => linkStyle(isActive)}
                   onMouseEnter={(e) => {
                     const el = e.currentTarget
-                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
                   }}
                   onMouseLeave={(e) => {
                     const el = e.currentTarget
@@ -341,7 +341,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                   style={({ isActive }) => linkStyle(isActive)}
                   onMouseEnter={(e) => {
                     const el = e.currentTarget
-                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
                   }}
                   onMouseLeave={(e) => {
                     const el = e.currentTarget
@@ -377,7 +377,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                   style={({ isActive }) => linkStyle(isActive)}
                   onMouseEnter={(e) => {
                     const el = e.currentTarget
-                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
                   }}
                   onMouseLeave={(e) => {
                     const el = e.currentTarget
@@ -413,7 +413,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                   style={({ isActive }) => linkStyle(isActive)}
                   onMouseEnter={(e) => {
                     const el = e.currentTarget
-                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
                   }}
                   onMouseLeave={(e) => {
                     const el = e.currentTarget
@@ -449,7 +449,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                   style={({ isActive }) => linkStyle(isActive)}
                   onMouseEnter={(e) => {
                     const el = e.currentTarget
-                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                    if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
                   }}
                   onMouseLeave={(e) => {
                     const el = e.currentTarget
@@ -492,7 +492,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             style={({ isActive }) => linkStyle(isActive)}
             onMouseEnter={(e) => {
               const el = e.currentTarget
-              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget
@@ -529,7 +529,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             style={({ isActive }) => linkStyle(isActive)}
             onMouseEnter={(e) => {
               const el = e.currentTarget
-              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+              if (!el.getAttribute('aria-current')) el.style.backgroundColor = 'var(--ms-sidebar-hover)'
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget
@@ -577,7 +577,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
             </button>
           </div>
         )}
-        <div style={{ borderTop: '1px solid var(--cafe-espresso-3)', paddingTop: '1.25rem' }}>
+        <div style={{ borderTop: '1px solid var(--ms-sidebar-border)', paddingTop: '1.25rem' }}>
           <button
             onClick={() => {
               setShowChangelog(true)

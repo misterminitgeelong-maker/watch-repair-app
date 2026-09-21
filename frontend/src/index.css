@@ -47,37 +47,48 @@
    existing call sites keep resolving. New code should use --ms-* directly.
    ----------------------------------------------------------------------- */
 :root {
-  /* Backgrounds — paper, white, oatmeal */
-  --ms-bg:              #F7F7F4;
+  /* Backgrounds — daylight: clean neutral paper, no oatmeal cast */
+  --ms-bg:              #F6F7F9;
   --ms-surface:         #FFFFFF;
-  --ms-surface-alt:     #EBE6DC;
-  --ms-hover:           #F1EEE7;
+  --ms-surface-alt:     #EEF1F4;
+  --ms-hover:           #F1F4F7;
 
-  /* Text — true ink, neutral greys (no warm cast) */
-  --ms-text:            #0A0A0A;
-  --ms-text-mid:        #4A4A46;
-  --ms-text-muted:      #6E6E68;
+  /* Text — ink and cool greys, pitched for reading rather than mood.
+     Muted sits at 6.4:1 on white and 5.9:1 on --ms-bg; the oatmeal-era
+     grey it replaces was 5.1:1 and 4.8:1, which is where "hard to read"
+     came from. */
+  --ms-text:            #12141A;
+  --ms-text-mid:        #3C4249;
+  --ms-text-muted:      #596068;
 
   /* Borders — hairline rules do the work shadows used to */
-  --ms-border:          #D8D6CE;
-  --ms-border-strong:   #C4C2BA;
+  --ms-border:          #E2E6EA;
+  --ms-border-strong:   #C9CFD6;
 
   /* Accent — vermilion. Deepened a step from the marketing #E8452A so
      small accent text holds AA (4.9:1 on white, 4.6:1 on --ms-bg) and
      white-on-accent buttons hold AA (4.9:1). Same hue family. */
   --ms-accent:          #D2361B;
   --ms-accent-hover:    #B32D16;
-  --ms-accent-light:    #FBE3DE;
+  --ms-accent-light:    #FDEAE6;
   --ms-accent-pop:      rgba(210, 54, 27, 0.10);
   --ms-on-accent:       #FFFFFF;
 
-  /* Sidebar — ink */
-  --ms-sidebar:         #0A0A0A;
-  --ms-sidebar-text:    #9A9890;
-  --ms-sidebar-act-text:#F7F7F4;
-  --ms-sidebar-active:  rgba(255, 255, 255, 0.08);
-  --ms-sidebar-hover:   rgba(255, 255, 255, 0.05);
-  --ms-sidebar-border:  rgba(255, 255, 255, 0.08);
+  /* Sidebar — daylight. The near-black slab down the side was most of what
+     made this read as dark; navigation now sits on the same paper as the
+     page, with the accent marking the active item instead of a light wash.
+     The ink sidebar is still available as the "Ink" theme. */
+  --ms-sidebar:         #FFFFFF;
+  --ms-sidebar-text:    #596068;
+  --ms-sidebar-act-text:#12141A;
+  --ms-sidebar-active:  rgba(210, 54, 27, 0.10);
+  --ms-sidebar-hover:   rgba(18, 20, 26, 0.05);
+  --ms-sidebar-border:  #E2E6EA;
+
+  /* Deep ink for surfaces that are dark whatever the theme (the workshop
+     queue screen, the trial banner). Kept separate from --ms-sidebar so a
+     light sidebar does not wash them out. */
+  --ms-ink:             #0A0A0A;
 
   /* Radius — near-square */
   --ms-radius:          2px;
@@ -110,8 +121,8 @@
   --ms-overlay:        rgba(10, 10, 10, 0.50);
 
   /* Legacy espresso tints — still used by AppShell / Sidebar / RepairQueueModal */
-  --cafe-espresso-2:  color-mix(in srgb, var(--ms-sidebar) 80%, #fff);
-  --cafe-espresso-3:  color-mix(in srgb, var(--ms-sidebar) 70%, #fff);
+  --cafe-espresso-2:  color-mix(in srgb, var(--ms-ink) 80%, #fff);
+  --cafe-espresso-3:  color-mix(in srgb, var(--ms-ink) 70%, #fff);
 
   /* Typography — three faces with distinct jobs.
      --ms-font          body, forms, tables (Plus Jakarta Sans)
@@ -148,10 +159,39 @@
   --ms-mobile-bar-h:    calc(56px + env(safe-area-inset-bottom));
 }
 
+/* Ink — the palette this product shipped with before the daylight default:
+   oatmeal paper, a near-black sidebar and the same vermilion. Kept whole so
+   anyone who preferred it can still pick it, and so the look is not lost. */
+[data-theme="ink"] {
+  --ms-bg:              #F7F7F4;
+  --ms-surface:         #FFFFFF;
+  --ms-surface-alt:     #EBE6DC;
+  --ms-hover:           #F1EEE7;
+
+  --ms-text:            #0A0A0A;
+  --ms-text-mid:        #4A4A46;
+  --ms-text-muted:      #6E6E68;
+
+  --ms-border:          #D8D6CE;
+  --ms-border-strong:   #C4C2BA;
+
+  --ms-accent-light:    #FBE3DE;
+
+  --ms-sidebar:         #0A0A0A;
+  --ms-sidebar-text:    #9A9890;
+  --ms-sidebar-act-text:#F7F7F4;
+  --ms-sidebar-active:  rgba(255, 255, 255, 0.08);
+  --ms-sidebar-hover:   rgba(255, 255, 255, 0.05);
+  --ms-sidebar-border:  rgba(255, 255, 255, 0.08);
+
+  --ms-ink:             #0A0A0A;
+}
+
 /* Dark mode — Night Workshop. Same brand at night: ink canvas, neutral
    greys, vermilion lifted so it holds on dark surfaces (5.7:1). White on
    that lifted red would fail, so buttons carry ink text here. */
 [data-theme="dark"] {
+  --ms-ink:             #0C0B0A;
   --ms-bg:              #121110;
   --ms-surface:         #1C1A18;
   --ms-surface-alt:     #242220;
@@ -198,6 +238,7 @@
 /* Neutral variant — Steel & Amber. Keeps its amber; the shape and
    elevation language follow the house. */
 [data-theme="neutral"] {
+  --ms-ink:             #181614;
   --ms-bg:              #F6F5F3;
   --ms-surface:         #FFFFFF;
   --ms-surface-alt:     #EEECEA;
@@ -236,6 +277,7 @@
    canvas. Hues are the franchise's real identity and stay as they are;
    only radius and elevation follow the house shape language. */
 [data-theme="minit"] {
+  --ms-ink:             #2B3990;
   --ms-bg:              #F4F4F4;
   --ms-surface:         #FFFFFF;
   --ms-surface-alt:     #EBEBEB;

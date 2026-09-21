@@ -862,7 +862,8 @@ function AppearanceCard() {
     )
   }
   const themes: { key: Theme; label: string; desc: string; swatches: string[] }[] = [
-    { key: 'warm',    label: 'Mainspring',     desc: 'Paper, ink and vermilion.',            swatches: ['#F7F7F4', '#FFFFFF', '#D2361B', '#0A0A0A'] },
+    { key: 'warm',    label: 'Mainspring',     desc: 'Daylight — light throughout, easy to read.', swatches: ['#F6F7F9', '#FFFFFF', '#D2361B', '#EEF1F4'] },
+    { key: 'ink',     label: 'Ink',            desc: 'The darker original: near-black sidebar.', swatches: ['#F7F7F4', '#FFFFFF', '#D2361B', '#0A0A0A'] },
     { key: 'neutral', label: 'Steel & Amber',  desc: 'Cooler greys with deeper amber.',      swatches: ['#F6F5F3', '#FFFFFF', '#A8650F', '#181614'] },
     { key: 'dark',    label: 'Night Workshop', desc: 'Low-light palette for late shifts.',   swatches: ['#121110', '#1C1A18', '#FF5636', '#0C0B0A'] },
     { key: 'minit',   label: 'Mister Minit',   desc: 'Brand red sidebar, clean white UI.',   swatches: ['#F4F4F4', '#FFFFFF', '#E31837', '#C41230'] },
