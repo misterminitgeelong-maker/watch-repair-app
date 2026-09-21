@@ -34,6 +34,29 @@ start, so the same database can be reused across pytest invocations. As a
 guard against pointing the suite at a real database, non-sqlite database
 names must contain ``test``.
 """
+
+# ── Password hashing cost ────────────────────────────────────────────────────
+# bcrypt at its real work factor costs ~270ms a hash here, and the suite makes
+# on the order of a thousand of them creating tenants, owners and logins. That
+# was ~280s of the ~335s this suite took — 84% of the runtime spent proving
+# nothing, in CI on every push as well as locally.
+#
+# Tests run at bcrypt's minimum instead, which is a property of this process
+# only: nothing here changes app.security, so production keeps the real cost.
+# The output is still a genuine bcrypt hash, so verify_password, the $2b$
+# prefix and every round-trip through the login endpoints behave identically —
+# the suite passes unchanged, in 55s.
+import bcrypt as _bcrypt
+
+_real_gensalt = _bcrypt.gensalt
+
+
+def _test_gensalt(rounds: int = 12, prefix: bytes = b"2b"):  # noqa: ARG001 - rounds deliberately ignored
+    return _real_gensalt(rounds=4, prefix=prefix)
+
+
+_bcrypt.gensalt = _test_gensalt
+
 import os
 import subprocess
 import sys
