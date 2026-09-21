@@ -12,7 +12,7 @@ os.environ.setdefault("APP_ENV", "test")
 from sqlmodel import Session, col, select
 
 from app.database import create_db_and_tables, engine
-from app.minit_directory_import import plan_directory_import
+from app.minit_directory_import import backfill_shared_login_owners, plan_directory_import
 from app.minit_directory_parser import (
     DirectoryData,
     DirectoryFranchisee,
@@ -469,3 +469,129 @@ def test_apply_backfills_mobile_on_an_existing_owner_missing_one():
     with Session(engine) as session:
         result = plan_directory_import(session, directory, hq_owner_email=hq_email, apply=True)
         assert result["backfilled_mobile_count"] == 0
+
+
+# ── Backfilling contacts onto shops still sharing the HQ login ───────────────
+
+
+def _shop_on_hq_login(session, hq_email: str, shop_number: str) -> Tenant:
+    """A shop as the xlsx importer leaves it: real tenant, owner row that is a
+    copy of the HQ login, linked to HQ's parent."""
+    parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).one()
+    tenant = Tenant(name=f"Shop {shop_number}", slug=f"minit-{shop_number}", plan_code="booking_only", shop_number=shop_number)
+    session.add(tenant)
+    session.flush()
+    session.add(
+        User(
+            tenant_id=tenant.id,
+            email=hq_email,
+            full_name="Mister Minit HQ",
+            role="owner",
+            password_hash=hash_password("hqpass12345"),
+            is_active=True,
+        )
+    )
+    session.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=tenant.id, network_role="retail"))
+    session.commit()
+    return tenant
+
+
+def test_backfill_fills_contacts_for_shops_still_on_the_hq_login():
+    hq_email = _fresh_hq()
+    shop = _shop("3001")
+    franchisee = _franchisee("carol", "Carol Baker", "carol@example.com", ["shop:3001"], mobile="0412 000 111")
+    shop.franchisee_id = franchisee.id
+    directory = DirectoryData(shops=[shop], franchisees=[franchisee])
+
+    with Session(engine) as session:
+        tenant = _shop_on_hq_login(session, hq_email, "3001")
+
+        preview = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=False)
+        assert preview["matched_count"] == 1
+        assert preview["applied"] is False
+        assert preview["sample"][0]["to_email"] == "carol@example.com"
+        # A preview writes nothing.
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).one()
+        assert owner.email == hq_email
+
+    with Session(engine) as session:
+        result = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=True)
+        assert result["matched_count"] == 1
+
+        tenant = session.exec(select(Tenant).where(Tenant.shop_number == "3001")).one()
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).one()
+        assert owner.email == "carol@example.com"
+        assert owner.full_name == "Carol Baker"
+        assert owner.mobile == "0412 000 111"
+        # The shop stays reachable exactly as before — claiming an invite is
+        # what replaces the password, not this.
+        assert verify_password("hqpass12345", owner.password_hash)
+
+
+def test_backfill_never_touches_a_shop_whose_owner_is_a_real_person():
+    hq_email = _fresh_hq()
+    shop = _shop("3002")
+    franchisee = _franchisee("dave", "Dave Jones", "dave@example.com", ["shop:3002"])
+    shop.franchisee_id = franchisee.id
+    directory = DirectoryData(shops=[shop], franchisees=[franchisee])
+
+    with Session(engine) as session:
+        tenant = _shop_on_hq_login(session, hq_email, "3002")
+        # This shop already claimed its login under a different address.
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).one()
+        owner.email = "someone.else@example.com"
+        owner.full_name = "Someone Else"
+        session.add(owner)
+        session.commit()
+
+    with Session(engine) as session:
+        result = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=True)
+        assert result["matched_count"] == 0
+        assert result["skipped_owner_already_real"] == 1
+
+        tenant = session.exec(select(Tenant).where(Tenant.shop_number == "3002")).one()
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).one()
+        assert owner.email == "someone.else@example.com"
+
+
+def test_backfill_reports_the_gaps_it_cannot_close():
+    hq_email = _fresh_hq()
+    company_owned = _shop("3003")  # no franchisee on file
+    no_email = _shop("3004", franchisee_id="franchisee:blank")
+    not_in_network = _shop("3005", franchisee_id="franchisee:erin")
+    blank = _franchisee("blank", "No Email", "", ["shop:3004"])
+    erin = _franchisee("erin", "Erin Lee", "erin@example.com", ["shop:3005"])
+    directory = DirectoryData(shops=[company_owned, no_email, not_in_network], franchisees=[blank, erin])
+
+    with Session(engine) as session:
+        _shop_on_hq_login(session, hq_email, "3003")
+        _shop_on_hq_login(session, hq_email, "3004")
+        # 3005 is in the export but was never loaded into the network.
+
+    with Session(engine) as session:
+        result = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=False)
+        assert result["matched_count"] == 0
+        assert result["skipped_no_franchisee_on_file"] == 1
+        assert result["skipped_franchisee_missing_email"] == 1
+        assert result["skipped_not_in_network"] == 1
+
+
+def test_backfill_is_safe_to_run_twice():
+    hq_email = _fresh_hq()
+    shop = _shop("3006")
+    franchisee = _franchisee("fay", "Fay Ng", "fay@example.com", ["shop:3006"])
+    shop.franchisee_id = franchisee.id
+    directory = DirectoryData(shops=[shop], franchisees=[franchisee])
+
+    with Session(engine) as session:
+        _shop_on_hq_login(session, hq_email, "3006")
+
+    with Session(engine) as session:
+        first = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=True)
+        assert first["matched_count"] == 1
+
+    with Session(engine) as session:
+        # Second run finds nothing left to do — the owner is now a real person.
+        second = backfill_shared_login_owners(session, directory, hq_owner_email=hq_email, apply=True)
+        assert second["matched_count"] == 0
+        assert second["skipped_owner_already_real"] == 1

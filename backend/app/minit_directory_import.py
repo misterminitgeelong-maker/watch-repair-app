@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass, field
+from uuid import UUID
 
 from sqlmodel import Session, col, select
 
@@ -450,3 +451,146 @@ def plan_directory_import(
     result["created_franchisee_parent_account_count"] = created_franchisee_parent_count
     result["backfilled_mobile_count"] = backfilled_mobile_count
     return result
+
+
+def backfill_shared_login_owners(
+    session: Session,
+    directory: DirectoryData,
+    *,
+    hq_owner_email: str,
+    apply: bool = False,
+) -> dict[str, object]:
+    """Give the real franchisee identity to shops that are *still on the shared
+    HQ login*, from the same directory export.
+
+    plan_directory_import deliberately never touches an existing tenant's owner,
+    because the directory's idea of who runs a shop can be out of date and the
+    login may already have been claimed by a real person under another address.
+    That safety rule leaves a gap: shops loaded by the xlsx importer or added by
+    hand were created holding a copy of the HQ login, so every later directory
+    import walks straight past them and their contact details never arrive.
+
+    This fills exactly that gap and nothing else. A shop qualifies only when its
+    owner row is still literally the HQ login, which is the one case where there
+    is no real person's credentials to overwrite. Any shop whose owner has a
+    different email — claimed by invite, edited by hand, backfilled by an
+    earlier run — is left alone.
+
+    The password is deliberately kept as-is rather than reset: the shop is
+    reachable exactly as it is today, and completing a shop-owner invite
+    replaces it anyway. Resetting here would cut HQ's direct login to several
+    hundred shops at once for no gain.
+
+    Returns a summary; with apply=False (the default) nothing is written.
+    """
+    hq_email = hq_owner_email.strip().lower()
+    parent = session.exec(
+        select(ParentAccount)
+        .where(ParentAccount.owner_email == hq_email)
+        .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
+    ).first()
+    if not parent:
+        return {
+            "hq_parent_found": False,
+            "note": "HQ parent account not found — seed Minit HQ first (seed_minit_pilot.py)",
+        }
+
+    franchisees_by_id = {f.id: f for f in directory.franchisees}
+    tenants_by_number = tenants_by_shop_number_in_parent(session, parent.id, site_kind="all")
+    tenant_ids = [t.id for t in tenants_by_number.values()]
+
+    # Every user on those tenants, so both the current owner and any email
+    # collision can be resolved without a query per shop.
+    users_by_tenant: dict[UUID, list[User]] = {}
+    if tenant_ids:
+        for user in session.exec(select(User).where(col(User.tenant_id).in_(tenant_ids))).all():
+            users_by_tenant.setdefault(user.tenant_id, []).append(user)
+
+    would_update: list[dict[str, str]] = []
+    updated_count = 0
+    skipped_not_in_network = 0
+    skipped_owner_is_real = 0
+    skipped_no_franchisee = 0
+    skipped_missing_email = 0
+    skipped_email_collision = 0
+    mobiles_filled = 0
+
+    for shop in directory.shops:
+        if shop.status != "Open" or not shop.shop_number:
+            continue
+
+        franchisee = franchisees_by_id.get(shop.franchisee_id) if shop.franchisee_id else None
+        if franchisee is None:
+            skipped_no_franchisee += 1
+            continue
+        target_email = (franchisee.email or "").strip().lower()
+        if not target_email or "@" not in target_email:
+            skipped_missing_email += 1
+            continue
+
+        tenant = tenants_by_number.get(shop.shop_number)
+        if tenant is None:
+            skipped_not_in_network += 1
+            continue
+
+        tenant_users = users_by_tenant.get(tenant.id, [])
+        owners = [u for u in tenant_users if u.role == "owner" and u.is_active]
+        owners.sort(key=lambda u: u.created_at)
+        owner = owners[0] if owners else None
+        if owner is None:
+            skipped_not_in_network += 1
+            continue
+
+        # The whole safety rule: only a shop still holding the HQ login.
+        if (owner.email or "").strip().lower() != hq_email:
+            skipped_owner_is_real += 1
+            continue
+
+        # (tenant_id, email) is unique, so a second user already holding the
+        # franchisee's address would make this update fail at flush.
+        if any(u.id != owner.id and (u.email or "").strip().lower() == target_email for u in tenant_users):
+            skipped_email_collision += 1
+            continue
+
+        target_name = franchisee.full_name.strip() or franchisee.business_name.strip() or target_email
+        target_mobile = (franchisee.mobile or "").strip() or None
+
+        if len(would_update) < _PREVIEW_LIMIT:
+            would_update.append(
+                {
+                    "shop_number": shop.shop_number,
+                    "shop_name": tenant.name,
+                    "from_email": owner.email,
+                    "to_email": target_email,
+                    "to_name": target_name,
+                    "to_mobile": target_mobile or "",
+                }
+            )
+        updated_count += 1
+        if target_mobile and not (owner.mobile or "").strip():
+            mobiles_filled += 1
+
+        if apply:
+            owner.email = target_email
+            owner.full_name = target_name
+            if target_mobile and not (owner.mobile or "").strip():
+                owner.mobile = target_mobile
+            session.add(owner)
+
+    if apply:
+        session.commit()
+
+    return {
+        "hq_parent_found": True,
+        "applied": apply,
+        "shops_in_export": len(directory.shops),
+        #: Shops that qualify. With apply=false this is what *would* change.
+        "matched_count": updated_count,
+        "mobiles_filled": mobiles_filled,
+        "skipped_owner_already_real": skipped_owner_is_real,
+        "skipped_not_in_network": skipped_not_in_network,
+        "skipped_no_franchisee_on_file": skipped_no_franchisee,
+        "skipped_franchisee_missing_email": skipped_missing_email,
+        "skipped_email_collision": skipped_email_collision,
+        "sample": would_update,
+    }

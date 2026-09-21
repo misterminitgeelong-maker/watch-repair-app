@@ -39,8 +39,8 @@ from ..minit_mobile_operators import (
     load_mobile_operators_seed,
     resolve_mobile_operators,
 )
-from ..minit_directory_import import plan_directory_import
-from ..minit_directory_parser import DirectoryParseError, build_directory, extract_org_graph
+from ..minit_directory_import import backfill_shared_login_owners, plan_directory_import
+from ..minit_directory_parser import DirectoryData, DirectoryParseError, build_directory, extract_org_graph
 from ..minit_provision import import_minit_mobile_operators, import_minit_shops
 from ..minit_shops import parse_minit_shops_xlsx_detailed
 from ..models import (
@@ -1313,21 +1313,10 @@ MAX_IMPORT_DIRECTORY_BYTES = 8 * 1024 * 1024
 _ALLOWED_DIRECTORY_SUFFIXES = frozenset({".html", ".htm"})
 
 
-@router.post("/me/import-directory")
-async def import_directory_export(
-    file: UploadFile = File(...),
-    apply: bool = Query(default=False),
-    auth: AuthContext = Depends(require_owner),
-    session: Session = Depends(unscoped_session),
-) -> dict[str, object]:
-    """Preview (default) or apply importing shops + real franchisee owners from
-    a Mister Minit "Organisation Graph" directory HTML export (HQ only).
-
-    Preview (apply=false, the default) makes no changes — call again with
-    apply=true, using the same file, once you're happy with the preview."""
-    _require_minit_hq(auth, session)
-    current_user, parent = _parent_for_write(session, auth)
-
+async def _read_directory_upload(file: UploadFile) -> DirectoryData:
+    """Validate and parse an uploaded Organisation Graph HTML export. Shared by
+    the directory import and the owner-contact backfill, which take the same
+    file."""
     filename = (file.filename or "").strip()
     if not filename:
         raise HTTPException(status_code=400, detail="File name is required")
@@ -1346,12 +1335,74 @@ async def import_directory_export(
 
     try:
         html_text = raw_bytes.decode("utf-8")
-        graph = extract_org_graph(html_text)
-        directory = build_directory(graph)
+        return build_directory(extract_org_graph(html_text))
     except UnicodeDecodeError as exc:
         raise HTTPException(status_code=400, detail="File is not valid UTF-8 text") from exc
     except DirectoryParseError as exc:
         raise HTTPException(status_code=400, detail=f"Could not read directory export: {exc}") from exc
+
+
+@router.post("/me/backfill-shop-owner-contacts")
+async def backfill_shop_owner_contacts(
+    file: UploadFile = File(...),
+    apply: bool = Query(default=False),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+) -> dict[str, object]:
+    """Preview (default) or apply filling in real franchisee contact details for
+    shops still sharing the HQ login, from the same directory HTML export.
+
+    The directory import only sets an owner identity on shops it creates, so
+    shops loaded by the xlsx importer or added by hand keep the HQ login and
+    never receive their contact details. This catches those up, and only those:
+    a shop whose owner is already a real person is left alone.
+
+    Preview (apply=false, the default) writes nothing — call again with
+    apply=true, using the same file, once the preview looks right."""
+    _require_minit_hq(auth, session)
+    current_user, parent = _parent_for_write(session, auth)
+
+    directory = await _read_directory_upload(file)
+    summary = backfill_shared_login_owners(
+        session, directory, hq_owner_email=current_user.email, apply=apply
+    )
+
+    if apply and summary.get("hq_parent_found"):
+        _record_event(
+            session,
+            parent_account_id=parent.id,
+            tenant_id=None,
+            actor_user_id=current_user.id,
+            actor_email=current_user.email,
+            event_type="backfill_shop_owner_contacts",
+            event_summary=(
+                f"Filled in franchisee contact details for {summary.get('matched_count', 0)} "
+                "shops that were sharing the HQ login"
+            ),
+        )
+        session.commit()
+
+    return summary
+
+
+@router.post("/me/import-directory")
+async def import_directory_export(
+    file: UploadFile = File(...),
+    apply: bool = Query(default=False),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+) -> dict[str, object]:
+    """Preview (default) or apply importing shops + real franchisee owners from
+    a Mister Minit "Organisation Graph" directory HTML export (HQ only).
+
+    Preview (apply=false, the default) makes no changes — call again with
+    apply=true, using the same file, once you're happy with the preview."""
+    _require_minit_hq(auth, session)
+    current_user, parent = _parent_for_write(session, auth)
+
+    # Captured before the read so the audit entry can name the file.
+    filename = (file.filename or "").strip()
+    directory = await _read_directory_upload(file)
 
     summary = plan_directory_import(session, directory, hq_owner_email=current_user.email, apply=apply)
 

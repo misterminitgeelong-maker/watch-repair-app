@@ -14769,6 +14769,67 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/backfill-shop-owner-contacts": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Backfill Shop Owner Contacts",
+        "description": "Preview (default) or apply filling in real franchisee contact details for\nshops still sharing the HQ login, from the same directory HTML export.\n\nThe directory import only sets an owner identity on shops it creates, so\nshops loaded by the xlsx importer or added by hand keep the HQ login and\nnever receive their contact details. This catches those up, and only those:\na shop whose owner is already a real person is left alone.\n\nPreview (apply=false, the default) writes nothing \u2014 call again with\napply=true, using the same file, once the preview looks right.",
+        "operationId": "backfill_shop_owner_contacts_v1_parent_accounts_me_backfill_shop_owner_contacts_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "apply",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Apply"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_backfill_shop_owner_contacts_v1_parent_accounts_me_backfill_shop_owner_contacts_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Backfill Shop Owner Contacts V1 Parent Accounts Me Backfill Shop Owner Contacts Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/parent-accounts/me/import-directory": {
       "post": {
         "tags": [
@@ -23060,6 +23121,20 @@
           "max_auto_key_jobs"
         ],
         "title": "BillingPlanLimits"
+      },
+      "Body_backfill_shop_owner_contacts_v1_parent_accounts_me_backfill_shop_owner_contacts_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_backfill_shop_owner_contacts_v1_parent_accounts_me_backfill_shop_owner_contacts_post"
       },
       "Body_import_csv_v1_import_csv_post": {
         "properties": {
