@@ -11,6 +11,10 @@ Clock (Australia/Sydney, one network CSV):
 * Weekly compile: Saturday 23:05.
 
 Live queries use the same windows with ``end = now`` so the HQ board can poll.
+
+The operator cockpit (``mobile_cockpit``) is a different clock: Monday–Sunday in
+``tenant.timezone``. Do not treat those weekly numbers as the same week as this
+network CSV.
 """
 
 from __future__ import annotations
@@ -58,15 +62,26 @@ CATEGORY_LABELS: dict[str, str] = {
     "diagnostic": "Diagnostic",
     "other": "Other",
 }
-_CATEGORY_MATCHERS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("lockout", ("lockout",)),
-    ("all_keys_lost", ("all keys lost",)),
-    ("key_cutting", ("key cutting", "duplicate key")),
-    ("remote_fob", ("remote", "fob")),
-    ("ignition", ("ignition",)),
-    ("transponder", ("transponder",)),
-    ("diagnostic", ("diagnostic",)),
-)
+# Exact labels from AUTO_KEY_JOB_TYPES plus OEM catalogue types. Unknown labels
+# stay in "other" rather than substring-matching "remote" inside unrelated text.
+_JOB_TYPE_CATEGORY: dict[str, str] = {
+    "key cutting (in-store)": "key_cutting",
+    "key cutting": "key_cutting",
+    "transponder programming": "transponder",
+    "lockout - car": "lockout",
+    "lockout - boot/trunk": "lockout",
+    "lockout - roadside": "lockout",
+    "all keys lost": "all_keys_lost",
+    "akl": "all_keys_lost",
+    "add key": "key_cutting",
+    "remote / fob sync": "remote_fob",
+    "ignition repair": "ignition",
+    "ignition replace": "ignition",
+    "duplicate key": "key_cutting",
+    "broken key extraction": "lockout",
+    "door lock change": "lockout",
+    "diagnostic": "diagnostic",
+}
 
 LEAD_KEYS: tuple[str, ...] = ("shop_referred", "tech_sourced", "minit_sourced", "other")
 LEAD_LABELS: dict[str, str] = {
@@ -77,6 +92,8 @@ LEAD_LABELS: dict[str, str] = {
 }
 
 _EXCLUDED_INVOICE_STATUSES = frozenset({"void", "refunded"})
+SNAPSHOT_SCHEMA_VERSION = 2
+DAILY_BACKFILL_DAYS = 14
 
 
 def network_tz() -> ZoneInfo:
@@ -89,23 +106,34 @@ def as_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
+def naive_utc(dt: datetime) -> datetime:
+    """SQL comparisons: created_at / paid_at / work_completed_at are naive UTC."""
+    return as_utc(dt).replace(tzinfo=None)
+
+
 def _empty_counts(keys: Iterable[str]) -> dict[str, int]:
     return {key: 0 for key in keys}
 
 
-def classify_job_type(job_type: str | None) -> str:
+def _normalise_job_type_label(job_type: str | None) -> str:
     text = (job_type or "").strip().lower()
+    for dash in ("–", "—", "−"):
+        text = text.replace(dash, "-")
+    return " ".join(text.split())
+
+
+def classify_job_type(job_type: str | None) -> str:
+    text = _normalise_job_type_label(job_type)
     if not text:
         return "other"
-    for key, needles in _CATEGORY_MATCHERS:
-        if any(needle in text for needle in needles):
-            return key
-    return "other"
+    return _JOB_TYPE_CATEGORY.get(text, "other")
 
 
 def classify_lead_source(source: str | None) -> str:
-    key = (source or "").strip() or "shop_referred"
-    return key if key in LEAD_KEYS[:-1] else "other"
+    key = (source or "").strip()
+    if not key:
+        return "other"
+    return key if key in LEAD_KEYS else "other"
 
 
 def pct_change(current: int, prior: int) -> float | None:
@@ -136,6 +164,7 @@ class OperatorKpiRow:
     operator_name: str
     operator_shop_number: str | None
     customers_count: int = 0
+    paid_customers_count: int = 0
     jobs_created: int = 0
     jobs_completed: int = 0
     sales_cents: int = 0
@@ -157,7 +186,7 @@ class OperatorKpiRow:
             self.prior_sales_cents = prior.sales_cents
             self.prior_jobs_created = prior.jobs_created
         self.sales_pct_change = pct_change(self.sales_cents, self.prior_sales_cents)
-        self.avg_sale_cents = derived_avg_sale_cents(self.sales_cents, self.customers_count)
+        self.avg_sale_cents = derived_avg_sale_cents(self.sales_cents, self.paid_customers_count)
         self.jobs_per_customer = derived_jobs_per_customer(self.jobs_created, self.customers_count)
 
     def to_dict(self) -> dict[str, Any]:
@@ -172,6 +201,7 @@ def operator_row_from_dict(data: dict[str, Any]) -> OperatorKpiRow:
         operator_name=data.get("operator_name") or "Operator",
         operator_shop_number=data.get("operator_shop_number"),
         customers_count=int(data.get("customers_count") or 0),
+        paid_customers_count=int(data.get("paid_customers_count") or 0),
         jobs_created=int(data.get("jobs_created") or 0),
         jobs_completed=int(data.get("jobs_completed") or 0),
         sales_cents=int(data.get("sales_cents") or 0),
@@ -259,19 +289,17 @@ def last_completed_operating_week(at: datetime, tz: ZoneInfo = NETWORK_TZ) -> tu
     return prior_operating_week_window(at, tz)
 
 
-def daily_trade_dates_due(at: datetime, tz: ZoneInfo = NETWORK_TZ) -> list[date]:
-    """Civil dates whose 21:00 close has passed and should have a snapshot."""
+def daily_trade_dates_due(
+    at: datetime,
+    tz: ZoneInfo = NETWORK_TZ,
+    *,
+    lookback_days: int = DAILY_BACKFILL_DAYS,
+) -> list[date]:
+    """Civil dates whose 21:00 close has passed, newest first, bounded lookback."""
     local = _local(at, tz)
-    due: list[date] = [local.date() - timedelta(days=1)]
-    if local.hour > DAILY_CLOSE_HOUR or (local.hour == DAILY_CLOSE_HOUR and local.minute >= 0):
-        due.insert(0, local.date())
-    seen: set[date] = set()
-    ordered: list[date] = []
-    for day in due:
-        if day not in seen:
-            seen.add(day)
-            ordered.append(day)
-    return ordered
+    latest = local.date() if local.hour >= DAILY_CLOSE_HOUR else local.date() - timedelta(days=1)
+    days = lookback_days if lookback_days > 0 else 1
+    return [latest - timedelta(days=offset) for offset in range(days)]
 
 
 def weekly_compile_due(at: datetime, tz: ZoneInfo = NETWORK_TZ) -> bool:
@@ -289,6 +317,107 @@ def _sale_timestamp():
     return sa_func.coalesce(AutoKeyInvoice.paid_at, AutoKeyInvoice.created_at)
 
 
+def _empty_row(tenant: Tenant) -> OperatorKpiRow:
+    return OperatorKpiRow(
+        operator_tenant_id=tenant.id,
+        operator_name=tenant.name,
+        operator_shop_number=tenant.shop_number,
+    )
+
+
+def _operator_kpis_for_tenants(
+    session: Session,
+    tenants: list[Tenant],
+    start: datetime,
+    end: datetime,
+    *,
+    include_queues: bool = True,
+    backlog: dict[UUID, int] | None = None,
+) -> dict[UUID, OperatorKpiRow]:
+    """One set of grouped queries for every operator in ``tenants``."""
+    by_id = {tenant.id: _empty_row(tenant) for tenant in tenants}
+    if not by_id:
+        return by_id
+    ids = list(by_id)
+    start_n = naive_utc(start)
+    end_n = naive_utc(end)
+
+    jobs = list(
+        session.exec(
+            select(AutoKeyJob)
+            .where(col(AutoKeyJob.tenant_id).in_(ids))
+            .where(AutoKeyJob.created_at >= start_n)
+            .where(AutoKeyJob.created_at <= end_n)
+        ).all()
+    )
+    created_customers: dict[UUID, set[UUID]] = {tid: set() for tid in ids}
+    for job in jobs:
+        row = by_id[job.tenant_id]
+        row.jobs_created += 1
+        created_customers[job.tenant_id].add(job.customer_id)
+        row.category_jobs[classify_job_type(job.job_type)] += 1
+        row.lead_jobs[classify_lead_source(job.commission_lead_source)] += 1
+
+    completed_rows = session.exec(
+        select(AutoKeyJob.tenant_id, func.count())
+        .where(col(AutoKeyJob.tenant_id).in_(ids))
+        .where(AutoKeyJob.work_completed_at.is_not(None))  # type: ignore[union-attr]
+        .where(col(AutoKeyJob.work_completed_at) >= start_n)
+        .where(col(AutoKeyJob.work_completed_at) <= end_n)
+        .group_by(AutoKeyJob.tenant_id)
+    ).all()
+    for tenant_id, count in completed_rows:
+        by_id[tenant_id].jobs_completed = int(count or 0)
+
+    paid_rows = list(
+        session.exec(
+            select(AutoKeyInvoice, AutoKeyJob)
+            .join(AutoKeyJob, AutoKeyJob.id == AutoKeyInvoice.auto_key_job_id)
+            .where(col(AutoKeyInvoice.tenant_id).in_(ids))
+            .where(AutoKeyInvoice.status == "paid")
+            .where(_sale_timestamp() >= start_n)
+            .where(_sale_timestamp() <= end_n)
+        ).all()
+    )
+    paid_customers: dict[UUID, set[UUID]] = {tid: set() for tid in ids}
+    for invoice, job in paid_rows:
+        row = by_id[job.tenant_id]
+        amount = int(invoice.total_cents or 0)
+        row.sales_cents += amount
+        row.category_sales_cents[classify_job_type(job.job_type)] += amount
+        row.lead_sales_cents[classify_lead_source(job.commission_lead_source)] += amount
+        paid_customers[job.tenant_id].add(job.customer_id)
+
+    if include_queues:
+        active_rows = session.exec(
+            select(AutoKeyJob.tenant_id, func.count())
+            .where(col(AutoKeyJob.tenant_id).in_(ids))
+            .where(col(AutoKeyJob.status).in_(AUTO_KEY_ACTIVE_STATUSES))
+            .group_by(AutoKeyJob.tenant_id)
+        ).all()
+        for tenant_id, count in active_rows:
+            by_id[tenant_id].active_jobs = int(count or 0)
+        outstanding_rows = session.exec(
+            select(
+                AutoKeyInvoice.tenant_id,
+                func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0),
+            )
+            .where(col(AutoKeyInvoice.tenant_id).in_(ids))
+            .where(col(AutoKeyInvoice.status).notin_(tuple(_EXCLUDED_INVOICE_STATUSES | {"paid"})))
+            .group_by(AutoKeyInvoice.tenant_id)
+        ).all()
+        for tenant_id, total in outstanding_rows:
+            by_id[tenant_id].outstanding_cents = int(total or 0)
+
+    for tenant_id, row in by_id.items():
+        row.customers_count = len(created_customers[tenant_id])
+        row.paid_customers_count = len(paid_customers[tenant_id])
+        if backlog:
+            row.enquiries_not_actioned = int(backlog.get(tenant_id, 0))
+        row.apply_comparisons(None)
+    return by_id
+
+
 def operator_kpis(
     session: Session,
     tenant: Tenant,
@@ -296,93 +425,17 @@ def operator_kpis(
     end: datetime,
     *,
     enquiries_not_actioned: int = 0,
+    include_queues: bool = True,
 ) -> OperatorKpiRow:
-    start_n = as_utc(start)
-    end_n = as_utc(end)
-    tenant_id = tenant.id
-
-    jobs = list(
-        session.exec(
-            select(AutoKeyJob)
-            .where(AutoKeyJob.tenant_id == tenant_id)
-            .where(AutoKeyJob.created_at >= start_n)
-            .where(AutoKeyJob.created_at <= end_n)
-        ).all()
+    rows = _operator_kpis_for_tenants(
+        session,
+        [tenant],
+        start,
+        end,
+        include_queues=include_queues,
+        backlog={tenant.id: enquiries_not_actioned},
     )
-    completed = int(
-        session.exec(
-            select(func.count())
-            .select_from(AutoKeyJob)
-            .where(AutoKeyJob.tenant_id == tenant_id)
-            .where(AutoKeyJob.work_completed_at.is_not(None))  # type: ignore[union-attr]
-            .where(col(AutoKeyJob.work_completed_at) >= start_n)
-            .where(col(AutoKeyJob.work_completed_at) <= end_n)
-        ).one()
-        or 0
-    )
-    paid_rows = list(
-        session.exec(
-            select(AutoKeyInvoice, AutoKeyJob)
-            .join(AutoKeyJob, AutoKeyJob.id == AutoKeyInvoice.auto_key_job_id)
-            .where(AutoKeyInvoice.tenant_id == tenant_id)
-            .where(AutoKeyInvoice.status == "paid")
-            .where(_sale_timestamp() >= start_n)
-            .where(_sale_timestamp() <= end_n)
-        ).all()
-    )
-    active_jobs = int(
-        session.exec(
-            select(func.count())
-            .select_from(AutoKeyJob)
-            .where(AutoKeyJob.tenant_id == tenant_id)
-            .where(col(AutoKeyJob.status).in_(AUTO_KEY_ACTIVE_STATUSES))
-        ).one()
-        or 0
-    )
-    outstanding_cents = int(
-        session.exec(
-            select(func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
-            .where(AutoKeyInvoice.tenant_id == tenant_id)
-            .where(col(AutoKeyInvoice.status).notin_(tuple(_EXCLUDED_INVOICE_STATUSES | {"paid"})))
-        ).one()
-        or 0
-    )
-
-    category_jobs = _empty_counts(CATEGORY_KEYS)
-    lead_jobs = _empty_counts(LEAD_KEYS)
-    customer_ids: set[UUID] = set()
-    for job in jobs:
-        customer_ids.add(job.customer_id)
-        category_jobs[classify_job_type(job.job_type)] += 1
-        lead_jobs[classify_lead_source(job.commission_lead_source)] += 1
-
-    category_sales = _empty_counts(CATEGORY_KEYS)
-    lead_sales = _empty_counts(LEAD_KEYS)
-    sales_cents = 0
-    for invoice, job in paid_rows:
-        amount = int(invoice.total_cents or 0)
-        sales_cents += amount
-        category_sales[classify_job_type(job.job_type)] += amount
-        lead_sales[classify_lead_source(job.commission_lead_source)] += amount
-
-    row = OperatorKpiRow(
-        operator_tenant_id=tenant.id,
-        operator_name=tenant.name,
-        operator_shop_number=tenant.shop_number,
-        customers_count=len(customer_ids),
-        jobs_created=len(jobs),
-        jobs_completed=completed,
-        sales_cents=sales_cents,
-        category_jobs=category_jobs,
-        category_sales_cents=category_sales,
-        lead_jobs=lead_jobs,
-        lead_sales_cents=lead_sales,
-        active_jobs=active_jobs,
-        outstanding_cents=outstanding_cents,
-        enquiries_not_actioned=enquiries_not_actioned,
-    )
-    row.apply_comparisons(None)
-    return row
+    return rows[tenant.id]
 
 
 def _sum_int_maps(rows: list[OperatorKpiRow], attr: str) -> dict[str, int]:
@@ -401,6 +454,7 @@ def rollup_operators(rows: list[OperatorKpiRow], *, name: str = "Network total")
         operator_name=name,
         operator_shop_number=None,
         customers_count=sum(r.customers_count for r in rows),
+        paid_customers_count=sum(r.paid_customers_count for r in rows),
         jobs_created=sum(r.jobs_created for r in rows),
         jobs_completed=sum(r.jobs_completed for r in rows),
         sales_cents=sum(r.sales_cents for r in rows),
@@ -415,13 +469,19 @@ def rollup_operators(rows: list[OperatorKpiRow], *, name: str = "Network total")
         enquiries_not_actioned=sum(r.enquiries_not_actioned for r in rows),
     )
     network.sales_pct_change = pct_change(network.sales_cents, network.prior_sales_cents)
-    network.avg_sale_cents = derived_avg_sale_cents(network.sales_cents, network.customers_count)
+    network.avg_sale_cents = derived_avg_sale_cents(network.sales_cents, network.paid_customers_count)
     network.jobs_per_customer = derived_jobs_per_customer(network.jobs_created, network.customers_count)
     return network
 
 
 def _enquiry_backlog_by_tenant(session: Session, parent_id: UUID) -> dict[UUID, int]:
-    emails = session.exec(select(InboundEmail).where(InboundEmail.parent_account_id == parent_id)).all()
+    emails = session.exec(
+        select(InboundEmail)
+        .where(InboundEmail.parent_account_id == parent_id)
+        .where(InboundEmail.status == "new")
+    ).all()
+    if not emails:
+        return {}
     return {
         b.operator_tenant_id: b.new_count
         for b in bucket_email_leads_by_operator(session, parent_id=parent_id, emails=emails)
@@ -438,27 +498,35 @@ def build_network_kpis(
     prior_start: datetime | None = None,
     prior_end: datetime | None = None,
     generated_at: datetime | None = None,
+    include_queues: bool = True,
 ) -> NetworkKpiReport:
     operators = bookable_operators_for_parent(session, parent.id)
     backlog = _enquiry_backlog_by_tenant(session, parent.id) if operators else {}
+    current = _operator_kpis_for_tenants(
+        session,
+        operators,
+        start,
+        end,
+        include_queues=include_queues,
+        backlog=backlog,
+    )
     prior_by_id: dict[UUID, OperatorKpiRow] = {}
-    if prior_start is not None and prior_end is not None:
-        for tenant in operators:
-            prior_by_id[tenant.id] = operator_kpis(session, tenant, prior_start, prior_end)
+    if prior_start is not None and prior_end is not None and operators:
+        prior_by_id = _operator_kpis_for_tenants(
+            session,
+            operators,
+            prior_start,
+            prior_end,
+            include_queues=False,
+        )
 
     rows: list[OperatorKpiRow] = []
     for tenant in operators:
-        row = operator_kpis(
-            session,
-            tenant,
-            start,
-            end,
-            enquiries_not_actioned=backlog.get(tenant.id, 0),
-        )
+        row = current[tenant.id]
         row.apply_comparisons(prior_by_id.get(tenant.id))
         rows.append(row)
 
-    rows.sort(key=lambda r: (-r.enquiries_not_actioned, r.sales_cents, r.operator_name.lower()))
+    rows.sort(key=lambda r: (-r.sales_cents, r.operator_name.lower()))
     start_local = as_utc(start).astimezone(NETWORK_TZ)
     end_local = as_utc(end).astimezone(NETWORK_TZ)
     generated = generated_at or datetime.now(timezone.utc)
@@ -476,6 +544,7 @@ def build_network_kpis(
 
 def report_to_payload(report: NetworkKpiReport) -> dict[str, Any]:
     return {
+        "schema_version": SNAPSHOT_SCHEMA_VERSION,
         "start": report.start.isoformat(),
         "end": report.end.isoformat(),
         "start_ymd": report.start_ymd,

@@ -142,9 +142,16 @@ def test_classify_job_type_and_lead_source():
     assert classify_job_type("Ignition Replace") == "ignition"
     assert classify_job_type("Transponder Programming") == "transponder"
     assert classify_job_type("Diagnostic") == "diagnostic"
+    assert classify_job_type("Add Key") == "key_cutting"
+    assert classify_job_type("AKL") == "all_keys_lost"
+    assert classify_job_type("Broken Key Extraction") == "lockout"
+    assert classify_job_type("Door Lock Change") == "lockout"
+    assert classify_job_type("Mobile Key") == "other"
     assert classify_job_type("Something else") == "other"
     assert classify_lead_source("tech_sourced") == "tech_sourced"
     assert classify_lead_source("mystery") == "other"
+    assert classify_lead_source("") == "other"
+    assert classify_lead_source(None) == "other"
 
 
 def test_operating_week_window_edges():
@@ -181,9 +188,14 @@ def as_utc_iso(dt: datetime) -> str:
 
 def test_daily_trade_dates_due():
     morning = datetime(2026, 9, 21, 10, 0, tzinfo=SYDNEY)
-    assert daily_trade_dates_due(morning) == [datetime(2026, 9, 20).date()]
+    due = daily_trade_dates_due(morning)
+    assert due[0] == datetime(2026, 9, 20).date()
+    assert len(due) == 14
+    assert datetime(2026, 9, 7).date() in due
     evening = datetime(2026, 9, 21, 21, 0, tzinfo=SYDNEY)
-    assert daily_trade_dates_due(evening) == [datetime(2026, 9, 21).date(), datetime(2026, 9, 20).date()]
+    due_evening = daily_trade_dates_due(evening)
+    assert due_evening[0] == datetime(2026, 9, 21).date()
+    assert datetime(2026, 9, 20).date() in due_evening
 
 
 def test_csv_has_bom_headers_and_network_total():
@@ -298,6 +310,11 @@ def test_recipients_toggle_and_weekly_email_stamp(monkeypatch):
     assert put.status_code == 200, put.text
     flagged = next(p for p in put.json()["recipients"] if p["user_id"] == target["user_id"])
     assert flagged["email_mobile_kpi_report"] is True
+    client.put(
+        "/v1/parent-accounts/me/operations/mobile-kpis/settings",
+        headers=headers,
+        json={"opt_in": True},
+    )
 
     sends: list[str] = []
 
@@ -346,3 +363,96 @@ def test_weekly_email_not_stamped_when_sendgrid_rejects(monkeypatch):
         session.refresh(snap)
     assert sent is False
     assert snap.emailed_at is None
+
+
+def test_opt_in_gates_allocated_recipients(monkeypatch):
+    token = _ensure_hq()
+    headers = {"Authorization": f"Bearer {token}"}
+    listed = client.get("/v1/parent-accounts/me/operations/mobile-kpis/recipients", headers=headers)
+    target = listed.json()["recipients"][0]
+    client.put(
+        "/v1/parent-accounts/me/operations/mobile-kpis/recipients",
+        headers=headers,
+        json={"user_id": target["user_id"], "email_mobile_kpi_report": True},
+    )
+    client.put(
+        "/v1/parent-accounts/me/operations/mobile-kpis/settings",
+        headers=headers,
+        json={"opt_in": False},
+    )
+    sends: list[str] = []
+    monkeypatch.setattr(
+        "app.email_client.send_mobile_weekly_report_email",
+        lambda **kwargs: sends.append(kwargs["to_email"]) or (True, None),
+    )
+    with Session(engine) as session:
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == HQ_EMAIL)).one()
+        saturday = datetime(2026, 9, 19, 23, 10, tzinfo=SYDNEY)
+        snap = compile_weekly_snapshot(session, parent, at=saturday, force=True)
+        sent = email_weekly_snapshot(session, parent, snap)
+    assert sent is False
+    assert sends == []
+
+
+def test_avg_sale_uses_paid_customers_not_created_jobs():
+    token = _ensure_hq()
+    headers = {"Authorization": f"Bearer {token}"}
+    operator_id = _link_operator(headers, "Avg Sale Van")
+    now = datetime.now(timezone.utc)
+    _seed_job(operator_id, created_at=now, total_cents=None, job_type="Diagnostic", paid=False)
+    _seed_job(operator_id, created_at=now, total_cents=10000, job_type="Diagnostic", paid=True)
+    live = client.get("/v1/parent-accounts/me/operations/mobile-kpis/live", headers=headers, params={"scope": "week"})
+    assert live.status_code == 200, live.text
+    row = next(r for r in live.json()["week"]["operators"] if r["operator_tenant_id"] == operator_id)
+    assert row["jobs_created"] >= 2
+    assert row["customers_count"] >= 2
+    assert row["paid_customers_count"] == 1
+    assert row["avg_sale_cents"] == 10000
+
+
+def test_daily_snapshot_force_recompiles():
+    token = _ensure_hq()
+    headers = {"Authorization": f"Bearer {token}"}
+    operator_id = _link_operator(headers, "Rebuild Van")
+    now = datetime.now(timezone.utc)
+    _seed_job(operator_id, created_at=now, total_cents=3000, job_type="Diagnostic")
+    trade_date = now.astimezone(NETWORK_TZ).date()
+    with Session(engine) as session:
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == HQ_EMAIL)).one()
+        first = compile_daily_snapshot(session, parent, trade_date, now=now)
+        again = compile_daily_snapshot(session, parent, trade_date, now=now, force=True)
+    assert len(first) >= 1
+    assert len(again) >= 1
+    rebuilt = client.post(
+        f"/v1/parent-accounts/me/operations/mobile-kpis/days/{trade_date.isoformat()}/rebuild",
+        headers=headers,
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    csv_res = client.get(
+        f"/v1/parent-accounts/me/operations/mobile-kpis/days/{trade_date.isoformat()}/csv",
+        headers=headers,
+    )
+    assert csv_res.status_code == 200, csv_res.text
+    assert csv_res.headers["content-type"].startswith("text/csv")
+
+
+def test_jobs_report_total_count_is_not_the_page_size():
+    token = _ensure_hq()
+    headers = {"Authorization": f"Bearer {token}"}
+    operator_id = _link_operator(headers, "Count Van")
+    now = datetime.now(timezone.utc)
+    for _ in range(3):
+        _seed_job(operator_id, created_at=now, total_cents=1000, job_type="Diagnostic")
+    res = client.get(
+        "/v1/parent-accounts/me/operations/mobile-jobs",
+        headers=headers,
+        params={"operator_tenant_id": operator_id, "limit": 1},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["total_count"] >= 3
+    assert len(body["jobs"]) == 1
+    assert body["has_more"] is True
+    assert body["jobs"][0]["job_type"] == "Diagnostic"
+    assert "commission_lead_source" in body["jobs"][0]
+

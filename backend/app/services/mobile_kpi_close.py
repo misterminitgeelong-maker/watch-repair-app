@@ -63,20 +63,25 @@ def compile_daily_snapshot(
     trade_date,
     *,
     now: datetime | None = None,
+    force: bool = False,
 ) -> list[MobileKpiDailySnapshot]:
-    """Idempotent: skip operators that already have a row for this trade date."""
+    """Idempotent: skip operators that already have a row unless ``force``."""
     operators = bookable_operators_for_parent(session, parent.id)
     if not operators:
         return []
-    existing = {
-        row.operator_tenant_id
+    existing_rows = {
+        row.operator_tenant_id: row
         for row in session.exec(
             select(MobileKpiDailySnapshot)
             .where(MobileKpiDailySnapshot.parent_account_id == parent.id)
             .where(MobileKpiDailySnapshot.trade_date == trade_date)
         ).all()
     }
-    if existing and all(tenant.id in existing for tenant in operators):
+    if (
+        not force
+        and existing_rows
+        and all(tenant.id in existing_rows for tenant in operators)
+    ):
         return []
     start, end = trade_day_snapshot_window(trade_date)
     prior_start, prior_end = trade_day_snapshot_window(trade_date - timedelta(days=7))
@@ -89,22 +94,30 @@ def compile_daily_snapshot(
         prior_start=prior_start,
         prior_end=prior_end,
         generated_at=now or _now(),
+        include_queues=False,
     )
     compiled_at = now or _now()
     written: list[MobileKpiDailySnapshot] = []
     for row in report.operators:
-        if row.operator_tenant_id in existing:
+        payload = json.dumps(row.to_dict())
+        found = existing_rows.get(row.operator_tenant_id)
+        if found is not None:
+            if force:
+                found.payload_json = payload
+                found.compiled_at = compiled_at
+                session.add(found)
+                written.append(found)
             continue
         snap = MobileKpiDailySnapshot(
             parent_account_id=parent.id,
             operator_tenant_id=row.operator_tenant_id,
             trade_date=trade_date,
-            payload_json=json.dumps(row.to_dict()),
+            payload_json=payload,
             compiled_at=compiled_at,
         )
         if _persist_ignoring_conflict(session, snap):
             written.append(snap)
-            existing.add(row.operator_tenant_id)
+            existing_rows[row.operator_tenant_id] = snap
     if written:
         try:
             session.commit()
@@ -146,6 +159,7 @@ def compile_weekly_snapshot(
         prior_start=prior_start,
         prior_end=prior_end,
         generated_at=now,
+        include_queues=False,
     )
     csv_bytes = csv_bytes_for_report(report)
     digest = hashlib.sha256(csv_bytes).hexdigest()
@@ -187,8 +201,19 @@ def compile_weekly_snapshot(
     return snap
 
 
-def allocated_recipient_emails(session: Session, parent: ParentAccount) -> list[str]:
-    """HQ workers flagged for the Saturday CSV. Falls back to owner_email when none allocated and opt-in is on."""
+def allocated_recipient_emails(
+    session: Session,
+    parent: ParentAccount,
+    *,
+    require_opt_in: bool = True,
+) -> list[str]:
+    """HQ workers flagged for the Saturday CSV.
+
+    Opt-in gates the automatic Saturday send. Allocated flags then pick who.
+    Falls back to owner_email when opted in and nobody is flagged.
+    """
+    if require_opt_in and not parent.mobile_weekly_report_opt_in:
+        return []
     emails: list[str] = []
     seen: set[str] = set()
     for grant in parent_users(session, parent.id):
@@ -232,7 +257,9 @@ def email_weekly_snapshot(
     stamp_parent_last_sent: bool = False,
 ) -> bool:
     """Send the stored weekly CSV. Returns True only when every recipient send was accepted."""
-    recipients = allocated_recipient_emails(session, parent)
+    recipients = allocated_recipient_emails(
+        session, parent, require_opt_in=not stamp_parent_last_sent
+    )
     if not recipients:
         if stamp_parent_last_sent:
             parent.last_mobile_weekly_report_sent_at = _now()

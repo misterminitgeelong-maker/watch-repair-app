@@ -419,6 +419,7 @@ def create_job_from_inbound_email(
         programming_status="pending",
         deposit_cents=0,
         cost_cents=0,
+        commission_lead_source="minit_sourced",
     )
     session.add(job)
     session.flush()

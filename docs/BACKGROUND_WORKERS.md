@@ -86,6 +86,12 @@ In-flight sweeps get `WORKER_SHUTDOWN_GRACE_SECONDS` (default 20) to finish. If
 one is still running after that, the worker logs which one and exits anyway,
 rather than reporting a clean shutdown it did not have.
 
+`mobile_kpi_close` is one of the heavier sweeps: it compiles daily snapshots and
+the Saturday CSV across the whole parent network every five minutes. Once a
+worker service is running, set `RUN_SWEEPS_IN_WEB_PROCESS=false` on the **web**
+service so that compile does not share the request GIL and connection pool.
+Advisory locks still mean it is safe if both run briefly during the cutover.
+
 ## Settings
 
 | Variable | Default | Meaning |

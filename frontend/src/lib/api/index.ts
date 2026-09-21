@@ -656,6 +656,10 @@ export interface ParentMobileJobNetwork {
   referring_shop_name?: string | null
   referring_shop_number?: string | null
   shop_mobile_booking_request_id?: string | null
+  job_type?: string | null
+  commission_lead_source?: string | null
+  paid_cents?: number | null
+  work_completed_at?: string | null
   scheduled_at?: string | null
   created_at: string
 }
@@ -665,6 +669,7 @@ export interface ParentMobileJobsReport {
   to_date?: string | null
   active_count: number
   total_count: number
+  has_more?: boolean
   jobs?: ParentMobileJobNetwork[]
 }
 
@@ -695,6 +700,8 @@ export const getParentMobileJobsReport = (params?: {
   to_date?: string
   status?: string
   operator_tenant_id?: string
+  lead_source?: string
+  category?: string
   limit?: number
 }) => api.get<ParentMobileJobsReport>('/parent-accounts/me/operations/mobile-jobs', { params })
 
@@ -734,6 +741,7 @@ export interface MobileKpiOperatorRow {
   sales_pct_change?: number | null
   avg_sale_cents?: number | null
   jobs_per_customer?: number | null
+  paid_customers_count?: number
   category_jobs?: Record<string, number>
   category_sales_cents?: Record<string, number>
   lead_jobs?: Record<string, number>
@@ -758,8 +766,9 @@ export interface MobileKpiLive {
   timezone: string
   generated_at: string
   trade_date: string
-  day: MobileKpiPeriod
-  week: MobileKpiPeriod
+  scope?: string
+  day?: MobileKpiPeriod | null
+  week?: MobileKpiPeriod | null
 }
 
 export interface MobileKpiDailyListItem {
@@ -823,8 +832,8 @@ export interface MobileKpiRecipients {
   recipients?: MobileKpiRecipient[]
 }
 
-export const getParentMobileKpisLive = () =>
-  api.get<MobileKpiLive>('/parent-accounts/me/operations/mobile-kpis/live')
+export const getParentMobileKpisLive = (scope: 'day' | 'week' | 'all' = 'week') =>
+  api.get<MobileKpiLive>('/parent-accounts/me/operations/mobile-kpis/live', { params: { scope } })
 
 export const getParentMobileKpisLiveCsv = (scope: 'day' | 'week' = 'week') =>
   api.get<Blob>('/parent-accounts/me/operations/mobile-kpis/live/csv', { params: { scope }, responseType: 'blob' })
@@ -834,6 +843,12 @@ export const getParentMobileKpiDays = () =>
 
 export const getParentMobileKpiDay = (tradeDate: string) =>
   api.get<MobileKpiDailyDetail>(`/parent-accounts/me/operations/mobile-kpis/days/${tradeDate}`)
+
+export const getParentMobileKpiDayCsv = (tradeDate: string) =>
+  api.get<Blob>(`/parent-accounts/me/operations/mobile-kpis/days/${tradeDate}/csv`, { responseType: 'blob' })
+
+export const rebuildParentMobileKpiDay = (tradeDate: string) =>
+  api.post<MobileKpiDailyDetail>(`/parent-accounts/me/operations/mobile-kpis/days/${tradeDate}/rebuild`)
 
 export const getParentMobileKpiWeeks = () =>
   api.get<MobileKpiWeeklyList>('/parent-accounts/me/operations/mobile-kpis/weeks')
@@ -858,12 +873,12 @@ export const getParentMobileWeeklyReportSettings = () =>
 
 export const updateParentMobileWeeklyReportSettings = (optIn: boolean) =>
   api.put<{ opt_in: boolean; last_sent_at?: string | null }>(
-    '/parent-accounts/me/operations/mobile-weekly-report/settings',
+    '/parent-accounts/me/operations/mobile-kpis/settings',
     { opt_in: optIn },
   )
 
 export const sendParentMobileWeeklyReportNow = () =>
-  api.post<{ opt_in: boolean; last_sent_at?: string | null }>('/parent-accounts/me/operations/mobile-weekly-report/send-now')
+  api.post<{ opt_in: boolean; last_sent_at?: string | null }>('/parent-accounts/me/operations/mobile-kpis/send-now')
 
 
 // ── Shop mobile operator bookings ─────────────────────────────────────────────

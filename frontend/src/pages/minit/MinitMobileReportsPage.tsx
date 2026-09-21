@@ -6,6 +6,7 @@ import {
   getParentEmailLeadsByShopReport,
   getParentMobileJobsReport,
   getParentMobileKpiDay,
+  getParentMobileKpiDayCsv,
   getParentMobileKpiDays,
   getParentMobileKpiRecipients,
   getParentMobileKpiWeek,
@@ -13,6 +14,7 @@ import {
   getParentMobileKpiWeeks,
   getParentMobileKpisLive,
   getParentMobileKpisLiveCsv,
+  rebuildParentMobileKpiDay,
   sendParentMobileWeeklyReportNow,
   updateParentMobileKpiRecipient,
   updateParentMobileWeeklyReportSettings,
@@ -44,6 +46,15 @@ const CATEGORY_ORDER = [
   ['other', 'Other'],
 ] as const
 
+const LEAD_ORDER = [
+  ['shop_referred', 'Shop'],
+  ['tech_sourced', 'Tech'],
+  ['minit_sourced', 'Minit'],
+  ['other', 'Other lead'],
+] as const
+
+type SortKey = 'sales_cents' | 'jobs_created' | 'jobs_completed' | 'customers_count' | 'avg_sale_cents' | 'enquiries_not_actioned'
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -72,12 +83,21 @@ function formatStamp(iso: string) {
   }
 }
 
-function HeadlineTiles({ network, comparisonLabel }: { network: MobileKpiOperatorRow; comparisonLabel: string }) {
+function HeadlineTiles({
+  network,
+  comparisonLabel,
+  showQueues = false,
+}: {
+  network: MobileKpiOperatorRow
+  comparisonLabel: string
+  showQueues?: boolean
+}) {
+  const avg = network.avg_sale_cents != null ? formatCents(Math.round(network.avg_sale_cents)) : '—'
   const tiles = [
     { label: 'Sales', value: formatCents(network.sales_cents), sub: `${formatPct(network.sales_pct_change)} vs ${comparisonLabel}`, tone: pctTone(network.sales_pct_change) },
     { label: 'Customers', value: String(network.customers_count), sub: `${network.jobs_per_customer?.toFixed(2) ?? '—'} jobs / customer` },
     { label: 'Jobs created', value: String(network.jobs_created), sub: `${network.jobs_completed} completed` },
-    { label: 'Outstanding', value: formatCents(network.outstanding_cents), sub: `${network.active_jobs} active · ${network.enquiries_not_actioned} enquiries open` },
+    { label: 'Avg sale', value: avg, sub: showQueues ? `${network.active_jobs} active · ${formatCents(network.outstanding_cents)} outstanding` : 'Paid customers in this window' },
   ]
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
@@ -92,8 +112,48 @@ function HeadlineTiles({ network, comparisonLabel }: { network: MobileKpiOperato
   )
 }
 
-function OperatorTable({ period }: { period: MobileKpiPeriod }) {
-  const rows = period.operators ?? []
+function OperatorTable({
+  period,
+  showQueues = false,
+  onDrill,
+}: {
+  period: MobileKpiPeriod
+  showQueues?: boolean
+  onDrill?: (opts: { operatorId: string; category?: string; lead?: string }) => void
+}) {
+  const [sortKey, setSortKey] = useState<SortKey>('sales_cents')
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
+  const rows = useMemo(() => {
+    const list = [...(period.operators ?? [])]
+    list.sort((a, b) => {
+      const av = Number(a[sortKey] ?? 0)
+      const bv = Number(b[sortKey] ?? 0)
+      if (av === bv) return a.operator_name.localeCompare(b.operator_name)
+      return sortDir === 'desc' ? bv - av : av - bv
+    })
+    return list
+  }, [period.operators, sortKey, sortDir])
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => (d === 'desc' ? 'asc' : 'desc'))
+    else {
+      setSortKey(key)
+      setSortDir('desc')
+    }
+  }
+
+  function Header({ label, k }: { label: string; k?: SortKey }) {
+    if (!k) return <th className="text-right px-4 py-2 font-medium">{label}</th>
+    const active = sortKey === k
+    return (
+      <th className="text-right px-4 py-2 font-medium">
+        <button type="button" className="underline-offset-2 hover:underline" onClick={() => toggleSort(k)}>
+          {label}{active ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+        </button>
+      </th>
+    )
+  }
+
   return (
     <Card className="overflow-hidden">
       {rows.length === 0 ? (
@@ -103,32 +163,62 @@ function OperatorTable({ period }: { period: MobileKpiPeriod }) {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
+                <th className="text-left px-4 py-2 font-medium">#</th>
                 <th className="text-left px-4 py-2 font-medium">Operator</th>
-                <th className="text-right px-4 py-2 font-medium">Customers</th>
-                <th className="text-right px-4 py-2 font-medium">Jobs</th>
-                <th className="text-right px-4 py-2 font-medium">Done</th>
-                <th className="text-right px-4 py-2 font-medium">Sales</th>
+                <Header label="Customers" k="customers_count" />
+                <Header label="Jobs" k="jobs_created" />
+                <Header label="Done" k="jobs_completed" />
+                <Header label="Sales" k="sales_cents" />
                 <th className="text-right px-4 py-2 font-medium">% chg</th>
-                {CATEGORY_ORDER.map(([key, label]) => (
+                <Header label="Avg sale" k="avg_sale_cents" />
+                {LEAD_ORDER.map(([key, label]) => (
                   <th key={key} className="text-right px-4 py-2 font-medium">{label}</th>
                 ))}
-                <th className="text-right px-4 py-2 font-medium">Open enquiries</th>
+                {CATEGORY_ORDER.map(([key, label]) => (
+                  <th key={key} className="text-right px-4 py-2 font-medium">{label} $</th>
+                ))}
+                <Header label="Open enquiries" k="enquiries_not_actioned" />
               </tr>
             </thead>
             <tbody>
-              {rows.map(row => (
+              {rows.map((row, index) => (
                 <tr key={row.operator_tenant_id} style={{ borderBottom: '1px solid var(--ms-border)' }}>
+                  <td className="px-4 py-2 tabular-nums" style={{ color: 'var(--ms-text-muted)' }}>{index + 1}</td>
                   <td className="px-4 py-2">
-                    <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{formatTenantLabel(row.operator_name, row.operator_shop_number)}</span>
+                    <button
+                      type="button"
+                      className="font-medium text-left hover:underline"
+                      style={{ color: 'var(--ms-text)' }}
+                      onClick={() => onDrill?.({ operatorId: row.operator_tenant_id })}
+                    >
+                      {formatTenantLabel(row.operator_name, row.operator_shop_number)}
+                    </button>
+                    {showQueues && row.active_jobs > 0 && (
+                      <span className="block text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                        {row.active_jobs} active · {formatCents(row.outstanding_cents)} open
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.customers_count}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.jobs_created}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.jobs_completed}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{formatCents(row.sales_cents)}</td>
                   <td className="px-4 py-2 text-right tabular-nums" style={{ color: pctTone(row.sales_pct_change) }}>{formatPct(row.sales_pct_change)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{row.avg_sale_cents != null ? formatCents(Math.round(row.avg_sale_cents)) : '—'}</td>
+                  {LEAD_ORDER.map(([key]) => (
+                    <td key={key} className="px-4 py-2 text-right tabular-nums">
+                      <button type="button" className="hover:underline" onClick={() => onDrill?.({ operatorId: row.operator_tenant_id, lead: key })}>
+                        {row.lead_jobs?.[key] ?? 0}
+                        <span className="block text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>{formatCents(row.lead_sales_cents?.[key] ?? 0)}</span>
+                      </button>
+                    </td>
+                  ))}
                   {CATEGORY_ORDER.map(([key]) => (
-                    <td key={key} className="px-4 py-2 text-right tabular-nums" style={{ color: 'var(--ms-text-muted)' }}>
-                      {row.category_jobs?.[key] ?? 0}
+                    <td key={key} className="px-4 py-2 text-right tabular-nums">
+                      <button type="button" className="hover:underline" onClick={() => onDrill?.({ operatorId: row.operator_tenant_id, category: key })}>
+                        {formatCents(row.category_sales_cents?.[key] ?? 0)}
+                        <span className="block text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>{row.category_jobs?.[key] ?? 0} jobs</span>
+                      </button>
                     </td>
                   ))}
                   <td className="px-4 py-2 text-right tabular-nums" style={{ color: row.enquiries_not_actioned > 0 ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>
@@ -136,18 +226,6 @@ function OperatorTable({ period }: { period: MobileKpiPeriod }) {
                   </td>
                 </tr>
               ))}
-              <tr>
-                <td className="px-4 py-2 font-semibold">Network total</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">{period.network.customers_count}</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">{period.network.jobs_created}</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">{period.network.jobs_completed}</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">{formatCents(period.network.sales_cents)}</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold" style={{ color: pctTone(period.network.sales_pct_change) }}>{formatPct(period.network.sales_pct_change)}</td>
-                {CATEGORY_ORDER.map(([key]) => (
-                  <td key={key} className="px-4 py-2 text-right tabular-nums font-semibold">{period.network.category_jobs?.[key] ?? 0}</td>
-                ))}
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">{period.network.enquiries_not_actioned}</td>
-              </tr>
             </tbody>
           </table>
         </div>
@@ -223,14 +301,17 @@ export default function MinitMobileReportsPage() {
   const [toYmd, setToYmd] = useState(defaultReportToDate)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
+  const [jobsOperatorId, setJobsOperatorId] = useState<string>('')
+  const [jobsCategory, setJobsCategory] = useState<string>('')
+  const [jobsLead, setJobsLead] = useState<string>('')
   const [error, setError] = useState('')
   const queryClient = useQueryClient()
   const { data: summary } = useParentAccount()
   const canEdit = summary?.my_role === 'hq_admin'
 
   const liveQuery = useQuery({
-    queryKey: ['minit-mobile-kpis-live'],
-    queryFn: () => getParentMobileKpisLive().then(r => r.data),
+    queryKey: ['minit-mobile-kpis-live', liveScope],
+    queryFn: () => getParentMobileKpisLive(liveScope).then(r => r.data),
     refetchInterval: 60_000,
     enabled: tab === 'live',
   })
@@ -250,12 +331,15 @@ export default function MinitMobileReportsPage() {
     enabled: tab === 'recipients',
   })
   const jobsQuery = useQuery({
-    queryKey: ['minit-mobile-jobs-report', fromYmd, toYmd],
+    queryKey: ['minit-mobile-jobs-report', fromYmd, toYmd, jobsOperatorId, jobsCategory, jobsLead],
     queryFn: () =>
       getParentMobileJobsReport({
         from_date: toIsoStart(fromYmd),
         to_date: toIsoEnd(toYmd),
         limit: 200,
+        operator_tenant_id: jobsOperatorId || undefined,
+        category: jobsCategory || undefined,
+        lead_source: jobsLead || undefined,
       }).then(r => r.data),
     enabled: tab === 'jobs',
   })
@@ -307,6 +391,24 @@ export default function MinitMobileReportsPage() {
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not send the weekly report.')),
   })
+  const rebuildDayMut = useMutation({
+    mutationFn: (tradeDate: string) => rebuildParentMobileKpiDay(tradeDate).then(r => r.data),
+    onSuccess: () => {
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['minit-mobile-kpis-days'] })
+      queryClient.invalidateQueries({ queryKey: ['minit-mobile-kpis-day'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not rebuild that day.')),
+  })
+
+  function drillToJobs(opts: { operatorId: string; category?: string; lead?: string }, period?: MobileKpiPeriod | null) {
+    setJobsOperatorId(opts.operatorId)
+    setJobsCategory(opts.category ?? '')
+    setJobsLead(opts.lead ?? '')
+    if (period?.start_ymd) setFromYmd(period.start_ymd)
+    if (period?.end_ymd) setToYmd(period.end_ymd)
+    setTab('jobs')
+  }
 
   return (
     <div>
@@ -358,8 +460,8 @@ export default function MinitMobileReportsPage() {
                 </Button>
               </div>
             </div>
-            <HeadlineTiles network={livePeriod.network} comparisonLabel={liveScope === 'day' ? 'same day last week' : 'prior week'} />
-            <OperatorTable period={livePeriod} />
+            <HeadlineTiles network={livePeriod.network} comparisonLabel={liveScope === 'day' ? 'same day last week' : 'prior week'} showQueues />
+            <OperatorTable period={livePeriod} showQueues onDrill={opts => drillToJobs(opts, livePeriod)} />
           </>
         )
       )}
@@ -388,11 +490,32 @@ export default function MinitMobileReportsPage() {
             </div>
             {activeDay && !resolvedDay && dayDetail.isLoading ? <Spinner /> : resolvedDay ? (
               <>
-                <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-                  Compiled at {formatStamp(resolvedDay.compiled_at)} · frozen 9pm trade day
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                    Compiled at {formatStamp(resolvedDay.compiled_at)} · frozen 9pm trade day
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => getParentMobileKpiDayCsv(resolvedDay.trade_date).then(r => downloadBlob(r.data, `minit-mobile-daily-${resolvedDay.trade_date}.csv`))}
+                    >
+                      Download CSV
+                    </Button>
+                    {canEdit && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => rebuildDayMut.mutate(resolvedDay.trade_date)}
+                        disabled={rebuildDayMut.isPending}
+                      >
+                        Rebuild this day
+                      </Button>
+                    )}
+                  </div>
+                </div>
                 <HeadlineTiles network={resolvedDay.report.network} comparisonLabel="same day last week" />
-                <OperatorTable period={resolvedDay.report} />
+                <OperatorTable period={resolvedDay.report} onDrill={opts => drillToJobs(opts, resolvedDay.report)} />
               </>
             ) : (
               <Card className="p-5"><p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Select a compiled day.</p></Card>
@@ -440,7 +563,7 @@ export default function MinitMobileReportsPage() {
                   </Button>
                 </div>
                 <HeadlineTiles network={resolvedWeek.report.network} comparisonLabel="prior week" />
-                <OperatorTable period={resolvedWeek.report} />
+                <OperatorTable period={resolvedWeek.report} onDrill={opts => drillToJobs(opts, resolvedWeek.report)} />
               </>
             ) : (
               <Card className="p-5"><p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Select a compiled week.</p></Card>
@@ -454,8 +577,8 @@ export default function MinitMobileReportsPage() {
           <>
             <Card className="p-5 mb-5">
               <p className="text-sm font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>Saturday CSV email</p>
-              <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-                Master switch for the weekly file. Allocated HQ workers below get the CSV; if none are ticked, the parent owner email is used.
+                <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+                Master switch for the weekly file. When this is off, nobody gets the Saturday CSV — including allocated HQ workers. When it is on, allocated workers get the file; if none are ticked, the parent owner email is used.
               </p>
               <div className="flex flex-wrap gap-2">
                 {canEdit && (
@@ -518,7 +641,17 @@ export default function MinitMobileReportsPage() {
             <div className="flex flex-wrap gap-4 items-end">
               <Input label="From" type="date" value={fromYmd} onChange={e => setFromYmd(e.target.value)} className="w-40" />
               <Input label="To" type="date" value={toYmd} onChange={e => setToYmd(e.target.value)} className="w-40" />
+              {jobsOperatorId && (
+                <Button size="sm" variant="secondary" onClick={() => { setJobsOperatorId(''); setJobsCategory(''); setJobsLead('') }}>
+                  Clear operator filter
+                </Button>
+              )}
             </div>
+            {(jobsOperatorId || jobsCategory || jobsLead) && (
+              <p className="text-xs mt-3" style={{ color: 'var(--ms-text-muted)' }}>
+                Filtered{jobsOperatorId ? ' by operator' : ''}{jobsCategory ? ` · ${jobsCategory}` : ''}{jobsLead ? ` · ${jobsLead}` : ''}
+              </p>
+            )}
           </Card>
           <EnquiriesByShopSection fromYmd={fromYmd} toYmd={toYmd} />
           {jobsQuery.isLoading || !jobsQuery.data ? (
@@ -528,6 +661,7 @@ export default function MinitMobileReportsPage() {
               <Card className="p-5 mb-6">
                 <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
                   {jobsQuery.data.total_count} jobs in range · {jobsQuery.data.active_count} still active
+                  {jobsQuery.data.has_more ? ' · showing first 200' : ''}
                 </p>
               </Card>
               <Card className="overflow-hidden">
@@ -540,9 +674,12 @@ export default function MinitMobileReportsPage() {
                         <tr style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
                           <th className="text-left px-5 py-2 font-medium">Job</th>
                           <th className="text-left px-5 py-2 font-medium">Operator</th>
-                          <th className="text-left px-5 py-2 font-medium">Referring shop</th>
+                          <th className="text-left px-5 py-2 font-medium">Type</th>
+                          <th className="text-left px-5 py-2 font-medium">Lead</th>
+                          <th className="text-right px-5 py-2 font-medium">Paid</th>
                           <th className="text-left px-5 py-2 font-medium">Status</th>
                           <th className="text-left px-5 py-2 font-medium">Created</th>
+                          <th className="text-left px-5 py-2 font-medium">Completed</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -553,13 +690,12 @@ export default function MinitMobileReportsPage() {
                               <span className="block text-xs" style={{ color: 'var(--ms-text-muted)' }}>{job.title}</span>
                             </td>
                             <td className="px-5 py-2">{formatTenantLabel(job.operator_name, job.operator_shop_number)}</td>
-                            <td className="px-5 py-2">
-                              {job.referring_shop_name
-                                ? formatTenantLabel(job.referring_shop_name, job.referring_shop_number)
-                                : '—'}
-                            </td>
+                            <td className="px-5 py-2" style={{ color: 'var(--ms-text-muted)' }}>{job.job_type || '—'}</td>
+                            <td className="px-5 py-2" style={{ color: 'var(--ms-text-muted)' }}>{(job.commission_lead_source || 'other').replace(/_/g, ' ')}</td>
+                            <td className="px-5 py-2 text-right tabular-nums">{job.paid_cents != null ? formatCents(job.paid_cents) : '—'}</td>
                             <td className="px-5 py-2 capitalize">{job.status.replace(/_/g, ' ')}</td>
                             <td className="px-5 py-2 whitespace-nowrap">{formatDate(job.created_at)}</td>
+                            <td className="px-5 py-2 whitespace-nowrap">{job.work_completed_at ? formatDate(job.work_completed_at) : '—'}</td>
                           </tr>
                         ))}
                       </tbody>

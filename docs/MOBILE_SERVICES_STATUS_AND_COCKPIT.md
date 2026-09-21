@@ -121,6 +121,12 @@ category; `?tech=<user_id>` narrows to a technician (URL params on the List view
 Comparisons: **this week** (Mon–Sun, shop time) vs **last week**, the **four-week
 average** of the four full weeks before this one, and the owner's **weekly cash
 target** (`tenant.mobile_weekly_target_cents`, `PATCH /v1/reports/auto-key/cockpit/target`).
+
+Minit HQ mobile network KPIs (`/minit/mobile-services`, `mobile_network_kpis.py`)
+are a different clock: **Australia/Sydney**, trade day freeze at 21:00, operating
+week Sunday 01:00–Saturday 23:00. Do not treat cockpit "this week" as the same
+window as the HQ live board or Saturday CSV.
+
 While the week is incomplete the primary comparison is like-for-like: the same
 number of elapsed days of each prior period and a pro-rated target (`partial: true`,
 `days_elapsed`). Percentages are `null` when the baseline is zero; the UI shows

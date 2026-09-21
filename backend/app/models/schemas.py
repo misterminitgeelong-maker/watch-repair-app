@@ -599,14 +599,20 @@ class ParentMobileJobNetworkRead(SQLModel):
     referring_shop_name: Optional[str] = None
     referring_shop_number: Optional[str] = None
     shop_mobile_booking_request_id: Optional[UUID] = None
+    job_type: Optional[str] = None
+    commission_lead_source: Optional[str] = None
+    paid_cents: Optional[int] = None
+    work_completed_at: Optional[datetime] = None
     scheduled_at: Optional[datetime] = None
     created_at: datetime
+
 
 class ParentMobileJobsReport(SQLModel):
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
     active_count: int
     total_count: int
+    has_more: bool = False
     jobs: list[ParentMobileJobNetworkRead] = Field(default_factory=list)
 
 class ShopEmailLeadBucket(SQLModel):
@@ -654,6 +660,7 @@ class MobileKpiOperatorRowRead(SQLModel):
     operator_name: str
     operator_shop_number: Optional[str] = None
     customers_count: int = 0
+    paid_customers_count: int = 0
     jobs_created: int = 0
     jobs_completed: int = 0
     sales_cents: int = 0
@@ -686,8 +693,9 @@ class MobileKpiLiveRead(SQLModel):
     timezone: str
     generated_at: datetime
     trade_date: str
-    day: MobileKpiPeriodRead
-    week: MobileKpiPeriodRead
+    scope: str = "all"
+    day: Optional[MobileKpiPeriodRead] = None
+    week: Optional[MobileKpiPeriodRead] = None
 
 
 class MobileKpiDailyListItem(SQLModel):
@@ -1492,7 +1500,7 @@ class AutoKeyJobCreate(SQLModel):
     apply_suggested_quote: bool = False
     send_booking_sms: bool = False
     additional_services: list[dict[str, Any]] = Field(default_factory=list)
-    commission_lead_source: str = Field(default="shop_referred", max_length=64)
+    commission_lead_source: str = Field(default="other", max_length=64)
     pricing_ref_id: Optional[UUID] = None
     pricing_type: Optional[Literal["oem_key", "service", "garage"]] = None
     quoted_price: Optional[float] = None

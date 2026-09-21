@@ -25,6 +25,7 @@ from ..minit_shops import tenant_slug_for_shop
 from ..models import (
     NETWORK_ROLE_OPERATOR,
     NETWORK_ROLE_RETAIL,
+    AutoKeyInvoice,
     AutoKeyJob,
     EmailLog,
     InboundEmail,
@@ -765,34 +766,57 @@ def get_operations_mobile_jobs_report(
     to_date: str | None = Query(default=None),
     status: str | None = Query(default=None),
     operator_tenant_id: UUID | None = Query(default=None),
+    lead_source: str | None = Query(default=None),
+    category: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
+    from ..auto_key_status import AUTO_KEY_ACTIVE_STATUSES
+    from ..mobile_network_kpis import classify_job_type
+
     _require_minit_hq(auth, session)
     user, parent, _ = _parent_for_read(session, auth)
     _retail, operators = _retail_and_operator_tenants(session, parent.id)
     operator_ids = [t.id for t in operators]
     if not operator_ids:
-        return ParentMobileJobsReport(from_date=None, to_date=None, active_count=0, total_count=0, jobs=[])
+        return ParentMobileJobsReport(
+            from_date=None, to_date=None, active_count=0, total_count=0, has_more=False, jobs=[]
+        )
 
     start, end = _parse_date_range(from_date, to_date)
-    stmt = (
-        select(AutoKeyJob)
-        .where(AutoKeyJob.tenant_id.in_(operator_ids))  # type: ignore[attr-defined]
-        .order_by(AutoKeyJob.created_at.desc())
-    )
+    filters = [col(AutoKeyJob.tenant_id).in_(operator_ids)]
     if start is not None:
-        stmt = stmt.where(col(AutoKeyJob.created_at) >= start)
+        filters.append(col(AutoKeyJob.created_at) >= start)
     if end is not None:
-        stmt = stmt.where(col(AutoKeyJob.created_at) <= end)
+        filters.append(col(AutoKeyJob.created_at) <= end)
     if status:
-        stmt = stmt.where(AutoKeyJob.status == status.strip().lower())
+        filters.append(AutoKeyJob.status == status.strip().lower())
     if operator_tenant_id is not None:
-        stmt = stmt.where(AutoKeyJob.tenant_id == operator_tenant_id)
+        filters.append(AutoKeyJob.tenant_id == operator_tenant_id)
+    if lead_source:
+        filters.append(AutoKeyJob.commission_lead_source == lead_source.strip())
 
-    rows = session.exec(stmt.limit(limit)).all()
-    active_count = sum(1 for j in rows if j.status in _AUTO_KEY_ACTIVE_STATUSES)
+    stmt = select(AutoKeyJob).where(*filters).order_by(AutoKeyJob.created_at.desc())
+    all_rows = list(session.exec(stmt).all())
+    if category:
+        wanted = category.strip().lower()
+        all_rows = [job for job in all_rows if classify_job_type(job.job_type) == wanted]
+    total_count = len(all_rows)
+    active_count = sum(1 for job in all_rows if job.status in AUTO_KEY_ACTIVE_STATUSES)
+    has_more = total_count > limit
+    rows = all_rows[:limit]
+    paid_by_job: dict[UUID, int] = {}
+    if rows:
+        paid_rows = session.exec(
+            select(AutoKeyInvoice)
+            .where(col(AutoKeyInvoice.auto_key_job_id).in_([job.id for job in rows]))
+            .where(AutoKeyInvoice.status == "paid")
+        ).all()
+        for invoice in paid_rows:
+            paid_by_job[invoice.auto_key_job_id] = paid_by_job.get(invoice.auto_key_job_id, 0) + int(
+                invoice.total_cents or 0
+            )
     job_tenants = _tenants_by_ids(
         session,
         [job.tenant_id for job in rows]
@@ -815,6 +839,10 @@ def get_operations_mobile_jobs_report(
                 referring_shop_name=ref_shop.name if ref_shop else None,
                 referring_shop_number=ref_shop.shop_number if ref_shop else None,
                 shop_mobile_booking_request_id=job.shop_mobile_booking_request_id,
+                job_type=job.job_type,
+                commission_lead_source=job.commission_lead_source,
+                paid_cents=paid_by_job.get(job.id),
+                work_completed_at=job.work_completed_at,
                 scheduled_at=job.scheduled_at,
                 created_at=job.created_at,
             )
@@ -824,7 +852,8 @@ def get_operations_mobile_jobs_report(
         from_date=start,
         to_date=end,
         active_count=active_count,
-        total_count=len(jobs),
+        total_count=total_count,
+        has_more=has_more,
         jobs=jobs,
     )
 
@@ -918,12 +947,7 @@ def get_mobile_weekly_report_settings(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
-    user, parent, _ = _parent_for_read(session, auth)
-    return ParentMobileWeeklyReportSettingsRead(
-        opt_in=parent.mobile_weekly_report_opt_in,
-        last_sent_at=parent.last_mobile_weekly_report_sent_at,
-    )
+    return get_mobile_kpi_email_settings(auth=auth, session=session)
 
 
 @router.put("/me/operations/mobile-weekly-report/settings", response_model=ParentMobileWeeklyReportSettingsRead)
@@ -932,7 +956,36 @@ def update_mobile_weekly_report_settings(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    """Opt this parent account's owner_email in/out of the weekly Mobile Services report email."""
+    return update_mobile_kpi_email_settings(body, auth=auth, session=session)
+
+
+@router.post("/me/operations/mobile-weekly-report/send-now", response_model=ParentMobileWeeklyReportSettingsRead)
+def send_mobile_weekly_report_now(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    return send_mobile_kpi_weekly_now(auth=auth, session=session)
+
+
+@router.get("/me/operations/mobile-kpis/settings", response_model=ParentMobileWeeklyReportSettingsRead)
+def get_mobile_kpi_email_settings(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    _require_minit_hq(auth, session)
+    user, parent, _ = _parent_for_read(session, auth)
+    return ParentMobileWeeklyReportSettingsRead(
+        opt_in=parent.mobile_weekly_report_opt_in,
+        last_sent_at=parent.last_mobile_weekly_report_sent_at,
+    )
+
+
+@router.put("/me/operations/mobile-kpis/settings", response_model=ParentMobileWeeklyReportSettingsRead)
+def update_mobile_kpi_email_settings(
+    body: ParentMobileWeeklyReportSettingsUpdateRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
     _require_minit_hq(auth, session)
     user, parent = _parent_for_write(session, auth)
     parent.mobile_weekly_report_opt_in = body.opt_in
@@ -945,18 +998,13 @@ def update_mobile_weekly_report_settings(
     )
 
 
-@router.post("/me/operations/mobile-weekly-report/send-now", response_model=ParentMobileWeeklyReportSettingsRead)
-def send_mobile_weekly_report_now(
+@router.post("/me/operations/mobile-kpis/send-now", response_model=ParentMobileWeeklyReportSettingsRead)
+def send_mobile_kpi_weekly_now(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    """Send this week's Mobile Services report email immediately, regardless of
-    opt-in state or whether one already went out this ISO week — for testing
-    or an ad-hoc resend. Does not change the opt-in setting.
-    """
     _require_minit_hq(auth, session)
     user, parent = _parent_for_write(session, auth)
-
     from ..services.mobile_kpi_close import send_weekly_now
 
     send_weekly_now(session, parent)
@@ -995,6 +1043,7 @@ def _csv_response(content: bytes, filename: str) -> Response:
 
 @router.get("/me/operations/mobile-kpis/live", response_model=MobileKpiLiveRead)
 def get_mobile_kpis_live(
+    scope: str = Query(default="all"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
@@ -1010,26 +1059,48 @@ def get_mobile_kpis_live(
         same_weekday_last_week_window,
     )
 
+    wanted = (scope or "all").strip().lower()
+    if wanted not in {"day", "week", "all"}:
+        raise HTTPException(status_code=400, detail="scope must be day, week, or all")
+
     now = datetime.now(timezone.utc)
     day_start, day_end, trade_date = current_trade_day_window(now)
-    prior_day_start, prior_day_end, _prior_date = same_weekday_last_week_window(now)
-    week_start, _week_end, _ws, _we = operating_week_window(now)
-    prior_week_start, _pwe, _ps, _pe = prior_operating_week_window(week_start)
-    elapsed = as_utc(now) - as_utc(week_start)
-    prior_week_end = prior_week_start + elapsed
-
-    day_report = build_network_kpis(
-        session, parent, day_start, day_end, prior_start=prior_day_start, prior_end=prior_day_end, generated_at=now
-    )
-    week_report = build_network_kpis(
-        session, parent, week_start, now, prior_start=prior_week_start, prior_end=prior_week_end, generated_at=now
-    )
+    day_report = None
+    week_report = None
+    if wanted in {"day", "all"}:
+        prior_day_start, prior_day_end, _prior_date = same_weekday_last_week_window(now)
+        day_report = build_network_kpis(
+            session,
+            parent,
+            day_start,
+            day_end,
+            prior_start=prior_day_start,
+            prior_end=prior_day_end,
+            generated_at=now,
+            include_queues=True,
+        )
+    if wanted in {"week", "all"}:
+        week_start, _week_end, _ws, _we = operating_week_window(now)
+        prior_week_start, _pwe, _ps, _pe = prior_operating_week_window(week_start)
+        elapsed = as_utc(now) - as_utc(week_start)
+        prior_week_end = prior_week_start + elapsed
+        week_report = build_network_kpis(
+            session,
+            parent,
+            week_start,
+            now,
+            prior_start=prior_week_start,
+            prior_end=prior_week_end,
+            generated_at=now,
+            include_queues=True,
+        )
     return MobileKpiLiveRead(
         timezone=NETWORK_TIMEZONE_NAME,
         generated_at=now,
         trade_date=trade_date.isoformat(),
-        day=_period_read(day_report),
-        week=_period_read(week_report),
+        scope=wanted,
+        day=_period_read(day_report) if day_report else None,
+        week=_period_read(week_report) if week_report else None,
     )
 
 
@@ -1040,22 +1111,40 @@ def get_mobile_kpis_live_csv(
     session: Session = Depends(unscoped_session),
 ):
     _require_minit_hq(auth, session)
-    live = get_mobile_kpis_live(auth=auth, session=session)
-    from ..mobile_network_kpis import csv_bytes_for_report, operator_row_from_dict, NetworkKpiReport, rollup_operators
-
-    period = live.week if scope != "day" else live.day
-    operators = [operator_row_from_dict(row.model_dump()) for row in period.operators]
-    report = NetworkKpiReport(
-        start=period.start,
-        end=period.end,
-        start_ymd=period.start_ymd,
-        end_ymd=period.end_ymd,
-        timezone=period.timezone,
-        generated_at=period.generated_at,
-        network=operator_row_from_dict(period.network.model_dump()) if period.network else rollup_operators(operators),
-        operators=operators,
+    _user, parent, _ = _parent_for_read(session, auth)
+    from ..mobile_network_kpis import (
+        as_utc,
+        build_network_kpis,
+        csv_bytes_for_report,
+        current_trade_day_window,
+        operating_week_window,
+        prior_operating_week_window,
+        same_weekday_last_week_window,
     )
-    filename = f"minit-mobile-live-{scope}-{period.start_ymd}_{period.end_ymd}.csv"
+
+    wanted = (scope or "week").strip().lower()
+    if wanted not in {"day", "week"}:
+        raise HTTPException(status_code=400, detail="scope must be day or week")
+    now = datetime.now(timezone.utc)
+    if wanted == "day":
+        start, end, _trade = current_trade_day_window(now)
+        prior_start, prior_end, _pd = same_weekday_last_week_window(now)
+    else:
+        start, _week_end, _ws, _we = operating_week_window(now)
+        end = now
+        prior_start, _pwe, _ps, _pe = prior_operating_week_window(start)
+        prior_end = prior_start + (as_utc(now) - as_utc(start))
+    report = build_network_kpis(
+        session,
+        parent,
+        start,
+        end,
+        prior_start=prior_start,
+        prior_end=prior_end,
+        generated_at=now,
+        include_queues=True,
+    )
+    filename = f"minit-mobile-live-{wanted}-{report.start_ymd}_{report.end_ymd}.csv"
     return _csv_response(csv_bytes_for_report(report), filename)
 
 
@@ -1066,40 +1155,33 @@ def list_mobile_kpi_days(
 ):
     _require_minit_hq(auth, session)
     _user, parent, _ = _parent_for_read(session, auth)
-    from ..mobile_network_kpis import NETWORK_TIMEZONE_NAME, operator_row_from_dict
+    from datetime import date as date_cls, timedelta
+    from ..mobile_network_kpis import NETWORK_TIMEZONE_NAME
     from ..models import MobileKpiDailySnapshot
-    import json
 
+    cutoff = date_cls.today() - timedelta(days=90)
     rows = session.exec(
-        select(MobileKpiDailySnapshot)
+        select(
+            MobileKpiDailySnapshot.trade_date,
+            func.max(MobileKpiDailySnapshot.compiled_at),
+            func.count(),
+        )
         .where(MobileKpiDailySnapshot.parent_account_id == parent.id)
+        .where(MobileKpiDailySnapshot.trade_date >= cutoff)
+        .group_by(MobileKpiDailySnapshot.trade_date)
         .order_by(col(MobileKpiDailySnapshot.trade_date).desc())
     ).all()
-    by_date: dict = {}
-    for snap in rows:
-        payload = json.loads(snap.payload_json)
-        row = operator_row_from_dict(payload)
-        bucket = by_date.setdefault(
-            snap.trade_date,
-            {"compiled_at": snap.compiled_at, "operators": []},
+    days = [
+        MobileKpiDailyListItem(
+            trade_date=trade_date,
+            compiled_at=compiled_at,
+            operator_count=int(operator_count or 0),
+            sales_cents=0,
+            jobs_created=0,
+            customers_count=0,
         )
-        if snap.compiled_at > bucket["compiled_at"]:
-            bucket["compiled_at"] = snap.compiled_at
-        bucket["operators"].append(row)
-    days = []
-    for trade_date, bucket in by_date.items():
-        ops = bucket["operators"]
-        days.append(
-            MobileKpiDailyListItem(
-                trade_date=trade_date,
-                compiled_at=bucket["compiled_at"],
-                operator_count=len(ops),
-                sales_cents=sum(o.sales_cents for o in ops),
-                jobs_created=sum(o.jobs_created for o in ops),
-                customers_count=sum(o.customers_count for o in ops),
-            )
-        )
-    days.sort(key=lambda d: d.trade_date, reverse=True)
+        for trade_date, compiled_at, operator_count in rows
+    ]
     return MobileKpiDailyListRead(timezone=NETWORK_TIMEZONE_NAME, days=days)
 
 
@@ -1152,6 +1234,49 @@ def get_mobile_kpi_day(
         timezone=NETWORK_TIMEZONE_NAME,
         report=_period_read(report),
     )
+
+
+@router.get("/me/operations/mobile-kpis/days/{trade_date}/csv")
+def get_mobile_kpi_day_csv(
+    trade_date: str,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    from ..mobile_network_kpis import csv_bytes_for_report, NetworkKpiReport, operator_row_from_dict
+
+    detail = get_mobile_kpi_day(trade_date, auth=auth, session=session)
+    operators = [operator_row_from_dict(row.model_dump()) for row in detail.report.operators]
+    report = NetworkKpiReport(
+        start=detail.report.start,
+        end=detail.report.end,
+        start_ymd=detail.report.start_ymd,
+        end_ymd=detail.report.end_ymd,
+        timezone=detail.report.timezone,
+        generated_at=detail.report.generated_at,
+        network=operator_row_from_dict(detail.report.network.model_dump()),
+        operators=operators,
+    )
+    filename = f"minit-mobile-daily-{trade_date}.csv"
+    return _csv_response(csv_bytes_for_report(report), filename)
+
+
+@router.post("/me/operations/mobile-kpis/days/{trade_date}/rebuild", response_model=MobileKpiDailyDetailRead)
+def rebuild_mobile_kpi_day(
+    trade_date: str,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    _require_minit_hq(auth, session)
+    _user, parent = _parent_for_write(session, auth)
+    from datetime import date as date_cls
+    from ..services.mobile_kpi_close import compile_daily_snapshot
+
+    try:
+        parsed = date_cls.fromisoformat(trade_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="trade_date must be YYYY-MM-DD") from exc
+    compile_daily_snapshot(session, parent, parsed, force=True)
+    return get_mobile_kpi_day(trade_date, auth=auth, session=session)
 
 
 @router.get("/me/operations/mobile-kpis/weeks", response_model=MobileKpiWeeklyListRead)

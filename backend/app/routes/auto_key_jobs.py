@@ -508,6 +508,9 @@ def create_auto_key_job(
         import json
         data["additional_services_json"] = json.dumps(additional_services)
 
+    source = (data.get("commission_lead_source") or "").strip()
+    data["commission_lead_source"] = source or "other"
+
     if data.get("quoted_price") is not None:
         data["cost_cents"] = round(float(data["quoted_price"]) * 100)
 
@@ -622,6 +625,7 @@ def create_auto_key_quick_intake(
         programming_status="pending",
         key_quantity=1,
         customer_intake_token=uuid4().hex,
+        commission_lead_source="other",
     )
     session.add(job)
     session.flush()
