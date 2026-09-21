@@ -17,7 +17,7 @@ from sqlmodel import Session, col, func, select
 
 from ..config import settings
 from ..database import get_session, unscoped_session
-from ..startup_seed import DEMO_AUTO_KEY_ADDRESSES, apply_demo_auto_key_dispatch_calendar, ensure_demo_b2b_accounts
+from ..startup_seed import DEMO_AUTO_KEY_ADDRESSES, apply_demo_auto_key_dispatch_calendar, ensure_demo_b2b_accounts, ensure_demo_financials, ensure_demo_shoe_items
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -694,35 +694,16 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
 
     session.flush()
 
-    # Seed up to 3 paid invoices linked to demo watch repair jobs (for guided tour step 10+)
-    existing_invoice_count = int(
-        session.exec(select(func.count()).select_from(Invoice).where(Invoice.tenant_id == tenant.id)).one()
-    )
-    created_invoices = 0
-    if existing_invoice_count < 3:
-        repair_jobs_for_invoices = session.exec(
-            select(RepairJob).where(RepairJob.tenant_id == tenant.id).order_by(RepairJob.job_number).limit(3)
-        ).all()
-        to_create = 3 - existing_invoice_count
-        for i in range(to_create):
-            if i >= len(repair_jobs_for_invoices):
-                break
-            job = repair_jobs_for_invoices[i]
-            total_cents = job.cost_cents or job.pre_quote_cents or 9999
-            inv = Invoice(
-                tenant_id=tenant.id,
-                repair_job_id=job.id,
-                quote_id=None,
-                invoice_number=f"INV-{existing_invoice_count + i + 1:05d}",
-                status="paid",
-                subtotal_cents=total_cents,
-                tax_cents=0,
-                total_cents=total_cents,
-                currency="AUD",
-                created_at=datetime.now(timezone.utc) - timedelta(days=randint(1, 60)),
-            )
-            session.add(inv)
-            created_invoices += 1
+    # Shoe jobs are created above, after the startup refresh has already run, so
+    # their catalogue items are filled in here or the board reads "0 services".
+    ensure_demo_shoe_items(session, tenant.id)
+
+    # Invoices, payments and quoted values. Builds a ledger with real payment
+    # rows and unpaid balances so revenue, margin and receivables all read like a
+    # working shop, and advances the invoice counter past the seeded numbers so
+    # raising an invoice during the demo does not collide with them.
+    financials = ensure_demo_financials(session, tenant, commit=False)
+    created_invoices = financials["invoices"]
 
     if any([created_customers, created_watches, created_repair_jobs, created_shoe_jobs, created_auto_key_jobs, created_customer_accounts, created_invoices]):
         session.add(
