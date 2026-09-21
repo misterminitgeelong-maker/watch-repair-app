@@ -105,13 +105,23 @@ export default function JobCard({
 }: JobCardProps) {
   const tech = techColor(techKey ?? techName ?? null)
   const overdue = daysInCurrentStatus !== undefined && daysInCurrentStatus >= 7
+  const [dragging, setDragging] = React.useState(false)
 
   return (
     <Link
       to={href}
       draggable={draggable}
-      onDragStart={onDragStart as unknown as React.DragEventHandler<HTMLAnchorElement>}
-      onDragEnd={onDragEnd as unknown as React.DragEventHandler<HTMLAnchorElement>}
+      onDragStart={e => {
+        onDragStart?.(e as unknown as React.DragEvent<HTMLDivElement>)
+        // Deferred a frame on purpose: the browser snapshots this element for
+        // the drag ghost during the dragstart handler, so dimming it here and
+        // now would dim the ghost the user is dragging too.
+        requestAnimationFrame(() => setDragging(true))
+      }}
+      onDragEnd={e => {
+        setDragging(false)
+        onDragEnd?.(e as unknown as React.DragEvent<HTMLDivElement>)
+      }}
       className="block"
       style={{
         backgroundColor: 'var(--ms-surface)',
@@ -122,10 +132,13 @@ export default function JobCard({
         marginBottom: 8,
         boxShadow: selected ? `0 0 0 2px ${accentColor}22, var(--ms-shadow)` : 'var(--ms-shadow)',
         borderColor: selected ? accentColor : overdue ? '#E8B4AA' : 'var(--ms-border)',
-        cursor: draggable ? 'grab' : 'pointer',
+        cursor: draggable ? (dragging ? 'grabbing' : 'grab') : 'pointer',
         textDecoration: 'none',
         color: 'inherit',
         display: 'block',
+        // Shows which card is in flight — without it the board looks unchanged
+        // until the drop lands, which reads as nothing having happened.
+        opacity: dragging ? 0.45 : 1,
       }}
     >
       <div className="flex items-start justify-between gap-2">

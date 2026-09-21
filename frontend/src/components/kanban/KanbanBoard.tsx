@@ -28,44 +28,57 @@ export default function KanbanBoard<J extends { id: string; status: string }>({
   const [canScrollLeft, setCanScrollLeft] = React.useState(false)
   const [canScrollRight, setCanScrollRight] = React.useState(false)
 
-  const measureScrollEdges = () => {
+  const measureScrollEdges = React.useCallback(() => {
     const el = scrollRef.current
     if (!el) return
     setCanScrollLeft(el.scrollLeft > 1)
     setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1)
-  }
+  }, [])
+
+  const measure = React.useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setScrollWidth(el.scrollWidth)
+    setOverflowing(el.scrollWidth > el.clientWidth + 1)
+    measureScrollEdges()
+  }, [measureScrollEdges])
 
   // Keep the floating scrollbar's spacer width in sync with the board's
   // scrollable width, and only show it while the board actually overflows.
+  // The observer is set up once: re-creating it whenever the jobs array got a
+  // new identity meant tearing down and re-attaching it (and forcing a layout
+  // read) on every parent render, including every render during a drag.
   React.useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-
-    const measure = () => {
-      setScrollWidth(el.scrollWidth)
-      setOverflowing(el.scrollWidth > el.clientWidth + 1)
-      measureScrollEdges()
-    }
-
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [jobs, columns])
+  }, [measure])
+
+  // A ResizeObserver on the container does not fire when the content's width
+  // changes underneath it, so re-measure when the columns or jobs change.
+  React.useEffect(() => {
+    measure()
+  }, [jobs, columns, measure])
 
   // Mirror scroll position between the real board and the floating scrollbar.
-  const syncFromBoard = () => {
-    if (scrollRef.current && floatRef.current) {
-      floatRef.current.scrollLeft = scrollRef.current.scrollLeft
-    }
-    measureScrollEdges()
-  }
-  const syncFromFloat = () => {
-    if (scrollRef.current && floatRef.current) {
-      scrollRef.current.scrollLeft = floatRef.current.scrollLeft
-    }
-    measureScrollEdges()
-  }
+  // Writing scrollLeft fires a scroll event on the target, which would call
+  // straight back into the other handler — the two elements pushed each other
+  // back and forth for every scroll, fighting trackpad momentum and the smooth
+  // scrolling the arrow buttons ask for. Skipping the write when the two are
+  // already in step breaks that loop after the first hop.
+  const mirrorScroll = React.useCallback(
+    (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
+      if (!from || !to) return
+      if (Math.abs(to.scrollLeft - from.scrollLeft) >= 1) to.scrollLeft = from.scrollLeft
+      measureScrollEdges()
+    },
+    [measureScrollEdges],
+  )
+  const syncFromBoard = () => mirrorScroll(scrollRef.current, floatRef.current)
+  const syncFromFloat = () => mirrorScroll(floatRef.current, scrollRef.current)
   const scrollByStep = (direction: 1 | -1) => {
     scrollRef.current?.scrollBy({ left: direction * SCROLL_STEP, behavior: 'smooth' })
   }
