@@ -27,7 +27,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { isMinitTenantSlug } from '@/lib/minitBranding'
 import { useTheme, type Theme } from '@/context/ThemeContext'
-import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
+import { isChecklistDismissed, isDemoModeEnabled, setChecklistDismissed } from '@/lib/onboarding'
 import { Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import TenantQolSettings from '@/components/TenantQolSettings'
 
@@ -43,55 +43,39 @@ type PlanBundle = {
   summary: string
 }
 
+const PLAN_LABELS: Record<string, { name: string; monthlyLabel: string }> = {
+  basic_watch: { name: 'Basic - Watch (grandfathered)', monthlyLabel: 'Legacy price' },
+  basic_shoe: { name: 'Basic - Shoe (grandfathered)', monthlyLabel: 'Legacy price' },
+  basic_auto_key: { name: 'Basic - Mobile Services (grandfathered)', monthlyLabel: 'Legacy price' },
+  basic_watch_shoe: { name: 'Basic - Watch + Shoe (grandfathered)', monthlyLabel: 'Legacy price' },
+  basic_watch_auto_key: { name: 'Basic - Watch + Mobile Services (grandfathered)', monthlyLabel: 'Legacy price' },
+  basic_shoe_auto_key: { name: 'Basic - Shoe + Mobile Services (grandfathered)', monthlyLabel: 'Legacy price' },
+}
+
+function publicPlanCode(code: PlanCode): PlanCode {
+  return PLAN_BUNDLES.some(b => b.code === code) ? code : 'basic_all_tabs'
+}
+
+function planDisplay(code: string): { name: string; monthlyLabel: string } {
+  const bundle = PLAN_BUNDLES.find(p => p.code === code)
+  if (bundle) return { name: bundle.name, monthlyLabel: bundle.monthlyLabel }
+  return PLAN_LABELS[code] ?? { name: code, monthlyLabel: 'Custom' }
+}
+
 const PLAN_BUNDLES: PlanBundle[] = [
   {
-    code: 'basic_watch',
-    name: 'Basic - Watch',
-    monthlyLabel: '$40/mo',
-    modules: ['Watch repairs', 'Reports', 'Customers', 'Invoices'],
-    summary: '1 service tab included',
-  },
-  {
-    code: 'basic_shoe',
-    name: 'Basic - Shoe',
-    monthlyLabel: '$40/mo',
-    modules: ['Shoe repairs', 'Reports', 'Customers', 'Invoices'],
-    summary: '1 service tab included',
-  },
-  {
-    code: 'basic_auto_key',
-    name: 'Basic - Mobile Services',
-    monthlyLabel: '$40/mo',
-    modules: ['Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
-    summary: '1 service tab included',
-  },
-  {
-    code: 'basic_watch_shoe',
-    name: 'Basic +1 Tab (Watch + Shoe)',
-    monthlyLabel: '$55/mo',
-    modules: ['Watch repairs', 'Shoe repairs', 'Reports', 'Customers', 'Invoices'],
-    summary: '2 service tabs',
-  },
-  {
-    code: 'basic_watch_auto_key',
-    name: 'Basic +1 Tab (Watch + Mobile Services)',
-    monthlyLabel: '$55/mo',
-    modules: ['Watch repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
-    summary: '2 service tabs',
-  },
-  {
-    code: 'basic_shoe_auto_key',
-    name: 'Basic +1 Tab (Shoe + Mobile Services)',
-    monthlyLabel: '$55/mo',
-    modules: ['Shoe repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices'],
-    summary: '2 service tabs',
+    code: 'basic_all_tabs',
+    name: 'Shop',
+    monthlyLabel: 'A$50/mo',
+    modules: ['Watch repairs', 'Shoe repairs', 'Mobile Services jobs', 'Reports', 'Customers', 'Invoices', 'Customer accounts'],
+    summary: 'One location, all three service tabs',
   },
   {
     code: 'pro',
     name: 'Pro',
-    monthlyLabel: '$80/mo',
-    modules: ['All service tabs', 'Reports', 'Customer accounts', 'Multi-site', 'Priority access'],
-    summary: 'Full app access',
+    monthlyLabel: 'A$90/mo',
+    modules: ['All service tabs', 'Reports', 'Customer accounts', 'Multi-site', 'Extra locations +A$25/mo'],
+    summary: 'Parent account · unlimited users and jobs',
   },
 ]
 
@@ -182,7 +166,7 @@ export default function AccountsPage() {
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
   const [drafts, setDrafts] = useState<Record<string, { role: UserRole; is_active: boolean }>>({})
-  const [selectedPlanCode, setSelectedPlanCode] = useState<PlanCode>(planCode)
+  const [selectedPlanCode, setSelectedPlanCode] = useState<PlanCode>(() => publicPlanCode(planCode))
   const [checklistHidden, setChecklistHidden] = useState(false)
   const [showAllPlans, setShowAllPlans] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -297,7 +281,7 @@ export default function AccountsPage() {
   )
 
   useEffect(() => {
-    setSelectedPlanCode(planCode)
+    setSelectedPlanCode(publicPlanCode(planCode))
   }, [planCode])
 
   useEffect(() => {
@@ -318,6 +302,8 @@ export default function AccountsPage() {
   }
 
   const stripeConfigured = Boolean(billing?.stripe_configured)
+  const demoModeEnabled = isDemoModeEnabled()
+  const showStripeCheckout = stripeConfigured && !demoModeEnabled
   const usage = billing?.usage
   const limits = billing?.limits
   const atOrNearLimit = limits && usage && (
@@ -364,7 +350,7 @@ export default function AccountsPage() {
         <Card className="mb-4 p-4 border-amber-200" style={{ borderWidth: 1, backgroundColor: '#FFFBEB' }}>
           <p className="text-sm font-medium" style={{ color: '#92400E' }}>Plan limit reached</p>
           <p className="text-xs mt-1" style={{ color: '#B45309' }}>Upgrade to Pro for unlimited users and jobs, or add more capacity on your current plan.</p>
-          {canManagePlan && stripeConfigured && (
+          {canManagePlan && showStripeCheckout && (
             <Button className="mt-3" onClick={() => stripePlanCheckoutMut.mutate('pro')} disabled={stripePlanCheckoutMut.isPending}>
               {stripePlanCheckoutMut.isPending ? 'Opening…' : 'Upgrade to Pro'}
             </Button>
@@ -381,10 +367,10 @@ export default function AccountsPage() {
         <div className="mt-3 rounded-xl border p-3 sm:flex sm:items-center sm:justify-between sm:gap-3" style={{ borderColor: 'var(--ms-border-strong)', backgroundColor: 'var(--ms-surface)' }}>
           <div>
             <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
-              Active plan: {PLAN_BUNDLES.find(p => p.code === planCode)?.name ?? planCode} ({PLAN_BUNDLES.find(p => p.code === planCode)?.monthlyLabel ?? 'Custom'})
+              Active plan: {planDisplay(planCode).name} ({planDisplay(planCode).monthlyLabel})
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
-              Basic: $40/month (1 tab) or $55/month (2 tabs). Pro: $80/month — all 3 service tabs, multi-site, customer accounts. Each extra shop location adds $25/month.
+              Shop: A$50/month for one location with all three tabs. Pro: A$90/month for multi-site. Each extra shop location adds A$25/month on the Pro account. Existing tab-ladder shops stay on their current Stripe price until they check out a new plan.
             </p>
           </div>
           <div className="mt-3 flex gap-2 sm:mt-0 sm:w-[360px]">
@@ -398,7 +384,7 @@ export default function AccountsPage() {
                 <option key={bundle.code} value={bundle.code}>{bundle.name}</option>
               ))}
             </Select>
-            {stripeConfigured ? (
+            {showStripeCheckout ? (
               <Button
                 onClick={() => stripePlanCheckoutMut.mutate(selectedPlanCode)}
                 disabled={!canManagePlan || selectedPlanCode === planCode || stripePlanCheckoutMut.isPending}
@@ -415,7 +401,7 @@ export default function AccountsPage() {
             )}
           </div>
         </div>
-        {stripeConfigured && (
+        {showStripeCheckout && (
           <p className="text-xs mt-2" style={{ color: 'var(--ms-text-muted)' }}>
             Stripe is active. Use Checkout to subscribe or change plan; access updates after Stripe confirms payment.
           </p>
@@ -453,10 +439,10 @@ export default function AccountsPage() {
       </Card>
       )}
 
-      <BillingCard />
+      {!demoModeEnabled && <BillingCard />}
 
-      <StripeConnectCard />
-      <XeroConnectCard />
+      {!demoModeEnabled && <StripeConnectCard />}
+      {!demoModeEnabled && <XeroConnectCard />}
 
       <div className="mb-4 flex items-center justify-between">
         <div className="relative w-full max-w-md">
@@ -686,6 +672,7 @@ function ShopIdentityCard() {
         These details and branding appear on emails and PDF invoices sent to customers.
       </p>
       <div className="space-y-3">
+        {!isDemoModeEnabled() && (
         <div>
           <Input
             label="Shop number"
@@ -698,6 +685,7 @@ function ShopIdentityCard() {
             rankings on the Reports page — and must be unique among the sites in your account.
           </p>
         </div>
+        )}
         <Input
           label="ABN"
           value={abn}
@@ -849,7 +837,8 @@ function DispatchBaseLocationCard() {
 function AppearanceCard() {
   const { theme, setTheme } = useTheme()
   const { tenantSlug } = useAuth()
-  if (isMinitTenantSlug(tenantSlug)) {
+  const demoModeEnabled = isDemoModeEnabled()
+  if (isMinitTenantSlug(tenantSlug) && !demoModeEnabled) {
     return (
       <Card className="mb-5 p-4 sm:p-5">
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
@@ -866,7 +855,7 @@ function AppearanceCard() {
     { key: 'ink',     label: 'Ink',            desc: 'The darker original: near-black sidebar.', swatches: ['#F7F7F4', '#FFFFFF', '#D2361B', '#0A0A0A'] },
     { key: 'neutral', label: 'Steel & Amber',  desc: 'Cooler greys with deeper amber.',      swatches: ['#F6F5F3', '#FFFFFF', '#A8650F', '#181614'] },
     { key: 'dark',    label: 'Night Workshop', desc: 'Low-light palette for late shifts.',   swatches: ['#121110', '#1C1A18', '#FF5636', '#0C0B0A'] },
-    { key: 'minit',   label: 'Mister Minit',   desc: 'Brand red sidebar, clean white UI.',   swatches: ['#F4F4F4', '#FFFFFF', '#E31837', '#C41230'] },
+    ...(!demoModeEnabled ? [{ key: 'minit' as Theme,   label: 'Mister Minit',   desc: 'Brand red sidebar, clean white UI.',   swatches: ['#F4F4F4', '#FFFFFF', '#E31837', '#C41230'] }] : []),
   ]
   return (
     <Card className="mb-5 p-4 sm:p-5">

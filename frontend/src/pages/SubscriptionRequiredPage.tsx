@@ -24,7 +24,7 @@ export default function SubscriptionRequiredPage() {
   const selectedPlan = useMemo(() => {
     const raw = searchParams.get('plan')
     if (raw && VALID_PLANS.includes(raw as PlanCode)) return raw as PlanCode
-    return planCode && VALID_PLANS.includes(planCode) ? planCode : 'basic_watch'
+    return planCode && VALID_PLANS.includes(planCode) ? planCode : 'basic_all_tabs'
   }, [searchParams, planCode])
 
   async function continueToCheckout() {

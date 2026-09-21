@@ -138,7 +138,7 @@ function formatPlanName(planCode: string) {
   if (planCode === 'basic_watch_shoe') return 'Basic +1 Tab (Watch + Shoe)'
   if (planCode === 'basic_watch_auto_key') return 'Basic +1 Tab (Watch + Mobile Services)'
   if (planCode === 'basic_shoe_auto_key') return 'Basic +1 Tab (Shoe + Mobile Services)'
-  if (planCode === 'basic_all_tabs') return 'Basic +2 Tabs (All Service Tabs)'
+  if (planCode === 'basic_all_tabs') return 'Shop'
   return planCode
 }
 
@@ -496,7 +496,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <Card className="mb-6 overflow-hidden">
+        <Card className="mb-6 overflow-hidden" data-tour="dashboard-kpis">
           <div className="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">
             <div className="p-6 sm:p-7" style={{ backgroundColor: 'var(--ms-sidebar)' }}>
               <p className="text-xs font-semibold uppercase tracking-[0.24em]" style={{ color: 'var(--ms-sidebar-text)' }}>

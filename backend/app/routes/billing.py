@@ -21,6 +21,7 @@ from ..models import (
     BillingLimitsResponse,
     BillingPlanLimits,
     BillingLimitsUsage,
+    NETWORK_ROLE_HQ,
     RepairJob,
     ShoeRepairJob,
     StripeWebhookEvent,
@@ -28,6 +29,7 @@ from ..models import (
     TenantEventLog,
     User,
 )
+from ..parent_network import sites_for_parent, sites_for_tenant
 
 router = APIRouter(prefix="/v1/billing", tags=["billing"])
 
@@ -47,18 +49,57 @@ def _get_stripe():
         raise HTTPException(status_code=503, detail="Stripe library not installed")
 
 
+SHOP_PLAN_CODE = "basic_all_tabs"
+_MINIT_PLAN_CODES = frozenset({"minit_hq", "booking_only"})
+_LEGACY_BASIC_PLAN_CODES = frozenset(
+    {
+        "basic_watch",
+        "basic_shoe",
+        "basic_auto_key",
+        "basic_watch_shoe",
+        "basic_watch_auto_key",
+        "basic_shoe_auto_key",
+        "basic_all_tabs",
+    }
+)
+
+
+def extra_location_quantity(site_count: int) -> int:
+    """First location is included in Pro; additional sites are +A$25 each."""
+    return max(0, int(site_count) - 1)
+
+
+def _checkout_target_plan_code(plan_code: str) -> str:
+    """New Checkout collapses the old tab ladder onto Shop (all tabs) or Pro."""
+    if plan_code == "pro":
+        return "pro"
+    if plan_code in _LEGACY_BASIC_PLAN_CODES:
+        return SHOP_PLAN_CODE
+    raise HTTPException(status_code=400, detail=f"Unsupported plan code '{plan_code}'")
+
+
 def _plan_code_from_price_id(price_id: str) -> Optional[str]:
+    """Map a Stripe Price to a plan. Extra-location add-on returns None (not a plan)."""
+    if not price_id:
+        return None
+    if settings.stripe_price_extra_location and price_id == settings.stripe_price_extra_location:
+        return None
     price_map: dict[str, str] = {}
+    if settings.stripe_price_shop:
+        price_map[settings.stripe_price_shop] = SHOP_PLAN_CODE
+    if settings.stripe_price_pro:
+        price_map[settings.stripe_price_pro] = "pro"
+    if settings.stripe_price_pro_legacy:
+        price_map[settings.stripe_price_pro_legacy] = "pro"
+    if settings.stripe_price_enterprise:
+        price_map[settings.stripe_price_enterprise] = "pro"
+    # Grandfathered tab-ladder prices — existing subscriptions only.
     if settings.stripe_price_watch:
         price_map[settings.stripe_price_watch] = "basic_watch"
     if settings.stripe_price_shoe:
         price_map[settings.stripe_price_shoe] = "basic_shoe"
     if settings.stripe_price_auto_key:
         price_map[settings.stripe_price_auto_key] = "basic_auto_key"
-    if settings.stripe_price_enterprise:
-        price_map[settings.stripe_price_enterprise] = "pro"
-    if settings.stripe_price_pro:
-        price_map[settings.stripe_price_pro] = "pro"
     return price_map.get(price_id)
 
 
@@ -75,28 +116,151 @@ def _tabs_count_for_plan(plan_code: str) -> int:
     return mapping.get(plan_code, 0)
 
 
-def _line_items_for_plan(plan_code: str) -> list[dict[str, int | str]]:
-    if plan_code == "pro":
-        pro_price = settings.stripe_price_pro or settings.stripe_price_enterprise
-        if not pro_price:
-            raise HTTPException(status_code=503, detail="Stripe Pro price is not configured")
-        return [{"price": pro_price, "quantity": 1}]
+def _pro_price_id_for_new_checkout() -> str:
+    pro_price = settings.stripe_price_pro or settings.stripe_price_enterprise
+    if not pro_price:
+        raise HTTPException(status_code=503, detail="Stripe Pro price is not configured")
+    return pro_price
 
-    tabs_count = _tabs_count_for_plan(plan_code)
+
+def _line_items_for_plan(plan_code: str, extra_location_qty: int = 0) -> list[dict[str, int | str]]:
+    target = _checkout_target_plan_code(plan_code)
+    if target == "pro":
+        items: list[dict[str, int | str]] = [{"price": _pro_price_id_for_new_checkout(), "quantity": 1}]
+        qty = max(0, extra_location_qty)
+        if qty > 0:
+            extra_price = settings.stripe_price_extra_location
+            if not extra_price:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Stripe extra-location price is not configured",
+                )
+            items.append({"price": extra_price, "quantity": qty})
+        return items
+
+    if settings.stripe_price_shop:
+        return [{"price": settings.stripe_price_shop, "quantity": 1}]
+
+    # Dev/fallback: old tab-ladder Prices until STRIPE_PRICE_SHOP is set.
+    tabs_count = _tabs_count_for_plan(target)
     if tabs_count <= 0:
         raise HTTPException(status_code=400, detail=f"Unsupported plan code '{plan_code}'")
-
     if not settings.stripe_price_basic_base:
-        raise HTTPException(status_code=503, detail="Stripe Basic base price is not configured")
-
-    items: list[dict[str, int | str]] = [{"price": settings.stripe_price_basic_base, "quantity": 1}]
+        raise HTTPException(status_code=503, detail="Stripe Shop price is not configured")
+    items = [{"price": settings.stripe_price_basic_base, "quantity": 1}]
     addon_count = max(0, tabs_count - 1)
     if addon_count > 0:
         if not settings.stripe_price_basic_addon_tab:
             raise HTTPException(status_code=503, detail="Stripe Basic add-on tab price is not configured")
         items.append({"price": settings.stripe_price_basic_addon_tab, "quantity": addon_count})
-
     return items
+
+
+def _parent_id_for_tenant(session: Session, tenant_id: UUID) -> Optional[UUID]:
+    sites = sites_for_tenant(session, tenant_id)
+    if not sites:
+        return None
+    hq = next((site for site in sites if site.network_role == NETWORK_ROLE_HQ), None)
+    return (hq or sites[0]).parent_account_id
+
+
+def extra_location_quantity_for_parent(session: Session, parent_id: UUID) -> int:
+    return extra_location_quantity(len(sites_for_parent(session, parent_id)))
+
+
+def extra_location_quantity_for_tenant(session: Session, tenant_id: UUID) -> int:
+    parent_id = _parent_id_for_tenant(session, tenant_id)
+    if parent_id is None:
+        return 0
+    return extra_location_quantity_for_parent(session, parent_id)
+
+
+def _billing_tenant_for_parent(session: Session, parent_id: UUID) -> Optional[Tenant]:
+    hq_sites = sites_for_parent(session, parent_id, network_role=NETWORK_ROLE_HQ)
+    if hq_sites:
+        tenant = session.get(Tenant, hq_sites[0].tenant_id)
+        if tenant:
+            return tenant
+    for site in sites_for_parent(session, parent_id):
+        tenant = session.get(Tenant, site.tenant_id)
+        if tenant and (tenant.stripe_subscription_id or "").strip():
+            return tenant
+    return None
+
+
+def sync_extra_location_subscription(session: Session, parent_id: UUID) -> None:
+    """Set the Pro subscription's extra-location item quantity to site_count - 1.
+
+    No-op when Stripe is off, the parent is Minit, or there is no Pro subscription.
+    Fails the request if Stripe is on, extra sites exist, and the extra Price is missing.
+    """
+    billing_tenant = _billing_tenant_for_parent(session, parent_id)
+    if billing_tenant is None:
+        return
+    plan = normalize_plan_code(billing_tenant.plan_code)
+    if plan in _MINIT_PLAN_CODES:
+        return
+    qty = extra_location_quantity_for_parent(session, parent_id)
+    if qty <= 0 and not (billing_tenant.stripe_subscription_id or "").strip():
+        return
+    if not _stripe_configured():
+        return
+    if plan != "pro":
+        return
+    extra_price = settings.stripe_price_extra_location
+    if qty > 0 and not extra_price:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe extra-location price is not configured; cannot bill additional sites",
+        )
+    sub_id = (billing_tenant.stripe_subscription_id or "").strip()
+    if not sub_id:
+        if qty > 0:
+            raise HTTPException(
+                status_code=409,
+                detail="Subscribe to Pro before adding extra shop locations",
+            )
+        return
+    if not extra_price:
+        return
+
+    stripe = _get_stripe()
+    try:
+        sub = stripe.Subscription.retrieve(sub_id, expand=["items.data.price"])
+        items = (sub.get("items") or {}).get("data") or []
+        extra_item = None
+        for item in items:
+            price = item.get("price") or {}
+            price_id = price.get("id") if isinstance(price, dict) else getattr(price, "id", None)
+            if price_id == extra_price:
+                extra_item = item
+                break
+        if qty <= 0:
+            if extra_item:
+                stripe.SubscriptionItem.delete(extra_item["id"])
+            return
+        current_qty = int(extra_item.get("quantity") or 0) if extra_item else 0
+        if extra_item:
+            if current_qty != qty:
+                stripe.SubscriptionItem.modify(
+                    extra_item["id"],
+                    quantity=qty,
+                    proration_behavior="create_prorations",
+                )
+        else:
+            stripe.SubscriptionItem.create(
+                subscription=sub_id,
+                price=extra_price,
+                quantity=qty,
+                proration_behavior="create_prorations",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "extra_location_sync_failed parent=%s tenant=%s", parent_id, billing_tenant.id
+        )
+        raise HTTPException(status_code=502, detail="Could not update extra-location billing on Stripe")
 
 
 def _extract_plan_code_from_subscription(obj: dict) -> Optional[str]:
@@ -279,6 +443,8 @@ def create_checkout_session(
     plan_code = _plan_code_from_price_id(payload.price_id)
     if not plan_code:
         raise HTTPException(status_code=400, detail="Unknown price ID — check Stripe price configuration")
+    if plan_code in _LEGACY_BASIC_PLAN_CODES or plan_code == "pro":
+        plan_code = _checkout_target_plan_code(plan_code)
 
     tenant = session.get(Tenant, auth.tenant_id)
     user = session.get(User, auth.user_id)
@@ -297,6 +463,8 @@ def create_checkout_session(
         session.commit()
         session.refresh(tenant)
 
+    extra_qty = extra_location_quantity_for_tenant(session, tenant.id) if plan_code == "pro" else 0
+    line_items = _line_items_for_plan(plan_code, extra_location_qty=extra_qty)
     return_url = f"{settings.public_base_url}/accounts"
     subscription_data: dict = {
         "metadata": {
@@ -310,7 +478,7 @@ def create_checkout_session(
     checkout_session = stripe.checkout.Session.create(
         customer=tenant.stripe_customer_id,
         mode="subscription",
-        line_items=[{"price": payload.price_id, "quantity": 1}],
+        line_items=line_items,
         success_url=f"{return_url}?billing=success",
         cancel_url=f"{return_url}?billing=cancelled",
         subscription_data=subscription_data,
@@ -325,9 +493,10 @@ def create_checkout_session_for_plan(
     session: Session = Depends(unscoped_session),
 ):
     stripe = _get_stripe()
-    plan_code = normalize_plan_code(payload.plan_code, default_if_empty="")
-    if not plan_code:
+    requested_plan = normalize_plan_code(payload.plan_code, default_if_empty="")
+    if not requested_plan:
         raise HTTPException(status_code=400, detail="Invalid plan code")
+    plan_code = _checkout_target_plan_code(requested_plan)
 
     tenant = session.get(Tenant, auth.tenant_id)
     user = session.get(User, auth.user_id)
@@ -345,7 +514,8 @@ def create_checkout_session_for_plan(
         session.commit()
         session.refresh(tenant)
 
-    line_items = _line_items_for_plan(plan_code)
+    extra_qty = extra_location_quantity_for_tenant(session, tenant.id) if plan_code == "pro" else 0
+    line_items = _line_items_for_plan(plan_code, extra_location_qty=extra_qty)
     return_url = f"{settings.public_base_url}/accounts"
     subscription_data_plan: dict = {
         "metadata": {

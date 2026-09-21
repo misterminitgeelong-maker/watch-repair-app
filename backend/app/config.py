@@ -119,10 +119,15 @@ class Settings(BaseSettings):
     # Stripe — leave blank to disable Stripe billing integration
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
+    # Locked 2026-09 ladder (new signups). Create NEW Stripe Prices; do not reuse old IDs.
+    stripe_price_shop: str = ""  # A$50/mo one location, all tabs
+    stripe_price_extra_location: str = ""  # A$25/mo additional site on a Pro subscription
+    # New Pro A$90/mo. After rotating, put the old A$50 Pro ID in stripe_price_pro_legacy.
+    stripe_price_pro: str = ""
+    stripe_price_pro_legacy: str = ""
+    # Legacy tab-ladder IDs — webhook mapping for grandfathered shops only. Do not use for new Checkout.
     stripe_price_basic_base: str = ""
     stripe_price_basic_addon_tab: str = ""
-    stripe_price_pro: str = ""
-    # Legacy one-price-per-plan IDs (kept for backward compatibility)
     stripe_price_watch: str = ""
     stripe_price_shoe: str = ""
     stripe_price_auto_key: str = ""

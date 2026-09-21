@@ -3,18 +3,11 @@ import { Link, Navigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { signup } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { isDemoModeEnabled } from '@/lib/onboarding'
 import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
 import { MarketingField } from '@/components/MarketingField'
 
-type PlanId =
-  | 'basic_watch'
-  | 'basic_shoe'
-  | 'basic_auto_key'
-  | 'basic_watch_shoe'
-  | 'basic_watch_auto_key'
-  | 'basic_shoe_auto_key'
-  | 'basic_all_tabs'
-  | 'pro'
+type PlanId = 'basic_all_tabs' | 'pro'
 
 type UseCaseId = 'watch' | 'shoe' | 'auto_key' | 'multi_site'
 
@@ -26,36 +19,12 @@ const USE_CASE_OPTIONS: Array<{ id: UseCaseId; label: string; hint: string }> = 
 ]
 
 const PLAN_OPTIONS: Array<{ id: PlanId; name: string; price: string; description: string }> = [
-  { id: 'basic_watch', name: 'Basic - Watch', price: 'A$25/month', description: 'One tab: watch repairs' },
-  { id: 'basic_shoe', name: 'Basic - Shoe', price: 'A$25/month', description: 'One tab: shoe repairs' },
-  { id: 'basic_auto_key', name: 'Basic - Mobile Services', price: 'A$25/month', description: 'One tab: mobile services jobs' },
-  { id: 'basic_watch_shoe', name: 'Basic - Watch + Shoe', price: 'A$35/month', description: 'Two service tabs' },
-  { id: 'basic_watch_auto_key', name: 'Basic - Watch + Mobile Services', price: 'A$35/month', description: 'Two service tabs' },
-  { id: 'basic_shoe_auto_key', name: 'Basic - Shoe + Mobile Services', price: 'A$35/month', description: 'Two service tabs' },
-  { id: 'basic_all_tabs', name: 'Basic - All Tabs', price: 'A$45/month', description: 'All three service tabs' },
-  { id: 'pro', name: 'Pro - Full Access', price: 'A$50/month', description: 'All tabs + multi-site + full features' },
+  { id: 'basic_all_tabs', name: 'Shop', price: 'A$50/month', description: 'One location: watch, shoe and mobile services' },
+  { id: 'pro', name: 'Pro', price: 'A$90/month', description: 'Multi-site + extra locations at A$25 each' },
 ]
 
 function recommendPlan(uses: UseCaseId[]): PlanId {
   if (uses.includes('multi_site')) return 'pro'
-
-  const selectedServices = ['watch', 'shoe', 'auto_key'].filter((service) => uses.includes(service as UseCaseId))
-
-  if (selectedServices.length === 0) return 'basic_watch'
-  if (selectedServices.length === 1) {
-    if (selectedServices[0] === 'watch') return 'basic_watch'
-    if (selectedServices[0] === 'shoe') return 'basic_shoe'
-    return 'basic_auto_key'
-  }
-
-  if (selectedServices.length === 2) {
-    const hasWatch = selectedServices.includes('watch')
-    const hasShoe = selectedServices.includes('shoe')
-    if (hasWatch && hasShoe) return 'basic_watch_shoe'
-    if (hasWatch) return 'basic_watch_auto_key'
-    return 'basic_shoe_auto_key'
-  }
-
   return 'basic_all_tabs'
 }
 
@@ -68,14 +37,14 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [selectedUses, setSelectedUses] = useState<UseCaseId[]>(['watch'])
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>('basic_watch')
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('basic_all_tabs')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [redirectingToPayment, setRedirectingToPayment] = useState(false)
 
   const recommendedPlan = useMemo(() => recommendPlan(selectedUses), [selectedUses])
 
-  if (token && !redirectingToPayment) return <Navigate to="/dashboard" replace />
+  if (token && !redirectingToPayment && !isDemoModeEnabled()) return <Navigate to="/dashboard" replace />
 
   function toggleUseCase(id: UseCaseId) {
     setSelectedUses((prev) => {
@@ -155,6 +124,15 @@ export default function SignupPage() {
                 Create your shop
               </p>
             </div>
+
+            {token && isDemoModeEnabled() && (
+              <div className="mkt-slide-up mb-5" style={{ background: MKT.paper, border: `1px solid ${MKT.ink}`, padding: '16px 20px' }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: MKT.ink }}>Ready to start your own shop?</p>
+                <p style={{ margin: '8px 0 0', fontSize: 13, color: MKT.textBody }}>
+                  You are still in the public demo. This form creates a real workspace — not another copy of the demo shop.
+                </p>
+              </div>
+            )}
 
             <div className="mkt-slide-up-delay" style={{ background: MKT.paper, border: `1px solid ${MKT.ink}`, padding: '32px 28px' }}>
               <p style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MKT.textMuted, marginBottom: 6 }}>
@@ -292,6 +270,9 @@ export default function SignupPage() {
                 >
                   {redirectingToPayment ? 'Setting up payment…' : loading ? 'Creating account…' : 'Create account & continue to payment'}
                 </button>
+                <p style={{ margin: 0, fontSize: 11, color: MKT.textMuted, textAlign: 'center' }}>
+                  14-day trial. Stripe Checkout needs a card; you are not charged until the trial ends.
+                </p>
               </form>
 
               <p style={{ fontSize: 13, textAlign: 'center', marginTop: 20, color: MKT.textBody }}>

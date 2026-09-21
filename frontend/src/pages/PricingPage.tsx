@@ -8,8 +8,8 @@ const LANDING_CSS = `
 .lp-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(90, 55, 16, 0.08), 0 18px 34px rgba(90, 55, 16, 0.10); }
 `
 
-const SEO_TITLE = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$25/month.'
-const SEO_DESCRIPTION = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$25/month.'
+const SEO_TITLE = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$50/month.'
+const SEO_DESCRIPTION = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$50/month. 14-day trial; card required to start.'
 
 export default function PricingPage() {
   useEffect(() => {
@@ -29,23 +29,23 @@ export default function PricingPage() {
 
   const plans = [
     {
-      title: 'Basic',
-      price: 'A$25/mo',
-      note: 'Includes one service tab + reports',
+      title: 'Shop',
+      price: 'A$50/mo',
+      note: 'One location, all service tabs',
       bullets: [
-        'Choose one tab: Watch Repairs, Shoe Repairs, or Mobile Services',
-        'Add each extra service tab for $10/month',
-        'Customers and invoicing included',
+        'Watch, shoe, and mobile services included',
+        'Customers, invoicing, reports, and customer accounts',
+        '14-day trial — card required, charged after the trial',
       ],
     },
     {
       title: 'Pro',
-      price: 'A$50/mo',
-      note: 'Full app access',
+      price: 'A$90/mo',
+      note: 'Multi-site parent account',
       bullets: [
-        'All service tabs unlocked',
-        'Reports, customer accounts, and multi-site features',
-        'Best for growing workshops and teams',
+        'Everything in Shop, plus extra locations',
+        'Unlimited users and jobs',
+        'Each additional site is A$25/month on this account',
       ],
     },
   ]
@@ -108,7 +108,7 @@ export default function PricingPage() {
               Clear pricing with no surprises
             </h1>
             <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--ms-text-mid)' }}>
-              Start with Basic at A$25/month, add service tabs at A$10/month each, or move to Pro at A$50/month for full access.
+              Start with Shop at A$50/month for one location (all trades). Pro is A$90/month for multi-site; each extra location is A$25/month on that Pro account.
             </p>
           </div>
 
@@ -148,10 +148,9 @@ export default function PricingPage() {
               Full monthly breakdown (AUD)
             </p>
             <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2" style={{ color: 'var(--ms-text-mid)' }}>
-              <p>Basic 1 tab: A$25/month</p>
-              <p>Basic 2 tabs: A$35/month</p>
-              <p>Basic 3 tabs: A$45/month</p>
-              <p>Pro all features: A$50/month</p>
+              <p>Shop one location: A$50/month</p>
+              <p>Pro multi-site: A$90/month</p>
+              <p>Extra shop location: A$25/month on Pro</p>
             </div>
           </div>
 

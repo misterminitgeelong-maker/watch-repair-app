@@ -36,7 +36,7 @@ export default function ParentAccountPage() {
   const [newTenantSlug, setNewTenantSlug] = useState('')
   const [newShopNumber, setNewShopNumber] = useState('')
   const [linkShopNumber, setLinkShopNumber] = useState('')
-  const [newTenantPlanCode, setNewTenantPlanCode] = useState<PlanCode>('basic_watch')
+  const [newTenantPlanCode, setNewTenantPlanCode] = useState<PlanCode>('basic_all_tabs')
 
   const [error, setError] = useState('')
   const [switchingTenantId, setSwitchingTenantId] = useState('')
@@ -117,7 +117,7 @@ export default function ParentAccountPage() {
       setNewTenantName('')
       setNewTenantSlug('')
       setNewShopNumber('')
-      setNewTenantPlanCode('basic_watch')
+      setNewTenantPlanCode('basic_all_tabs')
       setShowAddModal(false)
       void refreshSession()
       invalidateParentQueries()
@@ -230,7 +230,7 @@ export default function ParentAccountPage() {
     setNewTenantSlug('')
     setNewShopNumber('')
     setLinkShopNumber('')
-    setNewTenantPlanCode('basic_watch')
+    setNewTenantPlanCode('basic_all_tabs')
   }
 
   return (
@@ -346,16 +346,13 @@ export default function ParentAccountPage() {
               <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>
                 The login slug is used to sign in. Use lowercase letters, numbers and hyphens only.
               </p>
+              <p className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>
+                Additional locations are billed on the Pro account at A$25/month each. The plan below is this site&apos;s feature set, not a separate SaaS subscription.
+              </p>
               <Select label='Plan' value={newTenantPlanCode} onChange={e => setNewTenantPlanCode(e.target.value as PlanCode)}>
-                <option value='basic_watch'>Basic - Watch ($25/mo)</option>
-                <option value='basic_shoe'>Basic - Shoe ($25/mo)</option>
-                <option value='basic_auto_key'>Basic - Mobile Services ($25/mo)</option>
-                <option value='basic_watch_shoe'>Watch + Shoe ($35/mo)</option>
-                <option value='basic_watch_auto_key'>Watch + Mobile Services ($35/mo)</option>
-                <option value='basic_shoe_auto_key'>Shoe + Mobile Services ($35/mo)</option>
-                <option value='basic_all_tabs'>All service tabs ($45/mo)</option>
-                <option value='booking_only'>Shop booking only ($15/mo)</option>
-                <option value='pro'>Pro — full access ($50/mo)</option>
+                <option value='basic_all_tabs'>Shop — all service tabs</option>
+                <option value='pro'>Pro — multi-site features</option>
+                <option value='booking_only'>Shop booking only</option>
               </Select>
               {error && <p className='text-sm' style={{ color: 'var(--ms-error)' }}>{error}</p>}
               <div className='flex justify-end gap-2 pt-1'>

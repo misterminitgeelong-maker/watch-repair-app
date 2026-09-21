@@ -117,6 +117,12 @@ _PLAN_KIND_TO_ROLE: dict[str, str | None] = {
 }
 
 
+def _sync_extra_location_billing(session: Session, parent_id: UUID) -> None:
+    from .billing import sync_extra_location_subscription
+
+    sync_extra_location_subscription(session, parent_id)
+
+
 def _owner_users_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUID, User]:
     """First active owner login per tenant — the person a site "belongs" to."""
     if not tenant_ids:
@@ -945,6 +951,8 @@ def link_tenant_to_parent_account(
             event_type="link_tenant",
             event_summary=f"Linked site '{tenant.name}' ({tenant.slug})",
         )
+        session.flush()
+        _sync_extra_location_billing(session, parent.id)
         session.commit()
 
     session.refresh(parent)
@@ -1203,7 +1211,8 @@ def create_tenant_from_parent_account(
         event_type="create_tenant",
         event_summary=f"Created and linked site '{tenant.name}' ({tenant.slug})",
     )
-
+    session.flush()
+    _sync_extra_location_billing(session, parent.id)
     session.commit()
     session.refresh(parent)
     return _to_summary(session, parent)
@@ -1747,6 +1756,8 @@ def unlink_tenant_from_parent_account(
         event_type="unlink_tenant",
         event_summary=f"Unlinked site '{tenant_name}' ({tenant_slug})",
     )
+    session.flush()
+    _sync_extra_location_billing(session, parent.id)
     session.commit()
     session.refresh(parent)
     return _to_summary(session, parent)

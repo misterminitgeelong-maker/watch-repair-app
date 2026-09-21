@@ -27,9 +27,13 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `QUOTE_REMINDER_DAYS` | `7` | No | Days after a quote is sent before the reminder goes out. The reminder also refreshes the approval link for another `QUOTE_APPROVAL_TOKEN_TTL_HOURS`. One reminder per quote. |
 | `QUOTE_REMINDER_CHECK_INTERVAL_MINUTES` | `60` | No | How often the in-app scheduler checks for due reminders. `POST /v1/quotes/send-reminders` triggers a run manually. |
 | `QUOTE_APPROVAL_TOKEN_TTL_HOURS` | `168` | No | Lifetime of the public watch-quote approval link from send time. |
-| `STRIPE_SECRET_KEY` | (empty) | No | Stripe API key for billing. |
+| `STRIPE_SECRET_KEY` | (empty) | No | Stripe API key for billing. Prefer a restricted key (`rk_`) in production. |
 | `STRIPE_WEBHOOK_SECRET` | (empty) | No | Stripe webhook signing secret. |
-| `STRIPE_PRICE_*` | (empty) | No | Various Stripe price IDs for plans. |
+| `STRIPE_PRICE_SHOP` | (empty) | For new Shop checkouts | New A$50/mo one-location Price ID. Create a **new** Price; do not reuse the old Basic IDs. |
+| `STRIPE_PRICE_PRO` | (empty) | For new Pro checkouts | New A$90/mo multi-site Price ID. After rotating, put the previous A$50 Pro ID in `STRIPE_PRICE_PRO_LEGACY`. |
+| `STRIPE_PRICE_PRO_LEGACY` | (empty) | Grandfather | Old Pro Price ID so webhooks still map existing A$50 Pro shops. |
+| `STRIPE_PRICE_EXTRA_LOCATION` | (empty) | For extra sites | A$25/mo add-on Price billed on a Pro subscription (`quantity = sites − 1`). |
+| `STRIPE_PRICE_BASIC_BASE` / `STRIPE_PRICE_BASIC_ADDON_TAB` / `STRIPE_PRICE_WATCH` / `SHOE` / `AUTO_KEY` / `ENTERPRISE` | (empty) | Grandfather | Legacy tab-ladder Price IDs. Keep set so existing subscriptions still map. Do not use for new Checkout once Shop/Pro Prices exist. |
 | `PLATFORM_ADMIN_*` | (empty) | No | Optional platform admin account (email, password, etc.). |
 | `TESTING_TENANT_SLUG` / `TESTING_OWNER_EMAIL` / `TESTING_OWNER_PASSWORD` | (empty) | No | Optional testing tenant for QA. When set, creates a separate tenant at startup; testing login has no demo prompts. |
 | `STARTUP_SEED_*` | (varies) | No | One-time CSV seed and demo tenant settings. |

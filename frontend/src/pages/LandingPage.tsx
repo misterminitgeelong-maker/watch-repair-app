@@ -191,21 +191,19 @@ const PHONE_JOBS = [
 ]
 
 const PRICE_TABLE = [
-  { plan: 'Basic · one service tab', detail: 'Watch, shoe or mobile services', price: 'A$25/mo' },
-  { plan: 'Basic · two tabs', detail: 'Any two service lines', price: 'A$35/mo' },
-  { plan: 'Basic · three tabs', detail: 'All service lines, Basic features', price: 'A$45/mo' },
-  { plan: 'Pro · full access', detail: 'All tabs, customer accounts, multi-site', price: 'A$50/mo' },
-  { plan: 'Extra shop location', detail: 'Per additional site', price: '+A$25/mo' },
+  { plan: 'Shop · one location', detail: 'Watch, shoe and mobile services — all tabs', price: 'A$50/mo' },
+  { plan: 'Pro · multi-site', detail: 'Parent account, extra locations, unlimited users & jobs', price: 'A$90/mo' },
+  { plan: 'Extra shop location', detail: 'Billed on the Pro account, per additional site', price: '+A$25/mo' },
 ]
 
 const PRICING_NOTES = [
-  'Customers, invoicing and reports on every plan',
-  '14-day trial, no credit card, cancel any time',
+  'Customers, invoicing, reports and customer accounts on Shop',
+  '14-day trial. Card required to start; you are not charged until the trial ends.',
   'Same app on desktop, tablet and phone',
 ]
 
 const FAQS = [
-  { q: 'Do I have to pay for trades I don’t do?', a: 'No. Basic starts at A$25/month with one service tab. Add a second or third tab for A$10/month each, or move to Pro at A$50/month once you want the lot.' },
+  { q: 'Do I have to pay for trades I don’t do?', a: 'No extra charge. Shop is A$50/month for one location with watch, shoe and mobile services all included. Pro is A$90/month when you need more than one site.' },
   { q: 'Can I use it on the shop tablet and my phone?', a: 'Yes. Mainspring installs as an app on iOS and Android as well as running in the browser — same account, same data everywhere.' },
   { q: 'What happens to my open jobs when I switch?', a: 'Most shops enter open jobs as they come back in, which takes a week or two. Keep your diary alongside until you are comfortable.' },
   { q: 'Do customers get texted automatically?', a: 'Quote and pickup messages are sent from the ticket, so the customer hears from you at each status change without anyone remembering to call.' },
@@ -411,21 +409,21 @@ function Hero() {
               >
                 Start your shop
               </Link>
-              <a
-                href="#product"
+              <Link
+                to="/login?demo=1"
                 className="mkt-btn-outline-ink inline-flex items-center whitespace-nowrap"
                 style={{ height: 54, padding: '0 26px', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}
               >
                 Demo shop
-              </a>
+              </Link>
             </div>
             <div style={{ borderLeft: `1px solid #CFC6B4`, paddingLeft: 22 }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5E574D' }}>From</p>
               <p style={{ margin: '8px 0 0', fontSize: 34, fontWeight: 800, letterSpacing: '-0.045em', color: MKT.ink, lineHeight: 1 }}>
-                A$25<span style={{ fontSize: 15, fontWeight: 600, color: '#5E574D' }}>/mo</span>
+                A$50<span style={{ fontSize: 15, fontWeight: 600, color: '#5E574D' }}>/mo</span>
               </p>
               <p style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.5, color: MKT.textBody }}>
-                14-day trial · no card required
+                14-day trial · card required, charged after trial
               </p>
             </div>
           </div>
@@ -875,10 +873,10 @@ function Pricing() {
           <div style={{ padding: '44px 20px 46px' }}>
             <EyebrowVermilion>Rate card</EyebrowVermilion>
             <h2 style={{ margin: '14px 0 0', fontSize: 'clamp(32px, 5vw, 52px)', lineHeight: 0.98, fontWeight: 800, letterSpacing: '-0.055em', color: MKT.ink }}>
-              Pay for the tabs you use.
+              One shop. One price.
             </h2>
             <p style={{ margin: '16px 0 0', maxWidth: 380, fontSize: 15, lineHeight: 1.65, color: MKT.textBody }}>
-              One price per service line. No seat maths, no annual lock-in, no sales call to find out what it costs.
+              A$50 a month for one location with every trade tab. Pro is A$90 when you run more than one site. No seat maths, no annual lock-in.
             </p>
             <div style={{ marginTop: 20 }}>
               {PRICING_NOTES.map((n) => (
