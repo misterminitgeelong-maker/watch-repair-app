@@ -31,6 +31,7 @@ EXPECTED_SWEEPS = {
     "regional_report_email",
     "regional_manager_report",
     "mobile_weekly_report",
+    "mobile_kpi_close",
     "notification_redelivery",
     "retention",
 }

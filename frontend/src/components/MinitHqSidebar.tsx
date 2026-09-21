@@ -24,7 +24,7 @@ export const MINIT_HQ_NAV = [
   { to: '/minit/inbox', label: 'Inbox', icon: Inbox, title: 'Website leads, email enquiries, and HQ alerts' },
   { to: '/minit/shops', label: 'Shops', icon: Building2, title: 'Browse the retail network by region' },
   { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, title: 'Website ingest, dispatch, and territory map' },
-  { to: '/minit/mobile-services', label: 'Mobile jobs', icon: KeyRound, title: 'Network mobile job report' },
+  { to: '/minit/mobile-services', label: 'Mobile reports', icon: KeyRound, title: 'Live mobile-services KPIs and compiled daily/weekly reports' },
   { to: '/minit/reports', label: 'Reports', icon: BarChart3, title: 'Shop analytics and troubleshooting' },
 ] as const
 

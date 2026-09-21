@@ -100,6 +100,11 @@ def all_sweeps() -> list[Sweep]:
 
         return send_due_mobile_weekly_reports
 
+    def _mobile_kpi_close() -> SweepFn:
+        from .services.mobile_kpi_close import run_mobile_kpi_close
+
+        return run_mobile_kpi_close
+
     def _notification_redelivery() -> SweepFn:
         from .services.notification_redelivery import redeliver_failed_notifications
 
@@ -159,6 +164,13 @@ def all_sweeps() -> list[Sweep]:
             interval_minutes=settings.mobile_weekly_report_check_interval_minutes,
             load=_mobile_weekly_report,
             notable_keys=("sent",),
+        ),
+        Sweep(
+            name="mobile_kpi_close",
+            enabled=settings.mobile_kpi_close_enabled,
+            interval_minutes=settings.mobile_kpi_close_check_interval_minutes,
+            load=_mobile_kpi_close,
+            notable_keys=("daily_compiled", "weekly_compiled", "sent"),
         ),
         Sweep(
             name="notification_redelivery",

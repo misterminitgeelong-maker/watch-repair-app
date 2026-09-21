@@ -648,6 +648,114 @@ class ParentMobileWeeklyReportSettingsRead(SQLModel):
 class ParentMobileWeeklyReportSettingsUpdateRequest(SQLModel):
     opt_in: bool
 
+
+class MobileKpiOperatorRowRead(SQLModel):
+    operator_tenant_id: UUID
+    operator_name: str
+    operator_shop_number: Optional[str] = None
+    customers_count: int = 0
+    jobs_created: int = 0
+    jobs_completed: int = 0
+    sales_cents: int = 0
+    prior_sales_cents: int = 0
+    prior_jobs_created: int = 0
+    sales_pct_change: Optional[float] = None
+    avg_sale_cents: Optional[float] = None
+    jobs_per_customer: Optional[float] = None
+    category_jobs: dict[str, int] = Field(default_factory=dict)
+    category_sales_cents: dict[str, int] = Field(default_factory=dict)
+    lead_jobs: dict[str, int] = Field(default_factory=dict)
+    lead_sales_cents: dict[str, int] = Field(default_factory=dict)
+    active_jobs: int = 0
+    outstanding_cents: int = 0
+    enquiries_not_actioned: int = 0
+
+
+class MobileKpiPeriodRead(SQLModel):
+    start: datetime
+    end: datetime
+    start_ymd: str
+    end_ymd: str
+    timezone: str
+    generated_at: datetime
+    network: MobileKpiOperatorRowRead
+    operators: list[MobileKpiOperatorRowRead] = Field(default_factory=list)
+
+
+class MobileKpiLiveRead(SQLModel):
+    timezone: str
+    generated_at: datetime
+    trade_date: str
+    day: MobileKpiPeriodRead
+    week: MobileKpiPeriodRead
+
+
+class MobileKpiDailyListItem(SQLModel):
+    trade_date: date
+    compiled_at: datetime
+    operator_count: int
+    sales_cents: int
+    jobs_created: int
+    customers_count: int
+
+
+class MobileKpiDailyListRead(SQLModel):
+    timezone: str
+    days: list[MobileKpiDailyListItem] = Field(default_factory=list)
+
+
+class MobileKpiDailyDetailRead(SQLModel):
+    trade_date: date
+    compiled_at: datetime
+    timezone: str
+    report: MobileKpiPeriodRead
+
+
+class MobileKpiWeeklyListItem(SQLModel):
+    week_start_ymd: str
+    week_end_ymd: str
+    compiled_at: datetime
+    emailed_at: Optional[datetime] = None
+    operator_count: int
+    sales_cents: int
+    jobs_created: int
+    customers_count: int
+
+
+class MobileKpiWeeklyListRead(SQLModel):
+    timezone: str
+    weeks: list[MobileKpiWeeklyListItem] = Field(default_factory=list)
+
+
+class MobileKpiWeeklyDetailRead(SQLModel):
+    week_start_ymd: str
+    week_end_ymd: str
+    compiled_at: datetime
+    emailed_at: Optional[datetime] = None
+    timezone: str
+    report: MobileKpiPeriodRead
+
+
+class MobileKpiRecipientRead(SQLModel):
+    user_id: UUID
+    email: str
+    full_name: str
+    role: str
+    source: str
+    email_mobile_kpi_report: bool
+
+
+class MobileKpiRecipientsRead(SQLModel):
+    opt_in: bool
+    last_sent_at: Optional[datetime] = None
+    recipients: list[MobileKpiRecipientRead] = Field(default_factory=list)
+
+
+class MobileKpiRecipientUpdateRequest(SQLModel):
+    user_id: UUID
+    email_mobile_kpi_report: bool
+
+
 class ParentTroubleshootingItem(SQLModel):
     kind: str
     severity: str

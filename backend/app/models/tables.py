@@ -300,6 +300,8 @@ class ParentAccountUser(SQLModel, table=True):
     #: When set, the grant is a regional manager's: they see this region's
     #: sites and cockpit and nothing else on the network.
     region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
+    #: Saturday mobile KPI CSV goes to this HQ worker when True.
+    email_mobile_kpi_report: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShopOwnerInvite(SQLModel, table=True):
@@ -1415,3 +1417,42 @@ class VswtRegionWeekAnnotation(SQLModel, table=True):
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class MobileKpiDailySnapshot(SQLModel, table=True):
+    """Frozen 21:00 local trade-day KPI row for one mobile operator."""
+
+    __tablename__ = "mobile_kpi_daily_snapshot"
+    __table_args__ = (
+        UniqueConstraint(
+            "parent_account_id",
+            "operator_tenant_id",
+            "trade_date",
+            name="uq_mobile_kpi_daily_parent_op_date",
+        ),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    operator_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    trade_date: date = Field(index=True)
+    payload_json: str
+    compiled_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class MobileKpiWeeklySnapshot(SQLModel, table=True):
+    """Frozen Saturday operating-week KPI pack for one parent network."""
+
+    __tablename__ = "mobile_kpi_weekly_snapshot"
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "week_start_ymd", name="uq_mobile_kpi_weekly_parent_week"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    week_start_ymd: str = Field(max_length=10, index=True)
+    week_end_ymd: str = Field(max_length=10)
+    payload_json: str
+    csv_sha256: Optional[str] = Field(default=None, max_length=64)
+    emailed_at: Optional[datetime] = None
+    compiled_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

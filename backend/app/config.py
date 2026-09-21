@@ -198,6 +198,9 @@ class Settings(BaseSettings):
     # Weekly Minit HQ "mobile services network" scorecard email (opt-in per parent account).
     mobile_weekly_report_email_enabled: bool = True
     mobile_weekly_report_check_interval_minutes: int = 60
+    # Close-of-trade daily (21:00) + Saturday 23:05 weekly mobile KPI snapshots.
+    mobile_kpi_close_enabled: bool = True
+    mobile_kpi_close_check_interval_minutes: int = 5
     attachment_allowed_content_types: str = (
         "image/jpeg,image/png,image/webp,application/pdf,text/plain"
     )
