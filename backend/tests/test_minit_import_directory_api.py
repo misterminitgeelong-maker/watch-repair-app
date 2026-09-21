@@ -185,3 +185,36 @@ def test_import_directory_requires_minit_hq() -> None:
         files={"file": ("directory.html", _FIXTURE_HTML.encode("utf-8"), "text/html")},
     )
     assert res.status_code == 403
+
+
+def test_import_runs_off_the_event_loop(monkeypatch) -> None:
+    """The import is sync, CPU-heavy work and the app runs a single uvicorn
+    worker, so doing it on the event loop wedges every other request in the
+    network — every shop — until it finishes. It must run in a threadpool.
+    """
+    import asyncio
+
+    import app.routes.parent_accounts as routes
+
+    seen: dict[str, bool] = {}
+
+    def fake_plan(*_args, **_kwargs):
+        # get_running_loop() only succeeds on the event loop's own thread.
+        try:
+            asyncio.get_running_loop()
+            seen["on_event_loop"] = True
+        except RuntimeError:
+            seen["on_event_loop"] = False
+        return {"hq_parent_found": True, "dry_run": True}
+
+    monkeypatch.setattr(routes, "plan_directory_import", fake_plan)
+
+    token = _login_hq()
+    res = client.post(
+        "/v1/parent-accounts/me/import-directory",
+        headers=_headers(token),
+        params={"apply": "false"},
+        files={"file": ("directory.html", _FIXTURE_HTML.encode("utf-8"), "text/html")},
+    )
+    assert res.status_code == 200, res.text
+    assert seen["on_event_loop"] is False

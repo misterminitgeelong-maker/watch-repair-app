@@ -14,6 +14,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from starlette.concurrency import run_in_threadpool
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -1361,8 +1362,8 @@ async def backfill_shop_owner_contacts(
     current_user, parent = _parent_for_write(session, auth)
 
     directory = await _read_directory_upload(file)
-    summary = backfill_shared_login_owners(
-        session, directory, hq_owner_email=current_user.email, apply=apply
+    summary = await run_in_threadpool(
+        backfill_shared_login_owners, session, directory, hq_owner_email=current_user.email, apply=apply
     )
 
     if apply and summary.get("hq_parent_found"):
@@ -1402,7 +1403,13 @@ async def import_directory_export(
     filename = (file.filename or "").strip()
     directory = await _read_directory_upload(file)
 
-    summary = plan_directory_import(session, directory, hq_owner_email=current_user.email, apply=apply)
+    # Off the event loop: this is sync, CPU-heavy work (hashing, then a few
+    # hundred inserts) and the app runs a single uvicorn worker, so running it
+    # inline blocks every other request in the network — shops included — for
+    # as long as the import takes.
+    summary = await run_in_threadpool(
+        plan_directory_import, session, directory, hq_owner_email=current_user.email, apply=apply
+    )
 
     if apply and summary.get("hq_parent_found"):
         _record_event(

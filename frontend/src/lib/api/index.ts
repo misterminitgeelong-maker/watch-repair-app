@@ -583,7 +583,24 @@ export const importMinitDirectory = (file: File, apply: boolean) => {
   return api.post<DirectoryImportSummary>('/parent-accounts/me/import-directory', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
     params: { apply },
-    timeout: 600000,
+    // A preview only parses and counts — well under a second even for a
+    // 1MB export — so anything past a minute means something is wrong and the
+    // user should be told, not left watching a spinner. Apply does real work
+    // but still dies at the proxy's 120s read limit, so waiting ten minutes
+    // for a response that can no longer arrive just hides the failure.
+    timeout: apply ? 180000 : 60000,
+  })
+}
+
+/** Preview (default) or apply filling in franchisee contact details for shops
+ * still sharing the HQ login, from the same directory export. */
+export const backfillShopOwnerContacts = (file: File, apply: boolean) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<Record<string, unknown>>('/parent-accounts/me/backfill-shop-owner-contacts', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    params: { apply },
+    timeout: apply ? 180000 : 60000,
   })
 }
 
