@@ -3,7 +3,7 @@ from datetime import timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from ..list_page import query_total, set_total_count
 
@@ -32,6 +32,41 @@ from ..tenant_helpers import get_tenant_quote, get_tenant_repair_job
 from .. import sms
 
 router = APIRouter(prefix="/v1", tags=["quotes"])
+
+
+def _to_quote_reads(session: Session, quotes: list[Quote]) -> list[QuoteRead]:
+    """Same as _to_quote_read, but resolving the whole page in two queries.
+
+    Per quote it was three session.get calls (job, watch, customer); this list
+    is paged and sorted, so a large page multiplied that by hundreds."""
+    job_ids = {q.repair_job_id for q in quotes if q.repair_job_id}
+    if not job_ids:
+        return [QuoteRead.model_validate(q, from_attributes=True) for q in quotes]
+
+    jobs = {
+        job.id: job
+        for job in session.exec(select(RepairJob).where(col(RepairJob.id).in_(job_ids))).all()
+    }
+    names = {
+        job_id: name
+        for job_id, name in session.exec(
+            select(RepairJob.id, Customer.full_name)
+            .join(Watch, Watch.id == RepairJob.watch_id)
+            .join(Customer, Customer.id == Watch.customer_id)
+            .where(col(RepairJob.id).in_(job_ids))
+        ).all()
+        if name
+    }
+
+    reads: list[QuoteRead] = []
+    for quote in quotes:
+        payload = QuoteRead.model_validate(quote, from_attributes=True)
+        job = jobs.get(quote.repair_job_id) if quote.repair_job_id else None
+        if job:
+            payload.job_number = job.job_number
+            payload.customer_name = names.get(job.id)
+        reads.append(payload)
+    return reads
 
 
 def _to_quote_read(session: Session, quote: Quote) -> QuoteRead:
@@ -99,7 +134,7 @@ def list_quotes(
     query = query.order_by(sort_col.asc() if sort_dir.lower() == "asc" else sort_col.desc())
     set_total_count(response, query_total(session, query.order_by(None)))
     query = query.offset(offset).limit(limit)
-    return [_to_quote_read(session, quote) for quote in session.exec(query).all()]
+    return _to_quote_reads(session, list(session.exec(query).all()))
 
 
 @router.get("/quotes/{quote_id}/line-items")

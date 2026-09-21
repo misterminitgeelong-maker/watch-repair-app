@@ -1,7 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-const CHUNK_RELOAD_KEY = '__ms_chunk_reload'
+// Shared with the lazy-route loader, which catches this failure first. Two
+// separate keys meant one stale tab could reload twice.
+import { CHUNK_RELOAD_KEY } from '@/lib/routePrefetch'
 
 function isChunkLoadError(error: Error): boolean {
   return error.message.includes('Failed to fetch dynamically imported module') ||
@@ -12,6 +14,12 @@ function isChunkLoadError(error: Error): boolean {
 interface Props {
   children: ReactNode
   fallback?: ReactNode
+  /** Change this to clear a caught error — typically the current pathname.
+   * Without it a boundary whose `key` is deliberately stable (so the shell
+   * does not remount on every navigation) stays stuck on the fallback for the
+   * rest of the session, including for the fallback's own "go to dashboard"
+   * link, which navigates underneath an error screen that never goes away. */
+  resetKey?: string
 }
 
 interface State {
@@ -24,6 +32,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null })
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {

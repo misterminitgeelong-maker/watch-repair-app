@@ -8,8 +8,10 @@ const factories: Array<() => Promise<unknown>> = []
 let started = false
 
 /** Set once when a missing chunk has already forced a reload, so a chunk that
- * is genuinely gone cannot put the app in a boot loop. */
-const RELOAD_KEY = 'ms.chunkReload.v1'
+ * is genuinely gone cannot put the app in a boot loop. Shared with
+ * ErrorBoundary, which is the backstop for the same failure: two keys would
+ * mean two reloads for one stale tab. */
+export const CHUNK_RELOAD_KEY = 'ms.chunkReload.v1'
 
 function isMissingChunk(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
@@ -20,7 +22,7 @@ function isMissingChunk(error: unknown): boolean {
 
 function readFlag(): boolean {
   try {
-    return sessionStorage.getItem(RELOAD_KEY) === '1'
+    return sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1'
   } catch {
     return false
   }
@@ -28,8 +30,8 @@ function readFlag(): boolean {
 
 function writeFlag(value: boolean): void {
   try {
-    if (value) sessionStorage.setItem(RELOAD_KEY, '1')
-    else sessionStorage.removeItem(RELOAD_KEY)
+    if (value) sessionStorage.setItem(CHUNK_RELOAD_KEY, '1')
+    else sessionStorage.removeItem(CHUNK_RELOAD_KEY)
   } catch {
     /* private mode — worst case we simply do not recover */
   }

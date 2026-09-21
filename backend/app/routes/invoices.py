@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, func, select
+from sqlmodel import Session, col, func, select
 
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
@@ -52,6 +52,34 @@ def _to_invoice_read(session: Session, invoice: Invoice) -> InvoiceRead:
     return payload
 
 
+def _customer_names_by_job(session: Session, job_ids: set[UUID]) -> dict[UUID, str]:
+    """Resolve job -> customer name for a whole page in one query.
+
+    Per row this costs three session.get calls (job, watch, customer), and the
+    list asks for up to 500 rows, so a single page could run ~1500 queries."""
+    if not job_ids:
+        return {}
+    rows = session.exec(
+        select(RepairJob.id, Customer.full_name)
+        .join(Watch, Watch.id == RepairJob.watch_id)
+        .join(Customer, Customer.id == Watch.customer_id)
+        .where(col(RepairJob.id).in_(job_ids))
+    ).all()
+    return {job_id: name for job_id, name in rows if name}
+
+
+def _to_invoice_reads(session: Session, invoices: list[Invoice]) -> list[InvoiceRead]:
+    names = _customer_names_by_job(
+        session, {inv.repair_job_id for inv in invoices if inv.repair_job_id}
+    )
+    reads: list[InvoiceRead] = []
+    for invoice in invoices:
+        payload = InvoiceRead.model_validate(invoice, from_attributes=True)
+        payload.customer_name = names.get(invoice.repair_job_id) if invoice.repair_job_id else None
+        reads.append(payload)
+    return reads
+
+
 def _next_invoice_number(session: Session, tenant_id: UUID) -> str:
     for _ in range(20):
         counter = session.exec(
@@ -97,7 +125,7 @@ def list_invoices(
         base.order_by(Invoice.created_at.desc()).offset(offset).limit(limit)
     ).all()
     return InvoicePageResponse(
-        items=[_to_invoice_read(session, inv) for inv in invoices],
+        items=_to_invoice_reads(session, invoices),
         total=total,
         limit=limit,
         offset=offset,

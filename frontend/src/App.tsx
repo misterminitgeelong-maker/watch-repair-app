@@ -155,7 +155,17 @@ function LocationBoundary({ children }: { children: React.ReactNode }) {
     '/toolkit',
     '/minit',
   ].some((prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`))
-  return <ErrorBoundary key={inShopShell ? 'shop-shell' : location.pathname}>{children}</ErrorBoundary>
+  // The key stays stable across shop routes on purpose: it stops AppShell
+  // remounting on every navigation. resetKey is what clears a caught error, so
+  // navigating away from a broken screen works without that remount.
+  return (
+    <ErrorBoundary
+      key={inShopShell ? 'shop-shell' : location.pathname}
+      resetKey={location.pathname}
+    >
+      {children}
+    </ErrorBoundary>
+  )
 }
 
 export default function App() {

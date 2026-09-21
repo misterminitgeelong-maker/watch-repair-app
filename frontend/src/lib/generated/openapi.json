@@ -12106,6 +12106,71 @@
         ]
       }
     },
+    "/v1/auto-key-jobs/invoices": {
+      "get": {
+        "tags": [
+          "auto-key-jobs"
+        ],
+        "summary": "List All Auto Key Invoices",
+        "operationId": "list_all_auto_key_invoices_v1_auto_key_jobs_invoices_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutoKeyInvoiceRead"
+                  },
+                  "title": "Response List All Auto Key Invoices V1 Auto Key Jobs Invoices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auto-key-jobs/invoices/{invoice_id}": {
       "patch": {
         "tags": [
@@ -20840,6 +20905,28 @@
               }
             ],
             "title": "Xero Synced At"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "job_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Number"
           }
         },
         "type": "object",
@@ -26542,6 +26629,17 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
           "xero_invoice_id": {
             "anyOf": [
               {
@@ -32113,6 +32211,28 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "job_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Number"
           }
         },
         "type": "object",

@@ -47,6 +47,37 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+/** Pages a customer reaches by link, with no login of their own.
+ *
+ * Demo mode lingers in localStorage on a shared machine, so bouncing any
+ * refresh failure to the demo login would throw a customer off the quote they
+ * were approving or the invoice they were paying — pages that never needed a
+ * session in the first place. */
+const PUBLIC_PATH_PREFIXES = [
+  '/login',
+  '/signup',
+  '/pricing',
+  '/approve',
+  '/shoe-approve',
+  '/status',
+  '/shoe-status',
+  '/customer-portal',
+  '/portal',
+  '/mobile-booking',
+  '/mobile-invoice',
+  '/mobile-quote',
+  '/mobile-job-intake',
+  '/shop-invite',
+  '/intake',
+]
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname === '/') return true
+  return PUBLIC_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+}
+
 // On 401: try refresh once, retry request; otherwise clear tokens
 let refreshPromise: Promise<string | null> | null = null
 function doRefresh(): Promise<string | null> {
@@ -69,7 +100,7 @@ function doRefresh(): Promise<string | null> {
       clearStoredTokens()
       window.dispatchEvent(new Event('auth:token-cleared'))
       try {
-        if (localStorage.getItem('mainspring_demo_mode_enabled') === '1' && !window.location.pathname.startsWith('/login')) {
+        if (localStorage.getItem('mainspring_demo_mode_enabled') === '1' && !isPublicPath(window.location.pathname)) {
           window.location.assign('/login?demo=1')
         }
       } catch {

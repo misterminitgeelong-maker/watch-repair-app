@@ -12,6 +12,7 @@ from uuid import UUID
 
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import update as sa_update
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from .config import settings
@@ -92,14 +93,6 @@ _DEMO_CUSTOMERS: list[dict[str, str]] = [
     {"full_name": "Olivia Carter", "email": "olivia.carter@example.com", "phone": "0400111011", "address": "30 Acland St, St Kilda VIC 3182", "notes": "Seeded demo customer"},
     {"full_name": "Liam Fraser", "email": "liam.fraser@example.com", "phone": "0400111012", "address": "4 Church St, Hawthorn VIC 3122", "notes": "Seeded demo customer"},
 ]
-
-
-def is_demo_tenant(tenant: Tenant | None) -> bool:
-    if tenant is None:
-        return False
-    slug = (tenant.slug or "").strip().lower()
-    configured = (settings.startup_seed_tenant_slug or "myshop").strip().lower()
-    return bool(slug) and slug == configured
 
 
 def _now() -> datetime:
@@ -291,8 +284,33 @@ def _make_invoice(
     return invoice
 
 
+def _demo_shop_is_pristine(session: Session, tenant_id: UUID) -> bool:
+    """True when the demo already holds exactly the story this function plants
+    and nothing has been added to it.
+
+    The demo tenant is shared, so two people starting a walkthrough at the same
+    time both ask for a reseed — and the second one wipes the first one's shop
+    out from under them mid-demo. When the shop is already the untouched story
+    there is nothing to rebuild, so the second visitor leaves it alone."""
+    customer_count = int(
+        session.exec(select(func.count()).select_from(Customer).where(Customer.tenant_id == tenant_id)).one()
+    )
+    if customer_count != len(_DEMO_CUSTOMERS):
+        return False
+    # The story job carries a fixed number, so its presence says the seed ran;
+    # the counts above say nobody has added to it since.
+    story_job = session.exec(
+        select(RepairJob)
+        .where(RepairJob.tenant_id == tenant_id)
+        .where(RepairJob.job_number == STORY_WATCH_JOB_NUMBER)
+    ).first()
+    return story_job is not None
+
+
 def reset_and_seed_demo_shop(session: Session, tenant: Tenant, actor: User) -> dict[str, int]:
     """Wipe operational demo data and plant the connected walkthrough story."""
+    if _demo_shop_is_pristine(session, tenant.id):
+        return {"skipped": 1}
     _wipe_operational_data(session, tenant.id)
     now = _now()
 

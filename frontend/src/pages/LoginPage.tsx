@@ -94,16 +94,17 @@ export default function LoginPage() {
       enableDemoMode(true)
       if (readStoredTheme() === 'minit') persistTheme('warm')
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
-      try {
-        await Promise.race([
-          seedDemoData().then(() => {
-            void queryClient.invalidateQueries()
-          }),
-          new Promise<void>((resolve) => setTimeout(resolve, 20000)),
-        ])
-      } catch {
-        /* Non-fatal: dashboard still opens; seed can be retried from the shop. */
-      }
+      // Rebuilding the demo shop is not something to hold the login on: it
+      // waited up to 20s before the dashboard would open, for work the user
+      // does not need finished before they are in. Kick it off and let the
+      // invalidate pull the fresh data in once it lands.
+      void seedDemoData()
+        .then(() => {
+          void queryClient.invalidateQueries()
+        })
+        .catch(() => {
+          /* Non-fatal: the dashboard still opens and the seed can be retried. */
+        })
       resetDemoTour()
       resetAllPageTutorials()
       seedLoginTenantHint(demoCreds.slug)

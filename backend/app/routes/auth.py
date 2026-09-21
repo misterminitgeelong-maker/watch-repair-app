@@ -612,13 +612,21 @@ def seed_demo_data(
     if not tenant or not user or user.tenant_id != tenant.id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    if settings.app_env.lower() == "production":
-        allowed = [
-            _normalize_slug(settings.startup_seed_tenant_slug),
-            *([_normalize_slug(s) for s in [settings.testing_tenant_slug] if (s or "").strip()]),
-        ]
-        if tenant.slug not in [a for a in allowed if a]:
-            raise HTTPException(status_code=403, detail="Demo seeding is only available for the configured demo or testing tenant")
+    # This used to only top a shop up with extra sample rows, so restricting it
+    # in production alone was enough. It now wipes the tenant's jobs, customers,
+    # invoices and bookings before reseeding, and a destructive endpoint that any
+    # owner can call against their own live shop is not something to gate on
+    # APP_ENV — a staging or local shop is somebody's work too. The allow-list
+    # applies everywhere now.
+    allowed = [
+        _normalize_slug(settings.startup_seed_tenant_slug),
+        *([_normalize_slug(s) for s in [settings.testing_tenant_slug] if (s or "").strip()]),
+    ]
+    if tenant.slug not in [a for a in allowed if a]:
+        raise HTTPException(
+            status_code=403,
+            detail="Demo seeding rebuilds the shop from scratch and is only available for the configured demo or testing tenant",
+        )
 
     created = _seed_demo_data_for_tenant(session, tenant, user)
     return {"ok": True, "created": created}
@@ -767,18 +775,11 @@ def refresh_tokens(payload: RefreshRequest, session: Session = Depends(unscoped_
             select(RefreshSession).where(RefreshSession.jti == claims.jti)
         ).first()
         if rs is None:
-            from ..demo_shop import is_demo_tenant
-
-            if is_demo_tenant(tenant):
-                token, expires, refresh_token, refresh_expires = _issue_session_tokens(
-                    session, tenant_id=tenant_id, user_id=user_id, role=user.role
-                )
-                return TokenResponse(
-                    access_token=token,
-                    expires_in_seconds=expires,
-                    refresh_token=refresh_token,
-                    refresh_expires_in_seconds=refresh_expires,
-                )
+            # A missing session row is exactly what revocation looks like, so it
+            # has to mean "sign in again" for every tenant. Minting fresh tokens
+            # here for the demo let a leaked demo refresh token keep working for
+            # ever and put revoking a device beyond reach. Demo convenience is
+            # not worth an auth path that cannot be closed.
             raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")
         if rs.revoked_at is not None:
             raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")

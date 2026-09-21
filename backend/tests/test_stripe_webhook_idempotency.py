@@ -57,7 +57,11 @@ def _tenant_id_for(token_headers: dict[str, str], client) -> UUID:
 def test_redelivered_event_is_applied_once(client, auth_headers, stripe_configured):
     tenant_id = _tenant_id_for(auth_headers, client)
     with Session(engine) as s:
-        assert s.get(Tenant, tenant_id).plan_code == "basic_watch"
+        # Precondition, not the subject: the tenant just has to start on
+        # something other than the plan the webhook moves it to. Pinning the
+        # exact signup default broke this when that default became the Shop
+        # tier (basic_all_tabs) in 53effce.
+        assert s.get(Tenant, tenant_id).plan_code != "pro"
 
     event_id = f"evt_{tenant_id.hex[:12]}"
     payload = _subscription_updated_event(event_id, str(tenant_id), "pro")

@@ -693,3 +693,47 @@ def test_unusable_password_hash_cannot_be_logged_in_with():
     assert first != second
     for guess in ("", "password", "123456", "admin", "changeme"):
         assert not verify_password(guess, first)
+
+
+def test_demo_seed_refuses_a_shop_that_is_not_the_demo_tenant():
+    """It wipes the tenant's jobs, customers and invoices before reseeding, so
+    an ordinary shop must never reach it — in any environment, not just
+    production, because a staging or local shop is somebody's work too."""
+    from app.config import settings
+
+    slug = f"realshop{uuid4().hex[:8]}"
+    email = f"owner-{uuid4().hex[:8]}@example.com"
+    token = _bootstrap_and_login(slug, email, "Str0ngPass!23")
+
+    assert settings.app_env.lower() != "production"
+    res = client.post("/v1/auth/demo-seed", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 403, res.text
+    assert "demo or testing tenant" in res.json()["detail"]
+
+
+def test_refresh_with_an_unknown_session_is_refused():
+    """A missing session row is what revoking a device looks like, so no tenant
+    gets a fresh pair of tokens out of one. The demo used to, which left a
+    leaked demo refresh token impossible to shut off."""
+    from sqlalchemy import delete as sa_delete
+    from sqlmodel import Session
+
+    from app.database import engine
+    from app.models import RefreshSession
+
+    slug = f"revoked{uuid4().hex[:8]}"
+    email = f"owner-{uuid4().hex[:8]}@example.com"
+    password = "Str0ngPass!23"
+    _bootstrap_and_login(slug, email, password)
+
+    login = client.post("/v1/auth/login", json={"tenant_slug": slug, "email": email, "password": password})
+    assert login.status_code == 200, login.text
+    refresh_token = login.json()["refresh_token"]
+
+    with Session(engine) as db:
+        db.execute(sa_delete(RefreshSession))
+        db.commit()
+
+    res = client.post("/v1/auth/refresh", json={"refresh_token": refresh_token})
+    assert res.status_code == 401, res.text
+    assert "revoked" in res.json()["detail"].lower()

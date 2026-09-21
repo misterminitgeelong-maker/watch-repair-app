@@ -744,6 +744,21 @@ export default function AppShell() {
 
   const currentGuidedStep = guidedTourSteps[guidedStep] ?? guidedTourSteps[0] ?? null
 
+  // Keep the tour on the page the user is actually looking at. Back, forward
+  // and a reload move the route without going through goToGuidedStep, which
+  // left the card narrating a screen they had already left. This also clamps a
+  // restored index: the step list is filtered by plan features, so an index
+  // saved against a richer plan could render "Step 13 of 10".
+  useEffect(() => {
+    if (tourMode !== 'guided' || guidedTourSteps.length === 0) return
+    const matched = guidedTourSteps.findIndex((step) => step.matcher(location.pathname))
+    const next = matched >= 0 ? matched : Math.min(guidedStep, guidedTourSteps.length - 1)
+    if (next !== guidedStep) {
+      setGuidedStep(next)
+      setDemoTourStep(next)
+    }
+  }, [tourMode, guidedTourSteps, guidedStep, location.pathname])
+
   const minitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
   const effectivePlan = effectiveMinitPlanCode(planCode, tenantSlug)
   const minitHq = resolveMinitHqUi({

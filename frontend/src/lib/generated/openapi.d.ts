@@ -3759,6 +3759,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auto-key-jobs/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List All Auto Key Invoices */
+        get: operations["list_all_auto_key_invoices_v1_auto_key_jobs_invoices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auto-key-jobs/invoices/{invoice_id}": {
         parameters: {
             query?: never;
@@ -6477,6 +6494,10 @@ export interface components {
             xero_sync_error?: string | null;
             /** Xero Synced At */
             xero_synced_at?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Job Number */
+            job_number?: string | null;
         };
         /** AutoKeyInvoiceSendResponse */
         AutoKeyInvoiceSendResponse: {
@@ -8196,6 +8217,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Customer Name */
+            customer_name?: string | null;
             /** Xero Invoice Id */
             xero_invoice_id?: string | null;
             /** Xero Sync Status */
@@ -10165,6 +10188,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Job Number */
+            job_number?: string | null;
         };
         /** QuoteSendResponse */
         QuoteSendResponse: {
@@ -19520,6 +19547,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_all_auto_key_invoices_v1_auto_key_jobs_invoices_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoKeyInvoiceRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
