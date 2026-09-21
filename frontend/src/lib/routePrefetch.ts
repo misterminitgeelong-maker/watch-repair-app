@@ -7,6 +7,61 @@ const factories: Array<() => Promise<unknown>> = []
 
 let started = false
 
+/** Set once when a missing chunk has already forced a reload, so a chunk that
+ * is genuinely gone cannot put the app in a boot loop. */
+const RELOAD_KEY = 'ms.chunkReload.v1'
+
+function isMissingChunk(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  // Wording differs across browsers for the same thing: a dynamic import whose
+  // file is no longer on the server.
+  return /dynamically imported module|module script failed|Importing a module/i.test(message)
+}
+
+function readFlag(): boolean {
+  try {
+    return sessionStorage.getItem(RELOAD_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeFlag(value: boolean): void {
+  try {
+    if (value) sessionStorage.setItem(RELOAD_KEY, '1')
+    else sessionStorage.removeItem(RELOAD_KEY)
+  } catch {
+    /* private mode — worst case we simply do not recover */
+  }
+}
+
+/** Load a route chunk, surviving the deploy that renamed it.
+ *
+ * Every deploy gives the chunks new hashed names, so a tab left open across one
+ * is holding an index.js that points at files the server no longer has.
+ * Nothing is wrong with the app — the page just needs fetching again — but what
+ * the user gets is a dead screen and "Failed to fetch dynamically imported
+ * module".
+ *
+ * One reload picks up the new index.html and its current chunk names. The flag
+ * makes that strictly once per tab: if the chunk is still missing afterwards
+ * the failure is real and goes to the error boundary instead of reloading for
+ * ever. */
+async function loadChunk<T>(factory: () => Promise<T>): Promise<T> {
+  try {
+    const loaded = await factory()
+    // Got there, so any earlier recovery is spent and a later deploy may use it.
+    writeFlag(false)
+    return loaded
+  } catch (error) {
+    if (!isMissingChunk(error) || readFlag()) throw error
+    writeFlag(true)
+    window.location.reload()
+    // The reload takes over; resolving would render against a dead module.
+    return new Promise<T>(() => {})
+  }
+}
+
 /** Drop-in for React.lazy that also registers the chunk for post-login warm-up.
  * Calling the factory a second time does not re-download: the browser's module
  * cache (and React.lazy's own) both dedupe it. */
@@ -15,8 +70,10 @@ let started = false
 export function lazyPage<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
 ) {
+  // The bare factory is what the warm-up uses: it must never trigger a reload,
+  // since it runs in the background against pages nobody asked for.
   factories.push(factory)
-  return lazy(factory)
+  return lazy(() => loadChunk(factory))
 }
 
 /** Resolves the next time the browser has nothing better to do. */

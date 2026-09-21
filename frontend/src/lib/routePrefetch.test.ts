@@ -78,3 +78,74 @@ describe('App route registration', () => {
     expect(__registeredPageCount()).toBeGreaterThanOrEqual(60)
   })
 })
+
+
+describe('recovering from a deploy that renamed the chunks', () => {
+  const chunkError = () =>
+    new TypeError('Failed to fetch dynamically imported module: https://x/assets/Page-abc.js')
+
+  let reload: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    __resetPrefetchForTests()
+    sessionStorage.clear()
+    reload = vi.fn()
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...window.location, reload },
+    })
+  })
+
+  /** lazyPage returns a React.lazy component; reach its loader without React. */
+  function loaderOf(component: unknown): () => Promise<unknown> {
+    return (component as { _payload: { _result: () => Promise<unknown> } })._payload._result
+  }
+
+  it('reloads once so the tab picks up the current chunk names', async () => {
+    const factory = vi.fn(async () => {
+      throw chunkError()
+    })
+    const load = loaderOf(lazyPage(factory as never))
+
+    // Never settles: the reload is what resolves this for the user.
+    let settled = false
+    void load().then(
+      () => { settled = true },
+      () => { settled = true },
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(reload).toHaveBeenCalledTimes(1)
+    expect(settled).toBe(false)
+  })
+
+  it('gives up after one reload instead of boot-looping', async () => {
+    sessionStorage.setItem('ms.chunkReload.v1', '1')
+    const factory = vi.fn(async () => {
+      throw chunkError()
+    })
+    const load = loaderOf(lazyPage(factory as never))
+
+    await expect(load()).rejects.toThrow(/dynamically imported module/)
+    expect(reload).not.toHaveBeenCalled()
+  })
+
+  it('leaves a genuine error from the module alone', async () => {
+    const factory = vi.fn(async () => {
+      throw new Error('boom in module top-level code')
+    })
+    const load = loaderOf(lazyPage(factory as never))
+
+    await expect(load()).rejects.toThrow('boom in module top-level code')
+    expect(reload).not.toHaveBeenCalled()
+  })
+
+  it('clears the flag on a good load, so a later deploy can recover too', async () => {
+    sessionStorage.setItem('ms.chunkReload.v1', '1')
+    const load = loaderOf(lazyPage(async () => ({ default: () => null })))
+
+    await load()
+    expect(sessionStorage.getItem('ms.chunkReload.v1')).toBeNull()
+  })
+})
