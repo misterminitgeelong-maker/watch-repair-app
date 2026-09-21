@@ -12,6 +12,7 @@ CORS_ORIGINS=https://mainspring.au,https://www.mainspring.au
 PUBLIC_BASE_URL=https://mainspring.au
 STATIC_DIR=/app/static
 STARTUP_SEED_ENABLED=false
+ALLOW_DEMO_FINANCIALS_SEED=false
 PLATFORM_ADMIN_ENABLED=false
 PLATFORM_ADMIN_EMAIL=
 PLATFORM_ADMIN_PASSWORD=

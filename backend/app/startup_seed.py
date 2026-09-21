@@ -1041,6 +1041,19 @@ def ensure_demo_financials(session: Session, tenant: Tenant, *, commit: bool = T
     created_payments = 0
     quoted_jobs = 0
 
+    # This writes invoices and payments, and fills a derived cost onto jobs that
+    # have none. On a demo database that is the point; on production the demo
+    # tenant may also carry real work, and neither the rows nor the backfilled
+    # costs would be easy to unpick. So production seeds only when asked to.
+    if settings.app_env.lower() == "production" and not settings.allow_demo_financials_seed:
+        # The counter is still worth correcting: it only moves past invoice
+        # numbers that already exist, and leaving it behind is what makes
+        # raising an invoice fail.
+        _sync_invoice_number_counter(session, tenant_id)
+        if commit:
+            session.commit()
+        return {"invoices": 0, "payments": 0, "quoted_jobs": 0}
+
     # ── 1. Quoted value on open jobs ─────────────────────────────────────────
     # "Outstanding work value" and the approval funnel read the quoted figure on
     # jobs still awaiting a decision. Imported jobs carry none, which is why the
