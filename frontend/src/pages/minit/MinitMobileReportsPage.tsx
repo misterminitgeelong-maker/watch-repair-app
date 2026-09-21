@@ -685,7 +685,7 @@ export default function MinitMobileReportsPage() {
             )}
           </Card>
           <EnquiriesByShopSection fromYmd={fromYmd} toYmd={toYmd} />
-          {jobsQuery.isLoading && !jobsQuery.data ? (
+          {jobsQuery.isLoading || !jobsQuery.data ? (
             <Spinner />
           ) : (
             <>
