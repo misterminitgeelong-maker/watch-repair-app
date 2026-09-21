@@ -302,7 +302,6 @@ def debug_demo_status():
     if settings.app_env == "production":
         raise HTTPException(status_code=404, detail="Not found")
     from sqlmodel import select, func
-    from .config import settings
     from .models import CustomerAccount, Tenant
 
     slug = (settings.startup_seed_tenant_slug or "myshop").strip().lower()

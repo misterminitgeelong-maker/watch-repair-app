@@ -331,10 +331,11 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
         ]
         for idx in range(customer_count, 8):
             name = names[idx % len(names)]
+            email_local = name.lower().replace(" ", ".").replace("'", "")
             customer = Customer(
                 tenant_id=tenant.id,
                 full_name=name,
-                email=f"{name.lower().replace(' ', '.').replace("'", '')}@example.com",
+                email=f"{email_local}@example.com",
                 phone=f"+61400{idx:04d}",
                 notes="Seeded demo customer",
                 created_at=datetime.now(timezone.utc) - timedelta(days=randint(15, 160)),

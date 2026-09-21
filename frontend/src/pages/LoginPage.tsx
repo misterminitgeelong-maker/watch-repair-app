@@ -6,7 +6,7 @@ import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData,
 import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
 import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
-import { enableDemoMode, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
+import { enableDemoMode, isDemoModeEnabled, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 import { safeNextPath } from '@/lib/safeNext'
 import { markJustLoggedIn } from '@/lib/postLoginGate'
 import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
@@ -48,7 +48,11 @@ export default function LoginPage() {
   const nextPath = safeNextPath(searchParams.get('next'))
 
   if (token && sessionReady) {
-    return <Navigate to={nextPath ?? defaultHomePathForMinit(planCode, tenantSlug)} replace />
+    // A demo session always opens on the dashboard: the guided tour starts there
+    // and its welcome modal only opens on that route. Normal sign-in clears demo
+    // mode below, so this only affects the demo entry point.
+    const authedHome = isDemoModeEnabled() ? '/dashboard' : defaultHomePathForMinit(planCode, tenantSlug)
+    return <Navigate to={nextPath ?? authedHome} replace />
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -100,13 +104,21 @@ export default function LoginPage() {
           queryClient.invalidateQueries({ queryKey: ['auto-key-jobs'] })
           queryClient.invalidateQueries({ queryKey: ['customers'] })
           queryClient.invalidateQueries({ queryKey: ['inbox'] })
+          // The guided tour picks its quote and invoice steps from these caches.
+          // Without invalidating them the seeded records stay invisible for the
+          // query staleTime and those steps fall back to their list pages.
+          queryClient.invalidateQueries({ queryKey: ['quotes'] })
+          queryClient.invalidateQueries({ queryKey: ['invoices'] })
         })
         .catch(() => { /* Non-fatal */ })
       resetDemoTour()
       resetAllPageTutorials()
       seedLoginTenantHint(demoCreds.slug)
       markJustLoggedIn()
-      navigate(nextPath ?? homePathAfterLogin(demoCreds.slug))
+      // The guided tour starts on the dashboard, and the welcome modal only opens
+      // there, so the demo always lands on /dashboard rather than the multi-site
+      // home the demo tenant's parent account would otherwise resolve to.
+      navigate(nextPath ?? '/dashboard')
     } catch {
       setError('Demo login is currently unavailable. Please try again shortly.')
     } finally {
