@@ -158,6 +158,7 @@ def match_operator_for_lead(
     *,
     parent_id: UUID,
     parsed: ParsedEmailLead,
+    operators: list[Tenant] | None = None,
 ) -> OperatorMatch:
     """Match the email's self-reported 'Nearest Provider' name to an operator tenant.
 
@@ -168,15 +169,15 @@ def match_operator_for_lead(
     if not parsed.nearest_provider_clean:
         return OperatorMatch(tenant=None, confidence="no_provider_field")
 
-    operators = bookable_operators_for_parent(session, parent_id)
+    pool = operators if operators is not None else bookable_operators_for_parent(session, parent_id)
 
     target = _normalize_operator_name(parsed.nearest_provider_clean)
-    for tenant in operators:
+    for tenant in pool:
         if _normalize_operator_name(tenant.name) == target:
             return OperatorMatch(tenant=tenant, confidence="matched")
 
     loose_target = _loose_operator_key(parsed.nearest_provider_clean)
-    for tenant in operators:
+    for tenant in pool:
         if _loose_operator_key(tenant.name) == loose_target:
             return OperatorMatch(tenant=tenant, confidence="matched_loose")
 
@@ -202,6 +203,7 @@ def bucket_email_leads_by_operator(
     *,
     parent_id: UUID,
     emails: "list",
+    operators: list[Tenant] | None = None,
 ) -> list[EmailLeadOperatorBucket]:
     """Group already-queried InboundEmail rows by matched operator + status counts.
 
@@ -210,6 +212,7 @@ def bucket_email_leads_by_operator(
     "matched" vs "unmatched" vs "no fields extracted".
     """
     buckets: dict[str, EmailLeadOperatorBucket] = {}
+    pool = operators if operators is not None else bookable_operators_for_parent(session, parent_id)
 
     def _bucket(key: str, tenant_id: UUID | None, name: str) -> EmailLeadOperatorBucket:
         existing = buckets.get(key)
@@ -224,7 +227,7 @@ def bucket_email_leads_by_operator(
         if not parsed.fields_found:
             bucket = _bucket("no_fields", None, "No fields extracted (manual review needed)")
         else:
-            match = match_operator_for_lead(session, parent_id=parent_id, parsed=parsed)
+            match = match_operator_for_lead(session, parent_id=parent_id, parsed=parsed, operators=pool)
             if match.tenant:
                 bucket = _bucket(str(match.tenant.id), match.tenant.id, match.tenant.name)
             else:

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   formatTenantLabel,
   getApiErrorMessage,
@@ -313,21 +313,28 @@ export default function MinitMobileReportsPage() {
     queryKey: ['minit-mobile-kpis-live', liveScope],
     queryFn: () => getParentMobileKpisLive(liveScope).then(r => r.data),
     refetchInterval: 60_000,
+    staleTime: 20_000,
+    placeholderData: keepPreviousData,
     enabled: tab === 'live',
   })
   const daysQuery = useQuery({
     queryKey: ['minit-mobile-kpis-days'],
     queryFn: () => getParentMobileKpiDays().then(r => r.data),
-    enabled: tab === 'daily',
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    enabled: tab === 'daily' || tab === 'live',
   })
   const weeksQuery = useQuery({
     queryKey: ['minit-mobile-kpis-weeks'],
     queryFn: () => getParentMobileKpiWeeks().then(r => r.data),
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
     enabled: tab === 'weekly' || tab === 'recipients',
   })
   const recipientsQuery = useQuery({
     queryKey: ['minit-mobile-kpis-recipients'],
     queryFn: () => getParentMobileKpiRecipients().then(r => r.data),
+    staleTime: 60_000,
     enabled: tab === 'recipients',
   })
   const jobsQuery = useQuery({
@@ -341,6 +348,7 @@ export default function MinitMobileReportsPage() {
         category: jobsCategory || undefined,
         lead_source: jobsLead || undefined,
       }).then(r => r.data),
+    placeholderData: keepPreviousData,
     enabled: tab === 'jobs',
   })
 
@@ -352,11 +360,15 @@ export default function MinitMobileReportsPage() {
   const dayDetail = useQuery({
     queryKey: ['minit-mobile-kpis-day', activeDay],
     queryFn: () => getParentMobileKpiDay(activeDay!).then(r => r.data),
-    enabled: tab === 'daily' && Boolean(activeDay),
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    enabled: Boolean(activeDay) && (tab === 'daily' || tab === 'live'),
   })
   const weekDetail = useQuery({
     queryKey: ['minit-mobile-kpis-week', activeWeek],
     queryFn: () => getParentMobileKpiWeek(activeWeek!).then(r => r.data),
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
     enabled: tab === 'weekly' && Boolean(activeWeek),
   })
 
@@ -370,6 +382,10 @@ export default function MinitMobileReportsPage() {
     if (weekDetail.data && weekDetail.data.week_start_ymd === activeWeek) return weekDetail.data
     return null
   }, [weekDetail.data, activeWeek])
+
+  const fallbackPeriod = !livePeriod ? resolvedDay?.report ?? null : null
+  const shownLivePeriod = livePeriod ?? fallbackPeriod
+  const liveIsPreview = Boolean(!livePeriod && fallbackPeriod)
 
   const toggleRecipient = useMutation({
     mutationFn: ({ userId, enabled }: { userId: string; enabled: boolean }) =>
@@ -440,34 +456,49 @@ export default function MinitMobileReportsPage() {
       )}
 
       {tab === 'live' && (
-        liveQuery.isLoading || !livePeriod || !liveQuery.data ? <Spinner /> : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div className="flex gap-2">
-                <Button size="sm" variant={liveScope === 'week' ? 'primary' : 'secondary'} onClick={() => setLiveScope('week')}>Week to date</Button>
-                <Button size="sm" variant={liveScope === 'day' ? 'primary' : 'secondary'} onClick={() => setLiveScope('day')}>Today</Button>
-              </div>
-              <div className="flex items-center gap-3">
-                <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-                  Live poll · last updated {formatStamp(liveQuery.data.generated_at)} Sydney
-                </p>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => getParentMobileKpisLiveCsv(liveScope).then(r => downloadBlob(r.data, `minit-mobile-live-${liveScope}.csv`))}
-                >
-                  Download CSV
-                </Button>
-              </div>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex gap-2">
+              <Button size="sm" variant={liveScope === 'week' ? 'primary' : 'secondary'} onClick={() => setLiveScope('week')}>Week to date</Button>
+              <Button size="sm" variant={liveScope === 'day' ? 'primary' : 'secondary'} onClick={() => setLiveScope('day')}>Today</Button>
             </div>
-            <HeadlineTiles network={livePeriod.network} comparisonLabel={liveScope === 'day' ? 'same day last week' : 'prior week'} showQueues />
-            <OperatorTable period={livePeriod} showQueues onDrill={opts => drillToJobs(opts, livePeriod)} />
-          </>
-        )
+            <div className="flex items-center gap-3">
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                {!shownLivePeriod
+                  ? 'Compiling live numbers…'
+                  : liveIsPreview
+                    ? `Showing last freeze while live numbers load${resolvedDay ? ` · ${resolvedDay.trade_date}` : ''}`
+                    : liveQuery.isFetching
+                      ? 'Updating…'
+                      : `Live poll · last updated ${formatStamp(liveQuery.data?.generated_at ?? shownLivePeriod.generated_at)} Sydney`}
+              </p>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!shownLivePeriod}
+                onClick={() => getParentMobileKpisLiveCsv(liveScope).then(r => downloadBlob(r.data, `minit-mobile-live-${liveScope}.csv`))}
+              >
+                Download CSV
+              </Button>
+            </div>
+          </div>
+          {!shownLivePeriod ? (
+            <Card className="p-6">
+              <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+                Compiling {liveScope === 'day' ? "today's" : "this week's"} live figures. The last 9pm freeze will show here if it is already on file.
+              </p>
+            </Card>
+          ) : (
+            <>
+              <HeadlineTiles network={shownLivePeriod.network} comparisonLabel={liveScope === 'day' ? 'same day last week' : 'prior week'} showQueues={!liveIsPreview} />
+              <OperatorTable period={shownLivePeriod} showQueues={!liveIsPreview} onDrill={opts => drillToJobs(opts, shownLivePeriod)} />
+            </>
+          )}
+        </>
       )}
 
       {tab === 'daily' && (
-        daysQuery.isLoading ? <Spinner /> : dayList.length === 0 ? (
+        daysQuery.isLoading && dayList.length === 0 ? <Spinner /> : dayList.length === 0 ? (
           <Card className="p-5"><p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>No 9pm daily reports compiled yet. They appear after 9pm Sydney time.</p></Card>
         ) : (
           <>
@@ -525,7 +556,7 @@ export default function MinitMobileReportsPage() {
       )}
 
       {tab === 'weekly' && (
-        weeksQuery.isLoading ? <Spinner /> : weekList.length === 0 ? (
+        weeksQuery.isLoading && weekList.length === 0 ? <Spinner /> : weekList.length === 0 ? (
           <Card className="p-5"><p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>No Saturday weekly reports compiled yet. They appear after 11:05pm Saturday Sydney time.</p></Card>
         ) : (
           <>
@@ -654,7 +685,7 @@ export default function MinitMobileReportsPage() {
             )}
           </Card>
           <EnquiriesByShopSection fromYmd={fromYmd} toYmd={toYmd} />
-          {jobsQuery.isLoading || !jobsQuery.data ? (
+          {jobsQuery.isLoading && !jobsQuery.data ? (
             <Spinner />
           ) : (
             <>

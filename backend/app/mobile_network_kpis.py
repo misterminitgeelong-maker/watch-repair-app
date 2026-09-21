@@ -25,7 +25,7 @@ from typing import Any, Iterable
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func as sa_func
+from sqlalchemy import distinct, func as sa_func
 from sqlmodel import Session, col, func, select
 
 from .auto_key_status import AUTO_KEY_ACTIVE_STATUSES
@@ -342,21 +342,34 @@ def _operator_kpis_for_tenants(
     start_n = naive_utc(start)
     end_n = naive_utc(end)
 
-    jobs = list(
-        session.exec(
-            select(AutoKeyJob)
-            .where(col(AutoKeyJob.tenant_id).in_(ids))
-            .where(AutoKeyJob.created_at >= start_n)
-            .where(AutoKeyJob.created_at <= end_n)
-        ).all()
-    )
-    created_customers: dict[UUID, set[UUID]] = {tid: set() for tid in ids}
-    for job in jobs:
-        row = by_id[job.tenant_id]
-        row.jobs_created += 1
-        created_customers[job.tenant_id].add(job.customer_id)
-        row.category_jobs[classify_job_type(job.job_type)] += 1
-        row.lead_jobs[classify_lead_source(job.commission_lead_source)] += 1
+    job_mix = session.exec(
+        select(
+            AutoKeyJob.tenant_id,
+            AutoKeyJob.job_type,
+            AutoKeyJob.commission_lead_source,
+            func.count(),
+        )
+        .where(col(AutoKeyJob.tenant_id).in_(ids))
+        .where(AutoKeyJob.created_at >= start_n)
+        .where(AutoKeyJob.created_at <= end_n)
+        .group_by(AutoKeyJob.tenant_id, AutoKeyJob.job_type, AutoKeyJob.commission_lead_source)
+    ).all()
+    for tenant_id, job_type, lead_source, count in job_mix:
+        row = by_id[tenant_id]
+        n = int(count or 0)
+        row.jobs_created += n
+        row.category_jobs[classify_job_type(job_type)] += n
+        row.lead_jobs[classify_lead_source(lead_source)] += n
+
+    customer_rows = session.exec(
+        select(AutoKeyJob.tenant_id, func.count(distinct(AutoKeyJob.customer_id)))
+        .where(col(AutoKeyJob.tenant_id).in_(ids))
+        .where(AutoKeyJob.created_at >= start_n)
+        .where(AutoKeyJob.created_at <= end_n)
+        .group_by(AutoKeyJob.tenant_id)
+    ).all()
+    for tenant_id, count in customer_rows:
+        by_id[tenant_id].customers_count = int(count or 0)
 
     completed_rows = session.exec(
         select(AutoKeyJob.tenant_id, func.count())
@@ -369,24 +382,38 @@ def _operator_kpis_for_tenants(
     for tenant_id, count in completed_rows:
         by_id[tenant_id].jobs_completed = int(count or 0)
 
-    paid_rows = list(
-        session.exec(
-            select(AutoKeyInvoice, AutoKeyJob)
-            .join(AutoKeyJob, AutoKeyJob.id == AutoKeyInvoice.auto_key_job_id)
-            .where(col(AutoKeyInvoice.tenant_id).in_(ids))
-            .where(AutoKeyInvoice.status == "paid")
-            .where(_sale_timestamp() >= start_n)
-            .where(_sale_timestamp() <= end_n)
-        ).all()
-    )
-    paid_customers: dict[UUID, set[UUID]] = {tid: set() for tid in ids}
-    for invoice, job in paid_rows:
-        row = by_id[job.tenant_id]
-        amount = int(invoice.total_cents or 0)
+    paid_mix = session.exec(
+        select(
+            AutoKeyInvoice.tenant_id,
+            AutoKeyJob.job_type,
+            AutoKeyJob.commission_lead_source,
+            func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0),
+        )
+        .join(AutoKeyJob, AutoKeyJob.id == AutoKeyInvoice.auto_key_job_id)
+        .where(col(AutoKeyInvoice.tenant_id).in_(ids))
+        .where(AutoKeyInvoice.status == "paid")
+        .where(_sale_timestamp() >= start_n)
+        .where(_sale_timestamp() <= end_n)
+        .group_by(AutoKeyInvoice.tenant_id, AutoKeyJob.job_type, AutoKeyJob.commission_lead_source)
+    ).all()
+    for tenant_id, job_type, lead_source, total in paid_mix:
+        row = by_id[tenant_id]
+        amount = int(total or 0)
         row.sales_cents += amount
-        row.category_sales_cents[classify_job_type(job.job_type)] += amount
-        row.lead_sales_cents[classify_lead_source(job.commission_lead_source)] += amount
-        paid_customers[job.tenant_id].add(job.customer_id)
+        row.category_sales_cents[classify_job_type(job_type)] += amount
+        row.lead_sales_cents[classify_lead_source(lead_source)] += amount
+
+    paid_customer_rows = session.exec(
+        select(AutoKeyInvoice.tenant_id, func.count(distinct(AutoKeyJob.customer_id)))
+        .join(AutoKeyJob, AutoKeyJob.id == AutoKeyInvoice.auto_key_job_id)
+        .where(col(AutoKeyInvoice.tenant_id).in_(ids))
+        .where(AutoKeyInvoice.status == "paid")
+        .where(_sale_timestamp() >= start_n)
+        .where(_sale_timestamp() <= end_n)
+        .group_by(AutoKeyInvoice.tenant_id)
+    ).all()
+    for tenant_id, count in paid_customer_rows:
+        by_id[tenant_id].paid_customers_count = int(count or 0)
 
     if include_queues:
         active_rows = session.exec(
@@ -410,12 +437,44 @@ def _operator_kpis_for_tenants(
             by_id[tenant_id].outstanding_cents = int(total or 0)
 
     for tenant_id, row in by_id.items():
-        row.customers_count = len(created_customers[tenant_id])
-        row.paid_customers_count = len(paid_customers[tenant_id])
         if backlog:
             row.enquiries_not_actioned = int(backlog.get(tenant_id, 0))
         row.apply_comparisons(None)
     return by_id
+
+
+def _prior_sales_and_jobs(
+    session: Session,
+    tenant_ids: list[UUID],
+    start: datetime,
+    end: datetime,
+) -> dict[UUID, tuple[int, int]]:
+    """sales_cents, jobs_created per operator — no mix, no queues."""
+    if not tenant_ids:
+        return {}
+    start_n = naive_utc(start)
+    end_n = naive_utc(end)
+    out: dict[UUID, tuple[int, int]] = {tid: (0, 0) for tid in tenant_ids}
+    job_rows = session.exec(
+        select(AutoKeyJob.tenant_id, func.count())
+        .where(col(AutoKeyJob.tenant_id).in_(tenant_ids))
+        .where(AutoKeyJob.created_at >= start_n)
+        .where(AutoKeyJob.created_at <= end_n)
+        .group_by(AutoKeyJob.tenant_id)
+    ).all()
+    sales_rows = session.exec(
+        select(AutoKeyInvoice.tenant_id, func.coalesce(func.sum(AutoKeyInvoice.total_cents), 0))
+        .where(col(AutoKeyInvoice.tenant_id).in_(tenant_ids))
+        .where(AutoKeyInvoice.status == "paid")
+        .where(_sale_timestamp() >= start_n)
+        .where(_sale_timestamp() <= end_n)
+        .group_by(AutoKeyInvoice.tenant_id)
+    ).all()
+    jobs_by = {tid: int(count or 0) for tid, count in job_rows}
+    sales_by = {tid: int(total or 0) for tid, total in sales_rows}
+    for tid in tenant_ids:
+        out[tid] = (sales_by.get(tid, 0), jobs_by.get(tid, 0))
+    return out
 
 
 def operator_kpis(
@@ -474,17 +533,33 @@ def rollup_operators(rows: list[OperatorKpiRow], *, name: str = "Network total")
     return network
 
 
-def _enquiry_backlog_by_tenant(session: Session, parent_id: UUID) -> dict[UUID, int]:
+def _enquiry_backlog_by_tenant(
+    session: Session, parent_id: UUID, operators: list[Tenant]
+) -> dict[UUID, int]:
     emails = session.exec(
-        select(InboundEmail)
+        select(InboundEmail.id, InboundEmail.text_body, InboundEmail.status, InboundEmail.created_at)
         .where(InboundEmail.parent_account_id == parent_id)
         .where(InboundEmail.status == "new")
+        .order_by(col(InboundEmail.created_at).desc())
+        .limit(300)
     ).all()
     if not emails:
         return {}
+
+    class _Email:
+        __slots__ = ("text_body", "status", "created_at")
+
+        def __init__(self, text_body, status, created_at):
+            self.text_body = text_body
+            self.status = status
+            self.created_at = created_at
+
+    wrapped = [_Email(text_body, status, created_at) for _id, text_body, status, created_at in emails]
     return {
         b.operator_tenant_id: b.new_count
-        for b in bucket_email_leads_by_operator(session, parent_id=parent_id, emails=emails)
+        for b in bucket_email_leads_by_operator(
+            session, parent_id=parent_id, emails=wrapped, operators=operators
+        )
         if b.operator_tenant_id is not None
     }
 
@@ -499,9 +574,11 @@ def build_network_kpis(
     prior_end: datetime | None = None,
     generated_at: datetime | None = None,
     include_queues: bool = True,
+    include_enquiries: bool | None = None,
 ) -> NetworkKpiReport:
     operators = bookable_operators_for_parent(session, parent.id)
-    backlog = _enquiry_backlog_by_tenant(session, parent.id) if operators else {}
+    load_enquiries = include_queues if include_enquiries is None else include_enquiries
+    backlog = _enquiry_backlog_by_tenant(session, parent.id, operators) if operators and load_enquiries else {}
     current = _operator_kpis_for_tenants(
         session,
         operators,
@@ -512,13 +589,16 @@ def build_network_kpis(
     )
     prior_by_id: dict[UUID, OperatorKpiRow] = {}
     if prior_start is not None and prior_end is not None and operators:
-        prior_by_id = _operator_kpis_for_tenants(
-            session,
-            operators,
-            prior_start,
-            prior_end,
-            include_queues=False,
-        )
+        prior_metrics = _prior_sales_and_jobs(session, [t.id for t in operators], prior_start, prior_end)
+        for tenant in operators:
+            sales, jobs = prior_metrics.get(tenant.id, (0, 0))
+            prior_by_id[tenant.id] = OperatorKpiRow(
+                operator_tenant_id=tenant.id,
+                operator_name=tenant.name,
+                operator_shop_number=tenant.shop_number,
+                sales_cents=sales,
+                jobs_created=jobs,
+            )
 
     rows: list[OperatorKpiRow] = []
     for tenant in operators:

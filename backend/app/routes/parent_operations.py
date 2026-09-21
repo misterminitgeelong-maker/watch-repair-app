@@ -798,14 +798,27 @@ def get_operations_mobile_jobs_report(
         filters.append(AutoKeyJob.commission_lead_source == lead_source.strip())
 
     stmt = select(AutoKeyJob).where(*filters).order_by(AutoKeyJob.created_at.desc())
-    all_rows = list(session.exec(stmt).all())
     if category:
         wanted = category.strip().lower()
-        all_rows = [job for job in all_rows if classify_job_type(job.job_type) == wanted]
-    total_count = len(all_rows)
-    active_count = sum(1 for job in all_rows if job.status in AUTO_KEY_ACTIVE_STATUSES)
-    has_more = total_count > limit
-    rows = all_rows[:limit]
+        scanned = list(session.exec(stmt.limit(2000)).all())
+        all_rows = [job for job in scanned if classify_job_type(job.job_type) == wanted]
+        total_count = len(all_rows)
+        active_count = sum(1 for job in all_rows if job.status in AUTO_KEY_ACTIVE_STATUSES)
+        has_more = len(scanned) >= 2000 or total_count > limit
+        rows = all_rows[:limit]
+    else:
+        total_count = int(session.exec(select(func.count()).select_from(AutoKeyJob).where(*filters)).one() or 0)
+        active_count = int(
+            session.exec(
+                select(func.count())
+                .select_from(AutoKeyJob)
+                .where(*filters)
+                .where(col(AutoKeyJob.status).in_(AUTO_KEY_ACTIVE_STATUSES))
+            ).one()
+            or 0
+        )
+        rows = list(session.exec(stmt.limit(limit)).all())
+        has_more = total_count > limit
     paid_by_job: dict[UUID, int] = {}
     if rows:
         paid_rows = session.exec(
@@ -1078,6 +1091,7 @@ def get_mobile_kpis_live(
             prior_end=prior_day_end,
             generated_at=now,
             include_queues=True,
+            include_enquiries=False,
         )
     if wanted in {"week", "all"}:
         week_start, _week_end, _ws, _we = operating_week_window(now)
@@ -1093,6 +1107,7 @@ def get_mobile_kpis_live(
             prior_end=prior_week_end,
             generated_at=now,
             include_queues=True,
+            include_enquiries=False,
         )
     return MobileKpiLiveRead(
         timezone=NETWORK_TIMEZONE_NAME,
@@ -1143,6 +1158,7 @@ def get_mobile_kpis_live_csv(
         prior_end=prior_end,
         generated_at=now,
         include_queues=True,
+        include_enquiries=False,
     )
     filename = f"minit-mobile-live-{wanted}-{report.start_ymd}_{report.end_ymd}.csv"
     return _csv_response(csv_bytes_for_report(report), filename)
