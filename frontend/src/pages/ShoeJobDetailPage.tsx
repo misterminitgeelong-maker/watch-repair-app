@@ -812,7 +812,7 @@ export default function ShoeJobDetailPage() {
       {/* Summary strip */}
       <div className="flex flex-wrap gap-4 mb-6 text-sm">
         <span style={{ color: 'var(--ms-text-muted)' }}>Status: <Badge status={job.status} /></span>
-        {job.quote_status !== 'none' && (
+        {!!job.quote_status && job.quote_status !== 'none' && (
           <span style={{ color: 'var(--ms-text-muted)' }}>
             Quote:{' '}
             <span
