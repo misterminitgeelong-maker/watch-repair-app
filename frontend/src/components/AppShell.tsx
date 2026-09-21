@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext'
 import { PostLoginLoadingScreen } from './PostLoginLoadingScreen'
 import { clearJustLoggedIn, peekJustLoggedIn } from '@/lib/postLoginGate'
 import { prefetchAllPages, whenIdle } from '@/lib/routePrefetch'
+import { prefetchKeyScreenData } from '@/lib/dataPrefetch'
 import { useTheme } from '@/context/ThemeContext'
 import {
   defaultHomePathForMinit,
@@ -450,6 +451,7 @@ function exactMatcher(path: string) {
 }
 
 export default function AppShell() {
+  const qc = useQueryClient()
   const {
     token,
     initializing,
@@ -481,16 +483,6 @@ export default function AppShell() {
   // being peeked more than once. Cleared for real in onDone below, once the gate actually finishes.
   const [showPostLoginGate, setShowPostLoginGate] = useState(peekJustLoggedIn)
 
-  // Once the user is actually in (gate finished, or a plain refresh with no gate),
-  // pull the rest of the route chunks down in the background so moving around the
-  // app is instant instead of waiting on a chunk per screen. Held until the gate
-  // is gone so the landing page's own requests get the bandwidth first.
-  useEffect(() => {
-    if (showPostLoginGate) return
-    return whenIdle(() => {
-      void prefetchAllPages()
-    })
-  }, [showPostLoginGate])
   const [switchingSite, setSwitchingSite] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeTutorial, setActiveTutorial] = useState<PageTutorial | null>(null)
@@ -792,6 +784,27 @@ export default function AppShell() {
     lastLoginSlug: readLastLoginTenantSlug(),
     serverMinitHqUi: minitHqUi,
   })
+
+  // Once the user is actually in (gate finished, or a plain refresh with no gate),
+  // warm the app in the background: every remaining route chunk, plus the data
+  // behind the screens people live in — watch repairs, mobile services and
+  // reports — so opening them paints from cache instead of waiting on a request.
+  // Held until the gate is gone so the landing page's own requests get the
+  // bandwidth first. Pages keep revalidating on mount, so nothing shown is stale
+  // for longer than it takes the refresh to land.
+  useEffect(() => {
+    if (showPostLoginGate || !sessionReady) return
+    return whenIdle(() => {
+      void prefetchAllPages()
+      // HQ and booking-only logins do not have these screens at all.
+      if (minitHq || minitUi) return
+      void prefetchKeyScreenData(qc, {
+        watch: hasFeature('watch'),
+        autoKey: hasFeature('auto_key'),
+        reports: true,
+      })
+    })
+  }, [showPostLoginGate, sessionReady, minitHq, minitUi, hasFeature, qc])
 
   useEffect(() => {
     if (!minitUi) return
