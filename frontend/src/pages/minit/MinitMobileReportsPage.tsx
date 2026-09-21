@@ -352,6 +352,11 @@ export default function MinitMobileReportsPage() {
     enabled: tab === 'jobs',
   })
 
+  // Narrowed once here rather than per use: inside the table's map callback
+  // TypeScript cannot keep a narrowing on jobsQuery.data, and the old guard
+  // let undefined through to the branch that reads .total_count off it.
+  const jobsData = jobsQuery.data
+
   const dayList = daysQuery.data?.days ?? []
   const weekList = weeksQuery.data?.weeks ?? []
   const activeDay = selectedDay ?? dayList[0]?.trade_date ?? null
@@ -685,18 +690,18 @@ export default function MinitMobileReportsPage() {
             )}
           </Card>
           <EnquiriesByShopSection fromYmd={fromYmd} toYmd={toYmd} />
-          {jobsQuery.isLoading && !jobsQuery.data ? (
+          {!jobsData ? (
             <Spinner />
           ) : (
             <>
               <Card className="p-5 mb-6">
                 <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
-                  {jobsQuery.data.total_count} jobs in range · {jobsQuery.data.active_count} still active
-                  {jobsQuery.data.has_more ? ' · showing first 200' : ''}
+                  {jobsData.total_count} jobs in range · {jobsData.active_count} still active
+                  {jobsData.has_more ? ' · showing first 200' : ''}
                 </p>
               </Card>
               <Card className="overflow-hidden">
-                {(jobsQuery.data.jobs ?? []).length === 0 ? (
+                {(jobsData.jobs ?? []).length === 0 ? (
                   <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No mobile jobs in range.</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -714,7 +719,7 @@ export default function MinitMobileReportsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(jobsQuery.data.jobs ?? []).map(job => (
+                        {(jobsData.jobs ?? []).map(job => (
                           <tr key={job.id} style={{ borderBottom: '1px solid var(--ms-border)' }}>
                             <td className="px-5 py-2">
                               <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{job.job_number}</span>
