@@ -707,6 +707,151 @@ export const getParentTroubleshooting = (limit = 50) =>
     params: { limit },
   })
 
+export interface MobileKpiOperatorRow {
+  operator_tenant_id: string
+  operator_name: string
+  operator_shop_number?: string | null
+  customers_count: number
+  jobs_created: number
+  jobs_completed: number
+  sales_cents: number
+  prior_sales_cents: number
+  prior_jobs_created: number
+  sales_pct_change?: number | null
+  avg_sale_cents?: number | null
+  jobs_per_customer?: number | null
+  category_jobs?: Record<string, number>
+  category_sales_cents?: Record<string, number>
+  lead_jobs?: Record<string, number>
+  lead_sales_cents?: Record<string, number>
+  active_jobs: number
+  outstanding_cents: number
+  enquiries_not_actioned: number
+}
+
+export interface MobileKpiPeriod {
+  start: string
+  end: string
+  start_ymd: string
+  end_ymd: string
+  timezone: string
+  generated_at: string
+  network: MobileKpiOperatorRow
+  operators?: MobileKpiOperatorRow[]
+}
+
+export interface MobileKpiLive {
+  timezone: string
+  generated_at: string
+  trade_date: string
+  day: MobileKpiPeriod
+  week: MobileKpiPeriod
+}
+
+export interface MobileKpiDailyListItem {
+  trade_date: string
+  compiled_at: string
+  operator_count: number
+  sales_cents: number
+  jobs_created: number
+  customers_count: number
+}
+
+export interface MobileKpiDailyList {
+  timezone: string
+  days?: MobileKpiDailyListItem[]
+}
+
+export interface MobileKpiDailyDetail {
+  trade_date: string
+  compiled_at: string
+  timezone: string
+  report: MobileKpiPeriod
+}
+
+export interface MobileKpiWeeklyListItem {
+  week_start_ymd: string
+  week_end_ymd: string
+  compiled_at: string
+  emailed_at?: string | null
+  operator_count: number
+  sales_cents: number
+  jobs_created: number
+  customers_count: number
+}
+
+export interface MobileKpiWeeklyList {
+  timezone: string
+  weeks?: MobileKpiWeeklyListItem[]
+}
+
+export interface MobileKpiWeeklyDetail {
+  week_start_ymd: string
+  week_end_ymd: string
+  compiled_at: string
+  emailed_at?: string | null
+  timezone: string
+  report: MobileKpiPeriod
+}
+
+export interface MobileKpiRecipient {
+  user_id: string
+  email: string
+  full_name: string
+  role: string
+  source: string
+  email_mobile_kpi_report: boolean
+}
+
+export interface MobileKpiRecipients {
+  opt_in: boolean
+  last_sent_at?: string | null
+  recipients?: MobileKpiRecipient[]
+}
+
+export const getParentMobileKpisLive = () =>
+  api.get<MobileKpiLive>('/parent-accounts/me/operations/mobile-kpis/live')
+
+export const getParentMobileKpisLiveCsv = (scope: 'day' | 'week' = 'week') =>
+  api.get<Blob>('/parent-accounts/me/operations/mobile-kpis/live/csv', { params: { scope }, responseType: 'blob' })
+
+export const getParentMobileKpiDays = () =>
+  api.get<MobileKpiDailyList>('/parent-accounts/me/operations/mobile-kpis/days')
+
+export const getParentMobileKpiDay = (tradeDate: string) =>
+  api.get<MobileKpiDailyDetail>(`/parent-accounts/me/operations/mobile-kpis/days/${tradeDate}`)
+
+export const getParentMobileKpiWeeks = () =>
+  api.get<MobileKpiWeeklyList>('/parent-accounts/me/operations/mobile-kpis/weeks')
+
+export const getParentMobileKpiWeek = (weekStartYmd: string) =>
+  api.get<MobileKpiWeeklyDetail>(`/parent-accounts/me/operations/mobile-kpis/weeks/${weekStartYmd}`)
+
+export const getParentMobileKpiWeekCsv = (weekStartYmd: string) =>
+  api.get<Blob>(`/parent-accounts/me/operations/mobile-kpis/weeks/${weekStartYmd}/csv`, { responseType: 'blob' })
+
+export const getParentMobileKpiRecipients = () =>
+  api.get<MobileKpiRecipients>('/parent-accounts/me/operations/mobile-kpis/recipients')
+
+export const updateParentMobileKpiRecipient = (userId: string, emailMobileKpiReport: boolean) =>
+  api.put<MobileKpiRecipients>('/parent-accounts/me/operations/mobile-kpis/recipients', {
+    user_id: userId,
+    email_mobile_kpi_report: emailMobileKpiReport,
+  })
+
+export const getParentMobileWeeklyReportSettings = () =>
+  api.get<{ opt_in: boolean; last_sent_at?: string | null }>('/parent-accounts/me/operations/mobile-weekly-report/settings')
+
+export const updateParentMobileWeeklyReportSettings = (optIn: boolean) =>
+  api.put<{ opt_in: boolean; last_sent_at?: string | null }>(
+    '/parent-accounts/me/operations/mobile-weekly-report/settings',
+    { opt_in: optIn },
+  )
+
+export const sendParentMobileWeeklyReportNow = () =>
+  api.post<{ opt_in: boolean; last_sent_at?: string | null }>('/parent-accounts/me/operations/mobile-weekly-report/send-now')
+
+
 // ── Shop mobile operator bookings ─────────────────────────────────────────────
 export type ShopMobileBookingStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | 'moved_to_pool'
 export type ShopMobileVisitLocationType = 'customer_site' | 'at_shop'

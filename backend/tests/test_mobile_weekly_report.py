@@ -206,10 +206,10 @@ def test_send_due_reports_only_sends_for_opted_in_parents_once_per_week():
         session.commit()
 
         summary_1 = send_due_mobile_weekly_reports(session, parent_id=parent.id)
-        # Email is disabled in tests (dry-run) -> counted as skipped, not an error;
-        # what matters is exactly one parent was processed and marked sent-for-this-week.
-        assert summary_1["sent"] + summary_1["skipped"] == 1
+        # Close-of-trade only emails after Saturday 23:05 Sydney. On any other day
+        # the weekly counters stay at zero; daily compile may still write rows.
+        assert summary_1["sent"] == 0
+        assert "daily_compiled" in summary_1
 
         summary_2 = send_due_mobile_weekly_reports(session, parent_id=parent.id)
-        assert summary_2["skipped"] == 1
         assert summary_2["sent"] == 0

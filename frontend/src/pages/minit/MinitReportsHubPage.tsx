@@ -55,8 +55,8 @@ export default function MinitReportsHubPage() {
         <ReportLink
           to="/minit/mobile-services"
           icon={KeyRound}
-          title="Mobile job reports"
-          description="Mobile service jobs by operator — referred bookings and shop-initiated jobs."
+          title="Mobile reports"
+          description="Live operator KPIs, 9pm daily freeze, Saturday weekly CSV, and job drill-down."
         />
         <ReportLink
           to="/minit/troubleshooting"
