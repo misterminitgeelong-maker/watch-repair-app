@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { applyOptimisticStatus, rollbackStatus } from '@/lib/optimisticStatus'
 import { Plus, Search, X, ListOrdered, Download } from 'lucide-react'
 import {
   deleteJob,
@@ -65,6 +66,7 @@ export default function JobsPage() {
   const [jobToDelete, setJobToDelete] = useState<RepairJob | null>(null)
   const [deleteError, setDeleteError] = useState('')
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null)
+  const [statusError, setStatusError] = useState('')
   const [search, setSearch] = useState('')
   const [jobDirectoryView, setJobDirectoryView] = useState<'active' | 'completed'>(statusIsClosed ? 'completed' : 'active')
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
@@ -174,11 +176,22 @@ export default function JobsPage() {
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateJobStatus(jobId, status),
-    onMutate: ({ jobId }) => setUpdatingJobId(jobId),
-    onSuccess: () => {
+    // Move the card in the cache first. Without this the board sat unchanged
+    // through the round-trip and only redrew once a refetch of the whole list
+    // came back, which read as the drag not having worked.
+    onMutate: async ({ jobId, status }) => {
+      setUpdatingJobId(jobId)
+      return { snapshot: await applyOptimisticStatus(qc, ['jobs'], jobId, status) }
+    },
+    onError: (err, _vars, ctx) => {
+      rollbackStatus(qc, ctx?.snapshot)
+      setStatusError(getApiErrorMessage(err, 'Could not move that job. It has been left where it was.'))
+    },
+    onSuccess: () => setStatusError(''),
+    onSettled: () => {
+      setUpdatingJobId(null)
       qc.invalidateQueries({ queryKey: ['jobs'] })
     },
-    onSettled: () => setUpdatingJobId(null),
   })
 
   const deleteMut = useMutation({
@@ -300,6 +313,15 @@ export default function JobsPage() {
           </Link>
         </div>
       </div>
+
+      {statusError && (
+        <div
+          className="mb-4 text-sm rounded-lg px-4 py-3"
+          style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}
+        >
+          {statusError}
+        </div>
+      )}
 
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <div className="inline-flex rounded-lg p-1" style={{ backgroundColor: 'var(--ms-bg)' }}>
@@ -521,7 +543,7 @@ export default function JobsPage() {
                 onStatusChange={nextStatus =>
                   statusMut.mutate({ jobId: job.id, status: nextStatus as JobStatus })
                 }
-                draggable={!updatingJobId}
+                draggable={updatingJobId !== job.id}
                 onLogWork={() => setLogWorkJobId(job.id)}
                 onDragStart={e => {
                   e.dataTransfer.setData('text/job-id', job.id)

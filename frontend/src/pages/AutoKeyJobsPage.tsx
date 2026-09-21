@@ -40,6 +40,7 @@ import {
   AUTO_KEY_KANBAN_COLUMNS,
   findColumnForStatus,
 } from '@/components/kanban'
+import { applyOptimisticStatus, rollbackStatus } from '@/lib/optimisticStatus'
 import { useAutoKeyDayBeforeReminders } from '@/hooks/useAutoKeyDayBeforeReminders'
 import { useAutoKeyReportData } from '@/hooks/useAutoKeyReportData'
 import { useMobileServicesModals } from '@/hooks/useMobileServicesModals'
@@ -430,8 +431,17 @@ export default function AutoKeyJobsPage() {
 
   const statusMut = useMutation({
     mutationFn: ({ jobId, status }: { jobId: string; status: JobStatus }) => updateAutoKeyJobStatus(jobId, status),
-    onSuccess: () => { setBoardActionErr(''); invalidateAutoKeyJobCollections(qc) },
-    onError: (err: unknown) => setBoardActionErr(getApiErrorMessage(err, 'Could not move the job to the new status. It has been left where it was.')),
+    // Move the card in the cache first, so the board redraws on drop rather
+    // than after the round-trip and the refetch that follows it.
+    onMutate: async ({ jobId, status }) => ({
+      snapshot: await applyOptimisticStatus(qc, ['auto-key-jobs'], jobId, status),
+    }),
+    onSuccess: () => setBoardActionErr(''),
+    onError: (err: unknown, _vars, ctx) => {
+      rollbackStatus(qc, ctx?.snapshot)
+      setBoardActionErr(getApiErrorMessage(err, 'Could not move the job to the new status. It has been left where it was.'))
+    },
+    onSettled: () => invalidateAutoKeyJobCollections(qc),
   })
 
   const rescheduleMut = useMutation({
@@ -829,7 +839,7 @@ export default function AutoKeyJobsPage() {
                     techKey={job.assigned_user_id ?? null}
                     accentColor={column.color}
                     href={`/auto-key/${job.id}`}
-                    draggable={!statusMut.isPending}
+                    draggable={statusMut.variables?.jobId !== job.id || !statusMut.isPending}
                     onDragStart={e => {
                       e.dataTransfer.setData('text/job-id', job.id)
                       e.dataTransfer.effectAllowed = 'move'
