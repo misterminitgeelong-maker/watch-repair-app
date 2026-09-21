@@ -91,6 +91,8 @@ from ..parent_network import (
     site_for_tenant_in_parent,
     sites_for_parent,
 )
+import secrets
+
 from ..security import hash_password
 from ..minit_shops import MinitShopRow, tenant_slug_for_shop
 from ..shop_number import (
@@ -1590,13 +1592,32 @@ def provision_minit_retail_shop(
     session.add(tenant)
     session.flush()
 
+    # With contact details to hand, give the shop its own owner row so that
+    # "Invite owner" reaches the operator. Without them it falls back to a copy
+    # of the HQ login, which is what this endpoint always did — and which is
+    # why so many shops show as sharing HQ's login today.
+    owner_email = (payload.owner_email or "").strip().lower()
+    if owner_email:
+        if "@" not in owner_email or owner_email.startswith("@") or owner_email.endswith("@"):
+            raise HTTPException(status_code=400, detail="owner_email is not a valid email address")
+        owner_full_name = (payload.owner_full_name or "").strip() or owner_email
+        owner_mobile = (payload.owner_mobile or "").strip() or None
+        # Unusable until they claim it through an invite — HQ still gets in via
+        # "Open shop", which is authorised by the site table, not this password.
+        owner_password_hash = hash_password(secrets.token_urlsafe(32))
+    else:
+        owner_full_name = current_user.full_name
+        owner_mobile = None
+        owner_password_hash = current_user.password_hash
+
     new_owner = User(
         tenant_id=tenant.id,
-        email=current_user.email,
-        full_name=current_user.full_name,
+        email=owner_email or current_user.email,
+        full_name=owner_full_name,
         role="owner",
-        password_hash=current_user.password_hash,
+        password_hash=owner_password_hash,
         is_active=True,
+        mobile=owner_mobile,
     )
     session.add(new_owner)
     session.flush()

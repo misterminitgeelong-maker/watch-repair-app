@@ -584,3 +584,61 @@ def test_sites_carry_owner_contact_and_flag_the_shared_hq_login():
     assert op["owner_email"] == net["op_email"]
     assert op["owner_mobile"] == "0412 345 678"
     assert op["owner_is_shared_hq_login"] is False
+
+
+# ── 9. HQ can give a new shop its own owner contact ──────────────────────────
+
+
+def test_provision_shop_can_take_the_owner_s_own_contact_details():
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+    base = int(suffix[:4], 16) % 8000 + 1000
+
+    num = str(base + 31)
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={
+            "shop_number": num,
+            "tenant_name": f"Owned {suffix}",
+            "owner_email": f"Jane.{suffix}@Franchise.test",
+            "owner_full_name": "Jane Smith",
+            "owner_mobile": "0412 345 678",
+        },
+    )
+    assert made.status_code == 200, made.text
+    site = next(s for s in made.json()["sites"] if s["shop_number"] == num)
+    assert site["owner_email"] == f"jane.{suffix}@franchise.test"
+    assert site["owner_full_name"] == "Jane Smith"
+    assert site["owner_mobile"] == "0412 345 678"
+    # The whole point: an invite for this shop goes to the operator, not to HQ.
+    assert site["owner_is_shared_hq_login"] is False
+
+    # The shop cannot be logged into with HQ's password — it is claimed by invite.
+    with Session(engine) as db:
+        owner = db.exec(
+            select(User).where(User.tenant_id == UUID(site["tenant_id"]))
+        ).one()
+        hq_owner = db.exec(
+            select(User).where(User.email == net["hq_email"]).where(User.tenant_id == UUID(net["hq_tenant_id"]))
+        ).one()
+        assert owner.password_hash != hq_owner.password_hash
+
+    # Without contact details it still falls back to the shared HQ login.
+    plain_num = str(base + 32)
+    plain = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={"shop_number": plain_num, "tenant_name": f"Plain {suffix}"},
+    )
+    assert plain.status_code == 200, plain.text
+    plain_site = next(s for s in plain.json()["sites"] if s["shop_number"] == plain_num)
+    assert plain_site["owner_is_shared_hq_login"] is True
+
+    bad = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={"shop_number": str(base + 33), "tenant_name": "Bad", "owner_email": "not-an-email"},
+    )
+    assert bad.status_code == 400

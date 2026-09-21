@@ -495,6 +495,11 @@ export const provisionMinitShop = (payload: {
   tenant_name: string
   business_address?: string
   shop_type?: MinitShopType
+  /** Give the shop its own owner login so an invite reaches the operator.
+   * Omit and the shop shares the HQ login until someone fills it in. */
+  owner_email?: string
+  owner_full_name?: string
+  owner_mobile?: string
 }) => api.post<ParentAccountSummary>('/parent-accounts/me/provision-shop', payload)
 
 export interface ParentImportShopsResult {

@@ -9350,6 +9350,12 @@ export interface components {
              * @default physical
              */
             shop_type: string;
+            /** Owner Email */
+            owner_email?: string | null;
+            /** Owner Full Name */
+            owner_full_name?: string | null;
+            /** Owner Mobile */
+            owner_mobile?: string | null;
         };
         /** ParentRegionDashboardStat */
         ParentRegionDashboardStat: {

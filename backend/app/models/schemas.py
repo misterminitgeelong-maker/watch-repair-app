@@ -506,6 +506,13 @@ class ParentProvisionShopRequest(SQLModel):
     #: in the network. Defaults to physical, which is what this endpoint
     #: always created before the choice existed.
     shop_type: str = Field(default="physical")
+    #: The shop owner's own contact details, when HQ knows them at the time of
+    #: adding. Given an email, the shop gets its own owner login (unusable
+    #: password until they claim it by invite) instead of a copy of the HQ
+    #: login, so "Invite owner" reaches the operator rather than HQ itself.
+    owner_email: Optional[str] = Field(default=None, max_length=320)
+    owner_full_name: Optional[str] = Field(default=None, max_length=200)
+    owner_mobile: Optional[str] = Field(default=None, max_length=40)
 
 class ParentImportShopsResponse(SQLModel):
     created_count: int = 0

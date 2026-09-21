@@ -100,6 +100,9 @@ export default function MinitAccountsPage() {
   const [linkEmail, setLinkEmail] = useState('')
   const [addMode, setAddMode] = useState<'provision' | 'link'>('provision')
   const [shopType, setShopType] = useState<MinitShopType>('physical')
+  const [ownerEmail, setOwnerEmail] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [ownerMobile, setOwnerMobile] = useState('')
   const [removingId, setRemovingId] = useState('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -174,6 +177,9 @@ export default function MinitAccountsPage() {
         tenant_name: tenantName.trim(),
         business_address: businessAddress.trim() || undefined,
         shop_type: shopType,
+        owner_email: ownerEmail.trim() || undefined,
+        owner_full_name: ownerName.trim() || undefined,
+        owner_mobile: ownerMobile.trim() || undefined,
       }).then(r => r.data),
     onSuccess: () => {
       setError('')
@@ -182,6 +188,9 @@ export default function MinitAccountsPage() {
       setTenantName('')
       setBusinessAddress('')
       setShopType('physical')
+      setOwnerEmail('')
+      setOwnerName('')
+      setOwnerMobile('')
       void refreshSession()
       qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_QUERY_KEY })
       qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
@@ -488,6 +497,38 @@ export default function MinitAccountsPage() {
                     ? 'Starts on Auto Key Basic and joins the mobile operator roll-up.'
                     : 'Starts on booking-only and joins the retail shops list.'}
                 </p>
+
+                <div className="pt-2" style={{ borderTop: '1px solid var(--ms-border)' }}>
+                  <p className="text-xs font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>
+                    Owner contact (optional)
+                  </p>
+                  <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+                    Fill these in and the shop gets its own owner login, so &ldquo;Invite owner&rdquo; reaches
+                    them. Leave blank and it shares the HQ login until someone adds them.
+                  </p>
+                  <div className="space-y-3">
+                    <Input
+                      label="Owner name"
+                      value={ownerName}
+                      onChange={e => setOwnerName(e.target.value)}
+                      placeholder="Jane Smith"
+                    />
+                    <Input
+                      label="Owner email"
+                      type="email"
+                      value={ownerEmail}
+                      onChange={e => setOwnerEmail(e.target.value)}
+                      placeholder="jane@example.com"
+                    />
+                    <Input
+                      label="Owner mobile"
+                      type="tel"
+                      value={ownerMobile}
+                      onChange={e => setOwnerMobile(e.target.value)}
+                      placeholder="0412 345 678"
+                    />
+                  </div>
+                </div>
               </>
             ) : (
               <>
