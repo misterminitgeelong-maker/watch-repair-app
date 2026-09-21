@@ -4787,6 +4787,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/operations/mobile-kpis/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpis Live */
+        get: operations["get_mobile_kpis_live_v1_parent_accounts_me_operations_mobile_kpis_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/live/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpis Live Csv */
+        get: operations["get_mobile_kpis_live_csv_v1_parent_accounts_me_operations_mobile_kpis_live_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Mobile Kpi Days */
+        get: operations["list_mobile_kpi_days_v1_parent_accounts_me_operations_mobile_kpis_days_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/days/{trade_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpi Day */
+        get: operations["get_mobile_kpi_day_v1_parent_accounts_me_operations_mobile_kpis_days__trade_date__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/weeks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Mobile Kpi Weeks */
+        get: operations["list_mobile_kpi_weeks_v1_parent_accounts_me_operations_mobile_kpis_weeks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/weeks/{week_start_ymd}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpi Week */
+        get: operations["get_mobile_kpi_week_v1_parent_accounts_me_operations_mobile_kpis_weeks__week_start_ymd__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/weeks/{week_start_ymd}/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpi Week Csv */
+        get: operations["get_mobile_kpi_week_csv_v1_parent_accounts_me_operations_mobile_kpis_weeks__week_start_ymd__csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpi Recipients */
+        get: operations["get_mobile_kpi_recipients_v1_parent_accounts_me_operations_mobile_kpis_recipients_get"];
+        /** Update Mobile Kpi Recipient */
+        put: operations["update_mobile_kpi_recipient_v1_parent_accounts_me_operations_mobile_kpis_recipients_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/operations/troubleshooting": {
         parameters: {
             query?: never;
@@ -8188,6 +8325,253 @@ export interface components {
             website_notes?: string | null;
             /** Key Service Result */
             key_service_result?: string | null;
+        };
+        /** MobileKpiDailyDetailRead */
+        MobileKpiDailyDetailRead: {
+            /**
+             * Trade Date
+             * Format: date
+             */
+            trade_date: string;
+            /**
+             * Compiled At
+             * Format: date-time
+             */
+            compiled_at: string;
+            /** Timezone */
+            timezone: string;
+            report: components["schemas"]["MobileKpiPeriodRead"];
+        };
+        /** MobileKpiDailyListItem */
+        MobileKpiDailyListItem: {
+            /**
+             * Trade Date
+             * Format: date
+             */
+            trade_date: string;
+            /**
+             * Compiled At
+             * Format: date-time
+             */
+            compiled_at: string;
+            /** Operator Count */
+            operator_count: number;
+            /** Sales Cents */
+            sales_cents: number;
+            /** Jobs Created */
+            jobs_created: number;
+            /** Customers Count */
+            customers_count: number;
+        };
+        /** MobileKpiDailyListRead */
+        MobileKpiDailyListRead: {
+            /** Timezone */
+            timezone: string;
+            /** Days */
+            days?: components["schemas"]["MobileKpiDailyListItem"][];
+        };
+        /** MobileKpiLiveRead */
+        MobileKpiLiveRead: {
+            /** Timezone */
+            timezone: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Trade Date */
+            trade_date: string;
+            day: components["schemas"]["MobileKpiPeriodRead"];
+            week: components["schemas"]["MobileKpiPeriodRead"];
+        };
+        /** MobileKpiOperatorRowRead */
+        MobileKpiOperatorRowRead: {
+            /**
+             * Operator Tenant Id
+             * Format: uuid
+             */
+            operator_tenant_id: string;
+            /** Operator Name */
+            operator_name: string;
+            /** Operator Shop Number */
+            operator_shop_number?: string | null;
+            /**
+             * Customers Count
+             * @default 0
+             */
+            customers_count: number;
+            /**
+             * Jobs Created
+             * @default 0
+             */
+            jobs_created: number;
+            /**
+             * Jobs Completed
+             * @default 0
+             */
+            jobs_completed: number;
+            /**
+             * Sales Cents
+             * @default 0
+             */
+            sales_cents: number;
+            /**
+             * Prior Sales Cents
+             * @default 0
+             */
+            prior_sales_cents: number;
+            /**
+             * Prior Jobs Created
+             * @default 0
+             */
+            prior_jobs_created: number;
+            /** Sales Pct Change */
+            sales_pct_change?: number | null;
+            /** Avg Sale Cents */
+            avg_sale_cents?: number | null;
+            /** Jobs Per Customer */
+            jobs_per_customer?: number | null;
+            /** Category Jobs */
+            category_jobs?: {
+                [key: string]: number;
+            };
+            /** Category Sales Cents */
+            category_sales_cents?: {
+                [key: string]: number;
+            };
+            /** Lead Jobs */
+            lead_jobs?: {
+                [key: string]: number;
+            };
+            /** Lead Sales Cents */
+            lead_sales_cents?: {
+                [key: string]: number;
+            };
+            /**
+             * Active Jobs
+             * @default 0
+             */
+            active_jobs: number;
+            /**
+             * Outstanding Cents
+             * @default 0
+             */
+            outstanding_cents: number;
+            /**
+             * Enquiries Not Actioned
+             * @default 0
+             */
+            enquiries_not_actioned: number;
+        };
+        /** MobileKpiPeriodRead */
+        MobileKpiPeriodRead: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Start Ymd */
+            start_ymd: string;
+            /** End Ymd */
+            end_ymd: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            network: components["schemas"]["MobileKpiOperatorRowRead"];
+            /** Operators */
+            operators?: components["schemas"]["MobileKpiOperatorRowRead"][];
+        };
+        /** MobileKpiRecipientRead */
+        MobileKpiRecipientRead: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /** Role */
+            role: string;
+            /** Source */
+            source: string;
+            /** Email Mobile Kpi Report */
+            email_mobile_kpi_report: boolean;
+        };
+        /** MobileKpiRecipientUpdateRequest */
+        MobileKpiRecipientUpdateRequest: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Email Mobile Kpi Report */
+            email_mobile_kpi_report: boolean;
+        };
+        /** MobileKpiRecipientsRead */
+        MobileKpiRecipientsRead: {
+            /** Opt In */
+            opt_in: boolean;
+            /** Last Sent At */
+            last_sent_at?: string | null;
+            /** Recipients */
+            recipients?: components["schemas"]["MobileKpiRecipientRead"][];
+        };
+        /** MobileKpiWeeklyDetailRead */
+        MobileKpiWeeklyDetailRead: {
+            /** Week Start Ymd */
+            week_start_ymd: string;
+            /** Week End Ymd */
+            week_end_ymd: string;
+            /**
+             * Compiled At
+             * Format: date-time
+             */
+            compiled_at: string;
+            /** Emailed At */
+            emailed_at?: string | null;
+            /** Timezone */
+            timezone: string;
+            report: components["schemas"]["MobileKpiPeriodRead"];
+        };
+        /** MobileKpiWeeklyListItem */
+        MobileKpiWeeklyListItem: {
+            /** Week Start Ymd */
+            week_start_ymd: string;
+            /** Week End Ymd */
+            week_end_ymd: string;
+            /**
+             * Compiled At
+             * Format: date-time
+             */
+            compiled_at: string;
+            /** Emailed At */
+            emailed_at?: string | null;
+            /** Operator Count */
+            operator_count: number;
+            /** Sales Cents */
+            sales_cents: number;
+            /** Jobs Created */
+            jobs_created: number;
+            /** Customers Count */
+            customers_count: number;
+        };
+        /** MobileKpiWeeklyListRead */
+        MobileKpiWeeklyListRead: {
+            /** Timezone */
+            timezone: string;
+            /** Weeks */
+            weeks?: components["schemas"]["MobileKpiWeeklyListItem"][];
         };
         /** MobileNotificationsPatch */
         MobileNotificationsPatch: {
@@ -21070,6 +21454,243 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentMobileWeeklyReportSettingsRead"];
+                };
+            };
+        };
+    };
+    get_mobile_kpis_live_v1_parent_accounts_me_operations_mobile_kpis_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiLiveRead"];
+                };
+            };
+        };
+    };
+    get_mobile_kpis_live_csv_v1_parent_accounts_me_operations_mobile_kpis_live_csv_get: {
+        parameters: {
+            query?: {
+                scope?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mobile_kpi_days_v1_parent_accounts_me_operations_mobile_kpis_days_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiDailyListRead"];
+                };
+            };
+        };
+    };
+    get_mobile_kpi_day_v1_parent_accounts_me_operations_mobile_kpis_days__trade_date__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trade_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiDailyDetailRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mobile_kpi_weeks_v1_parent_accounts_me_operations_mobile_kpis_weeks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiWeeklyListRead"];
+                };
+            };
+        };
+    };
+    get_mobile_kpi_week_v1_parent_accounts_me_operations_mobile_kpis_weeks__week_start_ymd__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                week_start_ymd: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiWeeklyDetailRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mobile_kpi_week_csv_v1_parent_accounts_me_operations_mobile_kpis_weeks__week_start_ymd__csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                week_start_ymd: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mobile_kpi_recipients_v1_parent_accounts_me_operations_mobile_kpis_recipients_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiRecipientsRead"];
+                };
+            };
+        };
+    };
+    update_mobile_kpi_recipient_v1_parent_accounts_me_operations_mobile_kpis_recipients_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MobileKpiRecipientUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiRecipientsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

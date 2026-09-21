@@ -15642,6 +15642,339 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/operations/mobile-kpis/live": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpis Live",
+        "operationId": "get_mobile_kpis_live_v1_parent_accounts_me_operations_mobile_kpis_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiLiveRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/live/csv": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpis Live Csv",
+        "operationId": "get_mobile_kpis_live_csv_v1_parent_accounts_me_operations_mobile_kpis_live_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "week",
+              "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/days": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "List Mobile Kpi Days",
+        "operationId": "list_mobile_kpi_days_v1_parent_accounts_me_operations_mobile_kpis_days_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiDailyListRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/days/{trade_date}": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpi Day",
+        "operationId": "get_mobile_kpi_day_v1_parent_accounts_me_operations_mobile_kpis_days__trade_date__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trade_date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trade Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiDailyDetailRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/weeks": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "List Mobile Kpi Weeks",
+        "operationId": "list_mobile_kpi_weeks_v1_parent_accounts_me_operations_mobile_kpis_weeks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiWeeklyListRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/weeks/{week_start_ymd}": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpi Week",
+        "operationId": "get_mobile_kpi_week_v1_parent_accounts_me_operations_mobile_kpis_weeks__week_start_ymd__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "week_start_ymd",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Week Start Ymd"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiWeeklyDetailRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/weeks/{week_start_ymd}/csv": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpi Week Csv",
+        "operationId": "get_mobile_kpi_week_csv_v1_parent_accounts_me_operations_mobile_kpis_weeks__week_start_ymd__csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "week_start_ymd",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Week Start Ymd"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/recipients": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpi Recipients",
+        "operationId": "get_mobile_kpi_recipients_v1_parent_accounts_me_operations_mobile_kpis_recipients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiRecipientsRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Update Mobile Kpi Recipient",
+        "operationId": "update_mobile_kpi_recipient_v1_parent_accounts_me_operations_mobile_kpis_recipients_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobileKpiRecipientUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiRecipientsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/operations/troubleshooting": {
       "get": {
         "tags": [
@@ -26624,6 +26957,526 @@
           "customer_name"
         ],
         "title": "MobileKeyLeadIngestBody"
+      },
+      "MobileKpiDailyDetailRead": {
+        "properties": {
+          "trade_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Trade Date"
+          },
+          "compiled_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Compiled At"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "report": {
+            "$ref": "#/components/schemas/MobileKpiPeriodRead"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trade_date",
+          "compiled_at",
+          "timezone",
+          "report"
+        ],
+        "title": "MobileKpiDailyDetailRead"
+      },
+      "MobileKpiDailyListItem": {
+        "properties": {
+          "trade_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Trade Date"
+          },
+          "compiled_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Compiled At"
+          },
+          "operator_count": {
+            "type": "integer",
+            "title": "Operator Count"
+          },
+          "sales_cents": {
+            "type": "integer",
+            "title": "Sales Cents"
+          },
+          "jobs_created": {
+            "type": "integer",
+            "title": "Jobs Created"
+          },
+          "customers_count": {
+            "type": "integer",
+            "title": "Customers Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trade_date",
+          "compiled_at",
+          "operator_count",
+          "sales_cents",
+          "jobs_created",
+          "customers_count"
+        ],
+        "title": "MobileKpiDailyListItem"
+      },
+      "MobileKpiDailyListRead": {
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/MobileKpiDailyListItem"
+            },
+            "type": "array",
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timezone"
+        ],
+        "title": "MobileKpiDailyListRead"
+      },
+      "MobileKpiLiveRead": {
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "trade_date": {
+            "type": "string",
+            "title": "Trade Date"
+          },
+          "day": {
+            "$ref": "#/components/schemas/MobileKpiPeriodRead"
+          },
+          "week": {
+            "$ref": "#/components/schemas/MobileKpiPeriodRead"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timezone",
+          "generated_at",
+          "trade_date",
+          "day",
+          "week"
+        ],
+        "title": "MobileKpiLiveRead"
+      },
+      "MobileKpiOperatorRowRead": {
+        "properties": {
+          "operator_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Operator Tenant Id"
+          },
+          "operator_name": {
+            "type": "string",
+            "title": "Operator Name"
+          },
+          "operator_shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Shop Number"
+          },
+          "customers_count": {
+            "type": "integer",
+            "title": "Customers Count",
+            "default": 0
+          },
+          "jobs_created": {
+            "type": "integer",
+            "title": "Jobs Created",
+            "default": 0
+          },
+          "jobs_completed": {
+            "type": "integer",
+            "title": "Jobs Completed",
+            "default": 0
+          },
+          "sales_cents": {
+            "type": "integer",
+            "title": "Sales Cents",
+            "default": 0
+          },
+          "prior_sales_cents": {
+            "type": "integer",
+            "title": "Prior Sales Cents",
+            "default": 0
+          },
+          "prior_jobs_created": {
+            "type": "integer",
+            "title": "Prior Jobs Created",
+            "default": 0
+          },
+          "sales_pct_change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Pct Change"
+          },
+          "avg_sale_cents": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Sale Cents"
+          },
+          "jobs_per_customer": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jobs Per Customer"
+          },
+          "category_jobs": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Category Jobs"
+          },
+          "category_sales_cents": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Category Sales Cents"
+          },
+          "lead_jobs": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Lead Jobs"
+          },
+          "lead_sales_cents": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Lead Sales Cents"
+          },
+          "active_jobs": {
+            "type": "integer",
+            "title": "Active Jobs",
+            "default": 0
+          },
+          "outstanding_cents": {
+            "type": "integer",
+            "title": "Outstanding Cents",
+            "default": 0
+          },
+          "enquiries_not_actioned": {
+            "type": "integer",
+            "title": "Enquiries Not Actioned",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "operator_tenant_id",
+          "operator_name"
+        ],
+        "title": "MobileKpiOperatorRowRead"
+      },
+      "MobileKpiPeriodRead": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "start_ymd": {
+            "type": "string",
+            "title": "Start Ymd"
+          },
+          "end_ymd": {
+            "type": "string",
+            "title": "End Ymd"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "network": {
+            "$ref": "#/components/schemas/MobileKpiOperatorRowRead"
+          },
+          "operators": {
+            "items": {
+              "$ref": "#/components/schemas/MobileKpiOperatorRowRead"
+            },
+            "type": "array",
+            "title": "Operators"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "start_ymd",
+          "end_ymd",
+          "timezone",
+          "generated_at",
+          "network"
+        ],
+        "title": "MobileKpiPeriodRead"
+      },
+      "MobileKpiRecipientRead": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "email_mobile_kpi_report": {
+            "type": "boolean",
+            "title": "Email Mobile Kpi Report"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "email",
+          "full_name",
+          "role",
+          "source",
+          "email_mobile_kpi_report"
+        ],
+        "title": "MobileKpiRecipientRead"
+      },
+      "MobileKpiRecipientUpdateRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "email_mobile_kpi_report": {
+            "type": "boolean",
+            "title": "Email Mobile Kpi Report"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "email_mobile_kpi_report"
+        ],
+        "title": "MobileKpiRecipientUpdateRequest"
+      },
+      "MobileKpiRecipientsRead": {
+        "properties": {
+          "opt_in": {
+            "type": "boolean",
+            "title": "Opt In"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At"
+          },
+          "recipients": {
+            "items": {
+              "$ref": "#/components/schemas/MobileKpiRecipientRead"
+            },
+            "type": "array",
+            "title": "Recipients"
+          }
+        },
+        "type": "object",
+        "required": [
+          "opt_in"
+        ],
+        "title": "MobileKpiRecipientsRead"
+      },
+      "MobileKpiWeeklyDetailRead": {
+        "properties": {
+          "week_start_ymd": {
+            "type": "string",
+            "title": "Week Start Ymd"
+          },
+          "week_end_ymd": {
+            "type": "string",
+            "title": "Week End Ymd"
+          },
+          "compiled_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Compiled At"
+          },
+          "emailed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emailed At"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "report": {
+            "$ref": "#/components/schemas/MobileKpiPeriodRead"
+          }
+        },
+        "type": "object",
+        "required": [
+          "week_start_ymd",
+          "week_end_ymd",
+          "compiled_at",
+          "timezone",
+          "report"
+        ],
+        "title": "MobileKpiWeeklyDetailRead"
+      },
+      "MobileKpiWeeklyListItem": {
+        "properties": {
+          "week_start_ymd": {
+            "type": "string",
+            "title": "Week Start Ymd"
+          },
+          "week_end_ymd": {
+            "type": "string",
+            "title": "Week End Ymd"
+          },
+          "compiled_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Compiled At"
+          },
+          "emailed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emailed At"
+          },
+          "operator_count": {
+            "type": "integer",
+            "title": "Operator Count"
+          },
+          "sales_cents": {
+            "type": "integer",
+            "title": "Sales Cents"
+          },
+          "jobs_created": {
+            "type": "integer",
+            "title": "Jobs Created"
+          },
+          "customers_count": {
+            "type": "integer",
+            "title": "Customers Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "week_start_ymd",
+          "week_end_ymd",
+          "compiled_at",
+          "operator_count",
+          "sales_cents",
+          "jobs_created",
+          "customers_count"
+        ],
+        "title": "MobileKpiWeeklyListItem"
+      },
+      "MobileKpiWeeklyListRead": {
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/MobileKpiWeeklyListItem"
+            },
+            "type": "array",
+            "title": "Weeks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timezone"
+        ],
+        "title": "MobileKpiWeeklyListRead"
       },
       "MobileNotificationsPatch": {
         "properties": {
