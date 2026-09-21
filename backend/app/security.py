@@ -2,6 +2,8 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from uuid import UUID
 
+import secrets
+
 import bcrypt
 from jose import JWTError, jwt
 
@@ -26,6 +28,30 @@ class TokenClaims:
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+#: bcrypt's own minimum, against the library default used for real passwords.
+_UNUSABLE_PASSWORD_ROUNDS = 4
+
+
+def hash_unusable_password() -> str:
+    """A password hash for an account that is claimed later, never logged into
+    now — an imported shop owner waiting on an invite.
+
+    The plaintext is 32 bytes from a CSPRNG and is thrown away inside this
+    function, so nobody, including the caller, ever holds it. That is what
+    makes the account unusable, and it is why the work factor is turned right
+    down here: bcrypt's cost exists to make *guessing* expensive, and guessing
+    only matters for secrets a human chose. There is no dictionary or brute
+    force against 256 bits of randomness at any cost factor, so paying the
+    default buys nothing and costs ~0.27s per account — two minutes on a
+    network-sized import, which is how this ran past a proxy's read timeout.
+
+    Real passwords must keep using hash_password(). This is only for a
+    placeholder nobody will ever type.
+    """
+    throwaway = secrets.token_urlsafe(32)
+    return bcrypt.hashpw(throwaway.encode(), bcrypt.gensalt(rounds=_UNUSABLE_PASSWORD_ROUNDS)).decode()
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:

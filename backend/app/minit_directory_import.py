@@ -25,7 +25,6 @@ already claimed via a real invite) are never modified — this only fills gaps.
 
 from __future__ import annotations
 
-import secrets
 from dataclasses import dataclass, field
 from uuid import UUID
 
@@ -41,7 +40,7 @@ from .minit_provision import (
 )
 from .models import ParentAccount, Region, Tenant, User
 from .parent_network import linked_tenant_ids_for_parent
-from .security import hash_password
+from .security import hash_unusable_password
 
 _PREVIEW_LIMIT = 25
 # Commit progress every N shops during apply, rather than one giant
@@ -93,7 +92,7 @@ def _owner_identity_for_shop(
 def _new_placeholder_password_hash() -> str:
     """An unusable random password — real credentials come from a shop-owner
     invite (routes/shop_owner_invites.py), never from this import."""
-    return hash_password(secrets.token_urlsafe(32))
+    return hash_unusable_password()
 
 
 @dataclass
@@ -119,14 +118,13 @@ def plan_directory_import(
     accounts that don't exist yet.
 
     Fast for a re-run over a mostly-already-imported export (no per-shop
-    queries for shops that already exist) — but each brand-new owner still
-    costs a bcrypt hash (~100-300ms, unavoidable, and deliberately not cheaper
-    here: hash_password() is the same security-critical helper used for real
-    user passwords everywhere else). A single request creating on the order
-    of 300+ new owners at once can still approach a reverse proxy's request
-    timeout; if this network ever needs a bulk load that large again, prefer
-    running scripts/import_minit_directory.py directly (no HTTP timeout)
-    over the HQ upload endpoint."""
+    queries for shops that already exist). A brand-new owner used to cost a
+    full-strength bcrypt hash each (~0.27s, so ~109s for 400 shops — past a
+    reverse proxy's read timeout), even though the password being hashed is
+    random, thrown away, and can never be used; see
+    security.hash_unusable_password. Creating a whole network now takes about
+    a second. scripts/import_minit_directory.py remains the better route for a
+    very large load, since it has no HTTP timeout at all."""
     hq_email = hq_owner_email.strip().lower()
     parent = session.exec(
         select(ParentAccount)

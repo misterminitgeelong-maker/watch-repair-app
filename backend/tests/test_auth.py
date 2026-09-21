@@ -676,3 +676,20 @@ def test_parent_account_create_tenant_and_link():
     event_types = [event["event_type"] for event in activity_res.json()]
     assert "create_tenant" in event_types
     assert "switch_site" in event_types
+
+
+def test_unusable_password_hash_cannot_be_logged_in_with():
+    """The placeholder given to an imported shop owner: a real bcrypt hash that
+    nobody holds the plaintext for, cheap to produce because there is nothing
+    guessable to defend."""
+    from app.security import hash_unusable_password, verify_password
+
+    first = hash_unusable_password()
+    second = hash_unusable_password()
+
+    # A real bcrypt hash, so verify_password keeps working against it.
+    assert first.startswith("$2b$")
+    # Distinct per account — one leaked plaintext could not unlock the rest.
+    assert first != second
+    for guess in ("", "password", "123456", "admin", "changeme"):
+        assert not verify_password(guess, first)

@@ -91,9 +91,7 @@ from ..parent_network import (
     site_for_tenant_in_parent,
     sites_for_parent,
 )
-import secrets
-
-from ..security import hash_password
+from ..security import hash_password, hash_unusable_password
 from ..minit_shops import MinitShopRow, tenant_slug_for_shop
 from ..shop_number import (
     assert_shop_number_unique_in_parent,
@@ -1655,7 +1653,7 @@ def provision_minit_retail_shop(
         owner_mobile = (payload.owner_mobile or "").strip() or None
         # Unusable until they claim it through an invite — HQ still gets in via
         # "Open shop", which is authorised by the site table, not this password.
-        owner_password_hash = hash_password(secrets.token_urlsafe(32))
+        owner_password_hash = hash_unusable_password()
     else:
         owner_full_name = current_user.full_name
         owner_mobile = None
