@@ -53,7 +53,7 @@ import {
 import { formatDate } from '@/lib/utils'
 import { MOBILE_STATUS_CATEGORY_LABELS, mobileStatusLabel } from '@/lib/mobileStatus'
 import { COCKPIT_FOCUS_KEYS, COCKPIT_FOCUS_LABELS, FINANCE_DATE_FIELDS, FINANCE_DATE_FIELD_LABELS, MOBILE_CATEGORY_KEYS } from '@/lib/cockpitFocus'
-import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView } from '@/lib/savedViews'
+import { AUTO_KEY_VIEWS_KEY, loadSavedView, saveSavedView, type AutoKeySavedView } from '@/lib/savedViews'
 import { useToast } from '@/lib/toast'
 import {
   autoKeyJobsListKey,
@@ -87,6 +87,14 @@ import {
   WeekDayHeaderDrop,
   WeekHourDropCell,
 } from '@/pages/autoKey/WeekGridCells'
+import { parsePosModeParam } from '@/pages/autoKey/posMode'
+import {
+  applyAutoKeyUrl,
+  persistableAutoKeySavedView,
+  resolveAutoKeyLanding,
+  type AutoKeyJobsLayout,
+  type AutoKeyPageView,
+} from '@/pages/autoKey/landingView'
 import { SendBookingRequestModal } from '@/pages/autoKey/SendBookingRequestModal'
 import { AutoKeyJobCard } from '@/pages/autoKey/AutoKeyJobCard'
 import MobileOperationsCockpit from '@/pages/autoKey/MobileOperationsCockpit'
@@ -100,8 +108,7 @@ const PlannerJobDetailModal = lazy(() => import('@/pages/autoKey/PlannerJobDetai
 // PlannerJobDetailModal lives in ./autoKey/PlannerJobDetailModal (imported above).
 // NewAutoKeyJobModal lives in ./autoKey/NewAutoKeyJobModal (imported above).
 
-// POSView lives in ./autoKey/POSView and CreateQuoteModal in
-// ./autoKey/CreateQuoteModal (both imported above).
+// POSView lives in ./autoKey/POSView. New Quote opens it in quote mode.
 
 // AutoKeyJobCard lives in ./autoKey/AutoKeyJobCard (imported above).
 
@@ -111,22 +118,17 @@ export default function AutoKeyJobsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedView = searchParams.get('view')
   const posJobId = searchParams.get('job_id')
-  const initialView: 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports' =
-    requestedView === 'jobs' ||
-    requestedView === 'pos' ||
-    requestedView === 'dispatch' ||
-    requestedView === 'week' ||
-    requestedView === 'map' ||
-    requestedView === 'planner' ||
-    requestedView === 'reports'
-      ? requestedView
-      : 'jobs'
-  const initialJobsLayout: 'today' | 'board' | 'list' =
-    searchParams.get('jobs_layout') === 'list'
-      ? 'list'
-      : searchParams.get('jobs_layout') === 'board'
-        ? 'board'
-        : 'today'
+  const posMode = parsePosModeParam(searchParams.get('mode'))
+  const isMobileWidthInit = typeof window !== 'undefined' && window.innerWidth < 768
+  const landing = resolveAutoKeyLanding({
+    urlView: requestedView,
+    urlJobsLayout: searchParams.get('jobs_layout'),
+    urlJobId: posJobId,
+    saved: searchParams.toString() ? {} : loadSavedView<AutoKeySavedView>(AUTO_KEY_VIEWS_KEY, {}),
+    isMobile: isMobileWidthInit,
+  })
+  const initialView: AutoKeyPageView = landing.view
+  const initialJobsLayout: AutoKeyJobsLayout = landing.jobsLayout
   const initialStatus = searchParams.get('status')
   // Cockpit drill-downs: the server applies the same filter it counted with.
   const requestedFocus = searchParams.get('focus')
@@ -206,7 +208,7 @@ export default function AutoKeyJobsPage() {
     },
     onError: (e: unknown) => toast.error(getApiErrorMessage(e, 'Bulk update failed')),
   })
-  const [view, setView] = useState<'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports'>(initialView)
+  const [view, setView] = useState<AutoKeyPageView>(initialView)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [listOffset, setListOffset] = useState(0)
@@ -217,7 +219,7 @@ export default function AutoKeyJobsPage() {
   const [techFilter, setTechFilter] = useState<string | null>(initialTech)
   const [dateDrill, setDateDrill] = useState(initialDateDrill)
   const [olderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
-  const [jobsLayout, setJobsLayout] = useState<'today' | 'board' | 'list'>(initialJobsLayout)
+  const [jobsLayout, setJobsLayout] = useState<AutoKeyJobsLayout>(initialJobsLayout)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 250)
@@ -230,16 +232,16 @@ export default function AutoKeyJobsPage() {
 
   useEffect(() => {
     if (searchParams.toString()) return
-    const saved = loadSavedView<import('@/lib/savedViews').AutoKeySavedView>(AUTO_KEY_VIEWS_KEY, {})
-    if (saved.view) setView(saved.view as typeof view)
+    const saved = loadSavedView<AutoKeySavedView>(AUTO_KEY_VIEWS_KEY, {})
     if (saved.jobDirectoryView) setJobDirectoryView(saved.jobDirectoryView as typeof jobDirectoryView)
     if (saved.statusFilter) setStatusFilter(saved.statusFilter)
-    if (saved.jobsLayout === 'today' || saved.jobsLayout === 'board' || saved.jobsLayout === 'list') setJobsLayout(saved.jobsLayout)
     if (saved.mapRangeMode) setMapRangeMode(saved.mapRangeMode as typeof mapRangeMode)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    saveSavedView(AUTO_KEY_VIEWS_KEY, { view, jobDirectoryView, statusFilter, jobsLayout, mapRangeMode })
+    saveSavedView(AUTO_KEY_VIEWS_KEY, persistableAutoKeySavedView({
+      view, jobDirectoryView, statusFilter, jobsLayout, mapRangeMode,
+    }))
   }, [view, jobDirectoryView, statusFilter, jobsLayout, mapRangeMode])
 
   const [dispatchDate, setDispatchDate] = useState(initialDispatchDate)
@@ -294,21 +296,23 @@ export default function AutoKeyJobsPage() {
   const { data: jobsRaw, isLoading, isError, error: jobsQueryError } = useQuery({
     queryKey: autoKeyJobsListKey,
     queryFn: () => listAutoKeyJobs().then(r => r.data),
+    enabled: sessionReady,
   })
   const jobs = Array.isArray(jobsRaw) ? jobsRaw : []
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => listCustomers().then(r => r.data),
-    enabled: view === 'pos' || view === 'map' || view === 'dispatch' || view === 'planner' || view === 'week',
+    enabled: sessionReady && (view === 'pos' || view === 'map' || view === 'dispatch' || view === 'planner' || view === 'week'),
   })
   const { data: customerAccounts = [] } = useQuery({
     queryKey: ['customer-accounts'],
     queryFn: () => listCustomerAccounts().then(r => r.data),
-    enabled: view === 'pos',
+    enabled: sessionReady && view === 'pos',
   })
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => listUsers().then(r => r.data),
+    enabled: sessionReady,
   })
   const listPageSize = 50
   const {
@@ -330,7 +334,7 @@ export default function AutoKeyJobsPage() {
       limit: listPageSize,
       offset: listOffset,
     }).then(r => r.data),
-    enabled: view === 'jobs' && jobsLayout === 'list',
+    enabled: sessionReady && view === 'jobs' && jobsLayout === 'list',
     placeholderData: previous => previous,
   })
   const pagedJobs = jobsPage?.items ?? []
@@ -365,7 +369,7 @@ export default function AutoKeyJobsPage() {
   const { data: dispatchJobs = [], isLoading: dispatchLoading } = useQuery({
     queryKey: ['auto-key-jobs', 'dispatch', dispatchDate, dispatchTechFilter, view === 'map' ? mapRangeMode : 'single-day'],
     queryFn: () => listAutoKeyJobs(dispatchParams!).then(r => r.data),
-    enabled: dispatchViews && !!dispatchParams,
+    enabled: sessionReady && dispatchViews && !!dispatchParams,
   })
 
   // Dispatch list ordering: by scheduled time (default) or by SLA risk (most urgent first).
@@ -459,7 +463,7 @@ export default function AutoKeyJobsPage() {
   const { data: weekJobs = [], isLoading: weekLoading, isError: weekError, error: weekErr, refetch: refetchWeek } = useQuery({
     queryKey: ['auto-key-jobs', 'week', weekStart, weekEnd],
     queryFn: () => listAutoKeyJobs(weekParams!).then(r => r.data),
-    enabled: view === 'week' && !!weekParams,
+    enabled: sessionReady && view === 'week' && !!weekParams,
   })
   const {
     weekRelocateJobId,
@@ -537,7 +541,29 @@ export default function AutoKeyJobsPage() {
     })
   }, [view, filteredJobs])
 
+  const prevView = useRef(view)
+  const prevJobsLayout = useRef(jobsLayout)
+  const prevSearch = useRef(searchParams.toString())
+
   useEffect(() => {
+    const searchChanged = searchParams.toString() !== prevSearch.current
+    const stateChanged = view !== prevView.current || jobsLayout !== prevJobsLayout.current
+    prevView.current = view
+    prevJobsLayout.current = jobsLayout
+    prevSearch.current = searchParams.toString()
+
+    if (searchChanged && !stateChanged) {
+      const fromUrl = applyAutoKeyUrl({
+        urlView: searchParams.get('view'),
+        urlJobsLayout: searchParams.get('jobs_layout'),
+        urlJobId: searchParams.get('job_id'),
+        isMobile: isMobileWidth,
+      })
+      if (fromUrl.view !== view) setView(fromUrl.view)
+      if (fromUrl.jobsLayout !== jobsLayout) setJobsLayout(fromUrl.jobsLayout)
+      return
+    }
+
     const next = new URLSearchParams()
     if (view !== 'jobs') next.set('view', view)
     if (statusFilter !== 'all') next.set('status', statusFilter)
@@ -563,6 +589,9 @@ export default function AutoKeyJobsPage() {
     if (view === 'pos' && posJobId) {
       next.set('job_id', posJobId)
     }
+    if (view === 'pos' && posMode) {
+      next.set('mode', posMode)
+    }
     if (view === 'jobs' && jobsLayout !== 'today') {
       next.set('jobs_layout', jobsLayout)
     }
@@ -574,6 +603,8 @@ export default function AutoKeyJobsPage() {
     mapRangeMode,
     olderThanDays,
     posJobId,
+    posMode,
+    searchParams,
     setSearchParams,
     statusFilter,
     focusFilter,
@@ -582,6 +613,7 @@ export default function AutoKeyJobsPage() {
     dateDrill,
     view,
     weekStart,
+    isMobileWidth,
   ])
 
   return (
@@ -806,7 +838,7 @@ export default function AutoKeyJobsPage() {
               </button>
             )}
           </div>
-          {isLoading ? (
+          {!sessionReady || isLoading ? (
             <Spinner />
           ) : isError ? (
             <p className="text-sm rounded-lg px-4 py-3" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)', color: 'var(--ms-error)' }}>
@@ -1132,6 +1164,14 @@ export default function AutoKeyJobsPage() {
             customers={customers}
             customerAccounts={customerAccounts}
             initialJobId={posJobId}
+            initialMode={posMode}
+            onModeChange={mode => {
+              const next = new URLSearchParams(searchParams)
+              next.set('view', 'pos')
+              next.set('mode', mode)
+              if (posJobId) next.set('job_id', posJobId)
+              setSearchParams(next, { replace: true })
+            }}
             onComplete={() => invalidateAutoKeyJobCollections(qc)}
           />
         </Suspense>

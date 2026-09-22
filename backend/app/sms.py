@@ -742,8 +742,8 @@ def notify_auto_key_customer_intake(
     shop = shop_name.strip() or "us"
     body = (
         f"Hi {first}, thanks for getting in touch with {shop}. "
-        f"We've created your job (#{job_number}) — please follow the link to fill in your vehicle details "
-        f"and preferred appointment time: {intake_url}"
+        f"We've created your job (#{job_number}) — please follow the link to fill in your vehicle details, "
+        f"preferred appointment time, and a photo of the key: {intake_url}"
     )
     if len(body) > 1500:
         body = body[:1490] + "…"

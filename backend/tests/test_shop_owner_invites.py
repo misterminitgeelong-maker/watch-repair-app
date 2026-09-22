@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.models import EmailLog, ShopOwnerInvite, SmsLog, User
+from app.models import EmailLog, ShopOwnerInvite, SmsLog, Tenant, User
 
 create_db_and_tables()
 client = TestClient(app)
@@ -248,3 +248,100 @@ def test_create_invite_texts_the_link_when_owner_has_a_mobile_on_file():
         ).all()
         assert len(sms_logs) == 1
         assert sms_logs[0].to_phone == "+61400123456"
+
+
+def test_hq_can_set_shop_identity_contact_used_by_invite():
+    from uuid import UUID as _UUID
+
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+    shop_email = f"shop-{suffix}@franchise.test"
+    shop_phone = "0412 345 678"
+
+    patched = client.patch(
+        f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}",
+        headers=ctx["hq"],
+        json={"shop_email": shop_email, "shop_phone": shop_phone},
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["shop_email"] == shop_email
+    assert body["shop_phone"] == shop_phone
+
+    with Session(engine) as session:
+        tenant = session.get(Tenant, _UUID(ctx["tenant_id"]))
+        assert tenant.shop_email == shop_email
+        assert tenant.shop_phone == shop_phone
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id)).first()
+        assert owner.email == ctx["hq_email"]  # login identity is unchanged
+
+    created = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"])
+    assert created.status_code == 200, created.text
+    invite = created.json()
+    assert invite["owner_email"] == shop_email
+    assert invite["owner_mobile"] == shop_phone
+
+    with Session(engine) as session:
+        tenant_id = _UUID(ctx["tenant_id"])
+        email_logs = session.exec(
+            select(EmailLog)
+            .where(EmailLog.tenant_id == tenant_id)
+            .where(EmailLog.event == "shop_owner_invite")
+        ).all()
+        assert len(email_logs) == 1
+        assert email_logs[0].to_email == shop_email
+        sms_logs = session.exec(
+            select(SmsLog).where(SmsLog.tenant_id == tenant_id).where(SmsLog.event == "shop_owner_invite")
+        ).all()
+        assert len(sms_logs) == 1
+        assert sms_logs[0].to_phone == shop_phone
+
+
+def test_hq_shop_contact_rejects_invalid_email_and_phone():
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+
+    bad_email = client.patch(
+        f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}",
+        headers=ctx["hq"],
+        json={"shop_email": "not-an-email"},
+    )
+    assert bad_email.status_code == 400
+
+    bad_phone = client.patch(
+        f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}",
+        headers=ctx["hq"],
+        json={"shop_phone": "123"},
+    )
+    assert bad_phone.status_code == 400
+
+
+def test_hq_can_clear_shop_contact_and_invite_falls_back_to_owner():
+    from uuid import UUID as _UUID
+
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+
+    client.patch(
+        f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}",
+        headers=ctx["hq"],
+        json={"shop_email": f"shop-{suffix}@franchise.test", "shop_phone": "0412 345 678"},
+    )
+    cleared = client.patch(
+        f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}",
+        headers=ctx["hq"],
+        json={"shop_email": "", "shop_phone": ""},
+    )
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["shop_email"] is None
+    assert cleared.json()["shop_phone"] is None
+
+    created = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"])
+    assert created.status_code == 200, created.text
+    assert created.json()["owner_email"] == ctx["hq_email"]
+    assert created.json()["owner_mobile"] is None
+
+    with Session(engine) as session:
+        tenant = session.get(Tenant, _UUID(ctx["tenant_id"]))
+        assert tenant.shop_email is None
+        assert tenant.shop_phone is None

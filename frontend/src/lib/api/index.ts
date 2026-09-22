@@ -143,13 +143,10 @@ export interface ParentAccountSite {
   owner_mobile?: string | null
   /** True when the shop still uses the shared HQ login — no franchisee to invite yet. */
   owner_is_shared_hq_login?: boolean
-  /**
-   * The site's own contact, independent of who holds the login. Mobile operators
-   * are provisioned from the operator seed (dispatch phone/email) rather than the
-   * directory export, so this is the only contact HQ has for them.
-   */
-  shop_phone?: string | null
+  /** Tenant shop-identity email used when sending an owner invite. */
   shop_email?: string | null
+  /** Tenant shop-identity phone used when SMS-ing an owner invite. */
+  shop_phone?: string | null
 }
 
 export interface ParentAccountUser {
@@ -399,7 +396,13 @@ export const enterLinkedShop = (tenantId: string, reason?: string) =>
   api.post<ParentEnterShopResponse>(`/parent-accounts/me/sites/${tenantId}/enter`, reason ? { reason } : {})
 export const updateLinkedSite = (
   tenantId: string,
-  payload: { network_role?: NetworkRole; region_id?: string | null; clear_region?: boolean },
+  payload: {
+    network_role?: NetworkRole
+    region_id?: string | null
+    clear_region?: boolean
+    shop_email?: string | null
+    shop_phone?: string | null
+  },
 ) => api.patch<ParentAccountSite>(`/parent-accounts/me/sites/${tenantId}`, payload)
 
 export const listParentAccountUsers = () =>
@@ -2081,6 +2084,7 @@ export interface AutoKeyJob {
   visit_order?: number | null
   additional_services_json?: string | null
   commission_lead_source?: string
+  shop_mobile_booking_request_id?: string | null
   customer_name?: string | null
   customer_phone?: string | null
   pricing_ref_id?: string | null
@@ -3730,6 +3734,15 @@ export interface PublicAutoKeyIntake {
 }
 export const getPublicAutoKeyIntake = (token: string) =>
   axios.get<PublicAutoKeyIntake>(withApiOrigin(`/v1/public/auto-key-intake/${token}`))
+export const uploadPublicAutoKeyIntakePhotos = (token: string, files: File[]) => {
+  const form = new FormData()
+  files.forEach(file => form.append('files', file))
+  return axios.post<{ ok: boolean; count: number; attachment_ids: string[] }>(
+    withApiOrigin(`/v1/public/auto-key-intake/${token}/photos`),
+    form,
+    { timeout: 120000 },
+  )
+}
 export const submitPublicAutoKeyIntake = (token: string, data: {
   full_name?: string
   vehicle_make?: string
@@ -3747,6 +3760,8 @@ export const submitPublicAutoKeyIntake = (token: string, data: {
   blade_code?: string
   chip_type?: string
   tech_notes?: string
+  key_photo_data?: string
+  extra_key_photo_data?: string
 }) => axios.post<{ message?: string }>(withApiOrigin(`/v1/public/auto-key-intake/${token}/submit`), data)
 
 export interface PublicAutoKeyInvoice {

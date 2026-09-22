@@ -16,7 +16,6 @@ import {
   listAutoKeyQuotes,
   listCustomerAccounts,
   listUsers,
-  createAutoKeyQuote,
   sendAutoKeyQuote,
   createAutoKeyInvoiceFromQuote,
   sendAutoKeyInvoice,
@@ -43,12 +42,13 @@ import {
   type VehicleKeySpecMatch,
 } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { AUTO_KEY_JOB_TYPES, QUOTE_PRESETS, QUOTE_BUNDLES, quoteBundleTotal, bundleToDraftItems, type QuoteBundle } from '@/lib/autoKeyJobTypes'
+import { AUTO_KEY_JOB_TYPES } from '@/lib/autoKeyJobTypes'
+import { autoKeyPosHref } from '@/pages/autoKey/posMode'
 import { Badge, Button, Card, EmptyState, Input, MobileActionMenu, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 import JobMessageThread from '@/components/JobMessageThread'
 import JobCustomFields from '@/components/JobCustomFields'
 import { useToast } from '@/lib/toast'
-import { formatCents, dollarsToCents, computeGstAmounts } from '@/lib/money'
+import { formatCents } from '@/lib/money'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
@@ -56,184 +56,6 @@ import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 import { cn, formatDate } from '@/lib/utils'
 import { MOBILE_STATUS_OPTIONS, mobileStatusLabel } from '@/lib/mobileStatus'
 import { preparePhotoFile } from '@/lib/photoUpload'
-
-interface LineItemDraft { description: string; quantity: string; unitPrice: string }
-
-function CreateQuoteInlineForm({ jobId, isBusinessAccount, onClose }: { jobId: string; isBusinessAccount: boolean; onClose: () => void }) {
-  const qc = useQueryClient()
-  const [err, setErr] = useState('')
-  const [items, setItems] = useState<LineItemDraft[]>([{ description: '', quantity: '1', unitPrice: '' }])
-  const [gstEnabled, setGstEnabled] = useState(true)
-  const [gstInclusive, setGstInclusive] = useState(!isBusinessAccount)
-
-  const addPreset = (p: typeof QUOTE_PRESETS[number]) => {
-    setItems(prev => {
-      // Replace a blank first item, otherwise append
-      if (prev.length === 1 && !prev[0].description && !prev[0].unitPrice) {
-        return [{ description: p.description, quantity: '1', unitPrice: String(p.price) }]
-      }
-      return [...prev, { description: p.description, quantity: '1', unitPrice: String(p.price) }]
-    })
-  }
-
-  const addBundle = (b: QuoteBundle) => {
-    const drafts = bundleToDraftItems(b)
-    setItems(prev =>
-      prev.length === 1 && !prev[0].description && !prev[0].unitPrice ? drafts : [...prev, ...drafts],
-    )
-  }
-
-  const updateItem = (i: number, field: keyof LineItemDraft, val: string) => {
-    setItems(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: val } : item))
-  }
-
-  const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i))
-
-  const addBlankItem = () => setItems(prev => [...prev, { description: '', quantity: '1', unitPrice: '' }])
-
-  const enteredCents = items.reduce((sum, item) => {
-    return sum + dollarsToCents(item.unitPrice) * Math.max(1, parseFloat(item.quantity || '1'))
-  }, 0)
-  const { subtotalCents, taxCents, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
-
-  const mut = useMutation({
-    mutationFn: () =>
-      createAutoKeyQuote(jobId, {
-        line_items: items
-          .filter(i => i.description.trim())
-          .map(i => ({
-            description: i.description.trim(),
-            quantity: Math.max(1, parseFloat(i.quantity || '1')),
-            unit_price_cents: dollarsToCents(i.unitPrice),
-          })),
-        gst_enabled: gstEnabled,
-        gst_inclusive: gstInclusive,
-      }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['auto-key-quotes', jobId] }); onClose() },
-    onError: (e) => setErr(getApiErrorMessage(e, 'Failed to create quote.')),
-  })
-
-  return (
-    <div className="space-y-4">
-      {/* Bundle grid — one tap drops a full common job */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
-          Quick bundles — tap a full job
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {QUOTE_BUNDLES.map(b => (
-            <button
-              key={b.label}
-              type="button"
-              onClick={() => addBundle(b)}
-              title={b.note}
-              className="text-xs px-2.5 py-1 rounded-full border transition-colors hover:bg-opacity-80 font-medium"
-              style={{ borderColor: 'var(--ms-accent)', color: '#2C1810', backgroundColor: 'var(--ms-accent)' }}
-            >
-              {b.label} · ${quoteBundleTotal(b)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Preset grid */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--ms-text-muted)' }}>
-          Quick add — tap a service
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {QUOTE_PRESETS.map(p => (
-            <button
-              key={p.label}
-              type="button"
-              onClick={() => addPreset(p)}
-              className="text-xs px-2.5 py-1 rounded-full border transition-colors hover:bg-opacity-80"
-              style={{ borderColor: 'var(--ms-accent)', color: 'var(--ms-accent)', backgroundColor: 'var(--ms-accent-light)' }}
-            >
-              {p.label} · ${p.price}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Line items */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Line items</p>
-        {items.map((item, i) => (
-          <div key={i} className="flex gap-2 items-end">
-            <div className="flex-1 min-w-0">
-              <Input
-                label={i === 0 ? 'Description' : undefined}
-                placeholder="Description"
-                value={item.description}
-                onChange={e => updateItem(i, 'description', e.target.value)}
-              />
-            </div>
-            <div style={{ width: 52 }}>
-              <Input
-                label={i === 0 ? 'Qty' : undefined}
-                type="number" min="0.01" step="0.01"
-                value={item.quantity}
-                onChange={e => updateItem(i, 'quantity', e.target.value)}
-              />
-            </div>
-            <div style={{ width: 90 }}>
-              <Input
-                label={i === 0 ? 'Price ($)' : undefined}
-                type="number" min="0" step="0.01"
-                placeholder="0.00"
-                value={item.unitPrice}
-                onChange={e => updateItem(i, 'unitPrice', e.target.value)}
-              />
-            </div>
-            {items.length > 1 && (
-              <button type="button" onClick={() => removeItem(i)} className="pb-1 text-lg leading-none" style={{ color: 'var(--ms-text-muted)' }} aria-label="Remove">×</button>
-            )}
-          </div>
-        ))}
-        <button type="button" onClick={addBlankItem} className="text-xs font-medium" style={{ color: 'var(--ms-accent)' }}>
-          + Add line item
-        </button>
-      </div>
-
-      {/* GST + total */}
-      <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
-          <input type="checkbox" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
-          Apply GST (10%)
-        </label>
-        {gstEnabled && (
-          <div className="flex gap-4 pl-6 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-            <label className="flex items-center gap-1.5">
-              <input type="radio" name="gst-mode-inline" checked={gstInclusive} onChange={() => setGstInclusive(true)} />
-              Include in total (non-business)
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input type="radio" name="gst-mode-inline" checked={!gstInclusive} onChange={() => setGstInclusive(false)} />
-              Add on top (business)
-            </label>
-          </div>
-        )}
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-          Subtotal: ${(subtotalCents / 100).toFixed(2)} · GST: ${(taxCents / 100).toFixed(2)}
-        </p>
-        <p className="text-sm font-bold" style={{ color: 'var(--ms-text)' }}>Total: ${(total / 100).toFixed(2)}</p>
-      </div>
-
-      {err && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{err}</p>}
-      <div className="flex gap-2 pt-1">
-        <Button variant="secondary" className="flex-1" onClick={onClose}>Cancel</Button>
-        <Button
-          className="flex-1"
-          onClick={() => mut.mutate()}
-          disabled={mut.isPending || items.every(i => !i.description.trim())}
-        >
-          {mut.isPending ? 'Creating…' : 'Save Quote'}
-        </Button>
-      </div>
-    </div>
-  )
-}
 
 /**
  * Prominent warning banner shown near the top of the job when the vehicle
@@ -388,7 +210,6 @@ export default function AutoKeyJobDetailPage() {
       ? tabFromUrl
       : 'info',
   )
-  const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [sendInvoiceFeedback, setSendInvoiceFeedback] = useState('')
   const [invoiceSendChannel, setInvoiceSendChannel] = useState<InvoiceSendChannel>('both')
 
@@ -1380,20 +1201,14 @@ export default function AutoKeyJobDetailPage() {
         )}
 
         <div className={cn('lg:col-span-2 xl:col-span-8 space-y-5', detailTab !== 'financial' && 'hidden')}>
-          {showQuoteModal && (
-            <Modal title="Create Quote" onClose={() => setShowQuoteModal(false)}>
-              <CreateQuoteInlineForm jobId={id!} isBusinessAccount={!!job.customer_account_id} onClose={() => setShowQuoteModal(false)} />
-            </Modal>
-          )}
-
           <Card>
             <div className='px-5 py-3.5 flex flex-wrap items-center justify-between gap-2' style={{ borderBottom: '1px solid var(--ms-border)' }}>
               <h2 className='font-semibold' style={{ color: 'var(--ms-text)' }}>Quotes</h2>
               <div className="flex gap-2">
-                <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => navigate(`/auto-key?view=pos&job_id=${id}`)}>
+                <Button variant="secondary" className="text-xs py-1 px-2" onClick={() => navigate(autoKeyPosHref(id!))}>
                   Open in POS
                 </Button>
-                <Button variant="secondary" className="text-xs py-1 px-2 flex items-center gap-1" onClick={() => setShowQuoteModal(true)}>
+                <Button variant="secondary" className="text-xs py-1 px-2 flex items-center gap-1" onClick={() => navigate(autoKeyPosHref(id!, 'quote'))}>
                   <Plus size={13} /> New Quote
                 </Button>
               </div>

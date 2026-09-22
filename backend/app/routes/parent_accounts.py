@@ -10,6 +10,7 @@ from calendar import monthrange
 from datetime import datetime, timedelta, timezone
 import json
 import logging
+import re
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -92,6 +93,7 @@ from ..parent_network import (
     site_for_tenant_in_parent,
     sites_for_parent,
 )
+from ..phone_utils import normalize_phone
 from ..security import hash_password, hash_unusable_password
 from ..minit_shops import MinitShopRow, tenant_slug_for_shop
 from ..shop_number import (
@@ -137,6 +139,40 @@ def _owner_users_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUI
     ).all():
         owners.setdefault(user.tenant_id, user)
     return owners
+
+
+_SHOP_CONTACT_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def normalize_shop_contact_email(value: str | None) -> str | None:
+    """Validate and normalise a shop-identity email. Blank clears. Raises 400 if malformed."""
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return None
+    if not _SHOP_CONTACT_EMAIL_RE.match(cleaned):
+        raise HTTPException(status_code=400, detail="shop_email is not a valid email address")
+    return cleaned.lower()
+
+
+def normalize_shop_contact_phone(value: str | None) -> str | None:
+    """Validate a shop-identity phone (AU-friendly). Blank clears. Raises 400 if unusable."""
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return None
+    if not normalize_phone(cleaned):
+        raise HTTPException(status_code=400, detail="shop_phone is not a valid phone number")
+    return cleaned
+
+
+def shop_invite_email(tenant: Tenant, owner: User | None) -> str:
+    """Email the invite is sent to: tenant shop identity, else the owner login."""
+    return (tenant.shop_email or "").strip() or ((owner.email if owner else "") or "").strip()
+
+
+def shop_invite_phone(tenant: Tenant, owner: User | None) -> str | None:
+    """Phone the invite SMS is sent to: tenant shop identity, else the owner's mobile."""
+    phone = (tenant.shop_phone or "").strip() or ((owner.mobile if owner else "") or "").strip()
+    return phone or None
 
 
 def _regions_by_id(session: Session, parent_id: UUID) -> dict[UUID, Region]:
@@ -193,8 +229,8 @@ def _site_reads_for_sites(
                 owner_is_shared_hq_login=bool(
                     hq_login_email and (user.email or "").strip().lower() == hq_login_email
                 ),
-                shop_phone=tenant.shop_phone or tenant.mobile_dispatch_phone,
                 shop_email=tenant.shop_email,
+                shop_phone=tenant.shop_phone,
             )
         )
     return sorted(reads, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
@@ -985,11 +1021,13 @@ def _send_shop_owner_invite_notifications(
     raises — a delivery failure shouldn't undo an invite that's already
     created; HQ can still copy the link from the response either way."""
     invite_url = f"{settings.public_base_url.rstrip('/')}/shop-invite/{invite.token}"
+    to_email = shop_invite_email(tenant, owner)
+    to_phone = shop_invite_phone(tenant, owner)
     email_sent = False
     sms_sent = False
     try:
         email_sent, _ = email_client.send_shop_owner_invite_email(
-            to_email=owner.email,
+            to_email=to_email,
             owner_full_name=owner.full_name,
             tenant_name=tenant.name,
             shop_number=tenant.shop_number,
@@ -1000,12 +1038,12 @@ def _send_shop_owner_invite_notifications(
         )
     except Exception:
         logging.getLogger(__name__).exception("Failed to send shop-owner invite email for tenant %s", tenant.id)
-    if (owner.mobile or "").strip():
+    if to_phone:
         try:
             sms_sent = sms_service.notify_shop_owner_invite(
                 session,
                 tenant_id=tenant.id,
-                to_phone=owner.mobile,
+                to_phone=to_phone,
                 tenant_name=tenant.name,
                 shop_number=tenant.shop_number,
                 invite_url=invite_url,
@@ -1031,8 +1069,8 @@ def _shop_owner_invite_read(
         tenant_name=tenant.name if tenant else "",
         tenant_slug=tenant.slug if tenant else "",
         shop_number=tenant.shop_number if tenant else None,
-        owner_email=owner.email if owner else "",
-        owner_mobile=owner.mobile if owner else None,
+        owner_email=shop_invite_email(tenant, owner) if tenant else (owner.email if owner else ""),
+        owner_mobile=shop_invite_phone(tenant, owner) if tenant else (owner.mobile if owner else None),
         plan_code=tenant.plan_code if tenant else "",
         status=invite.status,
         invite_url=f"{settings.public_base_url.rstrip('/')}/shop-invite/{invite.token}",

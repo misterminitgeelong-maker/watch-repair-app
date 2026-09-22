@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { isDemoModeEnabled } from '@/lib/onboarding'
+import { AUTO_KEY_MOBILE_LANDING_HREF } from '@/pages/autoKey/landingView'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -38,7 +39,7 @@ function pickServiceTabs(hasWatch: boolean, hasShoe: boolean, hasMobile: boolean
 } {
   const watchTab: TabItem = { to: '/jobs', label: 'Watch', icon: Wrench }
   const shoeTab: TabItem = { to: '/shoe-repairs', label: 'Shoe', icon: Scissors }
-  const mobileTab: TabItem = { to: '/auto-key', label: 'Mobile', icon: KeyRound }
+  const mobileTab: TabItem = { to: AUTO_KEY_MOBILE_LANDING_HREF, label: 'Mobile', icon: KeyRound }
 
   if (hasMobile) {
     if (hasWatch && hasShoe) return { primary: [watchTab, mobileTab], overflow: [shoeTab] }

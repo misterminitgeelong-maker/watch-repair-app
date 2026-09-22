@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ShoppingCart, Minus, Plus, Trash2, CreditCard, Search } from 'lucide-react'
+import { ShoppingCart, Minus, Plus, Trash2, CreditCard, FileText, Search } from 'lucide-react'
 import {
   createAutoKeyInvoiceFromQuote,
   createAutoKeyJob,
@@ -23,6 +23,7 @@ import { CustomerSearchSelect } from '@/components/CustomerSearchSelect'
 import PricingSelector from '@/components/PricingSelector'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { DEFAULT_POS_CATEGORIES, quickItemsForCategories, filterQuickItems } from './posQuickItems'
+import { isPosQuoteMode, type PosCheckoutMode } from './posMode'
 
 interface CartLine {
   id: string
@@ -31,7 +32,21 @@ interface CartLine {
   unit_price_cents: number
 }
 
-export function POSView({ customers, customerAccounts, onComplete, initialJobId }: { customers: Customer[]; customerAccounts: CustomerAccount[]; onComplete: () => void; initialJobId?: string | null }) {
+export function POSView({
+  customers,
+  customerAccounts,
+  onComplete,
+  initialJobId,
+  initialMode,
+  onModeChange,
+}: {
+  customers: Customer[]
+  customerAccounts: CustomerAccount[]
+  onComplete: () => void
+  initialJobId?: string | null
+  initialMode?: PosCheckoutMode | null
+  onModeChange?: (mode: PosCheckoutMode) => void
+}) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [customerId, setCustomerId] = useState('')
@@ -40,6 +55,7 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '' })
   const [cart, setCart] = useState<CartLine[]>([])
+  const [modeOverride, setModeOverride] = useState<PosCheckoutMode | null>(null)
   const [showPricingSelector, setShowPricingSelector] = useState(false)
   const { data: catalogueMeta } = useQuery({
     queryKey: ['mobile-services-pricing', 'meta'],
@@ -70,6 +86,12 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
   const linkableJobs = initialJob && initialJob.customer_id === customerId && !activeJobsForCustomer.some(job => job.id === initialJob.id)
     ? [initialJob, ...activeJobsForCustomer]
     : activeJobsForCustomer
+  const linkedJob = [initialJob, ...activeJobsForCustomer].find(job => job && job.id === linkToJobId) ?? null
+  const quoteMode = isPosQuoteMode({ explicitMode: modeOverride ?? initialMode, job: linkedJob })
+
+  useEffect(() => {
+    setModeOverride(null)
+  }, [initialMode, initialJobId])
   const [customDesc, setCustomDesc] = useState('')
   const [customPrice, setCustomPrice] = useState('')
   const [error, setError] = useState('')
@@ -113,21 +135,20 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
         ? customerAccountId
         : undefined
 
+      const quotePayload = {
+        line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
+        gst_enabled: gstEnabled,
+        gst_inclusive: gstInclusive,
+      }
+
       let job: { id: string }
       if (linkToJobId) {
         job = { id: linkToJobId }
-        const quote = await createAutoKeyQuote(linkToJobId, {
-          line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
-          gst_enabled: gstEnabled,
-          gst_inclusive: gstInclusive,
-        }).then(r => r.data)
-        await createAutoKeyInvoiceFromQuote(linkToJobId, quote.id)
-        await updateAutoKeyJobStatus(linkToJobId, 'work_completed')
       } else {
         job = await createAutoKeyJob({
           customer_id: cid,
           customer_account_id: accountId || undefined,
-          title: `POS sale ${new Date().toLocaleDateString()}`,
+          title: `${quoteMode ? 'Quote' : 'POS sale'} ${new Date().toLocaleDateString()}`,
           key_quantity: 1,
           programming_status: 'not_required',
           priority: 'normal',
@@ -135,37 +156,52 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
           deposit_cents: 0,
           cost_cents: total,
         }).then(r => r.data)
-        const quote = await createAutoKeyQuote(job.id, {
-          line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
-          gst_enabled: gstEnabled,
-          gst_inclusive: gstInclusive,
-        }).then(r => r.data)
+      }
+
+      const quote = await createAutoKeyQuote(job.id, quotePayload).then(r => r.data)
+      if (!quoteMode) {
         await createAutoKeyInvoiceFromQuote(job.id, quote.id)
         await updateAutoKeyJobStatus(job.id, 'work_completed')
       }
 
-      return { job }
+      return { job, mode: quoteMode ? 'quote' as const : 'sale' as const }
     },
     onError: (err: unknown) => {
       setError(
         getApiErrorMessage(
           err,
-          'POS sale could not be completed. Check Mobile Services jobs and invoices — a partial sale may have been saved.',
+          quoteMode
+            ? 'Quote could not be saved. Check the job Financial tab — a draft may already be there.'
+            : 'POS sale could not be completed. Check Mobile Services jobs and invoices — a partial sale may have been saved.',
         ),
       )
     },
-    onSuccess: ({ job }) => {
+    onSuccess: ({ job, mode }) => {
       invalidateAutoKeyJobCollections(qc)
       qc.invalidateQueries({ queryKey: ['auto-key-job', job.id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-quotes', job.id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-invoices', job.id] })
+      onComplete()
+      if (mode === 'quote') {
+        navigate(`/auto-key/${job.id}?tab=financial`)
+        return
+      }
       setCart([])
       setCustomerId('')
       setCustomerAccountId('')
       setLinkToJobId('')
       setNewCustomer({ full_name: '', email: '', phone: '' })
       setSuccessJobId(job.id)
-      onComplete()
     },
   })
+
+  const setCheckoutMode = (mode: PosCheckoutMode) => {
+    setModeOverride(mode)
+    onModeChange?.(mode)
+  }
+
+  const submitLabel = quoteMode ? 'Complete quote' : 'Complete sale'
+  const submitIcon = quoteMode ? <FileText size={16} /> : <CreditCard size={16} />
 
   if (successJobId) {
     return (
@@ -187,11 +223,49 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
   return (
     <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
+            {quoteMode ? 'Create quote' : 'Point of sale'}
+          </h2>
+          <div
+            role="group"
+            aria-label="Checkout mode"
+            className="inline-flex rounded-lg p-0.5"
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
+          >
+            <button
+              type="button"
+              aria-pressed={quoteMode}
+              onClick={() => setCheckoutMode('quote')}
+              className="min-h-11 rounded-md px-3 text-sm font-semibold sm:min-h-9"
+              style={quoteMode
+                ? { backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }
+                : { color: 'var(--ms-text-muted)' }}
+            >
+              Quote
+            </button>
+            <button
+              type="button"
+              aria-pressed={!quoteMode}
+              onClick={() => setCheckoutMode('sale')}
+              className="min-h-11 rounded-md px-3 text-sm font-semibold sm:min-h-9"
+              style={!quoteMode
+                ? { backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }
+                : { color: 'var(--ms-text-muted)' }}
+            >
+              Sale
+            </button>
+          </div>
+        </div>
         {initialJob && (
           <Card className="p-4" style={{ borderColor: 'var(--ms-accent)' }}>
             <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ms-accent)' }}>Linked job</p>
             <p className="text-sm font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>#{initialJob.job_number} · {initialJob.title}</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>Customer and job are preselected. Add the final work performed, then complete the sale.</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+              {quoteMode
+                ? 'Customer and job are preselected. Add the quoted work, then complete the quote. This saves a quote — it does not take payment or mark the job sold.'
+                : 'Customer and job are preselected. Add the final work performed, then complete the sale.'}
+            </p>
           </Card>
         )}
         <Card className="p-5">
@@ -434,8 +508,8 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
           onClick={() => completeMut.mutate()}
           disabled={completeMut.isPending || cart.length === 0}
         >
-          <CreditCard size={16} />
-          {completeMut.isPending ? 'Processing…' : 'Complete sale'}
+          {submitIcon}
+          {completeMut.isPending ? 'Processing…' : submitLabel}
         </Button>
       </Card>
 
@@ -470,8 +544,8 @@ export function POSView({ customers, customerAccounts, onComplete, initialJobId 
             onClick={() => completeMut.mutate()}
             disabled={completeMut.isPending || cart.length === 0}
           >
-            <CreditCard size={16} />
-            {completeMut.isPending ? 'Processing…' : 'Complete sale'}
+            {submitIcon}
+            {completeMut.isPending ? 'Processing…' : submitLabel}
           </Button>
         </div>
       </MobileStickyBar>

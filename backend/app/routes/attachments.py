@@ -88,6 +88,69 @@ def _compress_image(raw: bytes) -> bytes | None:
         return None  # not a recognised image, store as-is
 
 
+CUSTOMER_KEY_PHOTO_LABEL = "customer_key_photo"
+
+
+def store_auto_key_photo_bytes(
+    *,
+    auto_key_job_id: UUID,
+    raw: bytes,
+    filename: str,
+    content_type: str,
+) -> tuple[str, str, str, int]:
+    """Validate, compress, and store a photo for an auto-key job.
+
+    Returns (storage_key, file_name, content_type, file_size_bytes).
+    """
+    content_type = (content_type or "application/octet-stream").lower()
+    if content_type not in _allowed_content_types():
+        raise HTTPException(status_code=415, detail="Please upload a photo (JPEG, PNG, or WebP).")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Please upload a photo (JPEG, PNG, or WebP).")
+    if len(raw) > settings.attachment_max_upload_bytes:
+        raise HTTPException(status_code=413, detail="Photo is too large")
+
+    safe_name = Path(filename or "key.jpg").name
+    if content_type.startswith("image/"):
+        compressed = _compress_image(raw)
+        if compressed is not None:
+            raw = compressed
+            safe_name = Path(safe_name).stem + ".jpg"
+            content_type = "image/jpeg"
+
+    file_id = uuid4().hex
+    storage_key = f"auto-key-photos/{auto_key_job_id}/{file_id}_{safe_name}"
+    file_size = attachment_storage.save_bytes(storage_key, raw, content_type=content_type)
+    return storage_key, safe_name, content_type, file_size
+
+
+def add_auto_key_photo_attachment(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    auto_key_job_id: UUID,
+    storage_key: str,
+    file_name: str,
+    content_type: str,
+    file_size_bytes: int,
+    label: str | None = CUSTOMER_KEY_PHOTO_LABEL,
+    uploaded_by_user_id: UUID | None = None,
+) -> Attachment:
+    """Record a stored auto-key photo. Does not commit."""
+    attachment = Attachment(
+        tenant_id=tenant_id,
+        auto_key_job_id=auto_key_job_id,
+        uploaded_by_user_id=uploaded_by_user_id,
+        storage_key=storage_key,
+        file_name=file_name,
+        content_type=content_type,
+        file_size_bytes=file_size_bytes,
+        label=label,
+    )
+    session.add(attachment)
+    return attachment
+
+
 @router.post("", response_model=AttachmentRead, status_code=201)
 async def upload_attachment(
     file: UploadFile = File(...),
