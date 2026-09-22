@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
 import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
 import { enableDemoMode, isDemoModeEnabled, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
+import { AUTO_KEY_VIEWS_KEY, clearSavedView } from '@/lib/savedViews'
 import { persistTheme, readStoredTheme } from '@/context/ThemeContext'
 import { safeNextPath } from '@/lib/safeNext'
 import { markJustLoggedIn } from '@/lib/postLoginGate'
@@ -107,6 +108,7 @@ export default function LoginPage() {
         })
       resetDemoTour()
       resetAllPageTutorials()
+      clearSavedView(AUTO_KEY_VIEWS_KEY)
       seedLoginTenantHint(demoCreds.slug)
       markJustLoggedIn()
       navigate(nextPath ?? '/dashboard')

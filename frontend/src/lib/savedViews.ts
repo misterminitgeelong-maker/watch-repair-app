@@ -18,6 +18,14 @@ export function saveSavedView<T extends object>(key: string, value: T) {
   }
 }
 
+export function clearSavedView(key: string) {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    /* ignore */
+  }
+}
+
 export const AUTO_KEY_VIEWS_KEY = 'ms-saved-view-auto-key'
 export const WATCH_JOBS_VIEWS_KEY = 'ms-saved-view-watch-jobs'
 export const SHOE_JOBS_VIEWS_KEY = 'ms-saved-view-shoe-jobs'
