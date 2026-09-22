@@ -53,14 +53,20 @@ export default function JobsPage() {
   const initialCostOutlier = searchParams.get('cost_outlier') === '1' || searchParams.get('cost_outlier') === 'true'
   const initialOlderThanDays = Number.parseInt(searchParams.get('older_than_days') ?? '', 10)
   const initialPastCollectionOnly = searchParams.get('past_collection') === '1' || searchParams.get('past_collection') === 'true'
-  const initialView: BoardView =
-    searchParams.get('view') === 'list'
-      ? 'list'
-      : searchParams.get('view') === 'board'
-        ? 'board'
-        : typeof window !== 'undefined' && window.innerWidth < 640
-          ? 'list'
-          : 'board'
+  // Board on every width. This used to force 'list' below 640px, so a phone
+  // never saw the Kanban unless the user spotted the Board/List toggle — and
+  // the board is fine there, the columns scroll sideways. The width was also
+  // read once at mount, so a rotate never re-evaluated it.
+  //
+  // Resolved here rather than in an effect because the view round-trips
+  // through the URL (?view=…): an effect that set it afterwards was simply
+  // overwritten by that sync, which is why a saved preference never stuck.
+  const initialView: BoardView = (() => {
+    const fromUrl = searchParams.get('view')
+    if (fromUrl === 'list' || fromUrl === 'board') return fromUrl
+    const saved = loadSavedView<WatchJobsSavedView>(WATCH_JOBS_VIEWS_KEY, {})
+    return saved.view === 'list' ? 'list' : 'board'
+  })()
   const [showAdd, setShowAdd] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
   const [logWorkJobId, setLogWorkJobId] = useState<string | null>(null)
@@ -85,7 +91,6 @@ export default function JobsPage() {
     const saved = loadSavedView<WatchJobsSavedView>(WATCH_JOBS_VIEWS_KEY, {})
     if (saved.jobDirectoryView) setJobDirectoryView(saved.jobDirectoryView)
     if (saved.statusFilter) setStatusFilter(saved.statusFilter)
-    if (saved.view) setView(saved.view)
     if (saved.assignedUserId !== undefined) setAssignedUserId(saved.assignedUserId)
     if (saved.costOutlierOnly !== undefined) setCostOutlierOnly(saved.costOutlierOnly)
     if (saved.olderThanDays !== undefined) setOlderThanDays(saved.olderThanDays)
