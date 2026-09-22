@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Field, Session, SQLModel, select
@@ -21,6 +22,7 @@ from ..limiter import limiter
 logger = logging.getLogger(__name__)
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
 from ..models import (
+    Attachment,
     AutoKeyInvoice,
     AutoKeyJob,
     AutoKeyQuote,
@@ -41,6 +43,7 @@ from ..models import (
 )
 
 router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
+# Public customer booking-request intake (including optional key photos).
 
 
 def get_public_read_rate_limit() -> str:
@@ -50,7 +53,14 @@ def get_public_read_rate_limit() -> str:
 def get_public_write_rate_limit() -> str:
     return settings.rate_limit_public_test if settings.app_env == "test" else settings.rate_limit_public_write
 
-from .attachments import attachment_storage  # noqa: E402
+from .attachments import (  # noqa: E402
+    CUSTOMER_KEY_PHOTO_LABEL,
+    add_auto_key_photo_attachment,
+    attachment_storage,
+    store_auto_key_photo_bytes,
+)
+
+MAX_CUSTOMER_KEY_PHOTOS = 2
 
 
 def _next_aki_invoice_number(session: Session, tenant_id) -> str:
@@ -95,6 +105,57 @@ class PublicAutoKeyIntakeSubmit(SQLModel):
     blade_code: Optional[str] = Field(default=None, max_length=120)
     chip_type: Optional[str] = Field(default=None, max_length=200)
     tech_notes: Optional[str] = Field(default=None, max_length=4000)
+    key_photo_data: Optional[str] = None
+    extra_key_photo_data: Optional[str] = None
+
+
+def _decode_optional_image(raw_b64: str | None) -> bytes | None:
+    if not (raw_b64 or "").strip():
+        return None
+    payload = raw_b64.strip()
+    if payload.lower().startswith("data:") and "," in payload:
+        payload = payload.split(",", 1)[1]
+    try:
+        data = base64.b64decode(payload, validate=False)
+    except Exception:
+        return None
+    return data or None
+
+
+def _guess_image_content_type(raw: bytes) -> str:
+    if raw[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if len(raw) >= 12 and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
+
+
+def _attach_customer_key_photos(session: Session, job: AutoKeyJob, photos: list[bytes]) -> None:
+    """Best-effort: attach customer key photos. Never fail the intake submit."""
+    existing = session.exec(select(Attachment).where(Attachment.auto_key_job_id == job.id)).all()
+    remaining = max(0, MAX_CUSTOMER_KEY_PHOTOS - len(existing))
+    for raw in photos[:remaining]:
+        try:
+            storage_key, file_name, content_type, file_size = store_auto_key_photo_bytes(
+                auto_key_job_id=job.id,
+                raw=raw,
+                filename="customer-key.jpg",
+                content_type=_guess_image_content_type(raw),
+            )
+        except HTTPException:
+            continue
+        add_auto_key_photo_attachment(
+            session,
+            tenant_id=job.tenant_id,
+            auto_key_job_id=job.id,
+            storage_key=storage_key,
+            file_name=file_name,
+            content_type=content_type,
+            file_size_bytes=file_size,
+            label=CUSTOMER_KEY_PHOTO_LABEL,
+        )
 
 
 def _serialize_intake_services(items: list[Any] | None) -> str | None:
@@ -502,6 +563,60 @@ def get_public_auto_key_intake(request: Request, token: str, session: Session = 
     }
 
 
+@router.post("/auto-key-intake/{token}/photos")
+@limiter.limit(get_public_write_rate_limit)
+async def upload_public_auto_key_intake_photos(
+    request: Request,
+    token: str,
+    files: list[UploadFile] = File(...),
+    session: Session = Depends(get_session),
+):
+    """Customer key photos from the booking-request form. Attached to the existing job."""
+    job = session.exec(
+        select(AutoKeyJob).where(AutoKeyJob.customer_intake_token == token)
+    ).first()
+    if not job or job.status != "awaiting_customer_details":
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    incoming = [f for f in files if f is not None]
+    if not incoming:
+        raise HTTPException(status_code=400, detail="Please attach a photo of the car key.")
+    if len(incoming) > MAX_CUSTOMER_KEY_PHOTOS:
+        raise HTTPException(status_code=400, detail="Please attach at most two photos.")
+
+    existing = session.exec(
+        select(Attachment).where(Attachment.auto_key_job_id == job.id)
+    ).all()
+    if len(existing) + len(incoming) > MAX_CUSTOMER_KEY_PHOTOS:
+        raise HTTPException(status_code=400, detail="Please attach at most two photos.")
+
+    saved_ids: list[str] = []
+    for upload in incoming:
+        raw = await upload.read()
+        storage_key, file_name, content_type, file_size = await run_in_threadpool(
+            store_auto_key_photo_bytes,
+            auto_key_job_id=job.id,
+            raw=raw,
+            filename=upload.filename or "key.jpg",
+            content_type=upload.content_type or "application/octet-stream",
+        )
+        attachment = add_auto_key_photo_attachment(
+            session,
+            tenant_id=job.tenant_id,
+            auto_key_job_id=job.id,
+            storage_key=storage_key,
+            file_name=file_name,
+            content_type=content_type,
+            file_size_bytes=file_size,
+            label=CUSTOMER_KEY_PHOTO_LABEL,
+        )
+        session.flush()
+        saved_ids.append(str(attachment.id))
+
+    session.commit()
+    return {"ok": True, "count": len(saved_ids), "attachment_ids": saved_ids}
+
+
 @router.post("/auto-key-intake/{token}/submit")
 @limiter.limit(get_public_write_rate_limit)
 def submit_public_auto_key_intake(
@@ -554,6 +669,17 @@ def submit_public_auto_key_intake(
     if payload.scheduled_at:
         job.scheduled_at = naive_utc_from_any(payload.scheduled_at)
     session.flush()
+
+    key_photos = [
+        decoded
+        for decoded in (
+            _decode_optional_image(payload.key_photo_data),
+            _decode_optional_image(payload.extra_key_photo_data),
+        )
+        if decoded
+    ]
+    if key_photos:
+        _attach_customer_key_photos(session, job, key_photos)
 
     job.title = _customer_intake_title(
         customer.full_name,

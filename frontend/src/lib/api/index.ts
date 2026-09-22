@@ -3734,6 +3734,15 @@ export interface PublicAutoKeyIntake {
 }
 export const getPublicAutoKeyIntake = (token: string) =>
   axios.get<PublicAutoKeyIntake>(withApiOrigin(`/v1/public/auto-key-intake/${token}`))
+export const uploadPublicAutoKeyIntakePhotos = (token: string, files: File[]) => {
+  const form = new FormData()
+  files.forEach(file => form.append('files', file))
+  return axios.post<{ ok: boolean; count: number; attachment_ids: string[] }>(
+    withApiOrigin(`/v1/public/auto-key-intake/${token}/photos`),
+    form,
+    { timeout: 120000 },
+  )
+}
 export const submitPublicAutoKeyIntake = (token: string, data: {
   full_name?: string
   vehicle_make?: string
@@ -3751,6 +3760,8 @@ export const submitPublicAutoKeyIntake = (token: string, data: {
   blade_code?: string
   chip_type?: string
   tech_notes?: string
+  key_photo_data?: string
+  extra_key_photo_data?: string
 }) => axios.post<{ message?: string }>(withApiOrigin(`/v1/public/auto-key-intake/${token}/submit`), data)
 
 export interface PublicAutoKeyInvoice {
