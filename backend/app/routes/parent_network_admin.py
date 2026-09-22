@@ -56,6 +56,8 @@ from .parent_accounts import (
     _parent_for_write,
     _record_event,
     _site_reads_for_sites,
+    normalize_shop_contact_email,
+    normalize_shop_contact_phone,
 )
 
 router = APIRouter(
@@ -164,7 +166,7 @@ def update_linked_site(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    """Change what a site *is* in the network without touching its plan."""
+    """Change a site's network role, region, or shop contact details (email/phone)."""
     current_user, parent = _parent_for_write(session, auth)
     site = site_for_tenant_in_parent(session, parent.id, tenant_id)
     if site is None:
@@ -174,6 +176,8 @@ def update_linked_site(
         raise HTTPException(status_code=404, detail="Tenant not found")
 
     changes: list[str] = []
+    site_changed = False
+    tenant_changed = False
     if payload.network_role is not None:
         role = validate_network_role(payload.network_role)
         if role == NETWORK_ROLE_HQ and site.network_role != NETWORK_ROLE_HQ:
@@ -183,11 +187,13 @@ def update_linked_site(
         if role != site.network_role:
             changes.append(f"role {site.network_role} -> {role}")
             site.network_role = role
+            site_changed = True
 
     if payload.clear_region:
         if site.region_id is not None:
             changes.append("region cleared")
             site.region_id = None
+            site_changed = True
     elif payload.region_id is not None:
         region = session.get(Region, payload.region_id)
         if region is None or region.parent_account_id != parent.id:
@@ -195,9 +201,26 @@ def update_linked_site(
         if site.region_id != region.id:
             changes.append(f"region -> {region.name}")
             site.region_id = region.id
+            site_changed = True
+
+    if payload.shop_email is not None:
+        email = normalize_shop_contact_email(payload.shop_email)
+        if (tenant.shop_email or None) != email:
+            changes.append("shop email")
+            tenant.shop_email = email
+            tenant_changed = True
+    if payload.shop_phone is not None:
+        phone = normalize_shop_contact_phone(payload.shop_phone)
+        if (tenant.shop_phone or None) != phone:
+            changes.append("shop phone")
+            tenant.shop_phone = phone
+            tenant_changed = True
 
     if changes:
-        session.add(site)
+        if site_changed:
+            session.add(site)
+        if tenant_changed:
+            session.add(tenant)
         _record_event(
             session,
             parent_account_id=parent.id,
@@ -209,6 +232,8 @@ def update_linked_site(
         )
         session.commit()
         session.refresh(site)
+        if tenant_changed:
+            session.refresh(tenant)
 
     return _site_reads_for_sites(session, [site])[0]
 

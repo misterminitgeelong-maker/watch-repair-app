@@ -87,6 +87,7 @@ import {
   WeekDayHeaderDrop,
   WeekHourDropCell,
 } from '@/pages/autoKey/WeekGridCells'
+import { parsePosModeParam } from '@/pages/autoKey/posMode'
 import { SendBookingRequestModal } from '@/pages/autoKey/SendBookingRequestModal'
 import { AutoKeyJobCard } from '@/pages/autoKey/AutoKeyJobCard'
 import MobileOperationsCockpit from '@/pages/autoKey/MobileOperationsCockpit'
@@ -100,8 +101,7 @@ const PlannerJobDetailModal = lazy(() => import('@/pages/autoKey/PlannerJobDetai
 // PlannerJobDetailModal lives in ./autoKey/PlannerJobDetailModal (imported above).
 // NewAutoKeyJobModal lives in ./autoKey/NewAutoKeyJobModal (imported above).
 
-// POSView lives in ./autoKey/POSView and CreateQuoteModal in
-// ./autoKey/CreateQuoteModal (both imported above).
+// POSView lives in ./autoKey/POSView. New Quote opens it in quote mode.
 
 // AutoKeyJobCard lives in ./autoKey/AutoKeyJobCard (imported above).
 
@@ -111,6 +111,7 @@ export default function AutoKeyJobsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedView = searchParams.get('view')
   const posJobId = searchParams.get('job_id')
+  const posMode = parsePosModeParam(searchParams.get('mode'))
   const initialView: 'jobs' | 'pos' | 'dispatch' | 'week' | 'map' | 'planner' | 'reports' =
     requestedView === 'jobs' ||
     requestedView === 'pos' ||
@@ -538,6 +539,15 @@ export default function AutoKeyJobsPage() {
   }, [view, filteredJobs])
 
   useEffect(() => {
+    const urlView = searchParams.get('view')
+    if (
+      urlView &&
+      (urlView === 'jobs' || urlView === 'pos' || urlView === 'dispatch' || urlView === 'week' || urlView === 'map' || urlView === 'planner' || urlView === 'reports') &&
+      urlView !== view
+    ) {
+      setView(urlView)
+      return
+    }
     const next = new URLSearchParams()
     if (view !== 'jobs') next.set('view', view)
     if (statusFilter !== 'all') next.set('status', statusFilter)
@@ -563,6 +573,9 @@ export default function AutoKeyJobsPage() {
     if (view === 'pos' && posJobId) {
       next.set('job_id', posJobId)
     }
+    if (view === 'pos' && posMode) {
+      next.set('mode', posMode)
+    }
     if (view === 'jobs' && jobsLayout !== 'today') {
       next.set('jobs_layout', jobsLayout)
     }
@@ -574,6 +587,8 @@ export default function AutoKeyJobsPage() {
     mapRangeMode,
     olderThanDays,
     posJobId,
+    posMode,
+    searchParams,
     setSearchParams,
     statusFilter,
     focusFilter,
@@ -1132,6 +1147,14 @@ export default function AutoKeyJobsPage() {
             customers={customers}
             customerAccounts={customerAccounts}
             initialJobId={posJobId}
+            initialMode={posMode}
+            onModeChange={mode => {
+              const next = new URLSearchParams(searchParams)
+              next.set('view', 'pos')
+              next.set('mode', mode)
+              if (posJobId) next.set('job_id', posJobId)
+              setSearchParams(next, { replace: true })
+            }}
             onComplete={() => invalidateAutoKeyJobCollections(qc)}
           />
         </Suspense>

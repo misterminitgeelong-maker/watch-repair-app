@@ -22,7 +22,7 @@ import { mobileStatusLabel } from '@/lib/mobileStatus'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { STATUSES, computeSlaChip, formatCents, nextMobileStatus } from './dispatchHelpers'
 import { SlaChipBadge } from './SlaChipBadge'
-import { CreateQuoteModal } from './CreateQuoteModal'
+import { autoKeyPosHref } from './posMode'
 
 export function AutoKeyJobCard({
   job,
@@ -38,7 +38,6 @@ export function AutoKeyJobCard({
 }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
-  const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
@@ -150,7 +149,6 @@ export function AutoKeyJobCard({
   return (
     <>
     <Card className="p-4">
-      {showQuoteModal && <CreateQuoteModal jobId={job.id} isBusinessAccount={!!job.customer_account_id} onClose={() => setShowQuoteModal(false)} />}
       <div className="flex items-start justify-between gap-3">
         <div
           className="min-w-0 flex-1 cursor-pointer"
@@ -321,7 +319,7 @@ export function AutoKeyJobCard({
                 {statusMut.isPending ? 'Updating…' : quickStatusLabel}
               </button>
             )}
-            <Button variant="secondary" className="w-full" onClick={() => setShowQuoteModal(true)}>
+            <Button variant="secondary" className="w-full" onClick={() => navigate(autoKeyPosHref(job.id, 'quote'))}>
               New Quote
             </Button>
             {latestQuote && latestQuote.status === 'draft' && (

@@ -220,6 +220,12 @@ class ParentAccountSiteRead(SQLModel):
     #: than a real franchisee identity — so HQ can see at a glance which shops
     #: have no one to invite yet.
     owner_is_shared_hq_login: bool = False
+    #: Tenant shop-identity email (invoices / invite destination). Distinct from
+    #: the owner login email when the shop still shares HQ credentials.
+    shop_email: Optional[str] = None
+    #: Tenant shop-identity phone (invoices / invite SMS). Distinct from the
+    #: owner's personal mobile.
+    shop_phone: Optional[str] = None
 
 
 class ParentAccountSiteUpdateRequest(SQLModel):
@@ -227,6 +233,11 @@ class ParentAccountSiteUpdateRequest(SQLModel):
     #: Set to a Region id to assign; explicit null clears. Omit to leave unchanged.
     region_id: Optional[UUID] = None
     clear_region: bool = False
+    #: Shop contact email stored on the tenant (shop identity). Empty string clears.
+    shop_email: Optional[str] = Field(default=None, max_length=200)
+    #: Shop contact phone stored on the tenant (shop identity). Empty string clears.
+    shop_phone: Optional[str] = Field(default=None, max_length=40)
+
 
 
 class ParentAccountUserRead(SQLModel):

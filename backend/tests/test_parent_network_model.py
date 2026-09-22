@@ -642,3 +642,51 @@ def test_provision_shop_can_take_the_owner_s_own_contact_details():
         json={"shop_number": str(base + 33), "tenant_name": "Bad", "owner_email": "not-an-email"},
     )
     assert bad.status_code == 400
+
+
+def test_hq_can_edit_shop_identity_contact_and_viewers_cannot():
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+    shop_email = f"chadstone-{suffix}@minit.test"
+    shop_phone = "03 9000 1000"
+
+    patched = client.patch(
+        f"/v1/parent-accounts/me/sites/{net['shop_id']}",
+        headers=hq_h,
+        json={"shop_email": shop_email, "shop_phone": shop_phone},
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["shop_email"] == shop_email
+    assert patched.json()["shop_phone"] == shop_phone
+
+    listed = client.get("/v1/parent-accounts/me/sites", headers=hq_h, params={"plan_kind": "retail"}).json()
+    site = next(s for s in listed["sites"] if s["tenant_id"] == net["shop_id"])
+    assert site["shop_email"] == shop_email
+    assert site["shop_phone"] == shop_phone
+
+    with Session(engine) as db:
+        tenant = db.get(Tenant, UUID(net["shop_id"]))
+        assert tenant.shop_email == shop_email
+        assert tenant.shop_phone == shop_phone
+
+    viewer_email = f"viewer-contact-{suffix}@net.test"
+    made = client.post(
+        "/v1/users",
+        headers=hq_h,
+        json={"email": viewer_email, "full_name": "Viewer", "password": PASSWORD, "role": "manager"},
+    )
+    assert made.status_code == 201, made.text
+    granted = client.put(
+        "/v1/parent-accounts/me/users",
+        headers=hq_h,
+        json={"email": viewer_email, "role": "hq_viewer"},
+    )
+    assert granted.status_code == 200, granted.text
+    viewer_h = _h(_login(net["hq_slug"], viewer_email))
+    denied = client.patch(
+        f"/v1/parent-accounts/me/sites/{net['shop_id']}",
+        headers=viewer_h,
+        json={"shop_email": "other@minit.test"},
+    )
+    assert denied.status_code == 403, denied.text

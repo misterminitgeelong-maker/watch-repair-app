@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Copy, Download, KeyRound, LogIn } from 'lucide-react'
+import { Copy, Download, KeyRound, LogIn, Pencil } from 'lucide-react'
 import {
   createShopOwnerInvite,
   formatTenantLabel,
@@ -28,32 +28,82 @@ function formatAreaRegion(area?: string | null, region?: string | null) {
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
+/** Email an owner invite would actually reach (shop identity, else franchisee login). */
+function shopInviteEmail(site: ParentAccountSite) {
+  const shopEmail = site.shop_email?.trim()
+  if (shopEmail) return shopEmail
+  if (site.owner_is_shared_hq_login) return ''
+  return site.owner_email?.trim() || ''
+}
+
+/** Phone an owner invite SMS would actually reach (shop identity, else owner mobile). */
+function shopInvitePhone(site: ParentAccountSite) {
+  return site.shop_phone?.trim() || site.owner_mobile?.trim() || ''
+}
+
+function isValidShopEmail(value: string) {
+  const cleaned = value.trim()
+  if (!cleaned) return true
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)
+}
+
+function isValidShopPhone(value: string) {
+  const cleaned = value.trim()
+  if (!cleaned) return true
+  return cleaned.replace(/\D/g, '').length >= 8
+}
+
+function contactValidation(email: string, phone: string) {
+  if (!isValidShopEmail(email)) return 'Enter a valid email address, or leave it blank.'
+  if (!isValidShopPhone(phone)) return 'Enter a valid phone number (AU numbers like 0412 345 678 are fine), or leave it blank.'
+  return ''
+}
+
 /** The owner contact line under each shop: who an invite would actually reach. */
-function OwnerContact({ site }: { site: ParentAccountSite }) {
-  const mobile = site.owner_mobile?.trim()
-  if (site.owner_is_shared_hq_login) {
+function OwnerContact({ site, onEdit }: { site: ParentAccountSite; onEdit?: () => void }) {
+  const email = shopInviteEmail(site)
+  const phone = shopInvitePhone(site)
+  const missing = !email && !phone
+  const editLink = onEdit ? (
+    <button
+      type="button"
+      className="ml-1 underline"
+      onClick={onEdit}
+      style={{ color: 'var(--ms-accent)' }}
+    >
+      Edit contact
+    </button>
+  ) : null
+
+  if (site.owner_is_shared_hq_login && missing) {
     return (
       <p className="text-xs mt-1" style={{ color: '#8A5010' }}>
-        Shared HQ login — no franchisee contact on file yet
+        Shared HQ login — no shop email or phone on file yet
+        {editLink}
       </p>
     )
   }
   return (
     <p className="text-xs mt-1" style={{ color: 'var(--ms-text)' }}>
-      {site.owner_full_name ? `${site.owner_full_name} · ` : ''}
-      <a href={`mailto:${site.owner_email}`} style={{ textDecoration: 'underline' }}>
-        {site.owner_email}
-      </a>
-      {mobile ? (
+      {site.owner_full_name && !site.owner_is_shared_hq_login ? `${site.owner_full_name} · ` : ''}
+      {email ? (
+        <a href={`mailto:${email}`} style={{ textDecoration: 'underline' }}>
+          {email}
+        </a>
+      ) : (
+        <span style={{ color: 'var(--ms-text-muted)' }}>no email on file</span>
+      )}
+      {phone ? (
         <>
           {' · '}
-          <a href={`tel:${mobile.replace(/\s+/g, '')}`} style={{ textDecoration: 'underline' }}>
-            {mobile}
+          <a href={`tel:${phone.replace(/\s+/g, '')}`} style={{ textDecoration: 'underline' }}>
+            {phone}
           </a>
         </>
       ) : (
-        <span style={{ color: 'var(--ms-text-muted)' }}> · no mobile on file</span>
+        <span style={{ color: 'var(--ms-text-muted)' }}> · no phone on file</span>
       )}
+      {editLink}
     </p>
   )
 }
@@ -65,7 +115,19 @@ function csvCell(value: string | null | undefined) {
 
 /** Download every loaded shop's owner contact details, for working through invites. */
 function downloadContactsCsv(sites: ParentAccountSite[]) {
-  const header = ['Shop number', 'Shop name', 'Type', 'Area', 'Region', 'Owner name', 'Owner email', 'Owner mobile', 'Has franchisee contact']
+  const header = [
+    'Shop number',
+    'Shop name',
+    'Type',
+    'Area',
+    'Region',
+    'Owner name',
+    'Shop email',
+    'Shop phone',
+    'Owner login email',
+    'Owner mobile',
+    'Has franchisee contact',
+  ]
   const rows = sites.map(site => [
     site.shop_number ?? '',
     site.tenant_name,
@@ -73,9 +135,13 @@ function downloadContactsCsv(sites: ParentAccountSite[]) {
     site.area ?? '',
     site.region ?? '',
     site.owner_is_shared_hq_login ? '' : site.owner_full_name,
+    shopInviteEmail(site),
+    shopInvitePhone(site),
     site.owner_is_shared_hq_login ? '' : site.owner_email,
     site.owner_is_shared_hq_login ? '' : (site.owner_mobile ?? ''),
-    site.owner_is_shared_hq_login ? 'No — shared HQ login' : 'Yes',
+    site.owner_is_shared_hq_login && !shopInviteEmail(site) && !shopInvitePhone(site)
+      ? 'No — shared HQ login'
+      : 'Yes',
   ])
   const csv = [header, ...rows].map(cols => cols.map(csvCell).join(',')).join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
@@ -109,8 +175,14 @@ export default function MinitAccountsPage() {
   const [retailLimit, setRetailLimit] = useState(50)
   const [inviteTarget, setInviteTarget] = useState<ParentAccountSite | null>(null)
   const [invitePlanCode, setInvitePlanCode] = useState<PlanCode | string>('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePhone, setInvitePhone] = useState('')
   const [inviteResult, setInviteResult] = useState<ShopOwnerInvite | null>(null)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [contactTarget, setContactTarget] = useState<ParentAccountSite | null>(null)
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [contactFieldError, setContactFieldError] = useState('')
   const [openTarget, setOpenTarget] = useState<ParentAccountSite | null>(null)
   const [openReason, setOpenReason] = useState('')
 
@@ -240,6 +312,24 @@ export default function MinitAccountsPage() {
     onError: err => setError(getApiErrorMessage(err, 'Could not create an invite link.')),
   })
 
+  const contactMut = useMutation({
+    mutationFn: ({
+      tenantId,
+      shop_email,
+      shop_phone,
+    }: {
+      tenantId: string
+      shop_email: string
+      shop_phone: string
+    }) => updateLinkedSite(tenantId, { shop_email, shop_phone }).then(r => r.data),
+    onSuccess: () => {
+      setError('')
+      setContactFieldError('')
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not save shop contact details.')),
+  })
+
   if (isLoading) return <Spinner />
 
   async function handleRemove(tenantId: string) {
@@ -252,15 +342,53 @@ export default function MinitAccountsPage() {
     }
   }
 
+  function openContact(site: ParentAccountSite) {
+    setError('')
+    setContactFieldError('')
+    setContactEmail(shopInviteEmail(site))
+    setContactPhone(shopInvitePhone(site))
+    setContactTarget(site)
+  }
+
   function openInvite(site: ParentAccountSite) {
     setError('')
+    setContactFieldError('')
     const currentPlan = MINIT_INVITE_PLAN_OPTIONS.some(o => o.code === site.plan_code) ? site.plan_code : ''
     setInvitePlanCode(currentPlan)
+    setInviteEmail(shopInviteEmail(site))
+    setInvitePhone(shopInvitePhone(site))
     setInviteTarget(site)
   }
 
-  function sendInvite() {
+  async function saveShopContact(tenantId: string, email: string, phone: string) {
+    const message = contactValidation(email, phone)
+    if (message) {
+      setContactFieldError(message)
+      return false
+    }
+    setContactFieldError('')
+    try {
+      await contactMut.mutateAsync({
+        tenantId,
+        shop_email: email.trim(),
+        shop_phone: phone.trim(),
+      })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async function handleSaveContact() {
+    if (!contactTarget) return
+    const ok = await saveShopContact(contactTarget.tenant_id, contactEmail, contactPhone)
+    if (ok) setContactTarget(null)
+  }
+
+  async function sendInvite() {
     if (!inviteTarget) return
+    const ok = await saveShopContact(inviteTarget.tenant_id, inviteEmail, invitePhone)
+    if (!ok) return
     inviteMut.mutate({ tenantId: inviteTarget.tenant_id, planCode: invitePlanCode })
   }
 
@@ -348,7 +476,7 @@ export default function MinitAccountsPage() {
                 <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                   {areaRegion ? `${areaRegion} · ` : ''}login {site.tenant_slug} · {site.plan_code}
                 </p>
-                <OwnerContact site={site} />
+                <OwnerContact site={site} onEdit={canEdit ? () => openContact(site) : undefined} />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {canEdit && regions.length > 0 && (
@@ -428,7 +556,7 @@ export default function MinitAccountsPage() {
                 <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                   {areaRegion ? `${areaRegion} · ` : ''}{site.tenant_slug} · {site.plan_code}
                 </p>
-                <OwnerContact site={site} />
+                <OwnerContact site={site} onEdit={canEdit ? () => openContact(site) : undefined} />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {openShopButton(site)}
@@ -586,9 +714,25 @@ export default function MinitAccountsPage() {
         <Modal title="Invite owner" onClose={() => setInviteTarget(null)}>
           <div className="space-y-4">
             <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-              Choose the account level for {formatTenantLabel(inviteTarget.tenant_name, inviteTarget.shop_number)}{' '}
-              before sending the login invite to <strong>{inviteTarget.owner_email}</strong>.
+              Set the shop email and/or phone for {formatTenantLabel(inviteTarget.tenant_name, inviteTarget.shop_number)}{' '}
+              so the invite reaches them, then choose the account level.
             </p>
+            <Input
+              label="Shop email"
+              type="email"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              placeholder="shop@example.com"
+              autoComplete="off"
+            />
+            <Input
+              label="Shop phone"
+              type="tel"
+              value={invitePhone}
+              onChange={e => setInvitePhone(e.target.value)}
+              placeholder="0412 345 678"
+              autoComplete="off"
+            />
             <Select
               label="Account level"
               value={invitePlanCode}
@@ -599,11 +743,53 @@ export default function MinitAccountsPage() {
                 <option key={opt.code} value={opt.code}>{opt.label}</option>
               ))}
             </Select>
+            {contactFieldError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{contactFieldError}</p>}
             {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setInviteTarget(null)}>Cancel</Button>
-              <Button onClick={sendInvite} disabled={inviteMut.isPending}>
-                {inviteMut.isPending ? 'Sending…' : 'Send invite'}
+              <Button onClick={() => void sendInvite()} disabled={inviteMut.isPending || contactMut.isPending}>
+                {inviteMut.isPending || contactMut.isPending ? 'Sending…' : 'Save & send invite'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {contactTarget && (
+        <Modal
+          title={`Edit contact — ${formatTenantLabel(contactTarget.tenant_name, contactTarget.shop_number)}`}
+          onClose={() => setContactTarget(null)}
+        >
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+              Saved on this shop and used when you send an owner invite. Email, phone, or both.
+            </p>
+            <Input
+              label="Shop email"
+              type="email"
+              value={contactEmail}
+              onChange={e => setContactEmail(e.target.value)}
+              placeholder="shop@example.com"
+              autoComplete="off"
+              autoFocus
+            />
+            <Input
+              label="Shop phone"
+              type="tel"
+              value={contactPhone}
+              onChange={e => setContactPhone(e.target.value)}
+              placeholder="0412 345 678"
+              autoComplete="off"
+            />
+            {contactFieldError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{contactFieldError}</p>}
+            {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setContactTarget(null)}>Cancel</Button>
+              <Button onClick={() => void handleSaveContact()} disabled={contactMut.isPending}>
+                <span className="inline-flex items-center gap-1">
+                  <Pencil size={13} />
+                  {contactMut.isPending ? 'Saving…' : 'Save contact'}
+                </span>
               </Button>
             </div>
           </div>
@@ -627,7 +813,7 @@ export default function MinitAccountsPage() {
               </p>
             ) : (
               <p className="text-sm rounded-lg px-3 py-2" style={{ color: '#8A5010', backgroundColor: '#FFF8EE' }}>
-                Couldn&rsquo;t send automatically{inviteResult.owner_mobile ? '' : ' (no mobile on file for SMS)'} — share
+                Couldn&rsquo;t send automatically{inviteResult.owner_mobile ? '' : ' (no phone on file for SMS)'} — share
                 the link below yourself.
               </p>
             )}

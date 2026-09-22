@@ -143,6 +143,10 @@ export interface ParentAccountSite {
   owner_mobile?: string | null
   /** True when the shop still uses the shared HQ login — no franchisee to invite yet. */
   owner_is_shared_hq_login?: boolean
+  /** Tenant shop-identity email used when sending an owner invite. */
+  shop_email?: string | null
+  /** Tenant shop-identity phone used when SMS-ing an owner invite. */
+  shop_phone?: string | null
 }
 
 export interface ParentAccountUser {
@@ -392,7 +396,13 @@ export const enterLinkedShop = (tenantId: string, reason?: string) =>
   api.post<ParentEnterShopResponse>(`/parent-accounts/me/sites/${tenantId}/enter`, reason ? { reason } : {})
 export const updateLinkedSite = (
   tenantId: string,
-  payload: { network_role?: NetworkRole; region_id?: string | null; clear_region?: boolean },
+  payload: {
+    network_role?: NetworkRole
+    region_id?: string | null
+    clear_region?: boolean
+    shop_email?: string | null
+    shop_phone?: string | null
+  },
 ) => api.patch<ParentAccountSite>(`/parent-accounts/me/sites/${tenantId}`, payload)
 
 export const listParentAccountUsers = () =>
@@ -2074,6 +2084,7 @@ export interface AutoKeyJob {
   visit_order?: number | null
   additional_services_json?: string | null
   commission_lead_source?: string
+  shop_mobile_booking_request_id?: string | null
   customer_name?: string | null
   customer_phone?: string | null
   pricing_ref_id?: string | null
