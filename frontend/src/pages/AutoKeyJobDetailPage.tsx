@@ -53,7 +53,7 @@ import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { AklComplexityPill } from '@/components/auto-key/AklComplexityPill'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
-import { formatDate } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { MOBILE_STATUS_OPTIONS, mobileStatusLabel } from '@/lib/mobileStatus'
 import { preparePhotoFile } from '@/lib/photoUpload'
 
@@ -909,7 +909,7 @@ export default function AutoKeyJobDetailPage() {
 
       {detailTab !== 'messages' && detailTab !== 'activity' && (
       <div className='grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-12 gap-5 lg:gap-6'>
-        <Card className={`p-5 space-y-4 xl:col-span-4${detailTab === 'financial' ? ' hidden' : ''}`}>
+        <Card className={cn('p-5 space-y-4 xl:col-span-4', detailTab === 'financial' && 'hidden')}>
           {/* Info tab: customer, job info, status, assign, schedule */}
           <div className={detailTab !== 'info' ? 'hidden' : ''}>
           {/* Customer section */}
@@ -1379,7 +1379,7 @@ export default function AutoKeyJobDetailPage() {
           </Modal>
         )}
 
-        <div className={`lg:col-span-2 xl:col-span-8 space-y-5${detailTab !== 'financial' ? ' hidden' : ''}`}>
+        <div className={cn('lg:col-span-2 xl:col-span-8 space-y-5', detailTab !== 'financial' && 'hidden')}>
           {showQuoteModal && (
             <Modal title="Create Quote" onClose={() => setShowQuoteModal(false)}>
               <CreateQuoteInlineForm jobId={id!} isBusinessAccount={!!job.customer_account_id} onClose={() => setShowQuoteModal(false)} />

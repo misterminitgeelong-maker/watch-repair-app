@@ -205,7 +205,7 @@ export default function PrintWatchIntakeTicketsPage() {
         </div>
       )}
 
-      <div className={`print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white${autoPrint && btSupported ? ' pb-28 sm:pb-0' : ''}`}>
+      <div className={`print:pt-0 pt-16 min-h-screen bg-[#F8F4EE] print:bg-white ${autoPrint && btSupported ? 'pb-28 sm:pb-0' : ''}`}>
         <div className="max-w-3xl mx-auto py-8 print:py-0 space-y-6 print:space-y-0">
 
           {/* Label canvas previews — confirm content before printing */}
