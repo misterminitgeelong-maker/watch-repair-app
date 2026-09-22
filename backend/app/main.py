@@ -217,6 +217,26 @@ CRITICAL_ALERT_PATH_PREFIXES: tuple[str, ...] = (
 )
 CRITICAL_ALERT_PATH_SUBSTRINGS: tuple[str, ...] = ("/v1/auto-key-jobs/invoices/",)
 
+#: Customer-facing single-use links sent by SMS. Their tokens are cleared once used
+#: (e.g. ``submit_public_auto_key_intake`` nulls ``customer_intake_token``), so a 404
+#: is the designed outcome for a link that was already used, superseded or expired.
+PUBLIC_LINK_PATH_PREFIXES: tuple[str, ...] = (
+    "/v1/public/auto-key-intake/",
+    "/v1/public/auto-key-booking/",
+    "/v1/public/auto-key-invoice/",
+)
+
+
+def _is_spent_public_link(path: str, status_code: int) -> bool:
+    """True for a 404 on a single-use customer link — expected, not a failure.
+
+    A customer re-tapping an SMS link, refreshing after submitting, or a carrier /
+    security scanner fetching the URL all land here. Alerting on it buries the real
+    failures (5xx, and the 4xx that do mean something: 422 for a broken request
+    contract, 429 for a customer being rate-limited) under routine traffic.
+    """
+    return status_code == 404 and path.startswith(PUBLIC_LINK_PATH_PREFIXES)
+
 
 def _classify_critical_workflow(path: str, method: str) -> str | None:
     if path == "/v1/auto-key-jobs/day-before-reminders":
@@ -262,7 +282,16 @@ async def request_id_and_log(request: Request, call_next):
     if response.status_code >= 400:
         path = request.url.path
         critical_path = path.startswith(CRITICAL_ALERT_PATH_PREFIXES) or any(part in path for part in CRITICAL_ALERT_PATH_SUBSTRINGS)
-        if critical_path:
+        if critical_path and _is_spent_public_link(path, response.status_code):
+            # Still traceable in the request log, just not an alert.
+            logger.info(
+                "PUBLIC_LINK_SPENT %s %s %s request_id=%s",
+                request.method,
+                path,
+                response.status_code,
+                request_id,
+            )
+        elif critical_path:
             workflow_type = _classify_critical_workflow(path, request.method) or "critical_workflow_failure"
             logger.error(
                 "CRITICAL_WORKFLOW_FAILURE type=%s %s %s %s request_id=%s",

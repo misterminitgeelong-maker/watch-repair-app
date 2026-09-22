@@ -1,6 +1,6 @@
 # Sentry Critical Workflow Alerts
 
-This project emits `CRITICAL_WORKFLOW_FAILURE` events from API middleware when key customer-facing workflows return `4xx` or `5xx`.
+This project emits `CRITICAL_WORKFLOW_FAILURE` events from API middleware when key customer-facing workflows return `4xx` or `5xx`, with one exception: see [Spent customer links](#spent-customer-links-not-an-alert) below.
 
 ## Prerequisites
 
@@ -15,6 +15,31 @@ This project emits `CRITICAL_WORKFLOW_FAILURE` events from API middleware when k
 - `public_invoice_failure` (`/v1/public/auto-key-invoice/*`)
 - `day_before_reminder_failure` (`POST /v1/auto-key-jobs/day-before-reminders`)
 - `invoice_update_failure` (`PATCH /v1/auto-key-jobs/invoices/*`)
+
+## Spent customer links (not an alert)
+
+The three public link paths — `auto-key-intake`, `auto-key-booking`, `auto-key-invoice` —
+carry single-use tokens sent to customers by SMS. The token is cleared once used
+(`submit_public_auto_key_intake` nulls `customer_intake_token`), so **a 404 on these paths
+is the designed outcome**, not a failure. It is what a customer gets by re-tapping the SMS
+link, refreshing after submitting, opening an old message, or having a carrier or security
+product scan the URL. The customer sees "This link is not valid or the job has already been
+completed."
+
+A 404 on these three paths is therefore logged as `PUBLIC_LINK_SPENT` at info level and
+raises no Sentry event (`_is_spent_public_link` in `backend/app/main.py`). Everything else
+on them still alerts, including:
+
+- `5xx` — the intake form is actually broken
+- `422` — a request-contract break between the customer page and the API
+- `429` — a real customer being rate-limited
+
+A 404 on the operator and cron paths (`day-before-reminders`, `invoices/*`) still alerts;
+they have no spent-token case. Covered by `backend/tests/test_critical_workflow_alerts.py`.
+
+If you need to investigate a specific spent link, search the request log for
+`PUBLIC_LINK_SPENT` — note that a used token and a token that never existed are
+indistinguishable, because the token row is cleared on submit.
 
 ## Recommended Alert Rules
 
