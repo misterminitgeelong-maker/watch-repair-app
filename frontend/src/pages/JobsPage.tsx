@@ -268,7 +268,9 @@ export default function JobsPage() {
       <PageHeader
         title="Watch Repairs"
         action={
-          <div className="flex items-center gap-2">
+          // Wraps because four controls do not fit a phone in one row: the
+          // primary New Job Ticket button was being cut off at the right edge.
+          <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
             {jobDirectoryView === 'active' && (
               <ViewToggle<BoardView>
                 value={view}
