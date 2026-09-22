@@ -130,6 +130,28 @@ def sync_tenant_from_minit_shop(tenant: Tenant, shop: MinitShopRow) -> bool:
     return True
 
 
+def _operator_contact_gaps(tenant: Tenant, operator: ResolvedMobileOperator) -> bool:
+    """True when the seed holds a contact detail this tenant is still missing.
+
+    ``shop_phone`` / ``shop_email`` are the contact shown in HQ and printed on the
+    operator's invoices and customer-facing pages. Only ever filled when empty —
+    a value already on the tenant may have been edited deliberately.
+    """
+    return bool(
+        (not (tenant.shop_phone or "").strip() and operator.dispatch_phone)
+        or (not (tenant.shop_email or "").strip() and (operator.seed.dispatch_email or "").strip())
+    )
+
+
+def _apply_operator_contact(tenant: Tenant, operator: ResolvedMobileOperator) -> None:
+    """Fill missing contact details from the operator seed. Never overwrites."""
+    if not (tenant.shop_phone or "").strip() and operator.dispatch_phone:
+        tenant.shop_phone = operator.dispatch_phone[:40]
+    dispatch_email = (operator.seed.dispatch_email or "").strip()
+    if not (tenant.shop_email or "").strip() and dispatch_email:
+        tenant.shop_email = dispatch_email[:200]
+
+
 def _operator_metadata_changed(
     tenant: Tenant,
     operator: ResolvedMobileOperator,
@@ -144,6 +166,7 @@ def _operator_metadata_changed(
         or tenant.minit_region != shop.region
         or tenant.business_address != addr
         or tenant.mobile_dispatch_phone != operator.dispatch_phone
+        or _operator_contact_gaps(tenant, operator)
     )
 
 
@@ -159,6 +182,7 @@ def sync_tenant_from_mobile_operator(tenant: Tenant, operator: ResolvedMobileOpe
     tenant.minit_region = shop.region
     tenant.business_address = shop.business_address[:2000] if shop.business_address else None
     tenant.mobile_dispatch_phone = operator.dispatch_phone
+    _apply_operator_contact(tenant, operator)
     return True
 
 
@@ -266,6 +290,8 @@ def _create_child_tenant(
     plan_code: str,
     tenant_slug: str | None = None,
     mobile_dispatch_phone: str | None = None,
+    shop_phone: str | None = None,
+    shop_email: str | None = None,
     existing_by_slug: dict[str, Tenant] | None = None,
     hq_users_by_tenant_id: dict[UUID, User] | None = None,
     linked_tenant_ids: set[UUID] | None = None,
@@ -289,6 +315,13 @@ def _create_child_tenant(
         if mobile_dispatch_phone and existing.mobile_dispatch_phone != mobile_dispatch_phone:
             existing.mobile_dispatch_phone = mobile_dispatch_phone
             session.add(existing)
+        # Contact details are filled only when missing — never overwritten.
+        if shop_phone and not (existing.shop_phone or "").strip():
+            existing.shop_phone = shop_phone[:40]
+            session.add(existing)
+        if shop_email and not (existing.shop_email or "").strip():
+            existing.shop_email = shop_email[:200]
+            session.add(existing)
         tenant = existing
     else:
         tenant = Tenant(
@@ -300,6 +333,8 @@ def _create_child_tenant(
             minit_area=shop.area,
             minit_region=shop.region,
             mobile_dispatch_phone=mobile_dispatch_phone,
+            shop_phone=shop_phone[:40] if shop_phone else None,
+            shop_email=shop_email[:200] if shop_email else None,
         )
         session.add(tenant)
         if existing_by_slug is not None:
@@ -791,6 +826,8 @@ def import_minit_mobile_operators(
             plan_code=plan_code,
             tenant_slug=slug,
             mobile_dispatch_phone=operator.dispatch_phone,
+            shop_phone=operator.dispatch_phone,
+            shop_email=(operator.seed.dispatch_email or "").strip() or None,
             existing_by_slug=existing_by_slug,
             hq_users_by_tenant_id=hq_users_by_tenant_id,
             linked_tenant_ids=linked_tenant_ids,

@@ -193,6 +193,8 @@ def _site_reads_for_sites(
                 owner_is_shared_hq_login=bool(
                     hq_login_email and (user.email or "").strip().lower() == hq_login_email
                 ),
+                shop_phone=tenant.shop_phone or tenant.mobile_dispatch_phone,
+                shop_email=tenant.shop_email,
             )
         )
     return sorted(reads, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))

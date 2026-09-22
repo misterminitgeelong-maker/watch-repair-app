@@ -220,6 +220,12 @@ class ParentAccountSiteRead(SQLModel):
     #: than a real franchisee identity — so HQ can see at a glance which shops
     #: have no one to invite yet.
     owner_is_shared_hq_login: bool = False
+    #: The site's own contact details, independent of who owns the login. Mobile
+    #: operators are provisioned from the operator seed (dispatch phone/email)
+    #: rather than the directory export, so this is the only contact HQ has for
+    #: them until a franchisee identity is attached.
+    shop_phone: Optional[str] = None
+    shop_email: Optional[str] = None
 
 
 class ParentAccountSiteUpdateRequest(SQLModel):

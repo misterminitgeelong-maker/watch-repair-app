@@ -32,6 +32,29 @@ function formatAreaRegion(area?: string | null, region?: string | null) {
 function OwnerContact({ site }: { site: ParentAccountSite }) {
   const mobile = site.owner_mobile?.trim()
   if (site.owner_is_shared_hq_login) {
+    // Mobile operators come from the operator seed, not the directory export, so
+    // they have no franchisee login — but they do have a dispatch phone/email.
+    // Show that rather than implying we hold no contact for them at all.
+    const sitePhone = site.shop_phone?.trim()
+    const siteEmail = site.shop_email?.trim()
+    if (sitePhone || siteEmail) {
+      return (
+        <p className="text-xs mt-1" style={{ color: 'var(--ms-text)' }}>
+          {siteEmail ? (
+            <a href={`mailto:${siteEmail}`} style={{ textDecoration: 'underline' }}>
+              {siteEmail}
+            </a>
+          ) : null}
+          {siteEmail && sitePhone ? ' · ' : ''}
+          {sitePhone ? (
+            <a href={`tel:${sitePhone.replace(/\s+/g, '')}`} style={{ textDecoration: 'underline' }}>
+              {sitePhone}
+            </a>
+          ) : null}
+          <span style={{ color: '#8A5010' }}> · shared HQ login, no franchisee identity yet</span>
+        </p>
+      )
+    }
     return (
       <p className="text-xs mt-1" style={{ color: '#8A5010' }}>
         Shared HQ login — no franchisee contact on file yet
@@ -65,7 +88,11 @@ function csvCell(value: string | null | undefined) {
 
 /** Download every loaded shop's owner contact details, for working through invites. */
 function downloadContactsCsv(sites: ParentAccountSite[]) {
-  const header = ['Shop number', 'Shop name', 'Type', 'Area', 'Region', 'Owner name', 'Owner email', 'Owner mobile', 'Has franchisee contact']
+  const header = [
+    'Shop number', 'Shop name', 'Type', 'Area', 'Region',
+    'Owner name', 'Owner email', 'Owner mobile', 'Has franchisee contact',
+    'Site email', 'Site phone',
+  ]
   const rows = sites.map(site => [
     site.shop_number ?? '',
     site.tenant_name,
@@ -76,6 +103,9 @@ function downloadContactsCsv(sites: ParentAccountSite[]) {
     site.owner_is_shared_hq_login ? '' : site.owner_email,
     site.owner_is_shared_hq_login ? '' : (site.owner_mobile ?? ''),
     site.owner_is_shared_hq_login ? 'No — shared HQ login' : 'Yes',
+    // The site's own contact, which operators have even with no franchisee login.
+    site.shop_email ?? '',
+    site.shop_phone ?? '',
   ])
   const csv = [header, ...rows].map(cols => cols.map(csvCell).join(',')).join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))

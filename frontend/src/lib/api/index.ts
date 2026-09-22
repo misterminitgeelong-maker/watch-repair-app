@@ -143,6 +143,13 @@ export interface ParentAccountSite {
   owner_mobile?: string | null
   /** True when the shop still uses the shared HQ login — no franchisee to invite yet. */
   owner_is_shared_hq_login?: boolean
+  /**
+   * The site's own contact, independent of who holds the login. Mobile operators
+   * are provisioned from the operator seed (dispatch phone/email) rather than the
+   * directory export, so this is the only contact HQ has for them.
+   */
+  shop_phone?: string | null
+  shop_email?: string | null
 }
 
 export interface ParentAccountUser {
