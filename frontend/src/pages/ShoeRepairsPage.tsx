@@ -485,14 +485,20 @@ export default function ShoeRepairsPage() {
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? 'all')
   const [costOutlierOnly, setCostOutlierOnly] = useState(initialCostOutlier)
   const [olderThanDays, setOlderThanDays] = useState<number>(Number.isFinite(initialOlderThanDays) ? initialOlderThanDays : 0)
-  const [viewMode, setViewMode] = useState<'kanban' | 'cards'>(() => window.innerWidth < 640 ? 'cards' : 'kanban')
+  // Kanban on every width. This used to force 'cards' below 640px, so a phone
+  // never opened on the board. Resolved synchronously from the saved
+  // preference rather than in an effect, which the query-string bail-out below
+  // skipped — so arriving from a filtered dashboard link threw the choice away.
+  const [viewMode, setViewMode] = useState<'kanban' | 'cards'>(() => {
+    const saved = loadSavedView<import('@/lib/savedViews').ShoeJobsSavedView>(SHOE_JOBS_VIEWS_KEY, {})
+    return saved.viewMode === 'cards' ? 'cards' : 'kanban'
+  })
 
   useEffect(() => {
     if (searchParams.toString()) return
     const saved = loadSavedView<import('@/lib/savedViews').ShoeJobsSavedView>(SHOE_JOBS_VIEWS_KEY, {})
     if (saved.jobDirectoryView) setJobDirectoryView(saved.jobDirectoryView)
     if (saved.statusFilter) setStatusFilter(saved.statusFilter)
-    if (saved.viewMode) setViewMode(saved.viewMode)
     if (saved.costOutlierOnly !== undefined) setCostOutlierOnly(saved.costOutlierOnly)
     if (saved.olderThanDays !== undefined) setOlderThanDays(saved.olderThanDays)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
