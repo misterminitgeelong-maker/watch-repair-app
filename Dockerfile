@@ -34,6 +34,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Backend source
 COPY backend/ ./
 
+# Commit SHA for Sentry's release tag (matches the frontend's VITE_APP_BUILD_ID).
+ARG RAILWAY_GIT_COMMIT_SHA
+ENV APP_BUILD_ID=${RAILWAY_GIT_COMMIT_SHA}
+
 # Copy the built frontend into /app/static
 COPY --from=frontend-build /app/frontend/dist /app/static
 

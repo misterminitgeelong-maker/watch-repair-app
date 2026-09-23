@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -107,6 +108,10 @@ class Settings(BaseSettings):
 
     # Sentry (leave blank to disable)
     sentry_dsn: str = ""
+    # Release to tag Sentry events with, so a new error can be traced to the
+    # deploy that introduced it. Blank → RAILWAY_GIT_COMMIT_SHA (set by Railway
+    # at build and run time); see sentry_release().
+    sentry_release: str = ""
 
     # Google Places API (for Prospects search; leave blank to disable)
     google_places_api_key: str = ""
@@ -278,6 +283,23 @@ def _is_local_public_url(url: str) -> bool:
 
 def _is_sqlite_url(database_url: str) -> bool:
     return (database_url or "").strip().lower().startswith("sqlite")
+
+
+def sentry_release() -> str | None:
+    """Release id shared by the API and the web app's Sentry events.
+
+    The frontend build uses the same commit SHA (VITE_APP_BUILD_ID), so both
+    sides of one deploy group under one Sentry release.
+    """
+    for value in (
+        settings.sentry_release,
+        os.environ.get("RAILWAY_GIT_COMMIT_SHA", ""),
+        os.environ.get("APP_BUILD_ID", ""),
+    ):
+        value = (value or "").strip()
+        if value:
+            return value
+    return None
 
 
 def sentry_dsn_looks_valid(dsn: str) -> bool:

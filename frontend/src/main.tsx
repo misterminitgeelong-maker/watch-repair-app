@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.tsx'
 import { applyTheme, readStoredTheme } from '@/context/ThemeContext'
-import { stampBuildMetaTag } from '@/lib/buildInfo'
+import { APP_BUILD_ID, stampBuildMetaTag } from '@/lib/buildInfo'
 
 applyTheme(readStoredTheme())
 stampBuildMetaTag()
@@ -47,6 +47,9 @@ if (typeof sentryDsn === 'string' && sentryDsn.trim()) {
         dsn,
         tracesSampleRate: 0.1,
         environment: import.meta.env.MODE,
+        // Same commit SHA the API reports, so one deploy is one Sentry release.
+        release: APP_BUILD_ID !== 'dev' ? APP_BUILD_ID : undefined,
+        initialScope: { tags: { component: 'web' } },
       })
     }
   } catch (err) {

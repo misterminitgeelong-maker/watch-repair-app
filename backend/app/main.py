@@ -19,7 +19,7 @@ from sqlmodel import Session
 from .logging_config import configure_logging
 from .idempotency import MutationIdempotencyMiddleware
 from .upload_limits import RequestBodyLimitMiddleware
-from .config import settings, validate_runtime_config, sentry_dsn_looks_valid
+from .config import settings, validate_runtime_config, sentry_dsn_looks_valid, sentry_release
 from .database import create_db_and_tables, engine
 from .sweeps import enabled_sweeps, start_sweep_threads
 from .limiter import limiter
@@ -101,7 +101,9 @@ def _init_sentry() -> None:
             traces_sample_rate=0.1,
             profiles_sample_rate=0.0,
             environment=getattr(settings, "app_env", "production"),
+            release=sentry_release(),
         )
+        sentry_mod.set_tag("component", "api")
         sentry_sdk = sentry_mod
         _SENTRY_ENABLED = True
     except Exception:
