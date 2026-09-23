@@ -402,3 +402,56 @@ def test_customer_note_shows_on_status_page_and_staff_note_does_not(client, auth
         json={"status": "working_on", "customer_note": "x" * 281},
     )
     assert too_long.status_code == 422
+
+
+# ── Shop delete: the database removes a shop's rows itself ───────────────────
+
+def test_tenant_foreign_keys_carry_delete_rules():
+    import pytest
+    from sqlalchemy import text as sql_text
+
+    if engine.dialect.name != "postgresql":
+        pytest.skip("ON DELETE rules are applied by a Postgres migration")
+    with engine.connect() as conn:
+        rows = conn.execute(
+            sql_text(
+                """
+                SELECT rel.relname, att.attname, con.confdeltype
+                FROM pg_constraint con
+                JOIN pg_class rel ON rel.oid = con.conrelid
+                JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = con.conkey[1]
+                WHERE con.contype = 'f' AND con.confrelid = 'tenant'::regclass
+                """
+            )
+        ).fetchall()
+    by_column = {(t, c): rule for t, c, rule in rows}
+    owned = [(t, c) for (t, c), rule in by_column.items() if c == "tenant_id" and rule not in ("c", "n")]
+    assert not owned, f"tenant_id foreign keys without an ON DELETE rule: {owned}"
+    assert by_column[("repairjob", "tenant_id")] == "c"
+    assert by_column[("parentaccount", "mobile_lead_default_tenant_id")] == "n"
+
+
+def test_delete_tenant_row_cascades_on_postgres(client, bootstrap_and_login, make_customer, make_watch):
+    import pytest
+    from sqlalchemy import text as sql_text
+
+    if engine.dialect.name != "postgresql":
+        pytest.skip("cascade is a Postgres migration")
+    slug = f"cascade-{uuid4().hex[:8]}"
+    headers = {"Authorization": f"Bearer {bootstrap_and_login(tenant_slug=slug)}"}
+    watch_id = make_watch(headers, make_customer(headers))
+    client.post("/v1/repair-jobs", headers=headers, json={"watch_id": watch_id, "title": "x", "priority": "normal"})
+    with Session(engine) as s:
+        tenant = s.exec(select(Tenant).where(Tenant.slug == slug)).one()
+        tid = str(tenant.id)
+    with engine.begin() as conn:
+        # Rows with no tenant_id of their own still need the app's explicit deletes;
+        # everything keyed by tenant_id goes with the tenant row.
+        conn.execute(sql_text("DELETE FROM refreshsession WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid})
+        conn.execute(
+            sql_text('DELETE FROM parentaccountuser WHERE user_id IN (SELECT id FROM "user" WHERE tenant_id = CAST(:t AS uuid))'),
+            {"t": tid},
+        )
+        conn.execute(sql_text("DELETE FROM tenant WHERE id = CAST(:t AS uuid)"), {"t": tid})
+        left = conn.execute(sql_text("SELECT count(*) FROM repairjob WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid}).scalar()
+    assert left == 0

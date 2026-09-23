@@ -91,7 +91,7 @@ class User(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     email: str = Field(index=True)
     full_name: str
     role: str = "owner"
@@ -116,9 +116,9 @@ class ParentAccount(SQLModel, table=True):
     #: emails). Sent as HTTP basic auth, never in the URL, and distinct from the
     #: website lead feed secret so one leaking doesn't expose the other.
     inbound_email_secret_hash: Optional[str] = None
-    mobile_lead_default_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
+    mobile_lead_default_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", ondelete="SET NULL")
     #: Final fallback when operators do not quote in time (typically HQ for manual quoting).
-    mobile_lead_escalation_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
+    mobile_lead_escalation_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", ondelete="SET NULL")
     #: Minutes each operator has to send a quote before the lead is offered to the next.
     mobile_lead_offer_timeout_minutes: int = Field(default=30)
     #: Max nearby operators to try before escalating to HQ.
@@ -166,7 +166,7 @@ class MobileSuburbRoute(SQLModel, table=True):
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     state_code: str = Field(index=True, max_length=8)
     suburb_normalized: str = Field(index=True, max_length=200)
-    target_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    target_tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class InboundEmail(SQLModel, table=True):
@@ -282,7 +282,7 @@ class ParentAccountSite(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     network_role: str = Field(default=NETWORK_ROLE_RETAIL, max_length=16, index=True)
     region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -321,7 +321,7 @@ class ShopOwnerInvite(SQLModel, table=True):
     """
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     owner_user_id: UUID = Field(index=True, foreign_key="user.id")
     token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
@@ -343,7 +343,7 @@ class ParentLinkRequest(SQLModel, table=True):
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     #: The shop being asked. Named tenant_id so the shop's own session sees
     #: its requests through the normal tenant scope.
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     requested_by_user_id: UUID = Field(foreign_key="user.id")
     shop_number: Optional[str] = Field(default=None, max_length=32)
     status: str = Field(default="pending", index=True, max_length=16)  # pending | accepted | declined
@@ -357,8 +357,8 @@ class ShopMobileBookingRequest(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
-    requesting_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
-    target_operator_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    requesting_tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    target_operator_tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     created_by_user_id: UUID = Field(index=True, foreign_key="user.id")
     status: str = Field(default="pending", index=True, max_length=32)
     customer_name: str = Field(max_length=300)
@@ -391,7 +391,7 @@ class ShopMobileBookingRequest(SQLModel, table=True):
 class ParentAccountEventLog(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
-    tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id")
+    tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id", ondelete="SET NULL")
     actor_user_id: Optional[UUID] = Field(default=None, index=True, foreign_key="user.id")
     actor_email: Optional[str] = None
     event_type: str = Field(index=True)
@@ -401,7 +401,7 @@ class ParentAccountEventLog(SQLModel, table=True):
 class TenantEventLog(SQLModel, table=True):
     """Per-tenant audit log for notable business and security events."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     actor_user_id: Optional[UUID] = Field(default=None, index=True, foreign_key="user.id")
     actor_email: Optional[str] = None
     entity_type: str = Field(index=True)  # "session", "user", "invoice", "tenant"
@@ -418,7 +418,7 @@ class CardPaymentIssue(SQLModel, table=True):
     the shop's inbox until someone refunds it, applies it, or dismisses it.
     """
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     auto_key_invoice_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyinvoice.id")
     checkout_session_id: str = Field(max_length=255, unique=True)
     payment_intent_id: Optional[str] = Field(default=None, max_length=255)
@@ -455,7 +455,7 @@ class MutationIdempotencyKey(SQLModel, table=True):
         UniqueConstraint("tenant_id", "key", name="uq_mutation_idempotency_tenant_key"),
     )
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     key: str = Field(max_length=128, index=True)
     method: str = Field(max_length=16)
     path: str = Field(max_length=512)
@@ -472,7 +472,7 @@ class MutationIdempotencyKey(SQLModel, table=True):
 class CustomService(SQLModel, table=True):
     """Tenant-defined service for watch or shoe repairs, shown alongside built-in catalogue."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     service_type: str = Field(index=True)  # "watch" | "shoe"
     name: str
     group_id: str = "custom"  # e.g. "custom" or an existing group id
@@ -531,7 +531,7 @@ class ProspectLead(SQLModel, table=True):
 
 class Customer(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     full_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
@@ -551,7 +551,7 @@ def _populate_customer_phone_normalized(_mapper, _connection, target: Customer) 
 
 class Watch(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_id: UUID = Field(foreign_key="customer.id")
     brand: Optional[str] = None
     model: Optional[str] = None
@@ -567,7 +567,7 @@ class RepairJob(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     watch_id: UUID = Field(index=True, foreign_key="watch.id")
     assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     customer_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customeraccount.id")
@@ -596,21 +596,21 @@ class RepairJob(SQLModel, table=True):
 
 class RepairJobNumberCounter(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id", ondelete="CASCADE")
     next_number: int = 1
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShoeRepairJobNumberCounter(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id", ondelete="CASCADE")
     next_number: int = 1
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class JobStatusHistory(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     repair_job_id: UUID = Field(index=True, foreign_key="repairjob.id")
     old_status: Optional[str] = None
     new_status: str
@@ -627,7 +627,7 @@ class RepairQueueDayState(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     user_id: UUID = Field(index=True, foreign_key="user.id")
     mode: str = Field(max_length=8)  # watch | shoe
     shop_date: str = Field(max_length=10)  # YYYY-MM-DD in tenant TZ
@@ -642,7 +642,7 @@ class WorkLog(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     repair_job_id: UUID = Field(index=True, foreign_key="repairjob.id")
     user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     note: Optional[str] = None
@@ -660,7 +660,7 @@ class Attachment(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
     watch_id: Optional[UUID] = Field(default=None, index=True, foreign_key="watch.id")
     shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
@@ -675,7 +675,7 @@ class Attachment(SQLModel, table=True):
 
 class Quote(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     repair_job_id: UUID = Field(index=True, foreign_key="repairjob.id")
     status: str = "draft"
     subtotal_cents: int = 0
@@ -696,7 +696,7 @@ class Quote(SQLModel, table=True):
 
 class QuoteLineItem(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     quote_id: UUID = Field(index=True, foreign_key="quote.id")
     item_type: str
     description: str
@@ -707,7 +707,7 @@ class QuoteLineItem(SQLModel, table=True):
 
 class Approval(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     quote_id: UUID = Field(index=True, foreign_key="quote.id")
     decision: str
     ip_address: Optional[str] = None
@@ -727,7 +727,7 @@ class Invoice(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     repair_job_id: UUID = Field(index=True, foreign_key="repairjob.id")
     quote_id: Optional[UUID] = Field(default=None, foreign_key="quote.id")
     invoice_number: str = Field(index=True)
@@ -748,7 +748,7 @@ class Invoice(SQLModel, table=True):
 
 class InvoiceNumberCounter(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, unique=True, foreign_key="tenant.id", ondelete="CASCADE")
     next_number: int = 1
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -759,7 +759,7 @@ class Payment(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     invoice_id: UUID = Field(index=True, foreign_key="invoice.id")
     amount_cents: int
     currency: str = "USD"
@@ -771,7 +771,7 @@ class Payment(SQLModel, table=True):
 class SmsLog(SQLModel, table=True):
     """Audit trail for every SMS sent (or attempted) by the system."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     # No foreign key to the job tables, deliberately. This row is written in its own
     # transaction before the provider call (see sms._begin_sms_log) so the attempt is
     # recorded even if the caller later rolls back — which means it can legitimately
@@ -799,7 +799,7 @@ class EmailLog(SQLModel, table=True):
     attachments are not stored.
     """
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     to_email: str
     event: str  # e.g. "quote_sent", "shop_mobile_booking_pending"
     status: str = "dry_run"  # "sent" | "dry_run" | "failed"
@@ -812,7 +812,7 @@ class EmailLog(SQLModel, table=True):
 class JobMessage(SQLModel, table=True):
     """Manual two-way SMS messages between shop and customer, linked to a job."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="repairjob.id")
     shoe_repair_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="shoerepairjob.id")
     auto_key_job_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyjob.id")
@@ -825,7 +825,7 @@ class JobMessage(SQLModel, table=True):
 
 class ImportLog(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     uploaded_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     file_name: str
     file_type: str
@@ -850,7 +850,7 @@ class CustomerOrder(SQLModel, table=True):
     """Shop-sourced items ordered on a customer's behalf (bands, remotes, parts, etc.)."""
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customer.id")
     title: str
     description: Optional[str] = None
@@ -865,7 +865,7 @@ class CustomerOrder(SQLModel, table=True):
 class Shoe(SQLModel, table=True):
     """A pair (or single) of shoes linked to a customer — parallel to Watch."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_id: UUID = Field(index=True, foreign_key="customer.id")
     shoe_type: Optional[str] = None   # e.g. "boots", "sneakers", "dress", "sandals"
     brand: Optional[str] = None
@@ -876,7 +876,7 @@ class Shoe(SQLModel, table=True):
 class ShoeRepairJob(SQLModel, table=True):
     """A shoe repair job — parallel to RepairJob."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     shoe_id: UUID = Field(index=True, foreign_key="shoe.id")
     assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     customer_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customeraccount.id")
@@ -904,7 +904,7 @@ class ShoeRepairJob(SQLModel, table=True):
 class ShoeRepairJobShoe(SQLModel, table=True):
     """Additional shoe pairs linked to a ShoeRepairJob beyond the primary shoe_id."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id")
     shoe_id: UUID = Field(foreign_key="shoe.id")
     sort_order: int = Field(default=1)
@@ -913,7 +913,7 @@ class ShoeRepairJobShoe(SQLModel, table=True):
 class ShoeRepairJobItem(SQLModel, table=True):
     """A catalogue line item selected for a shoe repair job."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id")
     catalogue_key: str          # e.g. "heels__all_pegged_pin_heels"
     catalogue_group: str        # e.g. "heels"
@@ -926,7 +926,7 @@ class ShoeRepairJobItem(SQLModel, table=True):
 
 class ShoeJobStatusHistory(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id")
     old_status: Optional[str] = None
     new_status: str
@@ -940,7 +940,7 @@ class AutoKeyJob(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_id: UUID = Field(index=True, foreign_key="customer.id")
     assigned_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     customer_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="customeraccount.id")
@@ -980,7 +980,7 @@ class AutoKeyJob(SQLModel, table=True):
     work_completed_at: Optional[datetime] = None
     #: Revenue share tier key — must match keys in technician rates_bp (shop_referred, tech_sourced, minit_sourced).
     commission_lead_source: str = Field(default="shop_referred", max_length=64)
-    referring_shop_tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id")
+    referring_shop_tenant_id: Optional[UUID] = Field(default=None, index=True, foreign_key="tenant.id", ondelete="SET NULL")
     shop_mobile_booking_request_id: Optional[UUID] = Field(
         default=None, foreign_key="shopmobilebookingrequest.id", unique=True
     )
@@ -1033,7 +1033,7 @@ class GarageServicingPricing(SQLModel, table=True):
 
 class AutoKeyQuote(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id")
     status: str = "draft"
     subtotal_cents: int = 0
@@ -1053,7 +1053,7 @@ class AutoKeyQuote(SQLModel, table=True):
 
 class AutoKeyQuoteLineItem(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     auto_key_quote_id: UUID = Field(index=True, foreign_key="autokeyquote.id")
     description: str
     quantity: float = 1
@@ -1082,7 +1082,7 @@ class AutoKeyInvoice(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id")
     auto_key_quote_id: Optional[UUID] = Field(default=None, foreign_key="autokeyquote.id")
     invoice_number: str = Field(index=True)
@@ -1108,7 +1108,7 @@ class CustomerAccount(SQLModel, table=True):
     subscription_active: bool = False
     subscription_start_date: Optional[date] = None
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     name: str
     account_code: Optional[str] = Field(default=None, index=True)
     contact_name: Optional[str] = None
@@ -1130,7 +1130,7 @@ class CustomerAccount(SQLModel, table=True):
 
 class CustomerAccountMembership(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_account_id: UUID = Field(index=True, foreign_key="customeraccount.id")
     customer_id: UUID = Field(index=True, foreign_key="customer.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -1143,7 +1143,7 @@ class CustomerAccountInvoice(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_account_id: UUID = Field(index=True, foreign_key="customeraccount.id")
     invoice_number: str = Field(index=True)
     period_year: int
@@ -1166,7 +1166,7 @@ class CustomerAccountInvoiceLine(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_account_invoice_id: UUID = Field(index=True, foreign_key="customeraccountinvoice.id")
     source_type: str
     source_job_id: UUID = Field(index=True)
@@ -1177,7 +1177,7 @@ class CustomerAccountInvoiceLine(SQLModel, table=True):
 
 class StockItem(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     item_code: str = Field(index=True)
     group_code: str = Field(default="", index=True)
     group_name: Optional[str] = None
@@ -1197,7 +1197,7 @@ class StockItem(SQLModel, table=True):
 
 class StocktakeSession(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     name: str
     status: str = Field(default="draft", index=True)
     created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
@@ -1211,7 +1211,7 @@ class StocktakeSession(SQLModel, table=True):
 
 class StocktakeLine(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     stocktake_session_id: UUID = Field(index=True, foreign_key="stocktakesession.id")
     stock_item_id: UUID = Field(index=True, foreign_key="stockitem.id")
     expected_qty: float = 0
@@ -1226,7 +1226,7 @@ class StocktakeLine(SQLModel, table=True):
 
 class StockAdjustment(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     stock_item_id: UUID = Field(index=True, foreign_key="stockitem.id")
     stocktake_session_id: UUID = Field(index=True, foreign_key="stocktakesession.id")
     old_qty: float = 0
@@ -1249,7 +1249,7 @@ class PortalSession(SQLModel, table=True):
 
 class UserNotificationPreference(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     user_id: UUID = Field(index=True, foreign_key="user.id")
     email_quote_approved: bool = True
     email_invoice_paid: bool = True
@@ -1269,7 +1269,7 @@ class UserNotificationPreference(SQLModel, table=True):
 
 class TenantApiKey(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     name: str = Field(max_length=120)
     key_prefix: str = Field(max_length=16)
     key_hash: str = Field(max_length=128)
@@ -1279,7 +1279,7 @@ class TenantApiKey(SQLModel, table=True):
 
 class TenantWebhookSubscription(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     url: str = Field(max_length=512)
     event_types: str = Field(max_length=512)  # comma-separated
     secret: str = Field(max_length=64)
@@ -1335,7 +1335,7 @@ class CustomerPortalOtp(SQLModel, table=True):
     """
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     phone: str = Field(max_length=80, index=True)
     name: str = Field(max_length=300)
     code_hash: str = Field(max_length=128)
@@ -1358,7 +1358,7 @@ class CustomerLoyalty(SQLModel, table=True):
         UniqueConstraint("tenant_id", "customer_id", name="uq_customerloyalty_tenant_customer"),
     )
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_id: UUID = Field(index=True, foreign_key="customer.id")
     tier_id: int = Field(default=1, foreign_key="loyaltytier.id")
     points_balance: int = 0
@@ -1369,7 +1369,7 @@ class PointsLedger(SQLModel, table=True):
         UniqueConstraint("tenant_id", "idempotency_key", name="uq_pointsledger_idempotency"),
     )
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     customer_loyalty_id: UUID = Field(index=True, foreign_key="customerloyalty.id")
     entry_type: str  # earn | adjust | signup_bonus
     points_delta: int  # signed
@@ -1436,7 +1436,7 @@ class VswtWeeklyShopMetric(SQLModel, table=True):
     jewellery_serv_jobs_ty: Optional[float] = None
 
     source_filename: Optional[str] = None
-    uploaded_by_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
+    uploaded_by_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", ondelete="SET NULL")
     uploaded_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -1453,7 +1453,7 @@ class VswtReportTarget(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     shop_number: str = Field(index=True, max_length=10)
     metric_key: str = Field(max_length=64)
     target_value: float
@@ -1470,7 +1470,7 @@ class VswtWeekAnnotation(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     shop_number: str = Field(index=True, max_length=10)
     week_seq: int = Field(index=True)
     event_type: str = Field(default="other", max_length=32)
@@ -1520,7 +1520,7 @@ class MobileKpiDailySnapshot(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
-    operator_tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    operator_tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     trade_date: date = Field(index=True)
     payload_json: str
     compiled_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

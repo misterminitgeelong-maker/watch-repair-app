@@ -9,7 +9,7 @@ from sqlmodel import Field, SQLModel
 class RevenueFollowUp(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("tenant_id", "issue_key", name="uq_revenue_followup_issue"),)
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     issue_key: str = Field(max_length=100)
     auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id")
     owner_user_id: UUID | None = Field(default=None, foreign_key="user.id")

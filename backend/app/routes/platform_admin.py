@@ -595,6 +595,10 @@ def delete_platform_tenant(
         for statement in tenant_detach_plan():
             session.execute(text(statement), {"tid": tid})  # noqa: S608
 
+        # On Postgres the foreign keys to tenant now carry ON DELETE rules
+        # (migration 20260923j), so the final DELETE FROM tenant removes any
+        # tenant_id row this pass misses. The pass stays: SQLite doesn't have
+        # the rules, and a few tables hold tenant_id without a foreign key.
         # Everything else that belongs to the shop, children before parents.
         # Derived from the schema: a hand-kept list here fell behind as tables
         # were added (emaillog, revenuefollowup, ...), and on Postgres one
