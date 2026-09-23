@@ -24,6 +24,7 @@ from .database import create_db_and_tables, engine
 from .sweeps import enabled_sweeps, start_sweep_threads
 from .limiter import limiter
 from .routes.auth import router as auth_router
+from .routes.card_payment_issues import router as card_payment_issues_router
 from .routes.me import router as me_router
 from .routes.customers import router as customer_router
 from .routes.repair_jobs import router as repair_job_router
@@ -521,6 +522,7 @@ app.include_router(csv_import_router)
 app.include_router(report_router)
 app.include_router(vswt_reports_router)
 app.include_router(inbox_router)
+app.include_router(card_payment_issues_router)
 app.include_router(global_search_router)
 app.include_router(tenant_qol_router)
 app.include_router(public_jobs_router)

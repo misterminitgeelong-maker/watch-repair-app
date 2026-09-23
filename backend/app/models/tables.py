@@ -410,6 +410,29 @@ class TenantEventLog(SQLModel, table=True):
     event_summary: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class CardPaymentIssue(SQLModel, table=True):
+    """A customer's card was charged but the payment couldn't be applied.
+
+    Created by the Stripe webhook when a checkout for a mobile invoice arrives
+    for an invoice that is already paid/void or for a different amount. Shown in
+    the shop's inbox until someone refunds it, applies it, or dismisses it.
+    """
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    auto_key_invoice_id: Optional[UUID] = Field(default=None, index=True, foreign_key="autokeyinvoice.id")
+    checkout_session_id: str = Field(max_length=255, unique=True)
+    payment_intent_id: Optional[str] = Field(default=None, max_length=255)
+    #: Connected account the charge was made on; None for legacy platform charges.
+    stripe_account_id: Optional[str] = Field(default=None, max_length=255)
+    amount_cents: int
+    currency: str = "AUD"
+    problem: str = Field(max_length=300)
+    #: open | refunded | applied | dismissed
+    status: str = Field(default="open", max_length=20, index=True)
+    resolved_at: Optional[datetime] = None
+    resolved_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class StripeWebhookEvent(SQLModel, table=True):
     """Stripe event IDs already applied by the billing webhook.
 

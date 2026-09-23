@@ -6266,6 +6266,201 @@
         }
       }
     },
+    "/v1/card-payment-issues/{issue_id}": {
+      "get": {
+        "tags": [
+          "card-payment-issues"
+        ],
+        "summary": "Get Card Payment Issue",
+        "operationId": "get_card_payment_issue_v1_card_payment_issues__issue_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardPaymentIssueRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/card-payment-issues/{issue_id}/refund": {
+      "post": {
+        "tags": [
+          "card-payment-issues"
+        ],
+        "summary": "Refund Card Payment Issue",
+        "description": "Refund the whole charge to the customer's card through Stripe.",
+        "operationId": "refund_card_payment_issue_v1_card_payment_issues__issue_id__refund_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardPaymentIssueRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/card-payment-issues/{issue_id}/apply": {
+      "post": {
+        "tags": [
+          "card-payment-issues"
+        ],
+        "summary": "Apply Card Payment Issue",
+        "description": "Accept the charge as payment of its invoice (e.g. the total changed after the link was sent).",
+        "operationId": "apply_card_payment_issue_v1_card_payment_issues__issue_id__apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardPaymentIssueRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/card-payment-issues/{issue_id}/dismiss": {
+      "post": {
+        "tags": [
+          "card-payment-issues"
+        ],
+        "summary": "Dismiss Card Payment Issue",
+        "description": "Close the alert without acting here (handled directly in Stripe).",
+        "operationId": "dismiss_card_payment_issue_v1_card_payment_issues__issue_id__dismiss_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issue_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Issue Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardPaymentIssueRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/search": {
       "get": {
         "tags": [
@@ -23927,6 +24122,113 @@
           "status"
         ],
         "title": "BulkStatusRequest"
+      },
+      "CardPaymentIssueRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "auto_key_invoice_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Key Invoice Id"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "invoice_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Status"
+          },
+          "invoice_total_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Total Cents"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "problem": {
+            "type": "string",
+            "title": "Problem"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "can_refund": {
+            "type": "boolean",
+            "title": "Can Refund"
+          },
+          "can_apply": {
+            "type": "boolean",
+            "title": "Can Apply"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "amount_cents",
+          "currency",
+          "problem",
+          "status",
+          "can_refund",
+          "can_apply",
+          "created_at"
+        ],
+        "title": "CardPaymentIssueRead"
       },
       "CustomFieldsUpdate": {
         "properties": {

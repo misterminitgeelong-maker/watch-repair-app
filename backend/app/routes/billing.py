@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import text
@@ -21,6 +21,7 @@ from ..models import (
     BillingLimitsResponse,
     BillingPlanLimits,
     BillingLimitsUsage,
+    CardPaymentIssue,
     NETWORK_ROLE_HQ,
     RepairJob,
     ShoeRepairJob,
@@ -29,6 +30,7 @@ from ..models import (
     TenantEventLog,
     User,
 )
+from ..money import format_cents
 from ..parent_network import sites_for_parent, sites_for_tenant
 
 router = APIRouter(prefix="/v1/billing", tags=["billing"])
@@ -764,15 +766,36 @@ def _apply_invoice_checkout(session: Session, obj, *, connect_account: str | Non
             obj.get("id"),
             problem,
         )
+        checkout_id = str(obj.get("id") or "")
+        existing_issue = (
+            session.exec(select(CardPaymentIssue).where(CardPaymentIssue.checkout_session_id == checkout_id)).first()
+            if checkout_id
+            else None
+        )
+        if existing_issue is not None:
+            return {"status": "ok"}  # redelivered event; already in the inbox
+        issue = CardPaymentIssue(
+            tenant_id=invoice.tenant_id,
+            auto_key_invoice_id=invoice.id,
+            checkout_session_id=checkout_id or f"unknown-{uuid4().hex}",
+            payment_intent_id=(str(obj.get("payment_intent")) if obj.get("payment_intent") else None),
+            stripe_account_id=connect_account,
+            amount_cents=int(amount_total or 0),
+            currency=(str(obj.get("currency") or invoice.currency or "AUD")).upper(),
+            problem=problem[:300],
+        )
+        session.add(issue)
+        session.flush()
+        # Shows in the shop's inbox with Refund / Apply actions.
         session.add(
             TenantEventLog(
                 tenant_id=invoice.tenant_id,
-                entity_type="auto_key_invoice",
-                entity_id=invoice.id,
+                entity_type="card_payment_issue",
+                entity_id=issue.id,
                 event_type="card_payment_needs_attention",
                 event_summary=(
-                    f"Card payment of {(int(amount_total or 0)) / 100:.2f} for invoice {invoice.invoice_number} "
-                    f"{problem}. Check Stripe (checkout {obj.get('id')}) and refund if it's a double payment."
+                    f"Card payment of {format_cents(int(amount_total or 0), issue.currency)} for invoice "
+                    f"{invoice.invoice_number} {problem}. Refund it, or apply it to the invoice."
                 ),
             )
         )

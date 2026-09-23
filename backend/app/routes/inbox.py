@@ -22,6 +22,9 @@ INBOX_EVENT_TYPES = [
     "portal_booking_received",
     # HQ opened a support session in this shop (see parent_network_admin.enter_linked_shop).
     "hq_enter_shop",
+    # A customer's card was charged but the payment couldn't be applied
+    # (routes/card_payment_issues.py resolves it and removes the alert).
+    "card_payment_needs_attention",
 ]
 
 
@@ -41,6 +44,10 @@ def delete_inbox_event(
         raise HTTPException(status_code=404, detail="Not found")
     if event.event_type not in INBOX_EVENT_TYPES:
         raise HTTPException(status_code=400, detail="Can only delete inbox alerts")
+    if event.event_type == "card_payment_needs_attention":
+        # Deleting it would hide a customer's money with no record of what
+        # happened to it; resolve it instead (refund, apply or dismiss).
+        raise HTTPException(status_code=400, detail="Refund, apply or dismiss this payment instead of deleting it.")
     session.delete(event)
     session.commit()
     return None

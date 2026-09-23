@@ -430,6 +430,22 @@ class ParentAccountEventLogRead(SQLModel):
     event_summary: str
     created_at: datetime
 
+class CardPaymentIssueRead(SQLModel):
+    id: UUID
+    auto_key_invoice_id: Optional[UUID] = None
+    invoice_number: Optional[str] = None
+    invoice_status: Optional[str] = None
+    invoice_total_cents: Optional[int] = None
+    amount_cents: int
+    currency: str
+    problem: str
+    status: str
+    #: Refund needs the Stripe payment id; apply needs the invoice still unpaid.
+    can_refund: bool
+    can_apply: bool
+    resolved_at: Optional[datetime] = None
+    created_at: datetime
+
 class TenantEventLogRead(SQLModel):
     id: UUID
     tenant_id: UUID

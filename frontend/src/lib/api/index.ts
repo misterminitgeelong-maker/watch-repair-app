@@ -2945,6 +2945,27 @@ export const getInboxCount = (exclude?: string[]) =>
   })
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
+// ── Card payments that couldn't be applied (inbox "needs attention") ─────────
+export interface CardPaymentIssue {
+  id: string
+  auto_key_invoice_id?: string | null
+  invoice_number?: string | null
+  invoice_status?: string | null
+  invoice_total_cents?: number | null
+  amount_cents: number
+  currency: string
+  problem: string
+  status: 'open' | 'refunded' | 'applied' | 'dismissed'
+  can_refund: boolean
+  can_apply: boolean
+  resolved_at?: string | null
+  created_at: string
+}
+export const getCardPaymentIssue = (id: string) => api.get<CardPaymentIssue>(`/card-payment-issues/${id}`)
+export const refundCardPaymentIssue = (id: string) => api.post<CardPaymentIssue>(`/card-payment-issues/${id}/refund`)
+export const applyCardPaymentIssue = (id: string) => api.post<CardPaymentIssue>(`/card-payment-issues/${id}/apply`)
+export const dismissCardPaymentIssue = (id: string) => api.post<CardPaymentIssue>(`/card-payment-issues/${id}/dismiss`)
+
 // ── Inbound email leads (BCC'd enquiry-form capture) ─────────────────────────
 export interface InboundEmailListItem {
   id: string

@@ -345,13 +345,103 @@ def test_card_payment_on_an_already_paid_invoice_alerts_the_shop(client, auth_he
     })
     assert r.status_code == 200
     with Session(engine) as s:
+        from app.models import CardPaymentIssue
+
+        issue = s.exec(select(CardPaymentIssue).where(CardPaymentIssue.auto_key_invoice_id == invoice_id)).one()
         alert = s.exec(
             select(TenantEventLog)
-            .where(TenantEventLog.entity_id == invoice_id)
+            .where(TenantEventLog.entity_id == issue.id)
             .where(TenantEventLog.event_type == "card_payment_needs_attention")
         ).first()
         assert alert is not None
         assert "already paid" in alert.event_summary
+
+
+def _unmatched_payment(client, auth_headers, *, invoice_status: str, invoice_total: int, charged: int, cs_id: str):
+    from app.models import AutoKeyInvoice, AutoKeyJob, Customer
+
+    tid = _tenant_id(client, auth_headers)
+    with Session(engine) as s:
+        customer = Customer(tenant_id=tid, full_name="Card Payer")
+        s.add(customer)
+        s.flush()
+        job = AutoKeyJob(tenant_id=tid, customer_id=customer.id, job_number=f"AK-{uuid4().hex[:6]}", title="Key")
+        s.add(job)
+        s.flush()
+        invoice = AutoKeyInvoice(
+            tenant_id=tid, auto_key_job_id=job.id, invoice_number=f"INV-{uuid4().hex[:6]}",
+            status=invoice_status, total_cents=invoice_total, subtotal_cents=invoice_total,
+        )
+        s.add(invoice)
+        s.commit()
+        invoice_id = invoice.id
+    event = {
+        "id": cs_id, "object": "checkout.session", "mode": "payment", "payment_intent": f"pi_{cs_id}",
+        "metadata": {"purpose": "auto_key_invoice", "auto_key_invoice_id": str(invoice_id)},
+        "payment_status": "paid", "amount_total": charged,
+    }
+    assert _post(client, "checkout.session.completed", event).status_code == 200
+    # A redelivered event doesn't create a second alert.
+    assert _post(client, "checkout.session.completed", event).status_code == 200
+    inbox = client.get("/v1/inbox", headers=auth_headers).json()
+    alerts = [a for a in inbox if a["event_type"] == "card_payment_needs_attention"]
+    mine = [a for a in alerts if a["entity_type"] == "card_payment_issue"]
+    return invoice_id, mine
+
+
+def test_unmatched_card_payment_shows_in_inbox_and_can_be_refunded(client, auth_headers, stripe_configured, monkeypatch):
+    import stripe as stripe_mod
+
+    refunds: list[dict] = []
+    monkeypatch.setattr(stripe_mod.Refund, "create", staticmethod(lambda **kw: refunds.append(kw) or {"id": "re_1"}))
+
+    _invoice_id, alerts = _unmatched_payment(
+        client, auth_headers, invoice_status="paid", invoice_total=5000, charged=5000, cs_id=f"cs_{uuid4().hex[:8]}"
+    )
+    assert len(alerts) == 1
+    issue_id = alerts[0]["entity_id"]
+
+    # The alert can't just be deleted: the customer's money needs an outcome.
+    assert client.delete(f"/v1/inbox/{alerts[0]['id']}", headers=auth_headers).status_code == 400
+
+    detail = client.get(f"/v1/card-payment-issues/{issue_id}", headers=auth_headers).json()
+    assert detail["can_refund"] is True
+    assert detail["can_apply"] is False  # invoice already paid
+
+    res = client.post(f"/v1/card-payment-issues/{issue_id}/refund", headers=auth_headers)
+    assert res.status_code == 200, res.text
+    assert res.json()["status"] == "refunded"
+    assert refunds and refunds[0]["payment_intent"].startswith("pi_")
+    inbox = client.get("/v1/inbox", headers=auth_headers).json()
+    assert not any(a.get("entity_id") == issue_id for a in inbox)
+    # Can't refund twice.
+    assert client.post(f"/v1/card-payment-issues/{issue_id}/refund", headers=auth_headers).status_code == 409
+
+
+def test_unmatched_card_payment_can_be_applied_to_an_unpaid_invoice(client, auth_headers, stripe_configured):
+    from app.models import AutoKeyInvoice
+
+    invoice_id, alerts = _unmatched_payment(
+        client, auth_headers, invoice_status="unpaid", invoice_total=5000, charged=5500, cs_id=f"cs_{uuid4().hex[:8]}"
+    )
+    issue_id = alerts[0]["entity_id"]
+    assert client.get(f"/v1/card-payment-issues/{issue_id}", headers=auth_headers).json()["can_apply"] is True
+    res = client.post(f"/v1/card-payment-issues/{issue_id}/apply", headers=auth_headers)
+    assert res.status_code == 200, res.text
+    assert res.json()["status"] == "applied"
+    with Session(engine) as s:
+        assert s.get(AutoKeyInvoice, invoice_id).status == "paid"
+
+
+def test_card_payment_issue_is_tenant_scoped(client, auth_headers, bootstrap_and_login, stripe_configured):
+    _invoice_id, alerts = _unmatched_payment(
+        client, auth_headers, invoice_status="paid", invoice_total=100, charged=100, cs_id=f"cs_{uuid4().hex[:8]}"
+    )
+    other = {"Authorization": f"Bearer {bootstrap_and_login()}"}
+    issue_id = alerts[0]["entity_id"]
+    assert client.get(f"/v1/card-payment-issues/{issue_id}", headers=other).status_code == 404
+    assert client.post(f"/v1/card-payment-issues/{issue_id}/dismiss", headers=other).status_code == 404
+    assert client.post(f"/v1/card-payment-issues/{issue_id}/dismiss", headers=auth_headers).json()["status"] == "dismissed"
 
 
 # ── invoice payments on the shop's own connected account ────────────────────────

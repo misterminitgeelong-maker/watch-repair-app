@@ -1865,6 +1865,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/card-payment-issues/{issue_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Card Payment Issue */
+        get: operations["get_card_payment_issue_v1_card_payment_issues__issue_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/card-payment-issues/{issue_id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refund Card Payment Issue
+         * @description Refund the whole charge to the customer's card through Stripe.
+         */
+        post: operations["refund_card_payment_issue_v1_card_payment_issues__issue_id__refund_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/card-payment-issues/{issue_id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Card Payment Issue
+         * @description Accept the charge as payment of its invoice (e.g. the total changed after the link was sent).
+         */
+        post: operations["apply_card_payment_issue_v1_card_payment_issues__issue_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/card-payment-issues/{issue_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Card Payment Issue
+         * @description Close the alert without acting here (handled directly in Stripe).
+         */
+        post: operations["dismiss_card_payment_issue_v1_card_payment_issues__issue_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/search": {
         parameters: {
             query?: never;
@@ -7446,6 +7523,41 @@ export interface components {
             job_ids: string[];
             /** Status */
             status: string;
+        };
+        /** CardPaymentIssueRead */
+        CardPaymentIssueRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Auto Key Invoice Id */
+            auto_key_invoice_id?: string | null;
+            /** Invoice Number */
+            invoice_number?: string | null;
+            /** Invoice Status */
+            invoice_status?: string | null;
+            /** Invoice Total Cents */
+            invoice_total_cents?: number | null;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Currency */
+            currency: string;
+            /** Problem */
+            problem: string;
+            /** Status */
+            status: string;
+            /** Can Refund */
+            can_refund: boolean;
+            /** Can Apply */
+            can_apply: boolean;
+            /** Resolved At */
+            resolved_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** CustomFieldsUpdate */
         CustomFieldsUpdate: {
@@ -16183,6 +16295,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantEventLogRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_card_payment_issue_v1_card_payment_issues__issue_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardPaymentIssueRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refund_card_payment_issue_v1_card_payment_issues__issue_id__refund_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardPaymentIssueRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_card_payment_issue_v1_card_payment_issues__issue_id__apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardPaymentIssueRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_card_payment_issue_v1_card_payment_issues__issue_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardPaymentIssueRead"];
                 };
             };
             /** @description Validation Error */

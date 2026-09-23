@@ -1,8 +1,17 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { CheckCircle, XCircle, ArrowRight, Trash2, KeyRound, DollarSign, MessageSquare, LogIn } from 'lucide-react'
-import { getInbox, deleteInboxEvent } from '@/lib/api'
+import { CheckCircle, XCircle, ArrowRight, Trash2, KeyRound, DollarSign, MessageSquare, LogIn, CreditCard } from 'lucide-react'
+import {
+  getInbox,
+  deleteInboxEvent,
+  getCardPaymentIssue,
+  refundCardPaymentIssue,
+  applyCardPaymentIssue,
+  dismissCardPaymentIssue,
+  getApiErrorMessage,
+} from '@/lib/api'
+import { formatCents } from '@/lib/money'
 import { Card, PageHeader, Spinner, EmptyState } from '@/components/ui'
 // Re-exported for existing import sites; the hook now lives in its own module
 // so nav bars can use it without statically pulling in this page.
@@ -27,6 +36,7 @@ function eventStyle(eventType: string): { iconBg: string; iconColor: string } {
     case 'invoice_paid': return { iconBg: 'rgba(31,76,109,0.12)', iconColor: '#1F4C6D' }
     case 'customer_sms_reply': return { iconBg: 'rgba(79,130,201,0.12)', iconColor: '#4F82C9' }
     case 'hq_enter_shop': return { iconBg: 'rgba(31,58,95,0.12)', iconColor: '#1F3A5F' }
+    case 'card_payment_needs_attention': return { iconBg: 'rgba(139,58,58,0.12)', iconColor: '#8B3A3A' }
     default: return { iconBg: 'rgba(180,120,40,0.15)', iconColor: '#B47828' }
   }
 }
@@ -37,7 +47,66 @@ function EventIcon({ eventType }: { eventType: string }) {
   if (eventType === 'invoice_paid') return <DollarSign size={20} />
   if (eventType === 'customer_sms_reply') return <MessageSquare size={20} />
   if (eventType === 'hq_enter_shop') return <LogIn size={20} />
+  if (eventType === 'card_payment_needs_attention') return <CreditCard size={20} />
   return <KeyRound size={20} />
+}
+
+/** Refund / apply / dismiss for a card payment that couldn't be applied. */
+function CardPaymentActions({ issueId }: { issueId: string }) {
+  const qc = useQueryClient()
+  const [error, setError] = useState('')
+  const [confirmRefund, setConfirmRefund] = useState(false)
+  const { data: issue } = useQuery({
+    queryKey: ['card-payment-issue', issueId],
+    queryFn: () => getCardPaymentIssue(issueId).then(r => r.data),
+  })
+  const done = () => {
+    void qc.invalidateQueries({ queryKey: ['inbox'] })
+    void qc.invalidateQueries({ queryKey: ['inbox-count'] })
+    void qc.invalidateQueries({ queryKey: ['card-payment-issue', issueId] })
+  }
+  const act = useMutation({
+    mutationFn: (action: 'refund' | 'apply' | 'dismiss') =>
+      action === 'refund'
+        ? refundCardPaymentIssue(issueId)
+        : action === 'apply'
+          ? applyCardPaymentIssue(issueId)
+          : dismissCardPaymentIssue(issueId),
+    onSuccess: done,
+    onError: err => setError(getApiErrorMessage(err, 'Could not update this payment.')),
+  })
+  if (!issue || issue.status !== 'open') return null
+  const btn = 'text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50'
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {issue.can_refund && (
+        confirmRefund ? (
+          <button type="button" className={btn} style={{ backgroundColor: '#8B3A3A', color: '#fff' }}
+            disabled={act.isPending} onClick={() => act.mutate('refund')}>
+            {act.isPending ? 'Refunding…' : `Confirm refund of ${formatCents(issue.amount_cents, issue.currency)}`}
+          </button>
+        ) : (
+          <button type="button" className={btn} style={{ backgroundColor: '#8B3A3A', color: '#fff' }}
+            disabled={act.isPending} onClick={() => setConfirmRefund(true)}>
+            Refund customer
+          </button>
+        )
+      )}
+      {issue.can_apply && (
+        <button type="button" className={btn} style={{ backgroundColor: 'var(--ms-accent)', color: '#fff' }}
+          disabled={act.isPending} onClick={() => act.mutate('apply')}>
+          Apply to invoice {issue.invoice_number ?? ''}
+        </button>
+      )}
+      <button type="button" className={btn}
+        style={{ border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-mid)' }}
+        disabled={act.isPending} onClick={() => act.mutate('dismiss')}
+        title="Already sorted in Stripe">
+        Dismiss
+      </button>
+      {error && <span role="alert" className="text-xs" style={{ color: 'var(--ms-error)' }}>{error}</span>}
+    </div>
+  )
 }
 
 export default function InboxPage() {
@@ -62,7 +131,7 @@ export default function InboxPage() {
     <div>
       <PageHeader title="Inbox" />
       {alerts.length === 0 && page === 0 ? (
-        <EmptyState message="No alerts yet. Quote approvals, declines, invoice payments, new website mobile key leads, and customer SMS replies will show up here." />
+        <EmptyState message="No alerts yet. Quote approvals, declines, invoice payments, card payments that need attention, new website mobile key leads, and customer SMS replies will show up here." />
       ) : (
         <div className="space-y-3">
           {alerts.map(ev => {
@@ -100,6 +169,9 @@ export default function InboxPage() {
                     <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                       {formatDate(ev.created_at)}
                     </p>
+                    {ev.event_type === 'card_payment_needs_attention' && ev.entity_type === 'card_payment_issue' && ev.entity_id && (
+                      <CardPaymentActions issueId={ev.entity_id} />
+                    )}
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
                     {jobLink && (
@@ -111,7 +183,7 @@ export default function InboxPage() {
                         {linkLabel} <ArrowRight size={14} />
                       </Link>
                     )}
-                    <button
+                    {ev.event_type !== 'card_payment_needs_attention' && <button
                       type="button"
                       onClick={() => deleteMut.mutate(ev.id)}
                       disabled={deleteMut.isPending}
@@ -121,7 +193,7 @@ export default function InboxPage() {
                       aria-label="Delete"
                     >
                       <Trash2 size={16} />
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </Card>
