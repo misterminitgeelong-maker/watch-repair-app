@@ -10,7 +10,7 @@ from ..list_page import query_total, set_total_count
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
 from ..config import settings
-from ..gst import compute_gst_amounts
+from ..gst import compute_gst_amounts, line_total_cents
 from ..models import (
     Approval,
     Customer,
@@ -162,10 +162,18 @@ def create_quote(
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
+    if not payload.line_items:
+        raise HTTPException(status_code=400, detail="At least one line item is required")
+
     subtotal = 0
     expanded_items: list[QuoteLineItem] = []
     for item in payload.line_items:
-        line_total = int(round(item.quantity * item.unit_price_cents))
+        # Prices are entered as positive amounts (enforced by the schema). A
+        # discount line is stored with a negative unit price so every downstream
+        # consumer (PDF, email, Xero) that multiplies quantity × unit gets the
+        # right sign without special-casing it.
+        unit_price = -item.unit_price_cents if item.item_type == "discount" else item.unit_price_cents
+        line_total = line_total_cents(item.quantity, unit_price)
         subtotal += line_total
         expanded_items.append(
             QuoteLineItem(
@@ -174,12 +182,17 @@ def create_quote(
                 item_type=item.item_type,
                 description=item.description,
                 quantity=item.quantity,
-                unit_price_cents=item.unit_price_cents,
+                unit_price_cents=unit_price,
                 total_price_cents=line_total,
             )
         )
 
-    subtotal_cents, tax_cents, total_cents = compute_gst_amounts(subtotal, payload.gst_enabled, payload.gst_inclusive)
+    if subtotal < 0:
+        raise HTTPException(status_code=400, detail="Discounts can't exceed the quote total")
+
+    subtotal_cents, tax_cents, total_cents = compute_gst_amounts(
+        subtotal, payload.gst_enabled, payload.gst_inclusive, currency=tenant_currency
+    )
 
     quote = Quote(
         tenant_id=auth.tenant_id,

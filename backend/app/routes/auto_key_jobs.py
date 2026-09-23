@@ -18,7 +18,7 @@ from ..mobile_finance import DATE_FIELDS, list_date_filter
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
-from ..gst import compute_gst_amounts
+from ..gst import compute_gst_amounts, gst_in_inclusive, line_total_cents
 from ..list_page import query_total, set_total_count
 from ..stale_write import reject_stale_write
 from ..models import (
@@ -231,7 +231,7 @@ def _create_suggested_quote_for_job(
     lines = suggest_line_items(
         job.job_type, job.key_quantity or 1, "retail", additional_presets or []
     )
-    subtotal = int(round(sum(qty * unit for _, qty, unit in lines)))
+    subtotal = sum(line_total_cents(qty, unit) for _, qty, unit in lines)
     tax = gst_tax_cents(subtotal)
     quote = AutoKeyQuote(
         tenant_id=tenant_id,
@@ -816,7 +816,7 @@ def get_quote_suggestions(
     """Return suggested line items and total for a given job type and pricing tier."""
     presets = [p.strip() for p in additional_presets.split(",") if p.strip()] if additional_presets else None
     items = suggest_line_items(job_type, key_quantity, pricing_tier, presets)
-    subtotal = sum(int(round(q * p)) for _, q, p in items)
+    subtotal = sum(line_total_cents(q, p) for _, q, p in items)
     tax = gst_tax_cents(subtotal)
     return {
         "pricing_tier": pricing_tier,
@@ -1073,8 +1073,9 @@ def update_auto_key_job_status(
                   customer_view_token=uuid4().hex,
               )
           else:
-              subtotal = max(0, int(round(job.cost_cents / 1.1))) if job.cost_cents > 0 else 0
-              tax = max(0, int(job.cost_cents - subtotal))
+              cost = max(0, int(job.cost_cents or 0))
+              tax = gst_in_inclusive(cost)
+              subtotal = cost - tax
               new_invoice = AutoKeyInvoice(
                   tenant_id=auth.tenant_id,
                   auto_key_job_id=job.id,
@@ -1320,7 +1321,7 @@ def create_auto_key_quote(
     session.flush()
 
     for item in payload.line_items:
-        total_price = int(round(item.quantity * item.unit_price_cents))
+        total_price = line_total_cents(item.quantity, item.unit_price_cents)
         entered += total_price
         session.add(
             AutoKeyQuoteLineItem(
@@ -1334,7 +1335,7 @@ def create_auto_key_quote(
         )
 
     quote.subtotal_cents, quote.tax_cents, quote.total_cents = compute_gst_amounts(
-        entered, payload.gst_enabled, payload.gst_inclusive
+        entered, payload.gst_enabled, payload.gst_inclusive, currency=quote.currency
     )
     session.add(quote)
     _log_job_event(

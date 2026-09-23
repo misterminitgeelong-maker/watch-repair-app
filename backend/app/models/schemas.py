@@ -15,7 +15,7 @@ class CustomServiceCreate(SQLModel):
     name: str
     group_id: str = "custom"
     group_label: str = "Custom"
-    price_cents: int
+    price_cents: int = Field(ge=0, le=100_000_000)
     pricing_type: str = "fixed"
     notes: Optional[str] = None
 
@@ -35,7 +35,7 @@ class CustomServiceUpdate(SQLModel):
     name: Optional[str] = None
     group_id: Optional[str] = None
     group_label: Optional[str] = None
-    price_cents: Optional[int] = None
+    price_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
     pricing_type: Optional[str] = None
     notes: Optional[str] = None
 
@@ -72,7 +72,7 @@ class CustomerOrderCreate(SQLModel):
     supplier: Optional[str] = None
     customer_id: Optional[UUID] = None
     priority: str = "normal"
-    estimated_cost_cents: int = 0
+    estimated_cost_cents: int = Field(default=0, ge=0, le=100_000_000)
     notes: Optional[str] = None
 
 class CustomerOrderUpdate(SQLModel):
@@ -82,7 +82,7 @@ class CustomerOrderUpdate(SQLModel):
     customer_id: Optional[UUID] = None
     status: Optional[str] = None
     priority: Optional[str] = None
-    estimated_cost_cents: Optional[int] = None
+    estimated_cost_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
     notes: Optional[str] = None
 
 class CustomerOrderRead(SQLModel):
@@ -1062,9 +1062,9 @@ class RepairJobCreate(SQLModel):
     assigned_user_id: Optional[UUID] = None
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
-    deposit_cents: int = 0
-    pre_quote_cents: int = 0
-    cost_cents: int = 0
+    deposit_cents: int = Field(default=0, ge=0, le=100_000_000)
+    pre_quote_cents: int = Field(default=0, ge=0, le=100_000_000)
+    cost_cents: int = Field(default=0, ge=0, le=100_000_000)
     job_number_override: Optional[str] = None
 
 class RepairJobRead(SQLModel):
@@ -1110,7 +1110,7 @@ class JobNotePayload(SQLModel):
 
 class RepairJobIntakeUpdate(SQLModel):
     intake_notes: Optional[str] = None
-    pre_quote_cents: int = 0
+    pre_quote_cents: int = Field(default=0, ge=0, le=100_000_000)
     has_scratches: bool = False
     has_dents: bool = False
     has_cracked_crystal: bool = False
@@ -1120,12 +1120,12 @@ class RepairJobIntakeUpdate(SQLModel):
 class RepairJobFieldUpdate(SQLModel):
     customer_account_id: Optional[UUID] = None
     title: Optional[str] = None
-    cost_cents: Optional[int] = None
-    pre_quote_cents: Optional[int] = None
+    cost_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
+    pre_quote_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
     priority: Optional[str] = None
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
-    deposit_cents: Optional[int] = None
+    deposit_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
     description: Optional[str] = None
     assigned_user_id: Optional[UUID] = None
     clear_assigned_user: bool = False
@@ -1189,8 +1189,8 @@ class AttachmentUrlResponse(SQLModel):
 class QuoteLineItemCreate(SQLModel):
     item_type: QuoteItemType
     description: str
-    quantity: float
-    unit_price_cents: int
+    quantity: float = Field(gt=0, le=10_000)
+    unit_price_cents: int = Field(ge=0, le=100_000_000)
 
 class QuoteCreate(SQLModel):
     repair_job_id: UUID
@@ -1317,8 +1317,8 @@ class ShoeRepairJobItemCreate(SQLModel):
     catalogue_group: str
     item_name: str
     pricing_type: str
-    unit_price_cents: Optional[int] = None
-    quantity: float = 1.0
+    unit_price_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
+    quantity: float = Field(default=1.0, gt=0, le=10_000)
     notes: Optional[str] = None
 
 class ShoeRepairJobItemsAppend(SQLModel):
@@ -1351,8 +1351,8 @@ class ShoeRepairJobCreate(SQLModel):
     status: str = "awaiting_go_ahead"
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
-    deposit_cents: int = 0
-    cost_cents: int = 0
+    deposit_cents: int = Field(default=0, ge=0, le=100_000_000)
+    cost_cents: int = Field(default=0, ge=0, le=100_000_000)
     items: list[ShoeRepairJobItemCreate] = []
 
 class ShoeRepairJobRead(SQLModel):
@@ -1413,8 +1413,8 @@ class ShoeRepairJobFieldUpdate(SQLModel):
     priority: Optional[str] = None
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
-    deposit_cents: Optional[int] = None
-    cost_cents: Optional[int] = None
+    deposit_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
+    cost_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
 
 class ShopMobileBookingCreate(SQLModel):
     suburb: str = Field(min_length=1, max_length=200)
@@ -1510,14 +1510,14 @@ class AutoKeyJobCreate(SQLModel):
     blade_code: Optional[str] = None
     chip_type: Optional[str] = None
     tech_notes: Optional[str] = None
-    key_quantity: int = 1
+    key_quantity: int = Field(default=1, gt=0, le=10_000)
     programming_status: AutoKeyProgrammingStatus = "not_required"
     priority: Literal["low", "normal", "high", "urgent"] = "normal"
     status: JobStatus = "awaiting_quote"
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
-    deposit_cents: int = 0
-    cost_cents: int = 0
+    deposit_cents: int = Field(default=0, ge=0, le=100_000_000)
+    cost_cents: int = Field(default=0, ge=0, le=100_000_000)
     apply_suggested_quote: bool = False
     send_booking_sms: bool = False
     additional_services: list[dict[str, Any]] = Field(default_factory=list)
@@ -1644,13 +1644,13 @@ class AutoKeyJobFieldUpdate(SQLModel):
     blade_code: Optional[str] = None
     chip_type: Optional[str] = None
     tech_notes: Optional[str] = None
-    key_quantity: Optional[int] = None
+    key_quantity: Optional[int] = Field(default=None, gt=0, le=10_000)
     programming_status: Optional[AutoKeyProgrammingStatus] = None
     collection_date: Optional[date] = None
     priority: Optional[Literal["low", "normal", "high", "urgent"]] = None
     salesperson: Optional[str] = None
-    deposit_cents: Optional[int] = None
-    cost_cents: Optional[int] = None
+    deposit_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
+    cost_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
     additional_services_json: Optional[str] = None
     commission_lead_source: Optional[str] = Field(default=None, max_length=64)
     pricing_ref_id: Optional[UUID] = None
@@ -1660,8 +1660,8 @@ class AutoKeyJobFieldUpdate(SQLModel):
 
 class AutoKeyQuoteLineItemCreate(SQLModel):
     description: str
-    quantity: float = 1
-    unit_price_cents: int
+    quantity: float = Field(default=1, gt=0, le=10_000)
+    unit_price_cents: int = Field(ge=0, le=100_000_000)
 
 class AutoKeyQuoteCreate(SQLModel):
     line_items: list[AutoKeyQuoteLineItemCreate]

@@ -1196,7 +1196,7 @@ export const submitJobIntake = (id: string, payload: IntakePayload) =>
 // ── Quotes ────────────────────────────────────────────────────────────────────
 export type QuoteStatus = 'draft' | 'sent' | 'approved' | 'declined' | 'expired'
 export interface QuoteLineItemInput {
-  item_type: 'labor' | 'part' | 'fee'; description: string
+  item_type: 'labor' | 'part' | 'fee' | 'discount'; description: string
   quantity: number; unit_price_cents: number
 }
 export interface Quote {

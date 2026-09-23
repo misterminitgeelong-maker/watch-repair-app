@@ -60,15 +60,31 @@ export interface GstAmounts {
  * subtotalCents is always GST-exclusive and totalCents is always what the
  * customer pays, so totalCents === subtotalCents + taxCents in every case.
  */
-export function computeGstAmounts(enteredCents: number, gstEnabled: boolean, gstInclusive: boolean): GstAmounts {
-  if (!gstEnabled) return { subtotalCents: enteredCents, taxCents: 0, totalCents: enteredCents }
+/** Integer division rounding half away from zero — mirrors backend `app/gst.py`. */
+function divHalfUp(numerator: number, denominator: number): number {
+  if (numerator < 0) return -divHalfUp(-numerator, denominator)
+  return Math.floor((2 * numerator + denominator) / (2 * denominator))
+}
+
+/**
+ * Whole-cent GST, half-up (what Xero does). Mirrors backend `compute_gst_amounts`:
+ * Australian GST only applies to AUD amounts.
+ */
+export function computeGstAmounts(
+  enteredCents: number,
+  gstEnabled: boolean,
+  gstInclusive: boolean,
+  currency: string = 'AUD',
+): GstAmounts {
+  const entered = Math.round(enteredCents)
+  const isAud = (currency || 'AUD').trim().toUpperCase() === 'AUD'
+  if (!gstEnabled || !isAud) return { subtotalCents: entered, taxCents: 0, totalCents: entered }
   if (gstInclusive) {
-    const totalCents = enteredCents
-    const subtotalCents = Math.round(enteredCents / (1 + GST_RATE))
-    return { subtotalCents, taxCents: totalCents - subtotalCents, totalCents }
+    const subtotalCents = divHalfUp(entered * 10, 11)
+    return { subtotalCents, taxCents: entered - subtotalCents, totalCents: entered }
   }
-  const taxCents = Math.round(enteredCents * GST_RATE)
-  return { subtotalCents: enteredCents, taxCents, totalCents: enteredCents + taxCents }
+  const taxCents = divHalfUp(entered, 10)
+  return { subtotalCents: entered, taxCents, totalCents: entered + taxCents }
 }
 
 /** Display a cent amount as currency. Defaults to AUD / en-AU for this product. */

@@ -94,6 +94,15 @@ describe('computeGstAmounts', () => {
       expect(subtotalCents + taxCents).toBe(totalCents)
     }
   })
+
+  it('rounds half-up in whole cents like the backend and Xero', () => {
+    expect(computeGstAmounts(25, true, false)).toEqual({ subtotalCents: 25, taxCents: 3, totalCents: 28 })
+    expect(computeGstAmounts(165, true, true)).toEqual({ subtotalCents: 150, taxCents: 15, totalCents: 165 })
+  })
+
+  it('adds no GST for non-AUD currencies', () => {
+    expect(computeGstAmounts(10000, true, false, 'NZD')).toEqual({ subtotalCents: 10000, taxCents: 0, totalCents: 10000 })
+  })
 })
 
 describe('formatCents / formatMoney', () => {

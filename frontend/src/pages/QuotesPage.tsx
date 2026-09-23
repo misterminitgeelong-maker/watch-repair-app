@@ -34,6 +34,7 @@ function AddLineItemRow({ item, index, onChange, onRemove }: {
       <option value="labor">Labor</option>
       <option value="part">Part</option>
       <option value="fee">Fee</option>
+      <option value="discount">Discount</option>
     </select>
   )
   const descInput = (
@@ -143,13 +144,18 @@ function CreateQuoteModal({ onClose }: { onClose: () => void }) {
     setGstInclusive(!selectedJob?.customer_account_id)
   }, [selectedJob?.customer_account_id])
 
-  const enteredCents = items.reduce((s, it) => s + it.quantity * it.unit_price_cents, 0)
+  // Discount lines are entered as a positive amount and subtracted (the server
+  // stores them with a negative unit price).
+  const enteredCents = items.reduce(
+    (s, it) => s + Math.round(it.quantity * it.unit_price_cents) * (it.item_type === 'discount' ? -1 : 1),
+    0,
+  )
   const { subtotalCents, taxCents, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
 
   const mut = useMutation({
     mutationFn: () => createQuote({ repair_job_id: jobId, gst_enabled: gstEnabled, gst_inclusive: gstInclusive, line_items: items }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['quotes'] }); onClose() },
-    onError: () => setError('Failed to create quote.'),
+    onError: (err) => setError(getApiErrorMessage(err, 'Failed to create quote.')),
   })
 
   return (

@@ -1,6 +1,8 @@
 """Suggested retail line items for Mobile Services quotes by job type."""
 from __future__ import annotations
 
+from .gst import gst_on_exclusive, line_total_cents
+
 # Unit prices AUD cents — retail baseline. Tiers apply a discount multiplier.
 _JOB_TYPE_DEFAULT_CENTS: dict[str, tuple[str, int]] = {
     "Key Cutting (in-store)": ("Key cutting (in-store)", 3500),
@@ -63,9 +65,9 @@ def suggested_subtotal_cents(
     key_quantity: int,
     pricing_tier: str = "retail",
 ) -> int:
-    return int(round(sum(q * p for _, q, p in suggest_line_items(job_type, key_quantity, pricing_tier))))
+    return sum(line_total_cents(q, p) for _, q, p in suggest_line_items(job_type, key_quantity, pricing_tier))
 
 
 def gst_tax_cents(subtotal: int) -> int:
-    """Australian GST 10% (round to nearest cent)."""
-    return int(round(subtotal * 0.1))
+    """Australian GST 10%, whole-cent half-up (matches Xero)."""
+    return gst_on_exclusive(subtotal)

@@ -56,7 +56,7 @@ ShoeJobStatus = Literal[
 ]
 QuoteStatus = Literal["draft", "sent", "approved", "declined", "expired"]
 QuoteDecision = Literal["approved", "declined"]
-QuoteItemType = Literal["labor", "part", "fee"]
+QuoteItemType = Literal["labor", "part", "fee", "discount"]
 PlanCode = Literal[
     "watch",
     "shoe",

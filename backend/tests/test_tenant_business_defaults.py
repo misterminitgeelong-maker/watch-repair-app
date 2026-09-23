@@ -143,11 +143,14 @@ def test_invoice_and_payment_currency_follow_quote_and_invoice():
     assert inv_res.status_code == 201
     invoice = inv_res.json()["invoice"]
     assert invoice["currency"] == "NZD"
+    # Australian GST is not added to a non-AUD invoice.
+    assert invoice["tax_cents"] == 0
+    assert invoice["total_cents"] == invoice["subtotal_cents"]
 
     pay_res = client.post(
         f"/v1/invoices/{invoice['id']}/payments",
         headers=headers,
-        json={"amount_cents": 10200, "provider_reference": "tenant-currency-test"},
+        json={"amount_cents": invoice["total_cents"], "provider_reference": "tenant-currency-test"},
     )
     assert pay_res.status_code == 201
     assert pay_res.json()["currency"] == "NZD"

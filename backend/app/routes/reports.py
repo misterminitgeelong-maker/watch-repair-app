@@ -21,6 +21,7 @@ from ..auto_key_status import (
     mobile_status_label,
 )
 from ..database import get_session
+from ..gst import line_total_cents
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above, require_owner
 from .. import mobile_cockpit, mobile_finance
 from ..mobile_finance import DATE_FIELDS, FINANCE_PRESETS, Period, list_date_filter
@@ -1060,7 +1061,7 @@ def _shoe_sales_rows(
             customer_name or "",
             item.item_name,
             status,
-            int(round((item.unit_price_cents or 0) * item.quantity)),
+            line_total_cents(item.quantity, item.unit_price_cents),
         ]
         for item, job_number, status, customer_name in rows
     ]
