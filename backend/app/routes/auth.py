@@ -6,6 +6,7 @@ tenant filter in app/tenant_scope.py does not apply. That is deliberate and is
 meant to be visible: an endpoint crossing the tenant boundary says so in its
 signature, and these modules are the complete list of places that do.
 """
+import hashlib
 import logging
 import os
 import re
@@ -25,6 +26,7 @@ from ..dependencies import (
     PLAN_FEATURES,
     VALID_PLAN_CODES,
     get_auth_context,
+    invalidate_auth_cache,
     normalize_plan_code,
     require_owner,
     stripe_billing_configured,
@@ -70,6 +72,12 @@ from ..parent_network import (
 from ..security import create_access_token, create_refresh_token, decode_refresh_token, hash_password, verify_password
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
+
+#: Two tabs sharing stored tokens can refresh at the same instant with the same
+#: refresh token. Within this window a just-replaced token gets the current one
+#: back instead of tripping reuse detection.
+REFRESH_REUSE_GRACE_SECONDS = 30
 
 def _normalize_email(value: str) -> str:
     return value.strip().lower()
@@ -409,8 +417,9 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
                 "signup.stripe_connect_create_failed tenant=%s", tenant.id
             )
 
-    token, expires = create_access_token(tenant.id, owner.id, owner.role)
-    refresh_token, refresh_expires = create_refresh_token(tenant.id, owner.id, owner.role)
+    token, expires, refresh_token, refresh_expires = _issue_session_tokens(
+        session, tenant_id=tenant.id, user_id=owner.id, role=owner.role, request=request
+    )
     return TenantSignupResponse(
         tenant_id=tenant.id,
         user=_build_public_user(owner),
@@ -485,6 +494,7 @@ def _issue_session_tokens(
     user_id: UUID,
     role: str,
     request: Request | None = None,
+    previous_jti: str | None = None,
 ) -> tuple[str, int, str, int]:
     """Create an access+refresh token pair backed by a persisted RefreshSession.
 
@@ -511,6 +521,8 @@ def _issue_session_tokens(
             last_used_at=now,
             expires_at=now + timedelta(seconds=refresh_exp),
             user_agent=user_agent,
+            previous_jti=previous_jti,
+            rotated_at=now if previous_jti else None,
         )
     )
     session.commit()
@@ -750,8 +762,9 @@ def dev_auto_login(request: Request, session: Session = Depends(unscoped_session
         session.add(tenant)
         session.flush()
         user = _create_default_owner(session, tenant)
-        token, expires = create_access_token(tenant.id, user.id, user.role)
-        refresh_token, refresh_expires = create_refresh_token(tenant.id, user.id, user.role)
+        token, expires, refresh_token, refresh_expires = _issue_session_tokens(
+            session, tenant_id=tenant.id, user_id=user.id, role=user.role, request=request
+        )
         return TokenResponse(
             access_token=token,
             expires_in_seconds=expires,
@@ -788,8 +801,9 @@ def dev_auto_login(request: Request, session: Session = Depends(unscoped_session
     if not user:
         user = _create_default_owner(session, selected_tenant)
 
-    token, expires = create_access_token(selected_tenant.id, user.id, user.role)
-    refresh_token, refresh_expires = create_refresh_token(selected_tenant.id, user.id, user.role)
+    token, expires, refresh_token, refresh_expires = _issue_session_tokens(
+        session, tenant_id=selected_tenant.id, user_id=user.id, role=user.role, request=request
+    )
     return TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
@@ -823,36 +837,59 @@ def refresh_tokens(request: Request, payload: RefreshRequest, session: Session =
     if revoked_at and claims.issued_at and claims.issued_at < revoked_at:
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
-    # Tracked refresh token (carries a jti): validate the persisted session so a
-    # revoked device can no longer mint access tokens. The session id (sid) is
-    # kept stable across refreshes so the "current device" stays identifiable.
+    # Tracked refresh token (carries a jti): validate the persisted session and
+    # rotate it. Every refresh swaps the session's jti for a new one, so each
+    # refresh token works once; presenting a replaced one is reuse (see below).
+    # The session id (sid) stays stable so the "current device" is identifiable.
     if claims.jti:
+        now = datetime.now(timezone.utc)
         rs = session.exec(
             select(RefreshSession).where(RefreshSession.jti == claims.jti)
         ).first()
+        reused = False
+        if rs is None:
+            rs = session.exec(
+                select(RefreshSession).where(RefreshSession.previous_jti == claims.jti)
+            ).first()
+            reused = rs is not None
         if rs is None:
             # A missing session row is exactly what revocation looks like, so it
-            # has to mean "sign in again" for every tenant. Minting fresh tokens
-            # here for the demo let a leaked demo refresh token keep working for
-            # ever and put revoking a device beyond reach. Demo convenience is
-            # not worth an auth path that cannot be closed.
+            # has to mean "sign in again" for every tenant.
             raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")
         if rs.revoked_at is not None:
             raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")
-        rs_expires = rs.expires_at
-        if rs_expires.tzinfo is None:
-            rs_expires = rs_expires.replace(tzinfo=timezone.utc)
-        if rs_expires < datetime.now(timezone.utc):
+        if rs.user_id != user_id or rs.tenant_id != tenant_id:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        rs_expires = _as_utc(rs.expires_at)
+        if rs_expires < now:
             raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
-        rs.last_used_at = datetime.now(timezone.utc)
+        if reused:
+            rotated_at = _as_utc(rs.rotated_at) if rs.rotated_at else None
+            if rotated_at is None or now - rotated_at > timedelta(seconds=REFRESH_REUSE_GRACE_SECONDS):
+                # The replaced token came back after its successor was issued:
+                # two parties hold this session. We can't tell which is the
+                # thief, so end the session for both.
+                _revoke_for_refresh_reuse(session, rs, request)
+                raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")
+            # Within the grace window this is two tabs refreshing at the same
+            # moment with the same stored token. Hand back the current token
+            # rather than rotating again (which would strand the first tab).
+            next_jti = rs.jti
+        else:
+            next_jti = uuid4().hex
+            rs.previous_jti = rs.jti
+            rs.jti = next_jti
+            rs.rotated_at = now
+        rs.last_used_at = now
         session.add(rs)
         session.commit()
 
         sid = str(rs.id)
         token, expires = create_access_token(tenant_id, user_id, user.role, sid=sid)
         refresh_token, refresh_expires = create_refresh_token(
-            tenant_id, user_id, user.role, sid=sid, jti=rs.jti
+            tenant_id, user_id, user.role, sid=sid, jti=next_jti,
+            expires_minutes=max(1, int((rs_expires - now).total_seconds() // 60)),
         )
         return TokenResponse(
             access_token=token,
@@ -861,15 +898,60 @@ def refresh_tokens(request: Request, payload: RefreshRequest, session: Session =
             refresh_expires_in_seconds=refresh_expires,
         )
 
-    # Legacy untracked refresh token (issued before per-session tracking).
-    token, expires = create_access_token(tenant_id, user_id, user.role)
-    refresh_token, refresh_expires = create_refresh_token(tenant_id, user_id, user.role)
+    # Legacy untracked refresh token (issued before per-session tracking, or by
+    # an endpoint that predates it). Upgrade it to a tracked, rotating session.
+    # The legacy token's hash becomes the session's previous_jti, so presenting
+    # the same legacy token again later is caught as reuse like any other.
+    legacy_id = hashlib.sha256(payload.refresh_token.encode()).hexdigest()
+    existing = session.exec(
+        select(RefreshSession).where(RefreshSession.previous_jti == legacy_id)
+    ).first()
+    if existing is not None:
+        if existing.revoked_at is None:
+            _revoke_for_refresh_reuse(session, existing, request)
+        raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")
+    token, expires, refresh_token, refresh_expires = _issue_session_tokens(
+        session, tenant_id=tenant_id, user_id=user_id, role=user.role, request=request,
+        previous_jti=legacy_id,
+    )
     return TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
     )
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
+def _revoke_for_refresh_reuse(session: Session, rs: RefreshSession, request: Request | None) -> None:
+    """End a session whose replaced refresh token was presented again, and record it."""
+    now = datetime.now(timezone.utc)
+    rs.revoked_at = now
+    rs.revoked_reason = "refresh_reuse"
+    session.add(rs)
+    user = session.get(User, rs.user_id)
+    ip = None
+    if request is not None:
+        ip = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else None)
+    session.add(
+        TenantEventLog(
+            tenant_id=rs.tenant_id,
+            actor_user_id=rs.user_id,
+            actor_email=user.email if user else None,
+            entity_type="session",
+            event_type="refresh_token_reuse",
+            event_summary=(
+                "A replaced sign-in token was used again, so the session was signed out "
+                f"(possible stolen token). Session {rs.id}" + (f", from {ip}" if ip else "")
+            ),
+        )
+    )
+    session.commit()
+    invalidate_auth_cache()
+    logger.warning("refresh token reuse detected: session=%s user=%s ip=%s", rs.id, rs.user_id, ip)
 
 
 @router.get("/export-my-data", summary="Export tenant data for portability (GDPR-style)")
@@ -976,6 +1058,7 @@ def logout(
     row.revoked_at = datetime.now(timezone.utc)
     session.add(row)
     session.commit()
+    invalidate_auth_cache()
     return {"revoked": 1}
 
 
@@ -1010,6 +1093,7 @@ def revoke_other_sessions(
         r.revoked_at = now
         session.add(r)
     session.commit()
+    invalidate_auth_cache()
 
     return {"revoked": len(rows), "message": f"Revoked {len(rows)} other session(s)."}
 

@@ -8,7 +8,7 @@ from sqlmodel import Session, delete, func, select
 
 from ..config import settings
 from ..database import get_session
-from ..dependencies import AuthContext, ROLE_HIERARCHY, enforce_plan_limit, get_auth_context, require_owner
+from ..dependencies import AuthContext, ROLE_HIERARCHY, enforce_plan_limit, get_auth_context, invalidate_auth_cache, require_owner
 from ..mobile_commission import normalize_mobile_commission_rules, parse_mobile_commission_rules, serialize_rules_for_storage
 from ..models import (
     Attachment,
@@ -255,6 +255,7 @@ def update_user(
     user = session.get(User, user_id)
     if not user or user.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="User not found")
+    sessions_revoked = False
 
     if payload.full_name is not None:
         full_name = payload.full_name.strip()
@@ -281,8 +282,12 @@ def update_user(
             .where(RefreshSession.user_id == user.id)
             .where(RefreshSession.revoked_at.is_(None))
         ).all():
+            # Changing your own password keeps the device you did it from.
+            if user.id == auth.user_id and auth.sid and str(refresh_session.id) == auth.sid:
+                continue
             refresh_session.revoked_at = now
             session.add(refresh_session)
+        sessions_revoked = True
 
     if payload.is_active is not None:
         if user.role == "owner" and not payload.is_active and _owner_count(session, auth.tenant_id) <= 1:
@@ -307,6 +312,8 @@ def update_user(
 
     session.add(user)
     session.commit()
+    if sessions_revoked or payload.is_active is False:
+        invalidate_auth_cache()
     session.refresh(user)
     return _to_public_user(user)
 

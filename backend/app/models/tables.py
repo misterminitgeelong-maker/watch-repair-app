@@ -1271,6 +1271,13 @@ class RefreshSession(SQLModel, table=True):
     expires_at: datetime
     revoked_at: Optional[datetime] = Field(default=None, index=True)
     user_agent: Optional[str] = Field(default=None, max_length=400)
+    #: Refresh tokens rotate on every use: ``jti`` is the one live token and
+    #: ``previous_jti`` the one it replaced. Presenting ``previous_jti`` again
+    #: after the grace window means two parties hold the token (one stole it),
+    #: so the whole session is revoked (reuse detection).
+    previous_jti: Optional[str] = Field(default=None, max_length=64, index=True)
+    rotated_at: Optional[datetime] = None
+    revoked_reason: Optional[str] = Field(default=None, max_length=40)
 
 class CustomerPortalSession(SQLModel, table=True):
     """Slug+phone session token for the mobile-key customer self-service portal.

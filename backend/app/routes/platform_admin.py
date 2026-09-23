@@ -503,6 +503,7 @@ def update_tenant(
             )
         )
         session.commit()
+        invalidate_auth_cache()
 
     return _tenant_read(session, tenant)
 

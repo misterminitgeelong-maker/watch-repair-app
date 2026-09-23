@@ -15,6 +15,7 @@ from sqlmodel import Session, select
 
 from ..limiter import limiter, public_read_limit, public_write_limit
 from ..database import get_session, unscoped_session
+from ..dependencies import invalidate_auth_cache
 from ..models import (
     ParentAccountUser,
     RefreshSession,
@@ -125,6 +126,7 @@ def complete_shop_owner_invite(
     except IntegrityError:
         session.rollback()
         raise HTTPException(status_code=409, detail="That email is already in use on this account")
+    invalidate_auth_cache()
 
     access, access_exp, refresh, refresh_exp = _issue_session_tokens(
         session, tenant_id=tenant.id, user_id=owner.id, role=owner.role, request=request

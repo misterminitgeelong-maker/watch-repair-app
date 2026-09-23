@@ -12,7 +12,7 @@ from sqlmodel import Session
 from .config import settings
 from .database import get_session
 from .tenant_scope import scope_to_tenant
-from .models import Tenant, User
+from .models import RefreshSession, Tenant, User
 from .security import decode_access_token
 
 # ---------------------------------------------------------------------------
@@ -248,6 +248,19 @@ def _resolve_auth_context(
             revoked_at = revoked_at.replace(tzinfo=timezone.utc)
         if revoked_at and claims.issued_at and claims.issued_at < revoked_at:
             raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
+
+        # A token tied to a persisted session dies with it: revoking a device,
+        # or reuse detection ending a session, must also stop its access tokens
+        # (not just refreshes). Checked on the slow path, so at most one cache
+        # TTL of lag; revocation also clears the cache.
+        if claims.sid:
+            try:
+                sid_uuid = UUID(claims.sid)
+            except ValueError:
+                raise HTTPException(status_code=401, detail="Invalid token")
+            refresh_session = session.get(RefreshSession, sid_uuid)
+            if refresh_session is not None and refresh_session.revoked_at is not None:
+                raise HTTPException(status_code=401, detail="Session has been revoked. Please sign in again.")
 
         from .minit_branding import effective_plan_code
 
