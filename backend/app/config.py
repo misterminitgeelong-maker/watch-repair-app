@@ -210,6 +210,10 @@ class Settings(BaseSettings):
         "image/jpeg,image/png,image/webp,application/pdf,text/plain"
     )
     attachment_max_upload_bytes: int = 10 * 1024 * 1024
+    # Hard cap on any request body (checked before multipart parsing). Must stay
+    # above the largest legitimate upload: VSWT reports accept several workbooks
+    # per request, the public key-photo form two photos.
+    max_request_body_bytes: int = 40 * 1024 * 1024
     attachment_local_upload_dir: str = "uploads"
 
     # Attachment storage backend selection:

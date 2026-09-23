@@ -162,3 +162,67 @@ def test_l13_negative_job_cost_rejected(client, auth_headers, make_customer, mak
         json={"watch_id": watch_id, "title": "neg", "priority": "normal", "cost_cents": -100},
     )
     assert res.status_code == 422, res.text
+
+
+# ── L9: uploads are read in chunks and stopped at the limit ──────────────────
+
+def test_l9_read_upload_capped_stops_at_limit():
+    import asyncio
+    import io
+
+    from fastapi import HTTPException, UploadFile
+
+    from app.upload_limits import read_upload_capped
+
+    class _CountingIO(io.BytesIO):
+        bytes_read = 0
+
+        def read(self, n=-1):
+            data = super().read(n)
+            _CountingIO.bytes_read += len(data)
+            return data
+
+    big = _CountingIO(b"x" * (5 * 1024 * 1024))
+    upload = UploadFile(file=big, filename="big.bin")
+    try:
+        asyncio.run(read_upload_capped(upload, 256 * 1024))
+    except HTTPException as exc:
+        assert exc.status_code == 413
+    else:
+        raise AssertionError("oversized upload was accepted")
+    # Stopped shortly after the limit rather than reading the whole 5 MB.
+    assert _CountingIO.bytes_read < 512 * 1024
+
+    small = UploadFile(file=io.BytesIO(b"hello"), filename="s.txt")
+    assert asyncio.run(read_upload_capped(small, 1024)) == b"hello"
+
+
+def test_l9_request_body_limit_rejects_before_parsing(client, monkeypatch):
+    from app.main import app as fastapi_app
+    from app.upload_limits import RequestBodyLimitMiddleware
+
+    # Find the live middleware instance and shrink its cap for this test.
+    stack = fastapi_app.middleware_stack or fastapi_app.build_middleware_stack()
+    node = stack
+    limiter_mw = None
+    while node is not None:
+        if isinstance(node, RequestBodyLimitMiddleware):
+            limiter_mw = node
+            break
+        node = getattr(node, "app", None)
+    assert limiter_mw is not None, "RequestBodyLimitMiddleware is not installed"
+    monkeypatch.setattr(limiter_mw, "max_bytes", 1024)
+
+    res = client.post(
+        "/v1/public/auto-key-intake/not-a-token/photos",
+        files={"files": ("key.jpg", b"x" * 4096, "image/jpeg")},
+    )
+    assert res.status_code == 413, res.text
+
+    # Chunked body with no Content-Length is counted as it streams.
+    def _gen():
+        for _ in range(8):
+            yield b"y" * 512
+
+    res = client.post("/v1/public/auto-key-intake/not-a-token/submit", content=_gen())
+    assert res.status_code == 413, res.text

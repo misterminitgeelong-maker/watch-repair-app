@@ -32,6 +32,7 @@ from fastapi.responses import Response
 from sqlmodel import Session, delete as sa_delete, select
 
 from ..database import get_session
+from ..upload_limits import read_upload_capped
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..models import (
     Region,
@@ -59,6 +60,9 @@ from ..vswt_kpis import (
 from sqlmodel import SQLModel
 
 router = APIRouter(prefix="/v1/reports/vswt", tags=["vswt"])
+
+# Per-workbook cap; a VSWT export is well under this.
+MAX_VSWT_WORKBOOK_BYTES = 10 * 1024 * 1024
 
 _DATA_START_ROW = 6  # 1-based Excel row; shop rows start here
 _WEEK_NUMBER_ROW = 3  # 1-based Excel row: "Week Number:" label in col A, value in col C
@@ -559,7 +563,7 @@ async def upload_vswt_files(
     for f in files:
         if not f.filename:
             continue
-        raw = await f.read()
+        raw = await read_upload_capped(f, MAX_VSWT_WORKBOOK_BYTES)
         try:
             result = await run_in_threadpool(_parse_vswt_workbook, raw, f.filename)
         except HTTPException:

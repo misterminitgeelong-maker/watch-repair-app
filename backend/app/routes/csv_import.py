@@ -19,6 +19,7 @@ import openpyxl
 import xlrd
 
 from ..database import get_session
+from ..upload_limits import read_upload_capped
 from ..auto_key_status import canonical_auto_key_status
 from ..dependencies import LOWEST_PLAN_CODE, AuthContext, PLAN_FEATURES, enforce_plan_limit, get_auth_context
 from ..config import settings
@@ -124,6 +125,8 @@ def _normalize_phone(raw: str) -> str | None:
 
 # PostgreSQL INTEGER max; clamp to avoid overflow from corrupted Excel values
 _MAX_CENTS = 2_147_483_647
+# Largest CSV/XLSX accepted for a bulk import.
+MAX_CSV_IMPORT_BYTES = 20 * 1024 * 1024
 
 
 def _dollars_to_cents(raw: str) -> int:
@@ -651,7 +654,7 @@ async def import_csv(
     if not file.filename:
         raise HTTPException(status_code=400, detail="File name is required")
 
-    raw_bytes = await file.read()
+    raw_bytes = await read_upload_capped(file, MAX_CSV_IMPORT_BYTES)
     # The import is CPU/DB-heavy and fully synchronous; run it in a worker thread
     # so a large file does not block the event loop (and therefore every other
     # request) for the entire duration of the import.

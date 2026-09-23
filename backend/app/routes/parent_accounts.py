@@ -24,6 +24,7 @@ from sqlmodel import Session, col, func, select
 from .. import email_client
 from .. import sms as sms_service
 from ..database import get_session, unscoped_session
+from ..upload_limits import read_upload_capped
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -1324,7 +1325,7 @@ async def import_shops_from_xlsx(
     if f".{suffix}" not in _ALLOWED_XLSX_SUFFIXES:
         raise HTTPException(status_code=400, detail="Only .xlsx or .xlsm workbooks are supported")
 
-    raw_bytes = await file.read()
+    raw_bytes = await read_upload_capped(file, MAX_IMPORT_SHOPS_XLSX_BYTES)
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     if len(raw_bytes) > MAX_IMPORT_SHOPS_XLSX_BYTES:
@@ -1421,7 +1422,7 @@ async def _read_directory_upload(file: UploadFile) -> DirectoryData:
     if f".{suffix}" not in _ALLOWED_DIRECTORY_SUFFIXES:
         raise HTTPException(status_code=400, detail="Only .html directory exports are supported")
 
-    raw_bytes = await file.read()
+    raw_bytes = await read_upload_capped(file, MAX_IMPORT_DIRECTORY_BYTES)
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     if len(raw_bytes) > MAX_IMPORT_DIRECTORY_BYTES:
@@ -1546,7 +1547,7 @@ async def import_mobile_operators_from_xlsx(
     if f".{suffix}" not in _ALLOWED_XLSX_SUFFIXES:
         raise HTTPException(status_code=400, detail="Only .xlsx or .xlsm workbooks are supported")
 
-    raw_bytes = await file.read()
+    raw_bytes = await read_upload_capped(file, MAX_IMPORT_SHOPS_XLSX_BYTES)
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     if len(raw_bytes) > MAX_IMPORT_SHOPS_XLSX_BYTES:

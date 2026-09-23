@@ -18,6 +18,7 @@ from sqlmodel import Session
 
 from .logging_config import configure_logging
 from .idempotency import MutationIdempotencyMiddleware
+from .upload_limits import RequestBodyLimitMiddleware
 from .config import settings, validate_runtime_config, sentry_dsn_looks_valid
 from .database import create_db_and_tables, engine
 from .sweeps import enabled_sweeps, start_sweep_threads
@@ -201,6 +202,7 @@ app = FastAPI(
 )
 
 app.add_middleware(MutationIdempotencyMiddleware)
+app.add_middleware(RequestBodyLimitMiddleware, max_bytes=settings.max_request_body_bytes)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

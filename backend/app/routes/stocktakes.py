@@ -11,6 +11,7 @@ from sqlalchemy import or_
 from sqlmodel import Session, delete, func, select
 
 from ..database import get_session
+from ..upload_limits import read_upload_capped
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..models import (
     StockAdjustment,
@@ -318,7 +319,7 @@ async def import_stock_master(
     auth: AuthContext = Depends(require_manager_or_above),
     session_db: Session = Depends(get_session),
 ):
-    raw_bytes = await file.read()
+    raw_bytes = await read_upload_capped(file, MAX_IMPORT_STOCK_BYTES)
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     if len(raw_bytes) > MAX_IMPORT_STOCK_BYTES:

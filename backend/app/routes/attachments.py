@@ -13,6 +13,7 @@ from jose import JWTError, jwt
 from sqlmodel import Session, select
 
 from ..config import settings
+from ..upload_limits import read_upload_capped
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context
 from ..models import (
@@ -186,7 +187,7 @@ async def upload_attachment(
             raise HTTPException(status_code=404, detail="Auto key job not found")
 
     safe_name = Path(file.filename or "file").name
-    raw = await file.read()
+    raw = await read_upload_capped(file, settings.attachment_max_upload_bytes, detail="File too large")
     content_type = (file.content_type or "application/octet-stream").lower()
 
     if content_type not in _allowed_content_types():

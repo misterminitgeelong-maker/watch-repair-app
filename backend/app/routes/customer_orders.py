@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..database import get_session
+from ..upload_limits import read_upload_capped_sync
 from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
 from ..models import Customer, CustomerOrder, CustomerOrderCreate, CustomerOrderRead, CustomerOrderUpdate
 
@@ -15,6 +16,8 @@ router = APIRouter(
     prefix="/v1/customer-orders",
     tags=["customer-orders"],
 )
+
+MAX_CUSTOMER_ORDER_IMPORT_BYTES = 10 * 1024 * 1024
 
 
 def _to_read(order: CustomerOrder, customer_name: str | None) -> CustomerOrderRead:
@@ -267,7 +270,7 @@ def list_import_sheets(
     _: AuthContext = Depends(get_auth_context),
 ):
     """Return the sheet names from an uploaded Excel file (CSV returns an empty list)."""
-    content = file.file.read()
+    content = read_upload_capped_sync(file, MAX_CUSTOMER_ORDER_IMPORT_BYTES)
     filename = (file.filename or "").lower()
     if not filename.endswith((".xlsx", ".xlsm", ".xls")):
         return []
@@ -288,7 +291,7 @@ def import_customer_orders(
     auth: AuthContext = Depends(get_auth_context),
     _: None = Depends(require_tech_or_above),
 ):
-    content = file.file.read()
+    content = read_upload_capped_sync(file, MAX_CUSTOMER_ORDER_IMPORT_BYTES)
 
     rows: list[dict[str, str]] = []
     filename = (file.filename or "").lower()

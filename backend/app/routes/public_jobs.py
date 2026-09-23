@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
+from ..upload_limits import read_upload_capped
 from ..auto_key_status import AUTO_KEY_AWAITING_CONFIRMATION_STATUSES, AUTO_KEY_BOOKED_STATUSES
 from ..database import get_session
 from ..limiter import limiter
@@ -592,7 +593,7 @@ async def upload_public_auto_key_intake_photos(
 
     saved_ids: list[str] = []
     for upload in incoming:
-        raw = await upload.read()
+        raw = await read_upload_capped(upload, settings.attachment_max_upload_bytes, detail="Photo is too large")
         storage_key, file_name, content_type, file_size = await run_in_threadpool(
             store_auto_key_photo_bytes,
             auto_key_job_id=job.id,
