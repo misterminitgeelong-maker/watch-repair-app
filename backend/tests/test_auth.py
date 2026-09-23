@@ -912,3 +912,21 @@ def test_quote_decision_on_a_job_elsewhere_still_tells_staff():
     assert client.get(f"/v1/repair-jobs/{job_id}", headers=headers).json()["status"] == "awaiting_parts"
     [summary] = _inbox_events(headers, job_id)
     assert "declined" in summary and "check it" in summary
+
+
+def test_logout_revokes_this_devices_refresh_token():
+    suffix = uuid4().hex[:8]
+    slug, email = f"logout-{suffix}", f"logout-{suffix}@x.test"
+    _bootstrap_owner(slug, email, "logout-pass-123")
+    login = client.post("/v1/auth/login", json={"tenant_slug": slug, "email": email, "password": "logout-pass-123"}).json()
+    out = client.post("/v1/auth/logout", headers={"Authorization": f"Bearer {login['access_token']}"})
+    assert out.json() == {"revoked": 1}
+    refreshed = client.post("/v1/auth/refresh", json={"refresh_token": login["refresh_token"]})
+    assert refreshed.status_code == 401
+
+
+def test_responses_carry_security_headers():
+    res = client.get("/v1/health")
+    assert res.headers["x-frame-options"] == "DENY"
+    assert res.headers["x-content-type-options"] == "nosniff"
+    assert "frame-ancestors 'none'" in res.headers["content-security-policy"]

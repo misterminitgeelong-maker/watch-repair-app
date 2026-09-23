@@ -315,6 +315,27 @@ async def request_id_and_log(request: Request, call_next):
                     )
     return response
 
+
+_SECURITY_HEADERS: dict[str, str] = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    # Nothing here is meant to be framed; public quote-approval pages being
+    # frameable made clickjacking an approve/pay button possible.
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "Permissions-Policy": "camera=(self), geolocation=(self), microphone=()",
+}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    if settings.app_env == "production":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -450,14 +471,17 @@ def health():
     except Exception:
         pass
 
-    return {
-        "status": "ok",
-        "git_commit": git_commit,
-        "startup_seed": get_seed_status(),
-        "testing_tenant_configured": testing_configured,
-        "testing_tenant_exists": testing_tenant_exists,
-        "demo": demo_status,
-    }
+    body: dict[str, object] = {"status": "ok", "git_commit": git_commit}
+    if settings.app_env != "production":
+        # Seed and test-account details help local setup; in production they
+        # only tell a stranger which test logins exist.
+        body.update(
+            startup_seed=get_seed_status(),
+            testing_tenant_configured=testing_configured,
+            testing_tenant_exists=testing_tenant_exists,
+            demo=demo_status,
+        )
+    return body
 
 
 @app.get("/v1/ready")

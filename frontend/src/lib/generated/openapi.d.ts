@@ -323,6 +323,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign out this device
+         * @description Revoke this device's refresh session.
+         *
+         *     Logging out used to only clear the browser, so a refresh token copied off a
+         *     shared shop computer kept minting access tokens for its full sliding life.
+         */
+        post: operations["logout_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/sessions/revoke-others": {
         parameters: {
             query?: never;
@@ -2339,7 +2362,11 @@ export interface paths {
         put?: never;
         /**
          * Customer Lookup
-         * @description Return all jobs for a customer by email address (cross-tenant, grouped by shop).
+         * @description Email the customer a private link to their repairs.
+         *
+         *     This used to return every job for whatever address was typed, across
+         *     every shop, with the links that approve quotes and pay invoices. Owning
+         *     the inbox is now the proof: jobs are only shown behind the emailed link.
          */
         post: operations["customer_lookup_v1_public_customer_lookup_post"];
         delete?: never;
@@ -2359,7 +2386,10 @@ export interface paths {
         put?: never;
         /**
          * Create Portal Session
-         * @description Create a 30-day bookmarkable portal session for the given email.
+         * @description Email a 30-day bookmarkable portal link to the given address.
+         *
+         *     The link is only ever delivered by email — returning it here as well meant
+         *     anyone could open a session for any customer's address.
          */
         post: operations["create_portal_session_v1_public_portal_create_session_post"];
         delete?: never;
@@ -2490,9 +2520,32 @@ export interface paths {
         put?: never;
         /**
          * Portal Lookup
-         * @description Find or create a customer by name+phone; return a portal session token.
+         * @description Text a sign-in code to the phone number; /verify exchanges it for a session.
+         *
+         *     A phone number is not a password: this used to return a 30-day session for
+         *     whoever typed one, showing that customer's details to anyone.
          */
         post: operations["portal_lookup_v1_public_portal__slug__lookup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/portal/{slug}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Portal Verify
+         * @description Exchange the texted code for a portal session.
+         */
+        post: operations["portal_verify_v1_public_portal__slug__verify_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4470,7 +4523,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Link Tenant To Parent Account */
+        /**
+         * Link Tenant To Parent Account
+         * @description Ask an existing shop to join this network.
+         *
+         *     A linked shop can be entered with owner rights, so the link only takes
+         *     effect once that shop's owner accepts (``/v1/network-link-requests``).
+         *     Knowing a shop's slug and its owner's email is not consent.
+         */
         post: operations["link_tenant_to_parent_account_v1_parent_accounts_me_link_tenant_post"];
         delete?: never;
         options?: never;
@@ -4675,6 +4735,60 @@ export interface paths {
          * @description Change a site's network role, region, or shop contact details (email/phone).
          */
         patch: operations["update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch"];
+        trace?: never;
+    };
+    "/v1/network-link-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Network Link Requests
+         * @description Networks asking to add this shop, for its owner to answer.
+         */
+        get: operations["list_my_network_link_requests_v1_network_link_requests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-link-requests/{request_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Network Link Request */
+        post: operations["accept_network_link_request_v1_network_link_requests__request_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-link-requests/{request_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Network Link Request */
+        post: operations["decline_network_link_request_v1_network_link_requests__request_id__decline_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/public/shop-invite/{token}": {
@@ -9111,6 +9225,8 @@ export interface components {
             mobile_lead_webhook_secret_configured: boolean;
             /** Mobile Lead Default Tenant Id */
             mobile_lead_default_tenant_id?: string | null;
+            /** Pending Link Requests */
+            pending_link_requests?: components["schemas"]["ParentLinkRequestRead"][];
         };
         /** ParentAccountUserGrantRequest */
         ParentAccountUserGrantRequest: {
@@ -9343,6 +9459,39 @@ export interface components {
              * @default false
              */
             mobile_lead_force_hq_dispatch: boolean;
+        };
+        /** ParentLinkRequestRead */
+        ParentLinkRequestRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Parent Account Id
+             * Format: uuid
+             */
+            parent_account_id: string;
+            /** Parent Account Name */
+            parent_account_name: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Slug */
+            tenant_slug: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Status */
+            status: string;
+            /** Requested By Email */
+            requested_by_email?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ParentMobileJobNetworkRead */
         ParentMobileJobNetworkRead: {
@@ -12199,6 +12348,13 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerifyBody */
+        VerifyBody: {
+            /** Phone */
+            phone: string;
+            /** Code */
+            code: string;
+        };
         /** VswtAnnotationUpdate */
         VswtAnnotationUpdate: {
             /** Week */
@@ -12806,6 +12962,26 @@ export interface operations {
         };
     };
     list_sessions_v1_auth_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    logout_v1_auth_logout_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16896,9 +17072,7 @@ export interface operations {
     };
     customer_lookup_v1_public_customer_lookup_post: {
         parameters: {
-            query?: {
-                include_history?: boolean;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -16915,7 +17089,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CustomerPortalLookupResponse"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -17174,6 +17348,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["LookupBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_verify_v1_public_portal__slug__verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyBody"];
             };
         };
         responses: {
@@ -21457,6 +21666,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentAccountSiteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_my_network_link_requests_v1_network_link_requests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLinkRequestRead"][];
+                };
+            };
+        };
+    };
+    accept_network_link_request_v1_network_link_requests__request_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLinkRequestRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decline_network_link_request_v1_network_link_requests__request_id__decline_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLinkRequestRead"];
                 };
             };
             /** @description Validation Error */

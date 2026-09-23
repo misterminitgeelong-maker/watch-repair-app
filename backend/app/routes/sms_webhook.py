@@ -58,6 +58,10 @@ def _validate_twilio_signature(request: Request, form_params: dict[str, str]) ->
     """Reject spoofed webhooks when Twilio auth token is configured. Skip in dry-run/test."""
     token = (settings.twilio_auth_token or "").strip()
     if not token:
+        if settings.app_env == "production":
+            # Without the token nothing can be verified, and an unsigned post
+            # can put words in a customer's mouth (including "YES" to a quote).
+            raise HTTPException(status_code=403, detail="SMS webhook is not configured")
         return
     # Pytest / unsigned local posts — signature checks run in staging/production.
     if settings.app_env == "test":

@@ -7,6 +7,7 @@ meant to be visible: an endpoint crossing the tenant boundary says so in its
 signature, and these modules are the complete list of places that do.
 """
 import logging
+import os
 import re
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
@@ -423,6 +424,10 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
 def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(unscoped_session)):
     if not settings.allow_public_bootstrap:
         raise HTTPException(status_code=403, detail="Bootstrap is disabled")
+    if settings.app_env == "production" and "ALLOW_PUBLIC_BOOTSTRAP" not in os.environ:
+        # The setting defaults to on, and bootstrap makes a shop on any plan
+        # with no payment step. In production it has to be switched on on purpose.
+        raise HTTPException(status_code=403, detail="Bootstrap is disabled")
 
     tenant_slug = _normalize_slug(payload.tenant_slug)
     _validate_new_slug(tenant_slug)
@@ -456,6 +461,15 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(unscop
 
     return BootstrapResponse(tenant_id=tenant.id, owner_user=_build_public_user(owner))
 
+
+
+_TIMING_DUMMY_HASH = hash_password("timing-equaliser-not-a-real-password")
+
+
+def _spend_password_check_time(password: str) -> None:
+    """Take as long as a real password check, so response time doesn't reveal
+    which shops and emails exist."""
+    verify_password(password, _TIMING_DUMMY_HASH)
 
 
 # Dynamically set rate limit based on environment
@@ -509,6 +523,7 @@ def login(request: Request, payload: LoginRequest, session: Session = Depends(un
 def _login_impl(request: Request, payload: LoginRequest, session: Session = Depends(unscoped_session)):
     tenant = session.exec(select(Tenant).where(Tenant.slug == _normalize_slug(payload.tenant_slug))).first()
     if not tenant:
+        _spend_password_check_time(payload.password)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not tenant.is_active:
         raise HTTPException(status_code=403, detail="Shop is suspended. Contact platform admin.")
@@ -517,7 +532,10 @@ def _login_impl(request: Request, payload: LoginRequest, session: Session = Depe
         select(User).where(User.tenant_id == tenant.id).where(User.email == _normalize_email(payload.email))
     ).first()
 
-    if not user or not user.is_active or not verify_password(payload.password, user.password_hash):
+    if not user or not user.is_active:
+        _spend_password_check_time(payload.password)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     session.add(
@@ -928,6 +946,31 @@ def list_sessions(
         )
 
     return {"sessions": sessions}
+
+
+@router.post("/logout", summary="Sign out this device")
+def logout(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    """Revoke this device's refresh session.
+
+    Logging out used to only clear the browser, so a refresh token copied off a
+    shared shop computer kept minting access tokens for its full sliding life.
+    """
+    if not auth.sid:
+        return {"revoked": 0}
+    try:
+        sid = UUID(auth.sid)
+    except ValueError:
+        return {"revoked": 0}
+    row = session.get(RefreshSession, sid)
+    if row is None or row.user_id != auth.user_id or row.revoked_at is not None:
+        return {"revoked": 0}
+    row.revoked_at = datetime.now(timezone.utc)
+    session.add(row)
+    session.commit()
+    return {"revoked": 1}
 
 
 @router.post("/sessions/revoke-others", summary="Revoke all other sessions for current user")

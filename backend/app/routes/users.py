@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -17,6 +18,7 @@ from ..models import (
     ParentAccountEventLog,
     ParentAccountUser,
     PublicUser,
+    RefreshSession,
     RepairJob,
     ShoeRepairJob,
     StocktakeLine,
@@ -272,6 +274,15 @@ def update_user(
     if payload.password is not None:
         _validate_password_strength(payload.password)
         user.password_hash = hash_password(payload.password)
+        # Signed-in devices keep the old credentials' sessions otherwise.
+        now = datetime.now(timezone.utc)
+        for refresh_session in session.exec(
+            select(RefreshSession)
+            .where(RefreshSession.user_id == user.id)
+            .where(RefreshSession.revoked_at.is_(None))
+        ).all():
+            refresh_session.revoked_at = now
+            session.add(refresh_session)
 
     if payload.is_active is not None:
         if user.role == "owner" and not payload.is_active and _owner_count(session, auth.tenant_id) <= 1:

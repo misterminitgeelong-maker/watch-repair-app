@@ -100,12 +100,14 @@ def tenant_detach_plan() -> list[str]:
             if target == "tenant" and column != "tenant_id" and fk.parent.nullable:
                 statements.append(f"UPDATE {quoted} SET {column} = NULL WHERE {column} = :tid")
             elif target == "user" and table.name != "user":
-                if "tenant_id" in table.columns and not fk.parent.nullable:
-                    continue  # the shop's own rows; tenant_delete_plan removes them in order
+                # Rows in the shop's own tables go in dependency order via
+                # tenant_delete_plan; here only other shops' rows are touched
+                # (e.g. a link request this shop's owner sent to another shop).
+                others = " AND tenant_id <> :tid" if "tenant_id" in table.columns else ""
                 if fk.parent.nullable:
-                    statements.append(f"UPDATE {quoted} SET {column} = NULL WHERE {column} IN ({users})")
+                    statements.append(f"UPDATE {quoted} SET {column} = NULL WHERE {column} IN ({users}){others}")
                 else:
-                    statements.append(f"DELETE FROM {quoted} WHERE {column} IN ({users})")
+                    statements.append(f"DELETE FROM {quoted} WHERE {column} IN ({users}){others}")
     return statements
 
 

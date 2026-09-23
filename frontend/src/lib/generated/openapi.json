@@ -455,6 +455,31 @@
         ]
       }
     },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign out this device",
+        "description": "Revoke this device's refresh session.\n\nLogging out used to only clear the browser, so a refresh token copied off a\nshared shop computer kept minting access tokens for its full sliding life.",
+        "operationId": "logout_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/auth/sessions/revoke-others": {
       "post": {
         "tags": [
@@ -7555,38 +7580,24 @@
           "public-jobs"
         ],
         "summary": "Customer Lookup",
-        "description": "Return all jobs for a customer by email address (cross-tenant, grouped by shop).",
+        "description": "Email the customer a private link to their repairs.\n\nThis used to return every job for whatever address was typed, across\nevery shop, with the links that approve quotes and pay invoices. Owning\nthe inbox is now the proof: jobs are only shown behind the emailed link.",
         "operationId": "customer_lookup_v1_public_customer_lookup_post",
-        "parameters": [
-          {
-            "name": "include_history",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Include History"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CustomerLookupRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CustomerPortalLookupResponse"
-                }
+                "schema": {}
               }
             }
           },
@@ -7609,7 +7620,7 @@
           "public-jobs"
         ],
         "summary": "Create Portal Session",
-        "description": "Create a 30-day bookmarkable portal session for the given email.",
+        "description": "Email a 30-day bookmarkable portal link to the given address.\n\nThe link is only ever delivered by email \u2014 returning it here as well meant\nanyone could open a session for any customer's address.",
         "operationId": "create_portal_session_v1_public_portal_create_session_post",
         "requestBody": {
           "content": {
@@ -7934,7 +7945,7 @@
           "customer-portal"
         ],
         "summary": "Portal Lookup",
-        "description": "Find or create a customer by name+phone; return a portal session token.",
+        "description": "Text a sign-in code to the phone number; /verify exchanges it for a session.\n\nA phone number is not a password: this used to return a 30-day session for\nwhoever typed one, showing that customer's details to anyone.",
         "operationId": "portal_lookup_v1_public_portal__slug__lookup_post",
         "parameters": [
           {
@@ -7953,6 +7964,57 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LookupBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/portal/{slug}/verify": {
+      "post": {
+        "tags": [
+          "customer-portal"
+        ],
+        "summary": "Portal Verify",
+        "description": "Exchange the texted code for a portal session.",
+        "operationId": "portal_verify_v1_public_portal__slug__verify_post",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyBody"
               }
             }
           }
@@ -14631,6 +14693,7 @@
           "parent-accounts"
         ],
         "summary": "Link Tenant To Parent Account",
+        "description": "Ask an existing shop to join this network.\n\nA linked shop can be entered with owner rights, so the link only takes\neffect once that shop's owner accepts (``/v1/network-link-requests``).\nKnowing a shop's slug and its owner's email is not consent.",
         "operationId": "link_tenant_to_parent_account_v1_parent_accounts_me_link_tenant_post",
         "requestBody": {
           "content": {
@@ -15252,6 +15315,133 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParentAccountSiteRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-link-requests": {
+      "get": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "List My Network Link Requests",
+        "description": "Networks asking to add this shop, for its owner to answer.",
+        "operationId": "list_my_network_link_requests_v1_network_link_requests_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ParentLinkRequestRead"
+                  },
+                  "type": "array",
+                  "title": "Response List My Network Link Requests V1 Network Link Requests Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/network-link-requests/{request_id}/accept": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Accept Network Link Request",
+        "operationId": "accept_network_link_request_v1_network_link_requests__request_id__accept_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentLinkRequestRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-link-requests/{request_id}/decline": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Decline Network Link Request",
+        "operationId": "decline_network_link_request_v1_network_link_requests__request_id__decline_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentLinkRequestRead"
                 }
               }
             }
@@ -29090,6 +29280,13 @@
               }
             ],
             "title": "Mobile Lead Default Tenant Id"
+          },
+          "pending_link_requests": {
+            "items": {
+              "$ref": "#/components/schemas/ParentLinkRequestRead"
+            },
+            "type": "array",
+            "title": "Pending Link Requests"
           }
         },
         "type": "object",
@@ -29588,6 +29785,69 @@
           "parent_account_id"
         ],
         "title": "ParentLeadIngestConfigResponse"
+      },
+      "ParentLinkRequestRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "parent_account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Parent Account Id"
+          },
+          "parent_account_name": {
+            "type": "string",
+            "title": "Parent Account Name"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "title": "Tenant Slug"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "requested_by_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By Email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "parent_account_id",
+          "parent_account_name",
+          "tenant_id",
+          "tenant_slug",
+          "tenant_name",
+          "status",
+          "created_at"
+        ],
+        "title": "ParentLinkRequestRead"
       },
       "ParentMobileJobNetworkRead": {
         "properties": {
@@ -38130,6 +38390,28 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerifyBody": {
+        "properties": {
+          "phone": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 6,
+            "title": "Phone"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 4,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone",
+          "code"
+        ],
+        "title": "VerifyBody"
       },
       "VswtAnnotationUpdate": {
         "properties": {
