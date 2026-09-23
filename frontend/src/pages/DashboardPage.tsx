@@ -35,8 +35,7 @@ import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { Link, useNavigate } from 'react-router-dom'
-
-const CLOSED_JOB_STATUSES = ['completed', 'awaiting_collection', 'collected']
+import { countActiveWatchJobs, isActiveMobileStatus, isActiveShoeStatus } from '@/lib/activeJobs'
 
 type DashboardStatProps = {
   label: string
@@ -142,17 +141,6 @@ function formatPlanName(planCode: string) {
   return planCode
 }
 
-function isOpenStatus(status: string) {
-  return !CLOSED_JOB_STATUSES.includes(status)
-}
-
-function openWatchJobsFromSummary(jobsByStatus: Record<string, number> | undefined): number {
-  if (!jobsByStatus) return 0
-  return Object.entries(jobsByStatus).reduce(
-    (sum, [status, n]) => (CLOSED_JOB_STATUSES.includes(status) ? sum : sum + n),
-    0,
-  )
-}
 
 function DashboardStatCard({ label, mobileLabel, value, helper, to, icon: Icon }: DashboardStatProps) {
   return (
@@ -290,12 +278,12 @@ export default function DashboardPage() {
   }, [tenantId])
 
   const watchOpenJobsCount = useMemo(
-    () => openWatchJobsFromSummary(reports?.jobs_by_status),
+    () => countActiveWatchJobs(reports?.jobs_by_status),
     [reports?.jobs_by_status],
   )
   const watchAwaitingGoAheadCount = reports?.jobs_by_status?.awaiting_go_ahead ?? 0
-  const shoeOpenJobs = useMemo(() => (shoeJobs ?? []).filter((job) => isOpenStatus(job.status)), [shoeJobs])
-  const autoOpenJobs = useMemo(() => (autoKeyJobs ?? []).filter((job) => isOpenStatus(job.status)), [autoKeyJobs])
+  const shoeOpenJobs = useMemo(() => (shoeJobs ?? []).filter((job) => isActiveShoeStatus(job.status)), [shoeJobs])
+  const autoOpenJobs = useMemo(() => (autoKeyJobs ?? []).filter((job) => isActiveMobileStatus(job.status)), [autoKeyJobs])
   const quotesPendingCount = useMemo(() => {
     const q = reports?.quotes_by_status
     if (!q) return 0

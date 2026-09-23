@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { isActiveWatchStatus } from '@/lib/activeJobs'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { applyOptimisticStatus, rollbackStatus } from '@/lib/optimisticStatus'
@@ -176,7 +177,7 @@ export default function JobsPage() {
     return m
   }, [usersForAssignee])
 
-  const activeCount = (jobs ?? []).filter(j => !(CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)).length
+  const activeCount = (jobs ?? []).filter(j => isActiveWatchStatus(j.status)).length
   const completedCount = (jobs ?? []).filter(j => (CLOSED_DIRECTORY_STATUSES as readonly JobStatus[]).includes(j.status)).length
   const statusOptions = jobDirectoryView === 'active' ? [...ACTIVE_DIRECTORY_STATUSES] : [...CLOSED_DIRECTORY_STATUSES]
 

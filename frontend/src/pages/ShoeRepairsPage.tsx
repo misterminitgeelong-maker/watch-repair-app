@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { SHOE_ACTIVE_STATUSES, SHOE_CLOSED_STATUSES } from '@/lib/activeJobs'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -40,8 +41,6 @@ const SHOE_STATUSES = [
   'awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on',
   'completed', 'awaiting_collection', 'collected', 'no_go',
 ]
-const SHOE_ACTIVE_STATUSES = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on']
-const SHOE_CLOSED_STATUSES = ['completed', 'awaiting_collection', 'collected', 'no_go']
 
 function DetailedJobCard({ job }: { job: ShoeRepairJob }) {
   const qc = useQueryClient()
