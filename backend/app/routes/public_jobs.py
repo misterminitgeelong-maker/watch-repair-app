@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
@@ -1112,8 +1113,10 @@ def _collect_customer_jobs(
 ) -> CustomerPortalLookupResponse:
     """Cross-tenant job lookup grouped by shop. OTP gate can wrap this later."""
     normalized = (email or "").strip().lower()
+    # Exact match on the address. ilike() on raw input treated % and _ as
+    # wildcards, so "%@%" matched every customer on the platform.
     customers = session.exec(
-        select(Customer).where(Customer.email.ilike(normalized))  # type: ignore[attr-defined]
+        select(Customer).where(func.lower(Customer.email) == normalized)
     ).all()
     if not customers:
         return CustomerPortalLookupResponse(email=normalized, shops=[])
@@ -1208,23 +1211,24 @@ class CustomerLookupRequest(SQLModel):
     include_history: bool = False
 
 
-@router.post("/customer-lookup", response_model=CustomerPortalLookupResponse)
+@router.post("/customer-lookup")
 @limiter.limit(get_public_write_rate_limit)
 def customer_lookup(
     request: Request,
     payload: CustomerLookupRequest,
-    include_history: bool = Query(default=False),
     session: Session = Depends(get_session),
 ):
-    """Return all jobs for a customer by email address (cross-tenant, grouped by shop)."""
+    """Email the customer a private link to their repairs.
+
+    This used to return every job for whatever address was typed, across
+    every shop, with the links that approve quotes and pay invoices. Owning
+    the inbox is now the proof: jobs are only shown behind the emailed link.
+    """
     email = (payload.email or "").strip().lower()
     if not email or "@" not in email:
         raise HTTPException(status_code=422, detail="Please enter a valid email address.")
-    return _collect_customer_jobs(
-        session,
-        email,
-        include_history=include_history or payload.include_history,
-    )
+    _email_portal_link(session, email)
+    return {"sent": True}
 
 
 # ── Customer portal sessions ─────────────────────────────────────────────────
@@ -1236,20 +1240,17 @@ class PortalSessionRequest(SQLModel):
     email: str
 
 
-@router.post("/portal/create-session")
-@limiter.limit(get_public_write_rate_limit)
-def create_portal_session(request: Request, payload: PortalSessionRequest, session: Session = Depends(get_session)):
-    """Create a 30-day bookmarkable portal session for the given email."""
-    email = (payload.email or "").strip().lower()
-    if not email or "@" not in email:
-        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+def _email_portal_link(session: Session, email: str) -> None:
+    """Send a 30-day portal link to ``email`` if any shop has it on file.
 
-    # Check at least one customer exists
+    Silent when there is no match, so the response never says whether an
+    address is a customer anywhere.
+    """
     customer = session.exec(
-        select(Customer).where(Customer.email.ilike(email))  # type: ignore[attr-defined]
+        select(Customer).where(func.lower(Customer.email) == email)
     ).first()
     if not customer:
-        raise HTTPException(status_code=404, detail="No repairs found for this email address.")
+        return
 
     portal_session = PortalSession(
         email=email,
@@ -1271,7 +1272,20 @@ def create_portal_session(request: Request, payload: PortalSessionRequest, sessi
         tenant_id=customer.tenant_id,
     )
 
-    return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": _PORTAL_SESSION_TTL_DAYS}
+
+@router.post("/portal/create-session")
+@limiter.limit(get_public_write_rate_limit)
+def create_portal_session(request: Request, payload: PortalSessionRequest, session: Session = Depends(get_session)):
+    """Email a 30-day bookmarkable portal link to the given address.
+
+    The link is only ever delivered by email — returning it here as well meant
+    anyone could open a session for any customer's address.
+    """
+    email = (payload.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+    _email_portal_link(session, email)
+    return {"sent": True, "expires_days": _PORTAL_SESSION_TTL_DAYS}
 
 
 @router.get("/portal/session/{token}", response_model=CustomerPortalLookupResponse)

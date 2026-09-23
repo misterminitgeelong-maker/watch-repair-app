@@ -125,6 +125,51 @@ def _create_auto_key_job(client: TestClient, headers: dict[str, str], email: str
         return session.get(AutoKeyJob, UUID(job.json()["id"]))
 
 
+
+def _latest_portal_token(email: str) -> str:
+    from app.models import PortalSession
+
+    with Session(engine) as session:
+        row = session.exec(
+            select(PortalSession).where(PortalSession.email == email).order_by(PortalSession.created_at.desc())
+        ).first()
+        assert row is not None, "no portal link was issued"
+        return row.token
+
+
+def _portal_view(client: TestClient, email: str, include_history: bool = False):
+    """What the customer sees after following the link we email them."""
+    sent = client.post("/v1/public/customer-lookup", json={"email": email})
+    assert sent.status_code == 200, sent.text
+    suffix = "?include_history=true" if include_history else ""
+    return client.get(f"/v1/public/portal/session/{_latest_portal_token(email)}{suffix}")
+
+
+def test_customer_lookup_returns_nothing_but_emails_a_link(client: TestClient):
+    email = f"private-{uuid4().hex[:8]}@portal.test"
+    headers = _bootstrap(client)
+    _create_watch_job(client, headers, email, "Private watch")
+
+    res = client.post("/v1/public/customer-lookup", json={"email": email})
+    assert res.json() == {"sent": True}
+    created = client.post("/v1/public/portal/create-session", json={"email": email})
+    assert "session_token" not in created.json() and "portal_url" not in created.json()
+
+
+def test_customer_lookup_treats_wildcards_literally(client: TestClient):
+    from app.models import PortalSession
+
+    email = f"wild-{uuid4().hex[:8]}@portal.test"
+    headers = _bootstrap(client)
+    _create_watch_job(client, headers, email, "Someone else's watch")
+    with Session(engine) as session:
+        before = len(session.exec(select(PortalSession)).all())
+    res = client.post("/v1/public/customer-lookup", json={"email": "%@%"})
+    assert res.json() == {"sent": True}
+    with Session(engine) as session:
+        assert len(session.exec(select(PortalSession)).all()) == before
+
+
 def test_customer_lookup_groups_jobs_by_shop(client: TestClient):
     email = f"multi-{uuid4().hex[:8]}@portal.test"
     headers_a = _bootstrap(client, tenant_name="Alpha Watches")
@@ -133,7 +178,7 @@ def test_customer_lookup_groups_jobs_by_shop(client: TestClient):
     _create_watch_job(client, headers_a, email, "Watch service")
     _create_shoe_job(client, headers_b, email, "Boot resole")
 
-    res = client.post("/v1/public/customer-lookup", json={"email": email})
+    res = _portal_view(client, email)
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["email"] == email
@@ -153,7 +198,7 @@ def test_customer_lookup_includes_auto_key_jobs(client: TestClient):
     headers = _bootstrap(client, tenant_name="Mobile Keys Co")
     ak_job = _create_auto_key_job(client, headers, email, "Spare key")
 
-    res = client.post("/v1/public/customer-lookup", json={"email": email})
+    res = _portal_view(client, email)
     assert res.status_code == 200, res.text
     jobs = res.json()["shops"][0]["jobs"]
     assert len(jobs) == 1
@@ -169,7 +214,7 @@ def test_customer_lookup_merges_duplicate_customers_same_shop(client: TestClient
     _create_watch_job(client, headers, email, "Job one")
     _create_watch_job(client, headers, email, "Job two")
 
-    res = client.post("/v1/public/customer-lookup", json={"email": email})
+    res = _portal_view(client, email)
     assert res.status_code == 200, res.text
     assert len(res.json()["shops"]) == 1
     assert len(res.json()["shops"][0]["jobs"]) == 2
@@ -192,14 +237,11 @@ def test_customer_lookup_excludes_history_by_default(client: TestClient):
         session.add(s)
         session.commit()
 
-    active = client.post("/v1/public/customer-lookup", json={"email": email})
+    active = _portal_view(client, email)
     assert active.status_code == 200
     assert active.json()["shops"] == []
 
-    history = client.post(
-        "/v1/public/customer-lookup",
-        json={"email": email, "include_history": True},
-    )
+    history = _portal_view(client, email, include_history=True)
     assert history.status_code == 200
     jobs = history.json()["shops"][0]["jobs"]
     assert len(jobs) == 2
@@ -213,7 +255,7 @@ def test_portal_session_returns_grouped_jobs(client: TestClient):
 
     session_res = client.post("/v1/public/portal/create-session", json={"email": email})
     assert session_res.status_code == 200, session_res.text
-    token = session_res.json()["session_token"]
+    token = _latest_portal_token(email)
 
     jobs_res = client.get(f"/v1/public/portal/session/{token}")
     assert jobs_res.status_code == 200, jobs_res.text
@@ -235,7 +277,8 @@ def test_portal_session_include_history_query_param(client: TestClient):
         session.add(row)
         session.commit()
 
-    token = client.post("/v1/public/portal/create-session", json={"email": email}).json()["session_token"]
+    client.post("/v1/public/portal/create-session", json={"email": email})
+    token = _latest_portal_token(email)
 
     active = client.get(f"/v1/public/portal/session/{token}")
     assert active.json()["shops"] == []
@@ -262,7 +305,7 @@ def test_customer_lookup_includes_tenant_branding(client: TestClient):
         session.add(tenant)
         session.commit()
 
-    shop = client.post("/v1/public/customer-lookup", json={"email": email}).json()["shops"][0]
+    shop = _portal_view(client, email).json()["shops"][0]
     assert shop["logo_url"] == "https://cdn.example/logo.png"
     assert shop["brand_color"] == "#1F6D4C"
     assert shop["shop_phone"] == "0399999999"
@@ -294,7 +337,7 @@ def test_customer_lookup_includes_watch_quote_pending_action(client: TestClient)
     sent = client.post(f"/v1/quotes/{quote.json()['id']}/send", headers=headers)
     assert sent.status_code == 200, sent.text
 
-    jobs = client.post("/v1/public/customer-lookup", json={"email": email}).json()["shops"][0]["jobs"]
+    jobs = _portal_view(client, email).json()["shops"][0]["jobs"]
     assert jobs[0]["pending_actions"]
     assert jobs[0]["pending_actions"][0]["kind"] == "watch_quote_decision"
     assert jobs[0]["pending_actions"][0]["url"].startswith("/approve/")

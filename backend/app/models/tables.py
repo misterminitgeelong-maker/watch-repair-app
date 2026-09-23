@@ -1280,6 +1280,24 @@ class CustomerPortalSession(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime
 
+class CustomerPortalOtp(SQLModel, table=True):
+    """A one-time code texted to a phone before the mobile-key portal opens.
+
+    The portal used to hand a 30-day session to whoever typed a phone number,
+    which exposed that customer's name, email, addresses and loyalty balance.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    phone: str = Field(max_length=80, index=True)
+    name: str = Field(max_length=300)
+    code_hash: str = Field(max_length=128)
+    attempts: int = Field(default=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+    consumed_at: Optional[datetime] = None
+
+
 class LoyaltyTier(SQLModel, table=True):
     id: int = Field(primary_key=True)  # 1=Bronze 2=Silver 3=Gold 4=Platinum
     name: str = Field(index=True, unique=True)

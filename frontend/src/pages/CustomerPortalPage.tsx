@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Search, Link2, Copy, Check, History, Sparkles } from 'lucide-react'
 import {
-  customerPortalLookup,
   createPortalSession,
   getPortalSession,
   patchPortalNotificationPrefs,
@@ -294,60 +293,25 @@ function CustomerPortalLookupPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [data, setData] = useState<CustomerPortalLookupResponse | null>(null)
-  const [sessionToken, setSessionToken] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'active' | 'history'>('active')
-  const [refreshing, setRefreshing] = useState(false)
+  const [sentTo, setSentTo] = useState<string | null>(null)
 
-  async function fetchJobs(targetEmail: string, history: boolean) {
-    const res = await customerPortalLookup(targetEmail, history)
-    setData(res.data)
-    return res.data
-  }
-
+  // Jobs are only ever shown behind the private link we email. Showing them
+  // for whatever address was typed here let anyone read anyone's repairs.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setData(null)
-    setSessionToken(null)
+    setSentTo(null)
     const trimmed = email.trim()
     if (!trimmed) return
     setLoading(true)
     try {
-      const result = await fetchJobs(trimmed, viewMode === 'history')
-      if (viewMode === 'active' && (result.shops ?? []).some((s) => (s.jobs ?? []).length > 0)) {
-        createPortalSession(trimmed)
-          .then((r) => setSessionToken(r.data.session_token))
-          .catch(() => { /* session optional */ })
-      }
+      await createPortalSession(trimmed)
+      setSentTo(trimmed)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setError(msg || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function handleViewChange(mode: 'active' | 'history') {
-    setViewMode(mode)
-    if (!email.trim() || data === null) return
-    setRefreshing(true)
-    try {
-      await fetchJobs(email.trim(), mode === 'history')
-    } catch {
-      /* keep prior data */
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  async function refreshCurrent() {
-    if (!email.trim()) return
-    setRefreshing(true)
-    try {
-      await fetchJobs(email.trim(), viewMode === 'history')
-    } finally {
-      setRefreshing(false)
     }
   }
 
@@ -359,7 +323,7 @@ function CustomerPortalLookupPage() {
             Track Your Repairs
           </h1>
           <p style={{ color: 'var(--ms-text-muted)' }}>
-            Enter your email to see repairs across every shop you use.
+            Enter your email and we'll send you a private link to your repairs at every shop you use.
           </p>
         </div>
 
@@ -385,22 +349,21 @@ function CustomerPortalLookupPage() {
             style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: loading ? 0.7 : 1 }}
           >
             <Search size={15} />
-            {loading ? 'Looking up…' : 'Find my repairs'}
+            {loading ? 'Sending…' : 'Email me my link'}
           </button>
         </form>
 
         {error && <p className="text-sm text-center" style={{ color: 'var(--ms-error)' }}>{error}</p>}
 
-        {data !== null && (
-          <PortalResults
-            data={data}
-            email={email.trim()}
-            sessionToken={sessionToken}
-            viewMode={viewMode}
-            onViewModeChange={handleViewChange}
-            onRefresh={refreshCurrent}
-            loading={refreshing}
-          />
+        {sentTo && (
+          <div
+            role="status"
+            className="rounded-xl p-4 text-sm text-center"
+            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
+          >
+            If we have repairs for <strong>{sentTo}</strong>, a link to them is on its way. It works for 30 days —
+            bookmark it once it arrives.
+          </div>
         )}
       </div>
     </div>

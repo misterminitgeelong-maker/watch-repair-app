@@ -4015,10 +4015,14 @@ export interface PortalProfile {
   loyalty?: PortalLoyalty
 }
 
+/** Texts a sign-in code to the phone; portalVerify exchanges it for a session. */
 export const portalLookup = (slug: string, name: string, phone: string) =>
+  api.post<{ sent: boolean; expires_minutes: number }>(`/public/portal/${slug}/lookup`, { name, phone })
+
+export const portalVerify = (slug: string, phone: string, code: string) =>
   api.post<{ token: string; customer_id: string; name: string; phone?: string; email?: string }>(
-    `/public/portal/${slug}/lookup`,
-    { name, phone },
+    `/public/portal/${slug}/verify`,
+    { phone, code },
   )
 
 export const portalGetProfile = (slug: string, token: string) =>

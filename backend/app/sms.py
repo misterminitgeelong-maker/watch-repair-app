@@ -913,6 +913,20 @@ def notify_shop_owner_invite(
     return sid is not None
 
 
+def send_portal_login_code(session: Session, *, tenant_id: UUID, to_phone: str, shop_name: str, code: str) -> str:
+    """Text a customer the code that opens the mobile-key portal. Returns the send status."""
+    body = f"{shop_name.strip() or 'Your shop'}: your sign-in code is {code}. It expires in 10 minutes."
+    _sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="portal_login_code",
+    )
+    return sms_status
+
+
 def notify_shop_mobile_booking_request(
     session: Session,
     *,
