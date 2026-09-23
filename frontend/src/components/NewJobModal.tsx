@@ -181,6 +181,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
 
   // Step 2 – Watches (multi)
   const [watchCount, setWatchCount] = useState(1)
+  // Quick job: counter jobs like a battery swap don't need intake photos.
+  const [quickJob, setQuickJob] = useState(false)
   const [watchForms, setWatchForms] = useState<WatchForm[]>([emptyWatchForm()])
   const [activeWatchTab, setActiveWatchTab] = useState(0)
 
@@ -323,6 +325,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     setWatchCount(1)
     setWatchForms([emptyWatchForm()])
     setActiveWatchTab(0)
+    setQuickJob(false)
     setJob({ title: '', description: '', priority: 'normal', status: 'awaiting_quote', salesperson: '', collection_date: '', deposit_cents: '', pre_quote_cents: '', job_number_override: '' })
     setSelectedRepairs([])
     setSelectedCustomerAccountId('')
@@ -449,12 +452,13 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
     setStep(3)
   }
 
-  async function submit() {
+  async function submit(opts: { skipPhotos?: boolean } = {}) {
     // Re-entrancy guard: a double tap on a slow phone must not create two tickets.
     if (submittingRef.current) return
     setError('')
     if (!job.title) { setError('Job title is required.'); return }
-    if (watchCount === 1 && (!photos[0].front || !photos[0].back)) {
+    const photosOptional = quickJob || opts.skipPhotos === true
+    if (watchCount === 1 && !photosOptional && (!photos[0].front || !photos[0].back)) {
       setError('Both front and back photos are required.')
       return
     }
@@ -839,7 +843,19 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           {error && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
           <div className="flex justify-between pt-2">
             <Button variant="ghost" onClick={() => setStep(2)}>← Back</Button>
-            <Button onClick={() => { if (!job.title) { setError('Job title is required.'); return }; setError(''); setStep(4) }} disabled={!job.title}>Next →</Button>
+            <div className="flex gap-2">
+              {watchCount === 1 && (
+                <Button
+                  variant="secondary"
+                  onClick={() => { setQuickJob(true); void submit({ skipPhotos: true }) }}
+                  disabled={!job.title || busy || !online}
+                  title="Create the ticket now without intake photos — for quick counter jobs like a battery or strap"
+                >
+                  {loading ? 'Creating…' : 'Quick job (no photos)'}
+                </Button>
+              )}
+              <Button onClick={() => { if (!job.title) { setError('Job title is required.'); return }; setError(''); setStep(4) }} disabled={!job.title || busy}>Next →</Button>
+            </div>
           </div>
         </div>
       )}
@@ -848,9 +864,17 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       {step === 4 && (
         <div className="space-y-4">
           {watchCount === 1 ? (
-            <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-              Front and back photos are required for a single ticket so the bench has both sides on file. Create stays disabled until both photos are added.
-            </p>
+            <>
+              <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+                {quickJob
+                  ? 'Quick job: photos are optional. Add them now or later from the job page.'
+                  : 'Front and back photos are required for a single ticket so the bench has both sides on file. Create stays disabled until both photos are added.'}
+              </p>
+              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
+                <input type="checkbox" checked={quickJob} onChange={e => setQuickJob(e.target.checked)} />
+                Quick job — skip photos (battery, strap, simple counter jobs)
+              </label>
+            </>
           ) : (
             <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
               Photos are optional for batch intake — you can add them from each job's detail page. Front and back shown per watch below.
@@ -989,13 +1013,13 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           <div className="flex justify-between pt-2">
             <Button variant="ghost" onClick={() => setStep(3)} disabled={busy}>← Back</Button>
             <Button
-              onClick={submit}
-              disabled={loading || !!photoLoading || !online || (watchCount === 1 && (!photos[0]?.front || !photos[0]?.back))}
+              onClick={() => void submit()}
+              disabled={loading || !!photoLoading || !online || (watchCount === 1 && !quickJob && (!photos[0]?.front || !photos[0]?.back))}
             >
               {loading ? 'Creating…' : photoLoading ? 'Processing photo…' : watchCount > 1 ? `Create ${watchCount} Tickets` : 'Create Job Ticket'}
             </Button>
           </div>
-          {watchCount === 1 && (!photos[0]?.front || !photos[0]?.back) && (
+          {watchCount === 1 && !quickJob && (!photos[0]?.front || !photos[0]?.back) && (
             <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
               Create stays disabled until you add both a front (dial) photo and a back (caseback) photo.
             </p>
