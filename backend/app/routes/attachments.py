@@ -9,7 +9,8 @@ from PIL import Image, UnidentifiedImageError
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 from sqlmodel import Session, select
 
 from ..limiter import attachment_download_limit, limiter

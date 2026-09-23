@@ -2,7 +2,7 @@ import os
 from uuid import uuid4
 
 import pytest
-from jose import jwt
+import jwt
 
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("APP_ENV", "test")

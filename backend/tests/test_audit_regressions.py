@@ -264,6 +264,8 @@ def test_every_unauthenticated_route_is_rate_limited():
     for route in fastapi_app.routes:
         if not isinstance(route, APIRoute) or route.path in _UNLIMITED_PUBLIC_ROUTES:
             continue
+        if route.path.startswith("/v1/_test/"):
+            continue  # probe routes other test modules mount on the app
         names = _dependency_names(route.dependant)
         authenticated = any(
             n in ("get_auth_context", "_check") or n.startswith("require") or ".require" in n

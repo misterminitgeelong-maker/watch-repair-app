@@ -11,7 +11,8 @@ from typing import Any, Optional
 from uuid import UUID
 
 import httpx
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 from sqlmodel import Session, select
 
 from .config import settings

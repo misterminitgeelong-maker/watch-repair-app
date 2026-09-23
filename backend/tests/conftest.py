@@ -175,6 +175,12 @@ def _wipe_all_tables() -> None:
             conn.execute(text(f"TRUNCATE TABLE {', '.join(quoted)} RESTART IDENTITY CASCADE"))
 
 
+def pytest_configure(config):
+    # The test JWT secret is a short placeholder; production requires a real one
+    # (app.config). Keep PyJWT's key-length advisory out of the test log.
+    config.addinivalue_line("filterwarnings", "ignore::jwt.warnings.InsecureKeyLengthWarning")
+
+
 def pytest_report_header(config):
     # The dialect line is the one to check in CI: GitHub masks the URL's
     # credential prefix (scheme included), the dialect name cannot be masked.

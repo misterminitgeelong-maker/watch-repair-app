@@ -1,7 +1,7 @@
 """GET /v1/inbox/count — lightweight badge endpoint."""
 from uuid import UUID, uuid4
 
-from jose import jwt
+import jwt
 from sqlmodel import Session
 
 from app.config import settings

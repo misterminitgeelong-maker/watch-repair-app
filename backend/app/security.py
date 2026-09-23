@@ -5,7 +5,8 @@ from uuid import UUID
 import secrets
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 
 from .config import settings
 
