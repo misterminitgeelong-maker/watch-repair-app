@@ -239,10 +239,46 @@ def _xero_request(
         session.refresh(tenant)
         with httpx.Client(timeout=45.0) as client:
             res = client.request(method, url, headers=_xero_headers(tenant), json=json, params=params)
-    res.raise_for_status()
+    if res.status_code >= 400:
+        # httpx's own message is just the status line; Xero puts the actual reason
+        # (duplicate invoice number, unknown account code, ...) in the body.
+        detail = _xero_error_detail(res)
+        logger.warning(
+            "xero_request.failed method=%s path=%s status=%s detail=%s",
+            method,
+            path,
+            res.status_code,
+            detail,
+        )
+        raise httpx.HTTPStatusError(
+            f"Xero {method} {path} returned {res.status_code}: {detail}",
+            request=res.request,
+            response=res,
+        )
     if res.content:
         return res.json()
     return {}
+
+
+def _xero_error_detail(res: httpx.Response) -> str:
+    """Pull the human-readable reason out of a Xero error response."""
+    try:
+        body = res.json()
+    except ValueError:
+        return (res.text or "").strip()[:1000] or "no response body"
+    if not isinstance(body, dict):
+        return str(body)[:1000]
+    messages: list[str] = []
+    for element in body.get("Elements") or []:
+        if not isinstance(element, dict):
+            continue
+        for err in element.get("ValidationErrors") or []:
+            msg = err.get("Message") if isinstance(err, dict) else None
+            if msg and msg not in messages:
+                messages.append(msg)
+    if messages:
+        return "; ".join(messages)[:1000]
+    return str(body.get("Detail") or body.get("Message") or body.get("Title") or body)[:1000]
 
 
 def _cents_to_amount(cents: int) -> float:

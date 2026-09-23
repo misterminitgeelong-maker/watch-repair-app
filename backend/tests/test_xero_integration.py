@@ -582,3 +582,36 @@ def test_xero_webhook_marks_repair_invoice_paid():
     with Session(engine) as session:
         row = session.get(Invoice, UUID(invoice_id))
         assert row.status == "paid"
+
+
+def test_xero_error_detail_surfaces_validation_messages():
+    import httpx
+    from app.xero_service import _xero_error_detail
+
+    req = httpx.Request("POST", "https://api.xero.com/api.xro/2.0/Invoices")
+    res = httpx.Response(
+        400,
+        request=req,
+        json={
+            "ErrorNumber": 10,
+            "Type": "ValidationException",
+            "Message": "A validation exception occurred",
+            "Elements": [
+                {
+                    "ValidationErrors": [
+                        {"Message": "Invoice # must be unique."},
+                        {"Message": "Account code '200' is not a valid code for this document."},
+                    ]
+                }
+            ],
+        },
+    )
+    assert _xero_error_detail(res) == (
+        "Invoice # must be unique.; Account code '200' is not a valid code for this document."
+    )
+
+    plain = httpx.Response(400, request=req, text="Bad things")
+    assert _xero_error_detail(plain) == "Bad things"
+
+    no_elements = httpx.Response(401, request=req, json={"Title": "Unauthorized", "Detail": "TokenExpired"})
+    assert _xero_error_detail(no_elements) == "TokenExpired"
