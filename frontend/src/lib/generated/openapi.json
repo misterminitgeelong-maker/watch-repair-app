@@ -21106,6 +21106,11 @@
             "title": "Is Minit Hq Ui",
             "default": false
           },
+          "is_platform_console": {
+            "type": "boolean",
+            "title": "Is Platform Console",
+            "default": false
+          },
           "plan_code": {
             "type": "string",
             "enum": [
@@ -31460,6 +31465,23 @@
               }
             ],
             "title": "Subscription Status"
+          },
+          "trial_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial End"
+          },
+          "has_stripe_subscription": {
+            "type": "boolean",
+            "title": "Has Stripe Subscription",
+            "default": false
           },
           "user_count": {
             "type": "integer",

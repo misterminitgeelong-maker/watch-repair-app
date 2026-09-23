@@ -472,6 +472,7 @@ export default function AppShell() {
     product,
     tenantSlug,
     minitHqUi,
+    platformConsole,
   } = useAuth()
   const { theme } = useTheme()
   const location = useLocation()
@@ -782,14 +783,22 @@ export default function AppShell() {
     return whenIdle(() => {
       void prefetchAllPages()
       // HQ and booking-only logins do not have these screens at all.
-      if (minitHq || minitUi) return
+      if (minitHq || minitUi || platformConsole) return
       void prefetchKeyScreenData(qc, {
         watch: hasFeature('watch'),
         autoKey: hasFeature('auto_key'),
         reports: true,
       })
     })
-  }, [showPostLoginGate, sessionReady, minitHq, minitUi, hasFeature, qc])
+  }, [showPostLoginGate, sessionReady, minitHq, minitUi, platformConsole, hasFeature, qc])
+
+  // The platform admin's own workspace is not a shop: keep them in the console.
+  useEffect(() => {
+    if (demoModeEnabled || !platformConsole) return
+    if (!location.pathname.startsWith('/platform-admin')) {
+      navigate('/platform-admin/shops', { replace: true })
+    }
+  }, [demoModeEnabled, platformConsole, location.pathname, navigate])
 
   useEffect(() => {
     if (demoModeEnabled) return

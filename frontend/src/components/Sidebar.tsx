@@ -36,6 +36,7 @@ import {
   resolveMinitHqUi,
   warnIfMinitHqNavMismatch,
 } from '@/lib/minitProduct'
+import PlatformAdminSidebar from './PlatformAdminSidebar'
 import MinitHqSidebar from './MinitHqSidebar'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
@@ -97,7 +98,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
-  const { logout, role, hasFeature, planCode, product, tenantSlug, minitHqUi } = useAuth()
+  const { logout, role, hasFeature, planCode, product, tenantSlug, minitHqUi, platformConsole } = useAuth()
   const demoModeEnabled = isDemoModeEnabled()
   const hqCtx = {
     product,
@@ -125,6 +126,17 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const showInstall = showInstallAffordance
   const { theme } = useTheme()
 
+  if (platformConsole && !demoModeEnabled) {
+    return (
+      <PlatformAdminSidebar
+        className={className}
+        mobile={mobile}
+        onNavigate={onNavigate}
+        onClose={onClose}
+        closeIcon={closeIcon}
+      />
+    )
+  }
   if (isMinitHq && !demoModeEnabled) {
     return (
       <MinitHqSidebar
@@ -542,7 +554,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
 
         {role === 'platform_admin' && (
           <NavLink
-            to="/platform-admin/users"
+            to="/platform-admin/shops"
             onClick={onNavigate}
             className={({ isActive }) => linkClasses(isActive)}
             style={({ isActive }) => linkStyle(isActive)}

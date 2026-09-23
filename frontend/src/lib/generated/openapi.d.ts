@@ -6626,6 +6626,11 @@ export interface components {
              */
             is_minit_hq_ui: boolean;
             /**
+             * Is Platform Console
+             * @default false
+             */
+            is_platform_console: boolean;
+            /**
              * Plan Code
              * @enum {string}
              */
@@ -10054,6 +10059,13 @@ export interface components {
             billing_exempt: boolean;
             /** Subscription Status */
             subscription_status?: string | null;
+            /** Trial End */
+            trial_end?: string | null;
+            /**
+             * Has Stripe Subscription
+             * @default false
+             */
+            has_stripe_subscription: boolean;
             /** User Count */
             user_count: number;
             /**

@@ -67,6 +67,8 @@ interface AuthCtx {
   authStatus: AuthStatus
   /** Authoritative HQ nav flag from /auth/session (null before first session load). */
   minitHqUi: boolean | null
+  /** Platform admin in their own workspace (server-decided): admin console only. */
+  platformConsole: boolean
   /** True while session is loading and the UI should block (not shown on / or /pricing while validating in background). */
   initializing: boolean
   /** Store address for at-shop mobile bookings (from tenant.business_address). */
@@ -196,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!getStoredAccessToken()) return true
     return hasOptimisticSessionHint()
   })
+  const [platformConsole, setPlatformConsole] = useState(false)
   const [minitHqUi, setMinitHqUi] = useState<boolean | null>(() => {
     const snap = readSessionSnapshot()
     if (snap && isMinitHqTenantSlug(snap.tenantSlug)) return true
@@ -234,6 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setEnabledFeatures([])
     setFeaturesKnown(false)
     setMinitHqUi(null)
+    setPlatformConsole(false)
     setSignupPaymentPending(false)
     setSubscriptionStatus(null)
     setTrialEnd(null)
@@ -288,6 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPlanCode(effectivePlan)
     setProduct(sessionProduct)
     setMinitHqUi(Boolean(data.is_minit_hq_ui))
+    setPlatformConsole(Boolean(data.is_platform_console))
     setEnabledFeatures(mergedFeatures)
     setFeaturesKnown(true)
     writeSessionSnapshot({
@@ -530,6 +535,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       featuresKnown,
       authStatus,
       minitHqUi,
+      platformConsole,
       initializing,
       tenantBusinessAddress,
       login,
@@ -558,6 +564,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       featuresKnown,
       authStatus,
       minitHqUi,
+      platformConsole,
       initializing,
       tenantBusinessAddress,
       login,

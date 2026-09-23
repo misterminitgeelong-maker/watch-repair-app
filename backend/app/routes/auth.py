@@ -315,6 +315,10 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         tenant_slug=tenant.slug,
         product=product,
         is_minit_hq_ui=is_minit_hq_ui(tenant),
+        is_platform_console=(
+            user.role == "platform_admin"
+            and (tenant.slug or "").strip().lower() == (settings.platform_admin_tenant_slug or "platform").strip().lower()
+        ),
         plan_code=normalized_plan,
         enabled_features=enabled,
         active_site_tenant_id=tenant.id,

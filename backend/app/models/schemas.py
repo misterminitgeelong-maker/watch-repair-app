@@ -163,6 +163,9 @@ class AuthSessionResponse(SQLModel):
     product: str = "mainspring"
     #: When true, the SPA renders the six-item Minit HQ navigation (authoritative server signal).
     is_minit_hq_ui: bool = False
+    #: Platform admin in their own "platform" workspace (not inside a shop):
+    #: the SPA shows only the platform admin console, not an empty shop.
+    is_platform_console: bool = False
     plan_code: PlanCode
     enabled_features: list[str]
     active_site_tenant_id: UUID
@@ -974,6 +977,8 @@ class PlatformTenantRead(SQLModel):
     signup_payment_pending: bool
     billing_exempt: bool = False
     subscription_status: Optional[str] = None
+    trial_end: Optional[datetime] = None
+    has_stripe_subscription: bool = False
     user_count: int
     created_at: datetime
 

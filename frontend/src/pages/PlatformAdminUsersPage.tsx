@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Clock, Download, Search } from 'lucide-react'
 import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, setPlatformTenantBillingExempt, setPlatformTenantPlan, setPlatformTenantStatus, updatePlatformTenant } from '@/lib/api'
@@ -6,45 +7,142 @@ import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui'
 import { useAdminEnterShop } from '@/lib/adminImpersonation'
 import { formatCents } from '@/lib/money'
 
-type Tab = 'shops' | 'users' | 'activity' | 'reports'
+type Tab = 'shops' | 'billing' | 'audit' | 'users' | 'reports'
+const TABS: Tab[] = ['shops', 'billing', 'audit', 'users', 'reports']
+const TAB_LABELS: Record<Tab, string> = { shops: 'Shops', billing: 'Billing', audit: 'Audit log', users: 'Users', reports: 'Reports' }
 
 const ACTIVITY_PAGE_SIZE = 100
 const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 const shortId = (value?: string) => (value ? value.slice(0, 8) : '')
 
 export default function PlatformAdminPage() {
-  const [tab, setTab] = useState<Tab>('shops')
+  const params = useParams<{ tab?: string }>()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  // 'activity' was the old name of the audit log tab.
+  const raw = params.tab === 'activity' ? 'audit' : params.tab
+  if (!raw || !(TABS as string[]).includes(raw)) return <Navigate to="/platform-admin/shops" replace />
+  const tab = raw as Tab
 
   return (
     <div>
-      <PageHeader title="Platform Admin" />
+      <PageHeader title={`Platform admin · ${TAB_LABELS[tab]}`} />
       <p className="mb-5 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-        All shops and users across the platform.
+        Every shop on the platform, their billing, and the audit trail.
       </p>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}>
-        {(['shops', 'users', 'activity', 'reports'] as Tab[]).map(t => (
+      {/* Tabs (also in the sidebar); each is its own URL so it can be linked */}
+      <div className="flex flex-wrap gap-1 mb-5 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}>
+        {TABS.map(t => (
           <button
             key={t}
-            onClick={() => { setTab(t); setSearch('') }}
-            className="px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-colors"
+            onClick={() => { navigate(`/platform-admin/${t}`); setSearch('') }}
+            className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
             style={{
               backgroundColor: tab === t ? 'var(--ms-bg)' : 'transparent',
               color: tab === t ? 'var(--ms-text)' : 'var(--ms-text-muted)',
               boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
             }}
           >
-            {t}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
       {tab === 'shops' && <ShopsTab search={search} setSearch={setSearch} />}
+      {tab === 'billing' && <BillingTab search={search} setSearch={setSearch} />}
       {tab === 'users' && <UsersTab search={search} setSearch={setSearch} />}
-      {tab === 'activity' && <ActivityTab search={search} setSearch={setSearch} />}
+      {tab === 'audit' && <ActivityTab search={search} setSearch={setSearch} />}
       {tab === 'reports' && <ReportsTab />}
+    </div>
+  )
+}
+
+/** Why a shop's billing needs a look, or null when it's fine. */
+function billingAttention(t: { is_active: boolean; signup_payment_pending: boolean; billing_exempt?: boolean; subscription_status?: string | null; trial_end?: string | null }): string | null {
+  if (t.billing_exempt) return null
+  if (t.signup_payment_pending) return 'Signed up, never paid'
+  const status = (t.subscription_status || '').toLowerCase()
+  if (status === 'past_due' || status === 'unpaid') return 'Payment failing'
+  if (status === 'canceled' || status === 'incomplete_expired') return 'Subscription cancelled'
+  if (status === 'trialing' && t.trial_end) {
+    const days = Math.ceil((new Date(t.trial_end).getTime() - Date.now()) / 86_400_000)
+    if (days <= 3) return days < 0 ? 'Trial ended' : `Trial ends in ${days} day${days === 1 ? '' : 's'}`
+  }
+  return null
+}
+
+function BillingTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
+  const { data: tenants, isLoading, isError } = useQuery({
+    queryKey: ['platform-tenants'],
+    queryFn: () => listPlatformTenants().then(r => r.data),
+  })
+  const [onlyAttention, setOnlyAttention] = useState(true)
+  if (isLoading) return <Spinner />
+  if (isError || !tenants) return <EmptyState message="Could not load shops." />
+  const q = search.trim().toLowerCase()
+  const rows = tenants
+    .map(t => ({ t, attention: billingAttention(t) }))
+    .filter(({ t }) => !q || t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q))
+    .filter(({ attention }) => !onlyAttention || attention !== null)
+    .sort((a, b) => Number(b.attention !== null) - Number(a.attention !== null) || a.t.name.localeCompare(b.t.name))
+  const counts = {
+    attention: tenants.filter(t => billingAttention(t) !== null).length,
+    paying: tenants.filter(t => (t.subscription_status || '') === 'active' && !t.billing_exempt).length,
+    trialing: tenants.filter(t => (t.subscription_status || '') === 'trialing').length,
+    exempt: tenants.filter(t => t.billing_exempt).length,
+  }
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-3 mb-5 sm:grid-cols-4">
+        <StatCard label="Need attention" value={String(counts.attention)} />
+        <StatCard label="Paying" value={String(counts.paying)} />
+        <StatCard label="On trial" value={String(counts.trialing)} />
+        <StatCard label="Billing exempt" value={String(counts.exempt)} />
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search shops…" />
+        <label className="mb-5 flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
+          <input type="checkbox" checked={onlyAttention} onChange={e => setOnlyAttention(e.target.checked)} />
+          Only shops that need attention
+        </label>
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState message={onlyAttention ? 'No billing problems right now.' : 'No shops match.'} />
+      ) : (
+        <Card className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ color: 'var(--ms-text-muted)' }}>
+                <th className="text-left font-medium px-4 py-3">Shop</th>
+                <th className="text-left font-medium px-4 py-3">Plan</th>
+                <th className="text-left font-medium px-4 py-3">Subscription</th>
+                <th className="text-left font-medium px-4 py-3">Trial ends</th>
+                <th className="text-left font-medium px-4 py-3">Needs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ t, attention }) => (
+                <tr key={t.id} style={{ borderTop: '1px solid var(--ms-border)' }}>
+                  <td className="px-4 py-3">
+                    <div className="font-medium" style={{ color: 'var(--ms-text)' }}>{t.name}</div>
+                    <div className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>{t.slug}{t.is_active ? '' : ' · suspended'}</div>
+                  </td>
+                  <td className="px-4 py-3">{formatLabel(t.plan_code)}</td>
+                  <td className="px-4 py-3">
+                    {t.billing_exempt ? 'Exempt' : t.subscription_status ? formatLabel(t.subscription_status) : t.has_stripe_subscription ? 'Unknown' : 'None'}
+                  </td>
+                  <td className="px-4 py-3">{t.trial_end ? new Date(t.trial_end).toLocaleDateString() : '—'}</td>
+                  <td className="px-4 py-3" style={{ color: attention ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>{attention ?? 'OK'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+      <p className="mt-3 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+        Mark a shop paid, exempt it, or change its plan from the Shops tab.
+      </p>
     </div>
   )
 }

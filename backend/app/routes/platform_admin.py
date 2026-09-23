@@ -122,6 +122,8 @@ def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
         signup_payment_pending=tenant.signup_payment_pending,
         billing_exempt=tenant.billing_exempt,
         subscription_status=tenant.subscription_status,
+        trial_end=tenant.trial_end,
+        has_stripe_subscription=bool((tenant.stripe_subscription_id or "").strip()),
         user_count=user_count,
         created_at=tenant.created_at,
     )

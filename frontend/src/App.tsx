@@ -259,7 +259,8 @@ export default function App() {
               <Route path="minit/reports/mobile" element={<Navigate to="/minit/mobile-services" replace />} />
               <Route path="minit/troubleshooting" element={<MinitHqGate><MinitTroubleshootingPage /></MinitHqGate>} />
               <Route path="shop-mobile-bookings" element={<FeatureGate feature="shop_mobile_booking"><ShopMobileBookingsPage /></FeatureGate>} />
-              <Route path="platform-admin/users" element={<RequireRole role="platform_admin"><PlatformAdminUsersPage /></RequireRole>} />
+              <Route path="platform-admin" element={<Navigate to="/platform-admin/shops" replace />} />
+              <Route path="platform-admin/:tab" element={<RequireRole role="platform_admin"><PlatformAdminUsersPage /></RequireRole>} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />
               <Route path="shoe-repairs/services" element={<FeatureGate feature="shoe"><ShoeServicesPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id" element={<FeatureGate feature="shoe"><ShoeJobDetailPage /></FeatureGate>} />

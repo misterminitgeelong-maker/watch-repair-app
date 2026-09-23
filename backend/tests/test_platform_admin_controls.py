@@ -607,3 +607,33 @@ def test_delete_tenant_removes_rows_the_old_table_list_missed():
         assert db.exec(select(EmailLog).where(EmailLog.tenant_id == tid)).all() == []
         assert db.exec(select(MutationIdempotencyKey).where(MutationIdempotencyKey.tenant_id == tid)).all() == []
         assert db.get(Tenant, UUID(other)) is not None
+
+
+def test_platform_admin_home_workspace_is_the_console(monkeypatch):
+    """PA5: in their own platform workspace the admin gets the console, not an empty shop."""
+    from app.config import settings as app_settings
+
+    suffix = uuid4().hex[:8]
+    headers = _admin_headers(suffix)
+    monkeypatch.setattr(app_settings, "platform_admin_tenant_slug", f"padm-{suffix}")
+    body = client.get("/v1/auth/session", headers=headers).json()
+    assert body["is_platform_console"] is True
+
+    # Inside a shop they entered, it's that shop's normal UI.
+    _, target = _bootstrap_and_login(f"console-{suffix}", f"console-{suffix}@test.com")
+    entered = client.post(f"/v1/platform-admin/enter-shop/{target}", headers=headers).json()
+    shop_session = client.get(
+        "/v1/auth/session", headers={"Authorization": f"Bearer {entered['access_token']}"}
+    ).json()
+    assert shop_session["is_platform_console"] is False
+
+    # A shop owner never gets it.
+    _, _ = _bootstrap_and_login(f"owner-{suffix}", f"owner-{suffix}@test.com")
+    owner_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"owner-{suffix}", "email": f"owner-{suffix}@test.com", "password": "pass123456"},
+    ).json()
+    owner_session = client.get(
+        "/v1/auth/session", headers={"Authorization": f"Bearer {owner_login['access_token']}"}
+    ).json()
+    assert owner_session["is_platform_console"] is False
