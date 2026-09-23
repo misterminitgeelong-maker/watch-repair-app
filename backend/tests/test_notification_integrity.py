@@ -102,6 +102,8 @@ def test_quote_email_writes_log_when_session_passed(live_email, monkeypatch):
         assert row.payload_json
         assert row.last_attempt_at is not None
     assert len(posts) == 1
+    # Links must not be rewritten through SendGrid's (cert-less) branded click domain.
+    assert posts[0]["json"]["tracking_settings"]["click_tracking"] == {"enable": False, "enable_text": False}
 
 
 def test_sendgrid_retries_5xx_then_succeeds(live_email, monkeypatch):
