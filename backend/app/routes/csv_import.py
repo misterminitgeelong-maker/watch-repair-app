@@ -20,7 +20,7 @@ import xlrd
 
 from ..database import get_session
 from ..auto_key_status import canonical_auto_key_status
-from ..dependencies import AuthContext, PLAN_FEATURES, enforce_plan_limit, get_auth_context
+from ..dependencies import LOWEST_PLAN_CODE, AuthContext, PLAN_FEATURES, enforce_plan_limit, get_auth_context
 from ..config import settings
 from ..limiter import limiter
 from ..models import (
@@ -550,7 +550,7 @@ def _effective_clear_tabs(import_target: str, clear_tabs: list[str], replace_exi
 def _auth_has_import_target(auth: AuthContext, import_target: str) -> bool:
     if auth.role == "platform_admin":
         return True
-    features = PLAN_FEATURES.get(auth.plan_code, PLAN_FEATURES["pro"])
+    features = PLAN_FEATURES.get(auth.plan_code, PLAN_FEATURES[LOWEST_PLAN_CODE])
     if import_target == "watch":
         return "watch" in features
     if import_target == "shoe":

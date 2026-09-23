@@ -12,7 +12,7 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..database import get_session, unscoped_session
-from ..dependencies import PLAN_LIMITS, AuthContext, get_auth_context, normalize_plan_code, require_owner
+from ..dependencies import LOWEST_PLAN_CODE, PLAN_LIMITS, AuthContext, get_auth_context, normalize_plan_code, require_owner
 from ..models import (
     AutoKeyInvoice,
     AutoKeyJob,
@@ -285,7 +285,7 @@ def get_billing_limits(
     session: Session = Depends(unscoped_session),
 ):
     plan_code = auth.plan_code
-    limits = PLAN_LIMITS.get(plan_code, PLAN_LIMITS["pro"])
+    limits = PLAN_LIMITS.get(plan_code, PLAN_LIMITS[LOWEST_PLAN_CODE])
 
     counts = session.execute(
         text("""

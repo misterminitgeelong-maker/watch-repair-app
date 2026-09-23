@@ -172,7 +172,7 @@ export function effectiveMinitPlanCode(
     if (isMinitHqPlan(planCode) || isMinitBookingOnlyPlan(planCode)) return planCode!
     if (planCode && MINIT_DISALLOWED_PLANS.has(String(planCode))) return 'booking_only'
   }
-  return planCode ?? 'pro'
+  return planCode ?? 'booking_only'
 }
 
 /** Plan defaults mirrored from backend `PLAN_FEATURES` (subset used by Minit UI). */

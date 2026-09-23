@@ -87,7 +87,12 @@ PLAN_CODE_ALIASES: dict[str, str] = {
 }
 
 
-def normalize_plan_code(plan_code: str | None, *, default_if_empty: str = "pro") -> str:
+# Fail closed: a missing or unrecognised plan code (typo, retired plan, bad
+# webhook metadata) gets the most restricted plan, never full Pro access.
+LOWEST_PLAN_CODE = "booking_only"
+
+
+def normalize_plan_code(plan_code: str | None, *, default_if_empty: str = LOWEST_PLAN_CODE) -> str:
     if plan_code is None:
         return default_if_empty
 
@@ -329,7 +334,7 @@ def enforce_plan_limit(auth: "AuthContext", resource: str, current_count: int) -
     limit_key = _RESOURCE_TO_LIMIT_KEY.get(resource)
     if not limit_key:
         return
-    plan_limits = PLAN_LIMITS.get(auth.plan_code, PLAN_LIMITS["pro"])
+    plan_limits = PLAN_LIMITS.get(auth.plan_code, PLAN_LIMITS[LOWEST_PLAN_CODE])
     max_allowed = plan_limits.get(limit_key, 0)
     if max_allowed == 0:
         return  # unlimited
@@ -358,7 +363,7 @@ def require_feature(feature_key: str) -> Callable[[AuthContext], AuthContext]:
         if auth.role == "platform_admin":
             return auth
 
-        enabled = PLAN_FEATURES.get(auth.plan_code, PLAN_FEATURES["pro"])
+        enabled = PLAN_FEATURES.get(auth.plan_code, PLAN_FEATURES[LOWEST_PLAN_CODE])
         if feature_key not in enabled:
             raise HTTPException(
                 status_code=403,

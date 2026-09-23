@@ -18,6 +18,7 @@ from ..config import settings
 from ..database import get_session, unscoped_session
 from ..dependencies import (
     AuthContext,
+    LOWEST_PLAN_CODE,
     PLAN_FEATURES,
     VALID_PLAN_CODES,
     get_auth_context,
@@ -275,7 +276,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         session.refresh(tenant)
 
     normalized_plan = effective_plan_code(tenant)
-    enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES["pro"]))
+    enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES[LOWEST_PLAN_CODE]))
     product = tenant_product(tenant.slug)
     available_sites = _session_available_sites(session, tenant, user)
     cal_tz = settings.schedule_calendar_timezone
