@@ -6,7 +6,7 @@ test's name.
 """
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlmodel import Session, select
 
@@ -455,3 +455,113 @@ def test_delete_tenant_row_cascades_on_postgres(client, bootstrap_and_login, mak
         conn.execute(sql_text("DELETE FROM tenant WHERE id = CAST(:t AS uuid)"), {"t": tid})
         left = conn.execute(sql_text("SELECT count(*) FROM repairjob WHERE tenant_id = CAST(:t AS uuid)"), {"t": tid}).scalar()
     assert left == 0
+
+
+# ── Walkthrough break-ins without a dedicated test yet ───────────────────────
+
+def test_signup_with_someone_elses_email_does_not_join_their_network(client, bootstrap_and_login):
+    """Takeover path: signup used to join any network whose owner email matched, as HQ admin."""
+    email = f"victim-{uuid4().hex[:8]}@example.test"
+    victim = {"Authorization": f"Bearer {bootstrap_and_login(email=email, plan_code='pro')}"}
+    attacker = {"Authorization": f"Bearer {bootstrap_and_login(email=email, plan_code='pro')}"}
+    victim_net = client.get("/v1/parent-accounts/me", headers=victim)
+    attacker_net = client.get("/v1/parent-accounts/me", headers=attacker)
+    assert victim_net.status_code == 200, victim_net.text
+    assert attacker_net.status_code == 200, attacker_net.text
+    assert victim_net.json()["parent_account_id"] != attacker_net.json()["parent_account_id"]
+    assert attacker_net.json()["site_count"] == 1
+
+
+def test_owner_cannot_upgrade_own_plan_while_stripe_billing_is_on(client, bootstrap_and_login, monkeypatch):
+    """Owners could PATCH their plan straight to Pro for free."""
+    from app.config import settings as app_settings
+
+    headers = {"Authorization": f"Bearer {bootstrap_and_login(plan_code='basic_watch')}"}
+    monkeypatch.setattr(app_settings, "stripe_secret_key", "sk_test_dummy")
+    res = client.patch("/v1/auth/session/plan", headers=headers, json={"plan_code": "pro"})
+    assert res.status_code == 403, res.text
+
+
+def test_public_status_page_hides_staff_description(client, auth_headers, make_customer, make_watch):
+    watch_id = make_watch(auth_headers, make_customer(auth_headers))
+    job = client.post(
+        "/v1/repair-jobs", headers=auth_headers,
+        json={"watch_id": watch_id, "title": "Service", "priority": "normal",
+              "description": "Quote the hand set high, customer is picky"},
+    ).json()
+    public = client.get(f"/v1/public/jobs/{job['status_token']}")
+    assert public.status_code == 200
+    assert "picky" not in public.text
+
+
+def test_signed_download_stops_working_when_the_shop_is_suspended(client, auth_headers, make_customer, make_watch):
+    import io
+
+    watch_id = make_watch(auth_headers, make_customer(auth_headers))
+    job = client.post(
+        "/v1/repair-jobs", headers=auth_headers,
+        json={"watch_id": watch_id, "title": "Docs", "priority": "normal"},
+    ).json()
+    up = client.post(
+        "/v1/attachments", headers=auth_headers, params={"repair_job_id": job["id"]},
+        files={"file": ("note.txt", io.BytesIO(b"private"), "text/plain")},
+    )
+    assert up.status_code == 201, up.text
+    storage_key = up.json()["storage_key"]
+    link = client.get(f"/v1/attachments/download-link/{storage_key}", headers=auth_headers).json()["download_url"]
+    assert client.get(link).status_code == 200
+
+    with Session(engine) as s:
+        tenant = s.get(Tenant, UUID(job["tenant_id"]))
+        tenant.is_active = False
+        s.add(tenant)
+        s.commit()
+    try:
+        assert client.get(link).status_code in (401, 403)
+    finally:
+        with Session(engine) as s:
+            tenant = s.get(Tenant, UUID(job["tenant_id"]))
+            tenant.is_active = True
+            s.add(tenant)
+            s.commit()
+
+
+def test_payment_cannot_be_recorded_on_a_void_invoice(client, auth_headers, make_customer, make_watch):
+    from app.models import Invoice
+
+    watch_id = make_watch(auth_headers, make_customer(auth_headers))
+    job = client.post(
+        "/v1/repair-jobs", headers=auth_headers,
+        json={"watch_id": watch_id, "title": "Void", "priority": "normal"},
+    ).json()
+    quote = client.post(
+        "/v1/quotes", headers=auth_headers,
+        json={"repair_job_id": job["id"], "line_items": [
+            {"item_type": "labor", "description": "x", "quantity": 1, "unit_price_cents": 1000}]},
+    ).json()
+    token = client.post(f"/v1/quotes/{quote['id']}/send", headers=auth_headers).json()["approval_token"]
+    client.post(f"/v1/public/quotes/{token}/decision", json={"decision": "approved"})
+    invoice = client.post(f"/v1/invoices/from-quote/{quote['id']}", headers=auth_headers).json()["invoice"]
+    with Session(engine) as s:
+        row = s.get(Invoice, UUID(invoice["id"]))
+        row.status = "void"
+        s.add(row)
+        s.commit()
+    res = client.post(f"/v1/invoices/{invoice['id']}/payments", headers=auth_headers, json={"amount_cents": 100})
+    assert res.status_code == 409, res.text
+
+
+def test_a_pool_job_can_only_be_claimed_once(client, bootstrap_and_login):
+    from app.models import IntakeJob
+
+    op_a = {"Authorization": f"Bearer {bootstrap_and_login(plan_code='pro')}"}
+    op_b = {"Authorization": f"Bearer {bootstrap_and_login(plan_code='pro')}"}
+    with Session(engine) as s:
+        job = IntakeJob(customer_name="Pool Customer", job_address="1 Main St", job_lat=-37.8, job_lng=145.0)
+        s.add(job)
+        s.commit()
+        job_id = job.id
+    first = client.post(f"/v1/pool/{job_id}/claim", headers=op_a)
+    second = client.post(f"/v1/pool/{job_id}/claim", headers=op_b)
+    assert first.status_code == 200, first.text
+    assert second.status_code == 409, second.text
