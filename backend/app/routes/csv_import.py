@@ -21,7 +21,7 @@ import xlrd
 from ..database import get_session
 from ..upload_limits import read_upload_capped
 from ..auto_key_status import canonical_auto_key_status
-from ..dependencies import LOWEST_PLAN_CODE, AuthContext, PLAN_FEATURES, enforce_plan_limit, get_auth_context
+from ..dependencies import LOWEST_PLAN_CODE, AuthContext, PLAN_FEATURES, enforce_plan_limit, require_manager_or_above
 from ..config import settings
 from ..limiter import limiter
 from ..models import (
@@ -125,8 +125,6 @@ def _normalize_phone(raw: str) -> str | None:
 
 # PostgreSQL INTEGER max; clamp to avoid overflow from corrupted Excel values
 _MAX_CENTS = 2_147_483_647
-# Largest CSV/XLSX accepted for a bulk import.
-MAX_CSV_IMPORT_BYTES = 20 * 1024 * 1024
 
 
 def _dollars_to_cents(raw: str) -> int:
@@ -630,6 +628,8 @@ def _clear_tenant_importable_data(session: Session, tenant_id, clear_tabs: list[
 
 # ── Endpoint ───────────────────────────────────────────────────────────────────
 
+IMPORT_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
 
 @router.post("/csv", response_model=ImportSummaryResponse)
 @limiter.limit(get_import_csv_rate_limit)
@@ -648,13 +648,20 @@ async def import_csv(
         description="Import destination: watch (watch repairs), shoe (shoe repair jobs), mobile (mobile services / auto key jobs).",
         pattern="^(watch|shoe|mobile)$",
     ),
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="File name is required")
+    # replace_existing deletes the shop's jobs (and customers, attachments and
+    # SMS history for that tab) before importing. Any login used to be able to
+    # do that with a one-row file.
+    if replace_existing and not dry_run and auth.role not in ("owner", "platform_admin"):
+        raise HTTPException(status_code=403, detail="Only the shop owner can replace existing jobs.")
 
-    raw_bytes = await read_upload_capped(file, MAX_CSV_IMPORT_BYTES)
+    raw_bytes = await read_upload_capped(
+        file, IMPORT_MAX_UPLOAD_BYTES, detail="That file is too large to import (25 MB maximum)."
+    )
     # The import is CPU/DB-heavy and fully synchronous; run it in a worker thread
     # so a large file does not block the event loop (and therefore every other
     # request) for the entire duration of the import.

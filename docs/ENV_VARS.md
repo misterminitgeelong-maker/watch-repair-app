@@ -29,6 +29,7 @@ Backend (FastAPI) reads from `.env` in the backend directory or from the process
 | `QUOTE_APPROVAL_TOKEN_TTL_HOURS` | `168` | No | Lifetime of the public watch-quote approval link from send time. |
 | `STRIPE_SECRET_KEY` | (empty) | No | Stripe API key for billing. Prefer a restricted key (`rk_`) in production. |
 | `STRIPE_WEBHOOK_SECRET` | (empty) | No | Stripe webhook signing secret. |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | (empty) | For online invoice payments | Signing secret of the Stripe **Connect** webhook endpoint ("Events on connected accounts", same `/v1/billing/webhook` URL). Customer invoice card payments are charged on each shop's own account, so their `checkout.session.completed` arrives here. |
 | `STRIPE_PRICE_SHOP` | (empty) | For new Shop checkouts | New A$50/mo one-location Price ID. Create a **new** Price; do not reuse the old Basic IDs. |
 | `STRIPE_PRICE_PRO` | (empty) | For new Pro checkouts | New A$90/mo multi-site Price ID. After rotating, put the previous A$50 Pro ID in `STRIPE_PRICE_PRO_LEGACY`. |
 | `STRIPE_PRICE_PRO_LEGACY` | (empty) | Grandfather | Old Pro Price ID so webhooks still map existing A$50 Pro shops. |

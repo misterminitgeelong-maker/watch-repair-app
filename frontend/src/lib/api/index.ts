@@ -336,7 +336,28 @@ export interface ParentAccountSummary {
   mobile_lead_ingest_public_id?: string | null
   mobile_lead_webhook_secret_configured?: boolean
   mobile_lead_default_tenant_id?: string | null
+  /** Link requests this network sent that the shop has not answered yet. */
+  pending_link_requests?: NetworkLinkRequest[]
 }
+
+/** A network asking to add a shop; the shop's owner accepts or declines. */
+export interface NetworkLinkRequest {
+  id: string
+  parent_account_id: string
+  parent_account_name: string
+  tenant_id: string
+  tenant_slug: string
+  tenant_name: string
+  status: 'pending' | 'accepted' | 'declined'
+  requested_by_email?: string | null
+  created_at: string
+}
+
+export const listNetworkLinkRequests = () => api.get<NetworkLinkRequest[]>('/network-link-requests')
+export const acceptNetworkLinkRequest = (id: string) =>
+  api.post<NetworkLinkRequest>(`/network-link-requests/${id}/accept`)
+export const declineNetworkLinkRequest = (id: string) =>
+  api.post<NetworkLinkRequest>(`/network-link-requests/${id}/decline`)
 
 export interface ParentLeadIngestConfig {
   parent_account_id: string
@@ -1220,7 +1241,7 @@ export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineIte
 
 // Public (no auth)
 export const getPublicQuote = (token: string) =>
-  axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
+  axios.get<{ shop_name?: string | null; shop_phone?: string | null; id: string; status: string; subtotal_cents: number; tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
   axios.post(withApiOrigin(`/v1/public/quotes/${token}/decision`), { decision, signature })
 
@@ -1228,11 +1249,11 @@ export interface PublicJobStatus {
   job_number: string
   status: string
   title: string
-  description?: string
   priority: string
   pre_quote_cents: number
   created_at: string
   collection_date?: string | null
+  shop?: { name?: string | null; phone?: string | null; email?: string | null }
   watch: {
     brand?: string
     model?: string
@@ -1241,7 +1262,6 @@ export interface PublicJobStatus {
   history: Array<{
     old_status?: string
     new_status: string
-    change_note?: string
     created_at: string
   }>
 }
@@ -1274,7 +1294,7 @@ export interface PublicShoeJobStatus {
   history: Array<{
     old_status: string | null
     new_status: string
-    change_note: string | null
+    change_note?: string | null
     created_at: string
   }>
 }
@@ -3999,10 +4019,14 @@ export interface PortalProfile {
   loyalty?: PortalLoyalty
 }
 
+/** Texts a sign-in code to the phone; portalVerify exchanges it for a session. */
 export const portalLookup = (slug: string, name: string, phone: string) =>
+  api.post<{ sent: boolean; expires_minutes: number }>(`/public/portal/${slug}/lookup`, { name, phone })
+
+export const portalVerify = (slug: string, phone: string, code: string) =>
   api.post<{ token: string; customer_id: string; name: string; phone?: string; email?: string }>(
-    `/public/portal/${slug}/lookup`,
-    { name, phone },
+    `/public/portal/${slug}/verify`,
+    { phone, code },
   )
 
 export const portalGetProfile = (slug: string, token: string) =>

@@ -17,6 +17,7 @@ from app.main import app
 from app.minit_branding import MINIT_HQ_SLUG
 from app.models import Tenant, User
 from app.security import hash_password
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -71,15 +72,21 @@ def _setup_hq_network(suffix: str) -> dict[str, str]:
             "plan_code": "enterprise",
         },
     )
-    assert boot.status_code in (200, 409), boot.text
-    if boot.status_code == 409:
+    # Public signup refuses Minit slugs (only provisioning makes them), so the
+    # HQ tenant is created directly below when bootstrap won't.
+    assert boot.status_code in (200, 400, 409), boot.text
+    if boot.status_code != 200:
         # Another test may have created the HQ tenant without bootstrap side effects.
         from app.minit_branding import ensure_minit_tenant_plan
-        from app.routes.auth import _ensure_parent_membership, _get_or_create_parent_account
+        from app.models import ParentAccount
+        from app.routes.auth import _create_parent_account, _ensure_parent_membership
 
         with Session(engine) as session:
             tenant = session.exec(select(Tenant).where(Tenant.slug == hq_slug)).first()
-            assert tenant is not None, f"HQ tenant {hq_slug} missing after 409"
+            if tenant is None:
+                tenant = Tenant(name="Minit HQ", slug=hq_slug, plan_code="enterprise")
+                session.add(tenant)
+                session.flush()
             ensure_minit_tenant_plan(session, tenant)
             user = session.exec(
                 select(User).where(User.tenant_id == tenant.id, User.email == hq_email)
@@ -95,7 +102,9 @@ def _setup_hq_network(suffix: str) -> dict[str, str]:
                 )
                 session.add(user)
                 session.flush()
-            parent = _get_or_create_parent_account(session, hq_email, "HQ Owner")
+            parent = session.exec(
+                select(ParentAccount).where(ParentAccount.owner_email == hq_email)
+            ).first() or _create_parent_account(session, hq_email, "HQ Owner")
             _ensure_parent_membership(session, parent, user)
             session.commit()
     op_boot = _bootstrap(op_slug, f"op-{suffix}@test.local", "basic_auto_key")
@@ -114,7 +123,7 @@ def _setup_hq_network(suffix: str) -> dict[str, str]:
     )
     assert create_shop.status_code in (200, 409), create_shop.text
 
-    link = client.post(
+    link = link_and_accept(client,
         "/v1/parent-accounts/me/link-tenant",
         headers=hq_h,
         json={"tenant_slug": op_slug, "owner_email": f"op-{suffix}@test.local"},

@@ -44,6 +44,10 @@ router = APIRouter(prefix="/v1/reports", tags=["reports"])
 # so dashboard gross profit remains actionable.
 _MAX_REASONABLE_JOB_COST_CENTS = 5_000_000  # $50,000 per job
 _SHOE_PAID_STATUSES = ("collected", "awaiting_collection", "completed")
+#: Cost only counts for jobs whose revenue is in: counting every job opened
+#: set a busy bench's parts spend against only the jobs already paid for, and
+#: gross profit showed a loss (-$624 on $431 in the demo shop).
+_WATCH_DONE_STATUSES = ("collected", "awaiting_collection", "completed")
 # Void/refunded invoices were never (or no longer are) real sales and must not
 # inflate "billed"/outstanding totals or show up in sales exports.
 _EXCLUDED_INVOICE_STATUSES = ("void", "refunded")
@@ -159,6 +163,7 @@ def _compute_period_summary(
                 )
             )
             .where(RepairJob.tenant_id == tenant_id)
+            .where(RepairJob.status.in_(_WATCH_DONE_STATUSES))
             .where(RepairJob.created_at >= start_dt)
             .where(RepairJob.created_at <= end_dt)
         ).one()
@@ -177,6 +182,7 @@ def _compute_period_summary(
                 )
             )
             .where(ShoeRepairJob.tenant_id == tenant_id)
+            .where(ShoeRepairJob.status.in_(_SHOE_PAID_STATUSES))
             .where(ShoeRepairJob.created_at >= start_dt)
             .where(ShoeRepairJob.created_at <= end_dt)
         ).one()
@@ -501,7 +507,9 @@ def get_reports_summary(
                     ),
                     0,
                 )
-            ).where(RepairJob.tenant_id == tenant_id)
+            )
+            .where(RepairJob.tenant_id == tenant_id)
+            .where(RepairJob.status.in_(_WATCH_DONE_STATUSES))
         ).one()
     )
     shoe_cost = int(
@@ -516,7 +524,9 @@ def get_reports_summary(
                     ),
                     0,
                 )
-            ).where(ShoeRepairJob.tenant_id == tenant_id)
+            )
+            .where(ShoeRepairJob.tenant_id == tenant_id)
+            .where(ShoeRepairJob.status.in_(_SHOE_PAID_STATUSES))
         ).one()
     )
     watch_cost_outliers = int(

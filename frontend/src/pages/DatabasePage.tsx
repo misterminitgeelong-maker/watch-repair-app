@@ -5,9 +5,12 @@ import axios from 'axios'
 import { importCsv, getApiErrorMessage, type CsvImportResult, type CsvImportTarget } from '@/lib/api'
 import { PageHeader, Card, Button, Input } from '@/components/ui'
 import WatchCatalogueTab from '@/components/WatchCatalogueTab'
+import { useAuth } from '@/context/AuthContext'
 
 export default function DatabasePage() {
   const qc = useQueryClient()
+  const { role } = useAuth()
+  const canReplace = role === 'owner' || role === 'platform_admin'
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [replaceExisting, setReplaceExisting] = useState(false)
@@ -251,6 +254,7 @@ export default function DatabasePage() {
                 </span>
               </span>
             </label>
+            {canReplace && (
             <label className="flex items-start gap-2 text-sm cursor-pointer" style={{ color: 'var(--ms-text-mid)' }}>
               <input
                 type="checkbox"
@@ -267,6 +271,7 @@ export default function DatabasePage() {
                 </span>
               </span>
             </label>
+            )}
           </div>
 
           <div className="mt-4 flex flex-wrap justify-end gap-2">

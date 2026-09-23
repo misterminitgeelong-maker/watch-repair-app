@@ -6,16 +6,25 @@ tenant filter in app/tenant_scope.py does not apply. That is deliberate and is
 meant to be visible: an endpoint crossing the tenant boundary says so in its
 signature, and these modules are the complete list of places that do.
 """
+import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from ..database import get_session, unscoped_session
-from ..dependencies import AuthContext, invalidate_auth_cache, require_platform_admin
+from ..dependencies import (
+    VALID_PLAN_CODES,
+    AuthContext,
+    invalidate_auth_cache,
+    normalize_plan_code,
+    require_platform_admin,
+)
 from ..models import (
+    RefreshSession,
     AutoKeyJob,
     Invoice,
     PlatformEnterShopResponse,
@@ -35,7 +44,71 @@ from ..models import (
 )
 from ..security import create_access_token, create_refresh_token, hash_password
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/v1/platform-admin", tags=["platform-admin"])
+
+
+def tenant_delete_plan() -> list[tuple[str, str]]:
+    """(table, WHERE clause) pairs that remove a shop's rows, children first.
+
+    Covers every table with a ``tenant_id`` column plus any other column with a
+    foreign key to ``tenant`` (e.g. ``operator_tenant_id``). The explicit
+    statements in delete_platform_tenant run first for the cross-tenant
+    references that must be nulled rather than deleted.
+    """
+    plan: list[tuple[str, str]] = []
+    for table in reversed(_sorted_tables()):
+        if table.name == "tenant":
+            continue
+        columns = [c.name for c in table.columns if c.name == "tenant_id"]
+        columns += [
+            fk.parent.name
+            for fk in table.foreign_keys
+            if fk.column.table.name == "tenant" and fk.parent.name != "tenant_id" and not fk.parent.nullable
+        ]
+        if columns:
+            plan.append((table.name, " OR ".join(f"{c} = :tid" for c in dict.fromkeys(columns))))
+    return plan
+
+
+def _sorted_tables():
+    import warnings
+
+    from sqlmodel import SQLModel
+
+    # autokeyjob / intakejob / shopmobilebookingrequest reference each other;
+    # delete_platform_tenant nulls those links before any deletes run.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return SQLModel.metadata.sorted_tables
+
+
+def tenant_detach_plan() -> list[str]:
+    """Statements that let a shop's rows go without breaking anyone else's.
+
+    Optional references to the shop, or to its users, are cleared; required
+    references to its users (rows elsewhere that only exist because of them)
+    are removed.
+    """
+    users = 'SELECT id FROM "user" WHERE tenant_id = :tid'
+    statements: list[str] = []
+    for table in _sorted_tables():
+        for fk in table.foreign_keys:
+            target, column = fk.column.table.name, fk.parent.name
+            quoted = f'"{table.name}"'
+            if target == "tenant" and column != "tenant_id" and fk.parent.nullable:
+                statements.append(f"UPDATE {quoted} SET {column} = NULL WHERE {column} = :tid")
+            elif target == "user" and table.name != "user":
+                # Rows in the shop's own tables go in dependency order via
+                # tenant_delete_plan; here only other shops' rows are touched
+                # (e.g. a link request this shop's owner sent to another shop).
+                others = " AND tenant_id <> :tid" if "tenant_id" in table.columns else ""
+                if fk.parent.nullable:
+                    statements.append(f"UPDATE {quoted} SET {column} = NULL WHERE {column} IN ({users}){others}")
+                else:
+                    statements.append(f"DELETE FROM {quoted} WHERE {column} IN ({users}){others}")
+    return statements
 
 
 def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
@@ -154,7 +227,11 @@ def enter_shop(
 
     # Short-lived impersonation: 30-minute access token, no refresh token so
     # the window cannot be extended via /auth/refresh.
-    access_token, expires = create_access_token(tenant_id, owner.id, "platform_admin", expires_minutes=30)
+    # The token carries the owner's own role: the auth layer rejects any token
+    # whose role differs from the user row's, which is why stamping
+    # "platform_admin" here made every request after entering a 401 (and bounced
+    # the admin to the login page). Who really entered is in the event above.
+    access_token, expires = create_access_token(tenant_id, owner.id, owner.role, expires_minutes=30)
 
     return PlatformEnterShopResponse(
         access_token=access_token,
@@ -213,8 +290,13 @@ def set_tenant_plan(
         raise HTTPException(status_code=404, detail="Shop not found.")
     admin = session.get(User, auth.user_id)
     admin_email = admin.email if admin else "platform_admin"
+    requested = normalize_plan_code(payload.plan_code, default_if_empty="")
+    if requested not in VALID_PLAN_CODES:
+        # normalize_plan_code falls back to "pro" for anything unknown, so a
+        # typo here used to hand the shop every feature.
+        raise HTTPException(status_code=400, detail=f"Unsupported plan code '{payload.plan_code}'")
     old_plan = tenant.plan_code
-    tenant.plan_code = payload.plan_code.strip()
+    tenant.plan_code = requested
     session.add(tenant)
     session.add(
         TenantEventLog(
@@ -228,6 +310,7 @@ def set_tenant_plan(
         )
     )
     session.commit()
+    invalidate_auth_cache()
     return _tenant_read(session, tenant)
 
 
@@ -299,9 +382,14 @@ def set_tenant_billing_exempt(
                     stripe = _get_stripe()
                     stripe.Subscription.cancel(tenant.stripe_subscription_id)
                     stripe_note = f" Canceled Stripe subscription {tenant.stripe_subscription_id}."
+                    tenant.stripe_subscription_id = None
                 except Exception as exc:  # noqa: BLE001 — surface but don't block the local exemption
-                    stripe_note = f" Could not cancel Stripe subscription: {exc}"
-                tenant.stripe_subscription_id = None
+                    # Keep the id: the shop is still being charged, and without
+                    # it nobody can find the subscription to cancel it.
+                    stripe_note = (
+                        f" Could not cancel Stripe subscription {tenant.stripe_subscription_id}: {exc}."
+                        " Cancel it in Stripe."
+                    )
     else:
         tenant.billing_exempt = False
         # No active subscription remains after an exemption (we cancel it above),
@@ -388,9 +476,19 @@ def update_tenant(
         pwd = payload.new_password.strip()
         if len(pwd) < 8:
             raise HTTPException(status_code=422, detail="Password must be at least 8 characters.")
-        owner.hashed_password = hash_password(pwd)
+        owner.password_hash = hash_password(pwd)
         changes.append("owner password reset")
         session.add(owner)
+        # A reset is usually because the login is compromised or forgotten:
+        # sign out every device still holding the old credentials.
+        now = datetime.now(timezone.utc)
+        for refresh_session in session.exec(
+            select(RefreshSession)
+            .where(RefreshSession.user_id == owner.id)
+            .where(RefreshSession.revoked_at.is_(None))
+        ).all():
+            refresh_session.revoked_at = now
+            session.add(refresh_session)
 
     if changes:
         session.add(
@@ -451,6 +549,21 @@ def delete_platform_tenant(
     if not tenant:
         raise HTTPException(status_code=404, detail="Shop not found.")
 
+    # Stop billing first. A deleted shop with a live subscription keeps being
+    # charged, and afterwards there is nothing left in the app to cancel it from.
+    if tenant.stripe_subscription_id:
+        from .billing import _get_stripe, _stripe_configured
+
+        if _stripe_configured():
+            try:
+                _get_stripe().Subscription.cancel(tenant.stripe_subscription_id)
+            except Exception:  # noqa: BLE001
+                logger.exception("platform_admin.delete_tenant_stripe_cancel_failed tenant=%s", tenant_id)
+                raise HTTPException(
+                    status_code=502,
+                    detail="Could not cancel this shop's Stripe subscription, so it was not deleted. Cancel it in Stripe and try again.",
+                )
+
     # SQLite stores UUID as 32-char hex; Postgres uuid accepts hyphenated strings.
     tid = tenant_id.hex if session.get_bind().dialect.name == "sqlite" else str(tenant_id)
     try:
@@ -476,64 +589,37 @@ def delete_platform_tenant(
         session.execute(text("DELETE FROM parentaccountuser WHERE user_id IN (SELECT id FROM \"user\" WHERE tenant_id = :tid)"), {"tid": tid})
         session.execute(text("DELETE FROM shopownerinvite WHERE tenant_id = :tid OR owner_user_id IN (SELECT id FROM \"user\" WHERE tenant_id = :tid) OR created_by_user_id IN (SELECT id FROM \"user\" WHERE tenant_id = :tid)"), {"tid": tid})
 
-        # Delete tenant-owned tables in reverse FK dependency order
-        for tbl in [
-            "jobmessage",                # → repairjob / shoerepairjob / autokeyjob
-            "usernotificationpreference",
-            "tenantapikey",
-            "tenantwebhooksubscription",
-            "refreshsession",
-            "customerportalsession",
-            "prospectlead",
-            "pointsledger",              # → customerloyalty, invoice
-            "autokeyquotelineitem",      # → autokeyquote
-            "stocktakeline",             # → stocktakesession, stockitem
-            "stockadjustment",           # → stockitem, stocktakesession
-            "customeraccountinvoiceline",# → customeraccountinvoice
-            "payment",                   # → invoice
-            "quotelineitem",             # → quote
-            "approval",                  # → quote
-            "autokeyinvoice",            # → autokeyjob, autokeyquote
-            "autokeyquote",              # → autokeyjob
-            "invoice",                   # → repairjob, quote
-            "invoicenumbercounter",
-            "quote",                     # → repairjob
-            "jobstatushistory",          # → repairjob
-            "worklog",                   # → repairjob
-            "attachment",                # → repairjob, watch, shoerepairjob, autokeyjob
-            "repairqueuedaystate",
-            "repairjobnumbercounter",
-            "smslog",
-            "autokeyjob",
-            "repairjob",                 # → watch, customeraccount
-            "shoerepairjob",             # → shoe
-            "shoe",
-            "watch",                     # → customer
-            "customerloyalty",           # → customer
-            "customeraccountinvoice",    # → customeraccount
-            "customeraccountmembership",
-            "customeraccount",
-            "stocktakesession",
-            "stockitem",
-            "customerorder",
-            "importlog",
-            "customservice",
-            "tenanteventlog",
-            "parentaccountsite",
-            "customer",
-            "user",
-        ]:
-            quoted = f'"{tbl}"' if tbl == "user" else tbl
-            session.execute(text(f"DELETE FROM {quoted} WHERE tenant_id = :tid"), {"tid": tid})  # noqa: S608
+        for statement in tenant_detach_plan():
+            session.execute(text(statement), {"tid": tid})  # noqa: S608
 
-        # MobileSuburbRoute uses target_tenant_id instead of tenant_id
-        session.execute(text("DELETE FROM mobilesuburbroute WHERE target_tenant_id = :tid"), {"tid": tid})
+        # Everything else that belongs to the shop, children before parents.
+        # Derived from the schema: a hand-kept list here fell behind as tables
+        # were added (emaillog, revenuefollowup, ...), and on Postgres one
+        # missed table makes the whole delete fail.
+        # The schema order is the first guess, not the last word: some foreign
+        # keys exist in the database without being declared on the models
+        # (smslog -> repairjob, for one). A table whose delete is blocked is
+        # retried after the others; only a full pass with no progress fails.
+        remaining = tenant_delete_plan()
+        while remaining:
+            blocked: list[tuple[str, str]] = []
+            for table_name, where in remaining:
+                quoted = f'"{table_name}"'
+                try:
+                    with session.begin_nested():
+                        session.execute(text(f"DELETE FROM {quoted} WHERE {where}"), {"tid": tid})  # noqa: S608
+                except IntegrityError:
+                    blocked.append((table_name, where))
+            if len(blocked) == len(remaining):
+                raise RuntimeError(f"cannot delete rows in: {', '.join(t for t, _ in blocked)}")
+            remaining = blocked
 
         session.execute(text("DELETE FROM tenant WHERE id = :tid"), {"tid": tid})
         session.commit()
-    except Exception as exc:
+    except Exception:
         session.rollback()
-        raise HTTPException(status_code=500, detail=f"Delete failed — {exc}")
+        logger.exception("platform_admin.delete_tenant_failed tenant=%s", tenant_id)
+        raise HTTPException(status_code=500, detail="Delete failed. Nothing was removed; the error has been logged.")
 
 
 @router.get("/activity", response_model=list[TenantEventLogRead])

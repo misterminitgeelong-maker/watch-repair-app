@@ -6,6 +6,9 @@ import { useAuth } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { ToastProvider } from '@/lib/toast'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+// Eager on purpose: it renders on every screen outside any error boundary, so
+// a stale-deploy chunk miss here would blank the whole app, not just a banner.
+import ConnectivityBanner from '@/components/ConnectivityBanner'
 import { FeatureGate, RouteFallback } from '@/components/FeatureGate'
 import { defaultHomePathForMinit, isMinitHqUi } from '@/lib/minitProduct'
 import { lazyPage } from '@/lib/routePrefetch'
@@ -27,7 +30,6 @@ const qc = new QueryClient({
 
 const DashboardPage = lazyPage(() => import('@/pages/DashboardPage'))
 const AppShell = lazyPage(() => import('@/components/AppShell'))
-const ConnectivityBanner = lazyPage(() => import('@/components/ConnectivityBanner'))
 const CustomersPage = lazyPage(() => import('@/pages/CustomersPage'))
 const CustomerDetailPage = lazyPage(() => import('@/pages/CustomerDetailPage'))
 const JobsPage = lazyPage(() => import('@/pages/JobsPage'))
@@ -175,7 +177,7 @@ export default function App() {
         <ThemeProvider>
         <ToastProvider>
         <AuthProvider>
-          <Suspense fallback={null}><ConnectivityBanner /></Suspense>
+          <ConnectivityBanner />
           <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
               <Routes>

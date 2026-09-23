@@ -413,6 +413,26 @@ def test_public_invoice_pay_online_requires_stripe_connect(monkeypatch):
     assert pub2.status_code == 200
     assert pub2.json().get("can_pay_online") is True
 
+    # The card payment is a direct charge on the shop's own Stripe account, so Stripe's
+    # fee comes out of the shop's balance rather than the platform's.
+    import stripe
+
+    created: dict = {}
+
+    class _Session:
+        url = "https://checkout.stripe.test/cs_1"
+
+    def _create(**params):
+        created.update(params)
+        return _Session()
+
+    monkeypatch.setattr(stripe.checkout.Session, "create", staticmethod(_create))
+    co2 = client.post(f"/v1/public/auto-key-invoice/{view_token}/checkout")
+    assert co2.status_code == 200, co2.text
+    assert co2.json()["checkout_url"] == _Session.url
+    assert created["stripe_account"] == "acct_test_fake"
+    assert "transfer_data" not in (created.get("payment_intent_data") or {})
+
 
 def test_en_route_transition_succeeds():
     suffix = uuid4().hex[:8]

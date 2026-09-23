@@ -19,7 +19,7 @@ from app.main import app
 from app.minit_provision import ensure_minit_pilot_account, import_minit_shops
 from app.minit_shops import MinitShopRow
 from app.models import ParentAccount, User
-from app.routes.auth import _build_available_sites_for_email
+from app.routes.auth import _build_available_sites_for_user
 from app.shop_number import linked_tenant_ids_for_parent
 
 create_db_and_tables()
@@ -96,8 +96,9 @@ def test_build_available_sites_batches_lookups() -> None:
         parent = session.exec(
             select(ParentAccount).where(ParentAccount.owner_email == "hq-scale@test.mainspring.au")
         ).one()
-        sites = _build_available_sites_for_email(session, parent.owner_email)
         users_for_email = session.exec(select(User).where(User.email == parent.owner_email)).all()
+        hq_login = next(u for u in users_for_email if u.is_active and u.tenant_id in linked_tenant_ids_for_parent(session, parent.id))
+        sites = _build_available_sites_for_user(session, hq_login)
         tenant_ids_with_email = {u.tenant_id for u in users_for_email if u.is_active}
         assert {s.tenant_id for s in sites} <= tenant_ids_with_email
         assert sites

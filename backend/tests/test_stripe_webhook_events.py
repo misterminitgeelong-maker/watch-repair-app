@@ -276,3 +276,202 @@ def test_an_unhandled_event_type_is_acknowledged(client, auth_headers, stripe_co
     r = _post(client, "customer.created", {"id": "cus_x", "object": "customer"})
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+
+
+# ── fixes from the Sep 2026 walkthrough ─────────────────────────────────────────
+
+
+def test_incomplete_subscription_does_not_unlock_the_shop(client, auth_headers, stripe_configured):
+    tid = _tenant_id(client, auth_headers)
+    _set(tid, signup_payment_pending=True, stripe_subscription_id=None)
+    r = _post(client, "customer.subscription.created", {
+        "id": "sub_incomplete_1", "object": "subscription", "customer": "cus_inc_1",
+        "status": "incomplete", "trial_end": None,
+        "metadata": {"tenant_id": str(tid)}, "items": {"data": []},
+    })
+    assert r.status_code == 200
+    assert _reload(tid).signup_payment_pending is True
+
+
+def test_a_failed_handler_lets_stripe_retry_the_same_event(client, auth_headers, stripe_configured, monkeypatch):
+    import app.routes.billing as billing
+
+    tid = _tenant_id(client, auth_headers)
+    _set(tid, signup_payment_pending=True, stripe_subscription_id=None)
+    payload = _event("customer.subscription.created", {
+        "id": "sub_retry_1", "object": "subscription", "customer": "cus_retry_1",
+        "status": "active", "trial_end": None,
+        "metadata": {"tenant_id": str(tid)}, "items": {"data": []},
+    })
+    real = billing._WEBHOOK_HANDLERS["customer.subscription.created"]
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("database blip")
+
+    monkeypatch.setitem(billing._WEBHOOK_HANDLERS, "customer.subscription.created", _boom)
+    with pytest.raises(RuntimeError):
+        client.post("/v1/billing/webhook", content=payload, headers=_signed(payload))
+    monkeypatch.setitem(billing._WEBHOOK_HANDLERS, "customer.subscription.created", real)
+
+    retry = client.post("/v1/billing/webhook", content=payload, headers=_signed(payload))
+    assert retry.status_code == 200
+    assert retry.json().get("status") != "duplicate"
+    assert _reload(tid).stripe_subscription_id == "sub_retry_1"
+
+
+def test_card_payment_on_an_already_paid_invoice_alerts_the_shop(client, auth_headers, stripe_configured):
+    from app.models import AutoKeyInvoice, AutoKeyJob, Customer, TenantEventLog
+
+    tid = _tenant_id(client, auth_headers)
+    with Session(engine) as s:
+        customer = Customer(tenant_id=tid, full_name="Double Payer")
+        s.add(customer)
+        s.flush()
+        job = AutoKeyJob(tenant_id=tid, customer_id=customer.id, job_number=f"AK-{uuid4().hex[:6]}", title="Key")
+        s.add(job)
+        s.flush()
+        invoice = AutoKeyInvoice(
+            tenant_id=tid, auto_key_job_id=job.id, invoice_number=f"INV-{uuid4().hex[:6]}",
+            status="paid", total_cents=12000, subtotal_cents=12000,
+        )
+        s.add(invoice)
+        s.commit()
+        invoice_id = invoice.id
+
+    r = _post(client, "checkout.session.completed", {
+        "id": "cs_double_1", "object": "checkout.session", "mode": "payment",
+        "metadata": {"purpose": "auto_key_invoice", "auto_key_invoice_id": str(invoice_id)},
+        "payment_status": "paid", "amount_total": 12000,
+    })
+    assert r.status_code == 200
+    with Session(engine) as s:
+        alert = s.exec(
+            select(TenantEventLog)
+            .where(TenantEventLog.entity_id == invoice_id)
+            .where(TenantEventLog.event_type == "card_payment_needs_attention")
+        ).first()
+        assert alert is not None
+        assert "already paid" in alert.event_summary
+
+
+# ── invoice payments on the shop's own connected account ────────────────────────
+
+CONNECT_SECRET = "whsec_connect_secret"
+
+
+def _post_connected(client, event_type: str, obj: dict, account: str):
+    body = json.loads(_event(event_type, obj))
+    body["account"] = account
+    payload = json.dumps(body)
+    ts = int(time.time())
+    sig = stripe.WebhookSignature._compute_signature(f"{ts}.{payload}", CONNECT_SECRET)
+    headers = {"stripe-signature": f"t={ts},v1={sig}", "content-type": "application/json"}
+    return client.post("/v1/billing/webhook", content=payload, headers=headers)
+
+
+def _unpaid_invoice(tid: UUID, total: int = 9900) -> UUID:
+    from app.models import AutoKeyInvoice, AutoKeyJob, Customer
+
+    with Session(engine) as s:
+        customer = Customer(tenant_id=tid, full_name="Card Payer")
+        s.add(customer)
+        s.flush()
+        job = AutoKeyJob(tenant_id=tid, customer_id=customer.id, job_number=f"AK-{uuid4().hex[:6]}", title="Key")
+        s.add(job)
+        s.flush()
+        invoice = AutoKeyInvoice(
+            tenant_id=tid, auto_key_job_id=job.id, invoice_number=f"INV-{uuid4().hex[:6]}",
+            status="unpaid", total_cents=total, subtotal_cents=total,
+        )
+        s.add(invoice)
+        s.commit()
+        return invoice.id
+
+
+def _invoice_status(invoice_id: UUID) -> str:
+    from app.models import AutoKeyInvoice
+
+    with Session(engine) as s:
+        return s.get(AutoKeyInvoice, invoice_id).status
+
+
+def test_connected_account_payment_marks_its_own_invoice_paid(client, auth_headers, stripe_configured, monkeypatch):
+    monkeypatch.setattr(settings, "stripe_connect_webhook_secret", CONNECT_SECRET)
+    tid = _tenant_id(client, auth_headers)
+    acct = f"acct_{uuid4().hex[:10]}"
+    _set(tid, stripe_connect_account_id=acct)
+    invoice_id = _unpaid_invoice(tid)
+
+    r = _post_connected(client, "checkout.session.completed", {
+        "id": "cs_direct_1", "object": "checkout.session", "mode": "payment",
+        "metadata": {"purpose": "auto_key_invoice", "auto_key_invoice_id": str(invoice_id)},
+        "payment_status": "paid", "amount_total": 9900,
+    }, acct)
+    assert r.status_code == 200, r.text
+    assert _invoice_status(invoice_id) == "paid"
+
+
+def test_connected_account_cannot_pay_another_shops_invoice(client, auth_headers, stripe_configured, monkeypatch):
+    monkeypatch.setattr(settings, "stripe_connect_webhook_secret", CONNECT_SECRET)
+    tid = _tenant_id(client, auth_headers)
+    _set(tid, stripe_connect_account_id=f"acct_{uuid4().hex[:10]}")
+    invoice_id = _unpaid_invoice(tid)
+
+    r = _post_connected(client, "checkout.session.completed", {
+        "id": "cs_direct_2", "object": "checkout.session", "mode": "payment",
+        "metadata": {"purpose": "auto_key_invoice", "auto_key_invoice_id": str(invoice_id)},
+        "payment_status": "paid", "amount_total": 9900,
+    }, "acct_someone_else")
+    assert r.status_code == 200
+    assert _invoice_status(invoice_id) == "unpaid"
+
+
+def test_connected_account_cannot_unlock_a_subscription(client, auth_headers, stripe_configured, monkeypatch):
+    """A shop can run Checkout on its own Stripe account with any metadata it likes."""
+    monkeypatch.setattr(settings, "stripe_connect_webhook_secret", CONNECT_SECRET)
+    tid = _tenant_id(client, auth_headers)
+    acct = f"acct_{uuid4().hex[:10]}"
+    _set(tid, stripe_connect_account_id=acct, signup_payment_pending=True, stripe_subscription_id=None)
+
+    r = _post_connected(client, "checkout.session.completed", {
+        "id": "cs_sub_forged", "object": "checkout.session", "mode": "subscription",
+        "subscription": "sub_forged", "payment_status": "paid",
+        "metadata": {"tenant_id": str(tid)},
+    }, acct)
+    assert r.status_code == 200
+    r = _post_connected(client, "customer.subscription.created", {
+        "id": "sub_forged_2", "object": "subscription", "customer": "cus_forged",
+        "status": "active", "trial_end": None,
+        "metadata": {"tenant_id": str(tid)}, "items": {"data": []},
+    }, acct)
+    assert r.status_code == 200
+    t = _reload(tid)
+    assert t.signup_payment_pending is True
+    assert t.stripe_subscription_id is None
+
+
+def test_connected_account_updates_only_its_own_flags(client, auth_headers, stripe_configured, monkeypatch):
+    monkeypatch.setattr(settings, "stripe_connect_webhook_secret", CONNECT_SECRET)
+    tid = _tenant_id(client, auth_headers)
+    acct = f"acct_{uuid4().hex[:10]}"
+    _set(tid, stripe_connect_account_id=acct, stripe_connect_charges_enabled=False)
+
+    _post_connected(client, "account.updated", {
+        "id": acct, "object": "account", "charges_enabled": True,
+        "payouts_enabled": True, "details_submitted": True, "metadata": {},
+    }, "acct_other")
+    assert _reload(tid).stripe_connect_charges_enabled is False
+    _post_connected(client, "account.updated", {
+        "id": acct, "object": "account", "charges_enabled": True,
+        "payouts_enabled": True, "details_submitted": True, "metadata": {},
+    }, acct)
+    assert _reload(tid).stripe_connect_charges_enabled is True
+
+
+def test_connect_secret_alone_is_enough_to_accept_events(client, auth_headers, stripe_configured, monkeypatch):
+    monkeypatch.setattr(settings, "stripe_webhook_secret", "")
+    monkeypatch.setattr(settings, "stripe_connect_webhook_secret", CONNECT_SECRET)
+    r = _post_connected(client, "payment_intent.succeeded", {"id": "pi_1", "object": "payment_intent"}, "acct_x")
+    assert r.status_code == 200
+    bad = _post(client, "payment_intent.succeeded", {"id": "pi_2", "object": "payment_intent"})
+    assert bad.status_code == 400

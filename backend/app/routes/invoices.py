@@ -164,7 +164,12 @@ def create_invoice_from_quote(
         currency=quote.currency,
     )
     session.add(invoice)
-    session.flush()
+    try:
+        session.flush()
+    except IntegrityError:
+        # A second click racing the first: the unique index on quote_id wins.
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Invoice already exists for this quote")
 
     session.add(
         TenantEventLog(
@@ -373,6 +378,9 @@ def create_payment(
         raise HTTPException(status_code=404, detail="Invoice not found")
     if payload.amount_cents <= 0:
         raise HTTPException(status_code=400, detail="Payment amount must be greater than zero")
+    if invoice.status == "void":
+        # Recording a payment used to flip a void invoice back to "paid".
+        raise HTTPException(status_code=409, detail="This invoice is void")
 
     already_paid_total = int(
         session.exec(

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { useToast } from '@/lib/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createTenantFromParentAccount,
@@ -22,6 +23,7 @@ export default function ParentAccountPage() {
   const navigate = useNavigate()
   const { activeSiteTenantId, switchSite, refreshSession, minitHqUi, product, planCode, tenantSlug: sessionTenantSlug } = useAuth()
   const qc = useQueryClient()
+  const toast = useToast()
 
   // Add shop modal
   const [showAddModal, setShowAddModal] = useState(false)
@@ -91,7 +93,13 @@ export default function ParentAccountPage() {
         owner_email: ownerEmail.trim().toLowerCase(),
         shop_number: linkShopNumber.trim() || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: summary => {
+      const pending = summary.data.pending_link_requests ?? []
+      toast.success(
+        pending.length
+          ? 'Request sent. The shop is added once its owner accepts it.'
+          : 'Shop linked.',
+      )
       setError('')
       setTenantSlug('')
       setOwnerEmail('')

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   portalLookup,
+  portalVerify,
   portalGetProfile,
   portalBook,
   type PortalProfile,
@@ -27,6 +28,8 @@ export default function PublicCustomerPortalPage() {
   // Lookup form
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
 
   // Book form
   const [bookAddress, setBookAddress] = useState('')
@@ -70,9 +73,27 @@ export default function PublicCustomerPortalPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await portalLookup(slug, name.trim(), phone.trim())
+      await portalLookup(slug, name.trim(), phone.trim())
+      setCodeSent(true)
+      setCode('')
+    } catch (e: unknown) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setError(detail || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    if (!slug) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await portalVerify(slug, phone.trim(), code.trim())
       const { token: newToken } = res.data
       localStorage.setItem(storageKey, newToken)
+      setCodeSent(false)
       setToken(newToken)
     } catch (e: unknown) {
       const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
@@ -121,6 +142,8 @@ export default function PublicCustomerPortalPage() {
     setError(null)
     setName('')
     setPhone('')
+    setCodeSent(false)
+    setCode('')
   }
 
   // --- Lookup screen ---
@@ -131,11 +154,49 @@ export default function PublicCustomerPortalPage() {
           <div className="text-center mb-8">
             <div className="text-4xl mb-3">🔑</div>
             <h1 className="text-3xl font-bold text-gray-900">Book a Mobile Key Service</h1>
-            <p className="text-gray-500 mt-2 text-sm">Enter your name and phone number to continue.</p>
+            <p className="text-gray-500 mt-2 text-sm">Enter your name and mobile number and we'll text you a sign-in code.</p>
           </div>
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>
           )}
+          {codeSent ? (
+          <form
+            onSubmit={handleVerify}
+            className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4"
+          >
+            <p className="text-sm text-gray-600">
+              We texted a 6-digit code to <strong>{phone.trim()}</strong>. Enter it below.
+            </p>
+            <div>
+              <label htmlFor="portal-code" className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+              <input
+                id="portal-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="123456"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading || code.length < 6}
+              className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {loading ? 'Checking…' : 'Sign in'}
+            </button>
+            <button
+              type="button"
+              className="w-full text-sm text-gray-500 underline"
+              onClick={() => { setCodeSent(false); setError(null) }}
+            >
+              Use a different number
+            </button>
+          </form>
+          ) : (
           <form
             onSubmit={handleLookup}
             className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4"
@@ -167,9 +228,10 @@ export default function PublicCustomerPortalPage() {
               disabled={loading}
               className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Loading...' : 'Continue'}
+              {loading ? 'Sending…' : 'Text me a code'}
             </button>
           </form>
+          )}
         </div>
       </div>
     )
@@ -382,7 +444,7 @@ export default function PublicCustomerPortalPage() {
                       {job.status === 'unclaimed'
                         ? 'Pending'
                         : job.status === 'claimed'
-                        ? 'Assigned'
+                        ? 'Booked in'
                         : job.status}
                     </span>
                   </div>

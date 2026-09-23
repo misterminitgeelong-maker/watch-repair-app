@@ -460,6 +460,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
     proactiveRefreshTimer.current = null
+    // Revoke this device's session server-side too, so a copied refresh token
+    // stops working. Plain axios: no refresh-on-401 interceptor, never blocks.
+    const accessToken = getStoredAccessToken()
+    if (accessToken) {
+      void axios
+        .post(withApiOrigin('/v1/auth/logout'), {}, { headers: { Authorization: `Bearer ${accessToken}` } })
+        .catch(() => {})
+    }
     clearStoredTokens()
     resetAuthState()
   }, [resetAuthState])

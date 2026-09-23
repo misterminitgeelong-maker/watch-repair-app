@@ -26,6 +26,7 @@ from ..models import (
     AutoKeyJob,
     RepairJob,
     ShoeRepairJob,
+    Tenant,
     User,
     Watch,
 )
@@ -267,6 +268,17 @@ def download_attachment(
     user = session.get(User, user_id)
     if not user or user.tenant_id != tenant_id or not user.is_active:
         raise HTTPException(status_code=401, detail="Invalid token")
+    # Same gates as every other authenticated route: a suspended shop, or one
+    # whose sessions were force-revoked, can't keep pulling files.
+    tenant = session.get(Tenant, tenant_id)
+    if tenant is None or not tenant.is_active:
+        raise HTTPException(status_code=403, detail="Shop is suspended. Contact platform admin.")
+    if not dl_token and tenant.auth_revoked_at is not None:
+        revoked_at = tenant.auth_revoked_at
+        if revoked_at.tzinfo is None:
+            revoked_at = revoked_at.replace(tzinfo=timezone.utc)
+        if claims.issued_at is None or claims.issued_at < revoked_at:
+            raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
     attachment = session.exec(
         select(Attachment)

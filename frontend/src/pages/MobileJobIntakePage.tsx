@@ -154,6 +154,21 @@ export default function MobileJobIntakePage() {
     )
   }
 
+  if (axios.isAxiosError(error) && error.response?.status === 410) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>
+            Thanks — we have your details
+          </h1>
+          <p style={{ color: 'var(--ms-text-muted)' }}>
+            You've already sent this form. The shop will be in touch; contact them if anything has changed.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (isError || !data) {
     const msg =
       axios.isAxiosError(error) && error.response?.status === 404

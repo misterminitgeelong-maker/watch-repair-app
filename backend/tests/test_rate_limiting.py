@@ -184,7 +184,8 @@ def test_public_jobs_endpoints_rate_limited():
         limiter.reset()
         first = client.post("/v1/public/portal/create-session", json={"email": "nobody@example.test"})
         second = client.post("/v1/public/portal/create-session", json={"email": "nobody@example.test"})
-        assert first.status_code == 404
+        # Same answer for unknown addresses, so this can't be used to find customers.
+        assert first.status_code == 200
         assert second.status_code == 429
     finally:
         settings.rate_limit_public_test = old

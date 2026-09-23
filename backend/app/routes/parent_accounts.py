@@ -35,6 +35,7 @@ from ..dependencies import (
     require_owner,
 )
 from ..minit_branding import MINIT_HQ_PLAN, tenant_product
+from ..models.tables import PARENT_ROLE_HQ_ADMIN
 from ..minit_mobile_routing import resolve_mobile_operator_route
 from ..minit_mobile_territory_import import import_mobile_suburb_routes, load_territory_routes_seed
 from ..minit_mobile_operators import (
@@ -68,11 +69,15 @@ from ..models import (
     ParentAccountSiteRead,
     ParentAccountSitesPageResponse,
     ParentAccountSummaryResponse,
+    ParentAccountUser,
     ParentLeadIngestConfigResponse,
+    ParentLinkRequest,
+    ParentLinkRequestRead,
     ParentMobileLeadDefaultTenantBody,
     ParentMobileLeadDispatchSettingsBody,
     ParentMobileLeadEscalationTenantBody,
     ParentMobileLeadWebhookSecretBody,
+    RefreshSession,
     Region,
     ShopBookingUsageResponse,
     ShopBookingUsageShopBreakdown,
@@ -81,10 +86,13 @@ from ..models import (
     ShopOwnerInviteCreateRequest,
     ShopOwnerInviteRead,
     Tenant,
+    TenantEventLog,
     User,
 )
 from ..config import settings
+from ..tenant_scope import without_scope
 from ..parent_network import (
+    grant_hq_owner_clone_access,
     link_site,
     normalize_region_code,
     parent_region_scope,
@@ -986,14 +994,89 @@ def list_parent_account_activity(
     ]
 
 
+def _complete_parent_link(
+    session: Session,
+    *,
+    parent: ParentAccount,
+    tenant: Tenant,
+    shop_number: str | None,
+    actor: User,
+) -> None:
+    """Put ``tenant`` into ``parent``'s network once the shop has agreed."""
+    if shop_number:
+        assert_shop_number_unique_in_parent(
+            session,
+            parent_id=parent.id,
+            shop_number=shop_number,
+            exclude_tenant_id=tenant.id,
+        )
+        tenant.shop_number = shop_number
+        session.add(tenant)
+
+    created = link_site(session, parent_id=parent.id, tenant=tenant)
+    if created is not None:
+        _record_event(
+            session,
+            parent_account_id=parent.id,
+            tenant_id=tenant.id,
+            actor_user_id=actor.id,
+            actor_email=actor.email,
+            event_type="link_tenant",
+            event_summary=f"Linked site '{tenant.name}' ({tenant.slug})",
+        )
+        session.flush()
+        _sync_extra_location_billing(session, parent.id)
+
+
+def _link_request_reads(
+    session: Session, rows: list[ParentLinkRequest]
+) -> list[ParentLinkRequestRead]:
+    reads: list[ParentLinkRequestRead] = []
+    for row in rows:
+        parent = session.get(ParentAccount, row.parent_account_id)
+        tenant = session.get(Tenant, row.tenant_id)
+        requester = session.get(User, row.requested_by_user_id)
+        if parent is None or tenant is None:
+            continue
+        reads.append(
+            ParentLinkRequestRead(
+                id=row.id,
+                parent_account_id=parent.id,
+                parent_account_name=parent.name,
+                tenant_id=tenant.id,
+                tenant_slug=tenant.slug,
+                tenant_name=tenant.name,
+                status=row.status,
+                requested_by_email=requester.email if requester else None,
+                created_at=row.created_at,
+            )
+        )
+    return reads
+
+
+def _pending_link_requests_for_parent(session: Session, parent_id: UUID) -> list[ParentLinkRequestRead]:
+    rows = session.exec(
+        select(ParentLinkRequest)
+        .where(ParentLinkRequest.parent_account_id == parent_id)
+        .where(ParentLinkRequest.status == "pending")
+        .order_by(col(ParentLinkRequest.created_at).desc())
+    ).all()
+    return _link_request_reads(session, list(rows))
+
+
 @router.post("/me/link-tenant", response_model=ParentAccountSummaryResponse)
 def link_tenant_to_parent_account(
     payload: ParentAccountLinkTenantRequest,
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    current_user, parent = _parent_for_write(session, auth)
+    """Ask an existing shop to join this network.
 
+    A linked shop can be entered with owner rights, so the link only takes
+    effect once that shop's owner accepts (``/v1/network-link-requests``).
+    Knowing a shop's slug and its owner's email is not consent.
+    """
+    current_user, parent = _parent_for_write(session, auth)
 
     tenant_slug = payload.tenant_slug.strip().lower()
     owner_email = payload.owner_email.strip().lower()
@@ -1024,27 +1107,127 @@ def link_tenant_to_parent_account(
             shop_number=shop_number,
             exclude_tenant_id=tenant.id,
         )
-        tenant.shop_number = shop_number
-        session.add(tenant)
 
-    created = link_site(session, parent_id=parent.id, tenant=tenant)
-
-    if created is not None:
+    if site_for_tenant_in_parent(session, parent.id, tenant.id) is None:
+        pending = session.exec(
+            select(ParentLinkRequest)
+            .where(ParentLinkRequest.parent_account_id == parent.id)
+            .where(ParentLinkRequest.tenant_id == tenant.id)
+            .where(ParentLinkRequest.status == "pending")
+        ).first()
+        if pending is None:
+            pending = ParentLinkRequest(
+                parent_account_id=parent.id,
+                tenant_id=tenant.id,
+                requested_by_user_id=current_user.id,
+                shop_number=shop_number,
+            )
+        else:
+            pending.shop_number = shop_number
+        session.add(pending)
         _record_event(
             session,
             parent_account_id=parent.id,
             tenant_id=tenant.id,
             actor_user_id=current_user.id,
             actor_email=current_user.email,
-            event_type="link_tenant",
-            event_summary=f"Linked site '{tenant.name}' ({tenant.slug})",
+            event_type="link_tenant_requested",
+            event_summary=f"Asked '{tenant.name}' ({tenant.slug}) to join the network",
         )
-        session.flush()
-        _sync_extra_location_billing(session, parent.id)
+        session.add(
+            TenantEventLog(
+                tenant_id=tenant.id,
+                actor_user_id=current_user.id,
+                actor_email=current_user.email,
+                entity_type="tenant",
+                entity_id=tenant.id,
+                event_type="network_link_requested",
+                event_summary=(
+                    f"{parent.name} asked to add this shop to its network. "
+                    "Review it under Parent Account."
+                ),
+            )
+        )
         session.commit()
 
     session.refresh(parent)
-    return _to_summary(session, parent)
+    summary = _to_summary(session, parent)
+    summary.pending_link_requests = _pending_link_requests_for_parent(session, parent.id)
+    return summary
+
+
+link_requests_router = APIRouter(prefix="/v1/network-link-requests", tags=["parent-accounts"])
+
+
+@link_requests_router.get("", response_model=list[ParentLinkRequestRead])
+def list_my_network_link_requests(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    """Networks asking to add this shop, for its owner to answer."""
+    rows = session.exec(
+        select(ParentLinkRequest)
+        .where(ParentLinkRequest.tenant_id == auth.tenant_id)
+        .where(ParentLinkRequest.status == "pending")
+        .order_by(col(ParentLinkRequest.created_at).desc())
+    ).all()
+    with without_scope(session):
+        return _link_request_reads(session, list(rows))
+
+
+def _decide_link_request(
+    session: Session, auth: AuthContext, request_id: UUID, *, accept: bool
+) -> ParentLinkRequestRead:
+    row = session.get(ParentLinkRequest, request_id)
+    if row is None or row.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if row.status != "pending":
+        raise HTTPException(status_code=409, detail=f"This request was already {row.status}")
+    with without_scope(session):
+        parent = session.get(ParentAccount, row.parent_account_id)
+        tenant = session.get(Tenant, row.tenant_id)
+        actor = session.get(User, auth.user_id)
+        if parent is None or tenant is None or actor is None:
+            raise HTTPException(status_code=404, detail="Request not found")
+        if accept:
+            _complete_parent_link(
+                session, parent=parent, tenant=tenant, shop_number=row.shop_number, actor=actor
+            )
+        else:
+            _record_event(
+                session,
+                parent_account_id=parent.id,
+                tenant_id=tenant.id,
+                actor_user_id=actor.id,
+                actor_email=actor.email,
+                event_type="link_tenant_declined",
+                event_summary=f"'{tenant.name}' ({tenant.slug}) declined to join the network",
+            )
+        row.status = "accepted" if accept else "declined"
+        row.decided_at = datetime.now(timezone.utc)
+        row.decided_by_user_id = actor.id
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return _link_request_reads(session, [row])[0]
+
+
+@link_requests_router.post("/{request_id}/accept", response_model=ParentLinkRequestRead)
+def accept_network_link_request(
+    request_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    return _decide_link_request(session, auth, request_id, accept=True)
+
+
+@link_requests_router.post("/{request_id}/decline", response_model=ParentLinkRequestRead)
+def decline_network_link_request(
+    request_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(get_session),
+):
+    return _decide_link_request(session, auth, request_id, accept=False)
 
 
 SHOP_OWNER_INVITE_EXPIRY_DAYS = 7
@@ -1132,6 +1315,34 @@ def _shop_owner_invite_read(
     )
 
 
+def _owner_login_is_unclaimed(session: Session, parent: ParentAccount, owner: User) -> bool:
+    """True when the shop's owner login is still HQ's to hand over: a copy of
+    an HQ admin's login, or an account nobody has ever signed in to."""
+    hq_emails = {(parent.owner_email or "").strip().lower()}
+    for grant in session.exec(
+        select(ParentAccountUser)
+        .where(ParentAccountUser.parent_account_id == parent.id)
+        .where(ParentAccountUser.role == PARENT_ROLE_HQ_ADMIN)
+    ).all():
+        grantee = session.get(User, grant.user_id)
+        if grantee is not None:
+            hq_emails.add((grantee.email or "").strip().lower())
+    if (owner.email or "").strip().lower() in hq_emails:
+        return True
+    signed_in = session.exec(
+        select(RefreshSession.id).where(RefreshSession.user_id == owner.id).limit(1)
+    ).first()
+    if signed_in is not None:
+        return False
+    logged_in = session.exec(
+        select(TenantEventLog.id)
+        .where(TenantEventLog.actor_user_id == owner.id)
+        .where(TenantEventLog.event_type == "login")
+        .limit(1)
+    ).first()
+    return logged_in is None
+
+
 @router.post("/me/sites/{tenant_id}/invite", response_model=ShopOwnerInviteRead)
 def create_shop_owner_invite(
     tenant_id: UUID,
@@ -1161,6 +1372,14 @@ def create_shop_owner_invite(
     ).first()
     if not owner_user:
         raise HTTPException(status_code=404, detail="No owner user found for this site")
+    if not _owner_login_is_unclaimed(session, parent, owner_user):
+        # Completing an invite replaces the owner's email and password. That is
+        # right for a login HQ provisioned and the shop never took over, and
+        # a takeover for a shop that runs its own login.
+        raise HTTPException(
+            status_code=409,
+            detail="This shop already has its own owner login, so it can't be invited.",
+        )
 
     requested_plan = (payload.plan_code if payload else None) or None
     if requested_plan:
@@ -1292,6 +1511,8 @@ def create_tenant_from_parent_account(
     session.flush()
 
     link_site(session, parent_id=parent.id, tenant=tenant)
+    session.flush()
+    grant_hq_owner_clone_access(session, parent=parent, user=new_owner)
     _record_event(
         session,
         parent_account_id=parent.id,
@@ -1778,6 +1999,8 @@ def provision_minit_retail_shop(
     session.flush()
 
     link_site(session, parent_id=parent.id, tenant=tenant, network_role=network_role)
+    session.flush()
+    grant_hq_owner_clone_access(session, parent=parent, user=new_owner)
     _record_event(
         session,
         parent_account_id=parent.id,

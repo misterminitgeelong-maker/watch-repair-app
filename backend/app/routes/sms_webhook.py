@@ -58,6 +58,10 @@ def _validate_twilio_signature(request: Request, form_params: dict[str, str]) ->
     """Reject spoofed webhooks when Twilio auth token is configured. Skip in dry-run/test."""
     token = (settings.twilio_auth_token or "").strip()
     if not token:
+        if settings.app_env == "production":
+            # Without the token nothing can be verified, and an unsigned post
+            # can put words in a customer's mouth (including "YES" to a quote).
+            raise HTTPException(status_code=403, detail="SMS webhook is not configured")
         return
     # Pytest / unsigned local posts — signature checks run in staging/production.
     if settings.app_env == "test":
@@ -324,11 +328,22 @@ def _apply_keyword_quote_decision(
             select(Quote)
             .where(Quote.repair_job_id == target.repair_job_id)
             .where(Quote.tenant_id == target.tenant_id)
-            .where(Quote.status.in_(("sent", "expired")))
+            .where(Quote.status == "sent")
             .order_by(Quote.sent_at.desc())
         ).first()
         if not quote:
             return None
+        from .quotes import _quote_token_is_expired, apply_customer_quote_decision
+
+        if _quote_token_is_expired(quote):
+            # The online link refuses an expired quote; a YES by text shouldn't
+            # get around that.
+            return _QuoteDecisionResult(
+                reply="Sorry, that quote has expired. We'll send you an updated one.",
+                decision="expired",
+                quote_id=quote.id,
+                job=None,
+            )
 
         quote.status = decision
         session.add(quote)
@@ -340,29 +355,8 @@ def _apply_keyword_quote_decision(
         ))
 
         job = session.get(RepairJob, target.repair_job_id)
-        if job and job.status == "awaiting_go_ahead":
-            job.status = "go_ahead" if decision == "approved" else "no_go"
-            session.add(job)
-            session.add(JobStatusHistory(
-                tenant_id=job.tenant_id,
-                repair_job_id=job.id,
-                old_status="awaiting_go_ahead",
-                new_status=job.status,
-                changed_by_user_id=None,
-                change_note=f"Customer {decision} quote via SMS reply",
-            ))
-            session.add(TenantEventLog(
-                tenant_id=job.tenant_id,
-                actor_user_id=None,
-                entity_type="repair_job",
-                entity_id=job.id,
-                event_type="quote_approved" if decision == "approved" else "quote_declined",
-                event_summary=(
-                    f"Customer approved quote for job #{job.job_number} via SMS"
-                    if decision == "approved"
-                    else f"Customer declined quote for job #{job.job_number} via SMS — return watch"
-                ),
-            ))
+        if job:
+            apply_customer_quote_decision(session, job, decision, via="SMS reply")
 
         reply = (
             "Thanks! Your quote has been approved and we'll get started on your repair."

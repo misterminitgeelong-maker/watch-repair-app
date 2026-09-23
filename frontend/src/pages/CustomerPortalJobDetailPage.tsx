@@ -98,7 +98,6 @@ function WatchJobDetail({ token, backTo }: { token: string; backTo: string }) {
         <p className="text-lg font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>
           {portalJobStatusLabel('watch', data.status)}
         </p>
-        {data.description && <p className="text-sm mt-3" style={{ color: 'var(--ms-text-mid)' }}>{data.description}</p>}
       </div>
       <HistoryTimeline jobType="watch" history={data.history} />
     </DetailShell>
@@ -134,7 +133,6 @@ function ShoeJobDetail({ token, backTo }: { token: string; backTo: string }) {
         <p className="text-lg font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>
           {portalJobStatusLabel('shoe', data.status)}
         </p>
-        {data.description && <p className="text-sm mt-3" style={{ color: 'var(--ms-text-mid)' }}>{data.description}</p>}
       </div>
       {data.items?.length > 0 && (
         <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>

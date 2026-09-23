@@ -23,6 +23,7 @@ from .models import (
     User,
 )
 from .parent_network import (
+    grant_hq_owner_clone_access,
     OPERATOR_PLAN_CODES as _OPERATOR_PLAN_CODES,
     grant_parent_role,
     link_site,
@@ -369,6 +370,8 @@ def _create_child_tenant(
         linked_tenant_ids=linked_tenant_ids,
         region_cache=region_cache,
     )
+    session.flush()
+    grant_hq_owner_clone_access(session, parent=parent, user=site_owner)
     return tenant
 
 

@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import AutoKeyJob, ProspectLead, SmsLog, Tenant
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -73,7 +74,7 @@ def _setup_network(*, force_hq: bool = False) -> tuple[str, str, str, str, dict[
     hq_h = _headers(hq_token)
 
     for op_slug, op_email in ((op1_slug, op1_email), (op2_slug, op2_email)):
-        link = client.post(
+        link = link_and_accept(client,
             "/v1/parent-accounts/me/link-tenant",
             headers=hq_h,
             json={"tenant_slug": op_slug, "owner_email": op_email},

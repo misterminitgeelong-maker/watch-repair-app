@@ -187,7 +187,10 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     }
     deleteAccount.mutate(tenantId)
   }
-  function handleToggleBillingExempt(tenantId: string, name: string, exempt: boolean) {
+  function handleToggleBillingExempt(tenantId: string, name: string, slug: string, exempt: boolean) {
+    // Turning billing off cancels the live Stripe subscription, so it gets the
+    // same typed confirmation as the other destructive actions.
+    if (exempt && !requireSlugConfirmation(name, slug, 'turn off billing for')) return
     const reason = window.prompt(
       exempt
         ? `Turn OFF billing for ${name} (they keep full access, any live Stripe subscription is canceled). Reason:`
@@ -264,7 +267,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         Force Logout
                       </button>
                       <button
-                        onClick={() => handleToggleBillingExempt(t.id, t.name, !t.billing_exempt)}
+                        onClick={() => handleToggleBillingExempt(t.id, t.name, t.slug, !t.billing_exempt)}
                         disabled={setBillingExempt.isPending}
                         className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
                         style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
@@ -351,7 +354,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           Change Plan
                         </button>
                         <button
-                          onClick={() => handleToggleBillingExempt(t.id, t.name, !t.billing_exempt)}
+                          onClick={() => handleToggleBillingExempt(t.id, t.name, t.slug, !t.billing_exempt)}
                           disabled={setBillingExempt.isPending}
                           className="ml-2 text-xs px-3 py-1.5 rounded-lg font-medium"
                           style={t.billing_exempt

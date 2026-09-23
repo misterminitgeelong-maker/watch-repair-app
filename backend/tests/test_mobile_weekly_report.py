@@ -28,6 +28,7 @@ from app.services.mobile_weekly_report import (
     build_mobile_weekly_report,
     send_due_mobile_weekly_reports,
 )
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -65,7 +66,7 @@ def _link_operator(headers: dict, operator_label: str) -> str:
         },
     )
     assert res.status_code == 200, res.text
-    link = client.post("/v1/parent-accounts/me/link-tenant", headers=headers, json={"tenant_slug": slug, "owner_email": email})
+    link = link_and_accept(client,"/v1/parent-accounts/me/link-tenant", headers=headers, json={"tenant_slug": slug, "owner_email": email})
     assert link.status_code == 200, link.text
     with Session(engine) as session:
         tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).one()

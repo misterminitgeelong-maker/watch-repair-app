@@ -144,10 +144,12 @@ def _walkable_get_routes():
     """All GET routes whose path params we can fill with tenant A's ids."""
     param_map_keys = {"customer_id", "watch_id", "job_id", "quote_id", "invoice_id", "id"}
     routes = []
-    for route in app.routes:
-        methods = getattr(route, "methods", None) or set()
-        path = getattr(route, "path", "")
-        if "GET" not in methods or not path.startswith("/v1/"):
+    # Read the route list from the OpenAPI schema rather than app.routes:
+    # newer FastAPI nests included routers instead of flattening them, and
+    # walking app.routes then found nothing - the parametrised test collapsed
+    # to a single empty case and silently stopped checking every route.
+    for path, operations in app.openapi()["paths"].items():
+        if "get" not in operations or not path.startswith("/v1/"):
             continue
         if "/public/" in path or path.startswith("/v1/auth"):
             continue  # public token routes + auth endpoints are out of scope
@@ -156,6 +158,7 @@ def _walkable_get_routes():
             continue
         if all(p in param_map_keys for p in params):
             routes.append(path)
+    assert routes, "found no GET routes to check - the route walker is broken"
     return sorted(set(routes))
 
 

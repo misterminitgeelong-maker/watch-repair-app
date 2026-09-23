@@ -165,7 +165,7 @@ Pilot mobile operator `minit-mobile-3904` stays on `basic_auto_key` and appears 
 
 ## Dev-only defaults
 
-Repo defaults (`minit-hq@test.mainspring.au` / `MinitPilot2026!`) are for **local dev only**. Production must use Minit’s real email before seeding.
+There is no default HQ password: set `MINIT_HQ_OWNER_PASSWORD` before seeding (the old `MinitPilot2026!` default is refused in production). The default email `minit-hq@test.mainspring.au` is for local dev only — production must use Minit’s real email.
 
 ## Security
 

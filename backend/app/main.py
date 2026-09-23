@@ -45,6 +45,7 @@ from .routes.shoe_repair_jobs import router as shoe_repair_jobs_router
 from .routes.auto_key_jobs import router as auto_key_jobs_router
 from .routes.revenue_control import router as revenue_control_router
 from .routes.customer_accounts import router as customer_accounts_router
+from .routes.parent_accounts import link_requests_router as network_link_requests_router
 from .routes.parent_accounts import router as parent_accounts_router
 from .routes.shop_owner_invites import router as shop_owner_invites_router
 from .routes.parent_operations import router as parent_operations_router
@@ -219,9 +220,9 @@ CRITICAL_ALERT_PATH_PREFIXES: tuple[str, ...] = (
 )
 CRITICAL_ALERT_PATH_SUBSTRINGS: tuple[str, ...] = ("/v1/auto-key-jobs/invoices/",)
 
-#: Customer-facing single-use links sent by SMS. Their tokens are cleared once used
-#: (e.g. ``submit_public_auto_key_intake`` nulls ``customer_intake_token``), so a 404
-#: is the designed outcome for a link that was already used, superseded or expired.
+#: Customer-facing single-use links sent by SMS. A 404 (superseded or expired) or
+#: 410 (already used, e.g. an intake form that was submitted) is the designed
+#: outcome for a link opened again, not a failure.
 PUBLIC_LINK_PATH_PREFIXES: tuple[str, ...] = (
     "/v1/public/auto-key-intake/",
     "/v1/public/auto-key-booking/",
@@ -237,7 +238,7 @@ def _is_spent_public_link(path: str, status_code: int) -> bool:
     failures (5xx, and the 4xx that do mean something: 422 for a broken request
     contract, 429 for a customer being rate-limited) under routine traffic.
     """
-    return status_code == 404 and path.startswith(PUBLIC_LINK_PATH_PREFIXES)
+    return status_code in (404, 410) and path.startswith(PUBLIC_LINK_PATH_PREFIXES)
 
 
 def _classify_critical_workflow(path: str, method: str) -> str | None:
@@ -316,6 +317,27 @@ async def request_id_and_log(request: Request, call_next):
                     )
     return response
 
+
+_SECURITY_HEADERS: dict[str, str] = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    # Nothing here is meant to be framed; public quote-approval pages being
+    # frameable made clickjacking an approve/pay button possible.
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "Permissions-Policy": "camera=(self), geolocation=(self), microphone=()",
+}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    if settings.app_env == "production":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -333,7 +355,6 @@ def debug_demo_status():
     if settings.app_env == "production":
         raise HTTPException(status_code=404, detail="Not found")
     from sqlmodel import select, func
-    from .config import settings
     from .models import CustomerAccount, Tenant
 
     slug = (settings.startup_seed_tenant_slug or "myshop").strip().lower()
@@ -452,14 +473,17 @@ def health():
     except Exception:
         pass
 
-    return {
-        "status": "ok",
-        "git_commit": git_commit,
-        "startup_seed": get_seed_status(),
-        "testing_tenant_configured": testing_configured,
-        "testing_tenant_exists": testing_tenant_exists,
-        "demo": demo_status,
-    }
+    body: dict[str, object] = {"status": "ok", "git_commit": git_commit}
+    if settings.app_env != "production":
+        # Seed and test-account details help local setup; in production they
+        # only tell a stranger which test logins exist.
+        body.update(
+            startup_seed=get_seed_status(),
+            testing_tenant_configured=testing_configured,
+            testing_tenant_exists=testing_tenant_exists,
+            demo=demo_status,
+        )
+    return body
 
 
 @app.get("/v1/ready")
@@ -513,6 +537,7 @@ app.include_router(auto_key_jobs_router)
 app.include_router(revenue_control_router)
 app.include_router(customer_accounts_router)
 app.include_router(parent_accounts_router)
+app.include_router(network_link_requests_router)
 app.include_router(shop_owner_invites_router)
 app.include_router(parent_operations_router)
 app.include_router(parent_network_admin_router)

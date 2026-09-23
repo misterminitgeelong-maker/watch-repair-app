@@ -61,7 +61,9 @@ class Settings(BaseSettings):
     minit_hq_tenant_slug: str = "mmsupport"
     minit_hq_tenant_name: str = "Mister Minit HQ"
     minit_hq_owner_email: str = "minit-hq@test.mainspring.au"
-    minit_hq_owner_password: str = "MinitPilot2026!"
+    # No default: this was "MinitPilot2026!", a password anyone with the source
+    # knew. Seeding the Minit pilot now refuses to run until one is set.
+    minit_hq_owner_password: str = ""
     allow_ensure_minit_pilot: bool = False  # Enables POST /auth/ensure-minit-pilot (one-off prod seed)
 
     # Optional global platform admin account (cross-tenant visibility)
@@ -119,6 +121,10 @@ class Settings(BaseSettings):
     # Stripe — leave blank to disable Stripe billing integration
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
+    # Signing secret of the Connect webhook endpoint ("Events on connected accounts"). Customer
+    # invoice payments are charged on each shop's own connected account, so their
+    # checkout.session.completed events are delivered there, not to the platform endpoint.
+    stripe_connect_webhook_secret: str = ""
     # Locked 2026-09 ladder (new signups). Create NEW Stripe Prices; do not reuse old IDs.
     stripe_price_shop: str = ""  # A$50/mo one location, all tabs
     stripe_price_extra_location: str = ""  # A$25/mo additional site on a Pro subscription

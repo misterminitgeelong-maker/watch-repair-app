@@ -186,7 +186,7 @@ export default function MinitOperationsPage() {
       <div>
         <PageHeader title="Dashboard" />
         <p className="text-sm" style={{ color: 'var(--ms-error)' }}>
-          Could not load dashboard. Confirm you are signed in as Minit HQ (mmsupport).
+          Could not load the network dashboard. This page is for Mister Minit head office accounts.
         </p>
       </div>
     )

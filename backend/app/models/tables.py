@@ -328,6 +328,27 @@ class ShopOwnerInvite(SQLModel, table=True):
     expires_at: datetime
     completed_at: Optional[datetime] = None
 
+class ParentLinkRequest(SQLModel, table=True):
+    """HQ asking to add an existing shop to its network, pending the shop's say-so.
+
+    Linking used to take effect on HQ's word alone — a shop slug and its owner's
+    email — and a linked shop can be entered with owner rights, so any network
+    could annex any shop. The shop's owner now has to accept.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    #: The shop being asked. Named tenant_id so the shop's own session sees
+    #: its requests through the normal tenant scope.
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    requested_by_user_id: UUID = Field(foreign_key="user.id")
+    shop_number: Optional[str] = Field(default=None, max_length=32)
+    status: str = Field(default="pending", index=True, max_length=16)  # pending | accepted | declined
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    decided_at: Optional[datetime] = None
+    decided_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+
+
 class ShopMobileBookingRequest(SQLModel, table=True):
     """Shop-initiated request for a mobile operator to accept before a job is created."""
 
@@ -667,6 +688,8 @@ class Approval(SQLModel, table=True):
 class Invoice(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("tenant_id", "invoice_number", name="uq_invoice_tenant_invoice_number"),
+        # One invoice per quote; a double submit used to create two.
+        Index("uq_invoice_quote", "quote_id", unique=True),
         CheckConstraint("subtotal_cents >= 0", name="ck_invoice_subtotal_cents_non_negative"),
         CheckConstraint("tax_cents >= 0", name="ck_invoice_tax_cents_non_negative"),
         CheckConstraint("total_cents >= 0", name="ck_invoice_total_cents_non_negative"),
@@ -1262,6 +1285,24 @@ class CustomerPortalSession(SQLModel, table=True):
     token: str = Field(max_length=64, index=True, unique=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime
+
+class CustomerPortalOtp(SQLModel, table=True):
+    """A one-time code texted to a phone before the mobile-key portal opens.
+
+    The portal used to hand a 30-day session to whoever typed a phone number,
+    which exposed that customer's name, email, addresses and loyalty balance.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    phone: str = Field(max_length=80, index=True)
+    name: str = Field(max_length=300)
+    code_hash: str = Field(max_length=128)
+    attempts: int = Field(default=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+    consumed_at: Optional[datetime] = None
+
 
 class LoyaltyTier(SQLModel, table=True):
     id: int = Field(primary_key=True)  # 1=Bronze 2=Silver 3=Gold 4=Platinum

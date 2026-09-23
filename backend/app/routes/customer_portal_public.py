@@ -1,4 +1,7 @@
 """Public customer self-service portal — no auth headers required."""
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID, uuid4
@@ -7,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
+from ..config import settings
 from ..database import get_session
 from ..dispatch_utils import geocode_address
 from ..limiter import limiter, public_read_limit
@@ -14,10 +18,13 @@ from ..loyalty_utils import _get_tiers, _resolve_tier, _rolling_12m_spend, get_o
 from ..models import (
     Customer,
     CustomerLoyalty,
+    CustomerPortalOtp,
     CustomerPortalSession,
     IntakeJob,
     Tenant,
+    TenantEventLog,
 )
+from .intake_dispatch import create_auto_key_job_from_intake
 
 router = APIRouter(prefix="/v1/public/portal", tags=["customer-portal"])
 
@@ -55,6 +62,11 @@ def _make_token() -> str:
 class LookupBody(BaseModel):
     name: str = Field(..., min_length=1, max_length=300)
     phone: str = Field(..., min_length=6, max_length=80)
+
+
+class VerifyBody(BaseModel):
+    phone: str = Field(..., min_length=6, max_length=80)
+    code: str = Field(..., min_length=4, max_length=12)
 
 
 class LookupResponse(BaseModel):
@@ -113,42 +125,124 @@ class BookResponse(BaseModel):
 # Routes
 # ---------------------------------------------------------------------------
 
-@router.post("/{slug}/lookup", response_model=LookupResponse)
-@limiter.limit("20/minute")
+OTP_TTL_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+OTP_MAX_PER_PHONE_PER_HOUR = 5
+
+
+def _hash_code(tenant_id: UUID, phone: str, code: str) -> str:
+    message = f"{tenant_id}:{phone}:{code}".encode()
+    return hmac.new(settings.jwt_secret.encode(), message, hashlib.sha256).hexdigest()
+
+
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+@router.post("/{slug}/lookup")
+@limiter.limit("5/minute")
 async def portal_lookup(
     request: Request,
     slug: str,
     body: LookupBody,
     session: Session = Depends(get_session),
 ):
-    """Find or create a customer by name+phone; return a portal session token."""
-    tenant = _resolve_tenant(slug, session)
+    """Text a sign-in code to the phone number; /verify exchanges it for a session.
 
-    phone_norm = body.phone.strip()
+    A phone number is not a password: this used to return a 30-day session for
+    whoever typed one, showing that customer's details to anyone.
+    """
+    tenant = _resolve_tenant(slug, session)
+    phone = body.phone.strip()
+
+    if settings.app_env == "production" and not (
+        settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number
+    ):
+        raise HTTPException(status_code=503, detail="Phone sign-in isn't available for this shop yet.")
+
+    now = datetime.now(timezone.utc)
+    recent = session.exec(
+        select(CustomerPortalOtp)
+        .where(CustomerPortalOtp.tenant_id == tenant.id)
+        .where(CustomerPortalOtp.phone == phone)
+        .where(CustomerPortalOtp.created_at >= now - timedelta(hours=1))
+    ).all()
+    if len(recent) >= OTP_MAX_PER_PHONE_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Too many codes sent to this number. Try again later.")
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    session.add(
+        CustomerPortalOtp(
+            tenant_id=tenant.id,
+            phone=phone,
+            name=body.name.strip(),
+            code_hash=_hash_code(tenant.id, phone, code),
+            expires_at=now + timedelta(minutes=OTP_TTL_MINUTES),
+        )
+    )
+    session.commit()
+
+    from ..sms import send_portal_login_code
+
+    send_portal_login_code(session, tenant_id=tenant.id, to_phone=phone, shop_name=tenant.name, code=code)
+    return {"sent": True, "expires_minutes": OTP_TTL_MINUTES}
+
+
+@router.post("/{slug}/verify", response_model=LookupResponse)
+@limiter.limit("10/minute")
+async def portal_verify(
+    request: Request,
+    slug: str,
+    body: VerifyBody,
+    session: Session = Depends(get_session),
+):
+    """Exchange the texted code for a portal session."""
+    tenant = _resolve_tenant(slug, session)
+    phone = body.phone.strip()
+    now = datetime.now(timezone.utc)
+
+    otp = session.exec(
+        select(CustomerPortalOtp)
+        .where(CustomerPortalOtp.tenant_id == tenant.id)
+        .where(CustomerPortalOtp.phone == phone)
+        .where(CustomerPortalOtp.consumed_at.is_(None))  # type: ignore[union-attr]
+        .order_by(CustomerPortalOtp.created_at.desc())  # type: ignore[attr-defined]
+    ).first()
+    if otp is None or _aware(otp.expires_at) < now or otp.attempts >= OTP_MAX_ATTEMPTS:
+        raise HTTPException(status_code=401, detail="That code has expired. Request a new one.")
+
+    otp.attempts += 1
+    if not hmac.compare_digest(otp.code_hash, _hash_code(tenant.id, phone, body.code.strip())):
+        session.add(otp)
+        session.commit()
+        raise HTTPException(status_code=401, detail="That code isn't right. Check the text and try again.")
+
+    otp.consumed_at = now
+    session.add(otp)
 
     customer = session.exec(
         select(Customer)
         .where(Customer.tenant_id == tenant.id)
-        .where(Customer.phone == phone_norm)
+        .where(Customer.phone == phone)
     ).first()
-
     if not customer:
         customer = Customer(
             tenant_id=tenant.id,
-            full_name=body.name.strip(),
-            phone=phone_norm,
+            full_name=otp.name,
+            phone=phone,
         )
         session.add(customer)
         session.flush()
 
     token = _make_token()
-    portal_session = CustomerPortalSession(
-        tenant_id=tenant.id,
-        customer_id=customer.id,
-        token=token,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS),
+    session.add(
+        CustomerPortalSession(
+            tenant_id=tenant.id,
+            customer_id=customer.id,
+            token=token,
+            expires_at=now + timedelta(days=SESSION_TTL_DAYS),
+        )
     )
-    session.add(portal_session)
     session.commit()
 
     return LookupResponse(
@@ -178,6 +272,7 @@ async def portal_profile(
 
     intake_jobs = session.exec(
         select(IntakeJob)
+        .where(IntakeJob.claimed_by_tenant_id == tenant.id)
         .where(IntakeJob.customer_phone == customer.phone)
         .order_by(IntakeJob.created_at.desc())
     ).all()
@@ -253,6 +348,10 @@ async def portal_book(
         description_parts.append(f"Preferred date: {body.preferred_date}")
     description = "\n".join(description_parts) if description_parts else None
 
+    # A booking made through a shop's own portal belongs to that shop. It is recorded as an
+    # intake already claimed by the shop (so the customer's profile can list it) and becomes an
+    # auto-key job in the shop straight away; it never goes to the shared dispatch pool, which
+    # is only for leads that don't belong to any shop yet (``/v1/public/intake``).
     intake_job = IntakeJob(
         customer_name=customer.full_name,
         customer_phone=customer.phone,
@@ -265,10 +364,28 @@ async def portal_book(
         vehicle_year=body.vehicle_year,
         registration_plate=body.registration_plate,
         description=description,
-        status="unclaimed",
+        status="claimed",
         current_ring=1,
+        claimed_by_tenant_id=tenant.id,
+        claimed_at=datetime.now(timezone.utc),
     )
     session.add(intake_job)
+    session.flush()
+    ak_job, _ = create_auto_key_job_from_intake(
+        session, tenant.id, intake_job, title_prefix="Portal booking", lead_source="shop"
+    )
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant.id,
+            actor_email="customer-portal",
+            entity_type="auto_key_job",
+            entity_id=ak_job.id,
+            event_type="portal_booking_received",
+            event_summary=(
+                f"New portal booking #{ak_job.job_number} from {customer.full_name} ({intake_job.job_address})"
+            ),
+        )
+    )
     session.commit()
     session.refresh(intake_job)
 

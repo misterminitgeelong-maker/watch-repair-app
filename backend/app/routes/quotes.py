@@ -396,6 +396,50 @@ def resend_quote(
     )
 
 
+#: Statuses a job can sit in while its quote is with the customer. A decision
+#: only moved jobs out of awaiting_go_ahead before, and only then told staff,
+#: so a job moved to (say) awaiting_quote by hand swallowed the answer silently.
+_PRE_WORK_STATUSES = {"awaiting_quote", "awaiting_go_ahead"}
+
+
+def apply_customer_quote_decision(session: Session, job: RepairJob, decision: str, *, via: str) -> None:
+    """Record a customer's approve/decline on a watch job: always tell staff,
+    and move the job on when it's still waiting on that answer."""
+    approved = decision == "approved"
+    moved = job.status in _PRE_WORK_STATUSES
+    if moved:
+        old_status = job.status
+        job.status = "go_ahead" if approved else "no_go"
+        session.add(job)
+        session.add(
+            JobStatusHistory(
+                tenant_id=job.tenant_id,
+                repair_job_id=job.id,
+                old_status=old_status,
+                new_status=job.status,
+                changed_by_user_id=None,
+                change_note=f"Customer {decision} quote via {via}",
+            )
+        )
+    summary = (
+        f"Customer approved quote for job #{job.job_number}"
+        if approved
+        else f"Customer declined quote for job #{job.job_number} — return watch"
+    )
+    if not moved:
+        summary += f" (job left as {job.status.replace('_', ' ')} — check it)"
+    session.add(
+        TenantEventLog(
+            tenant_id=job.tenant_id,
+            actor_user_id=None,
+            entity_type="repair_job",
+            entity_id=job.id,
+            event_type="quote_approved" if approved else "quote_declined",
+            event_summary=summary,
+        )
+    )
+
+
 @router.post("/public/quotes/{token}/decision", response_model=QuoteDecisionResponse)
 @limiter.limit(get_public_quote_decision_rate_limit)
 def quote_decision(
@@ -433,34 +477,8 @@ def quote_decision(
 
     # Update job status and log event for staff bump
     job = get_tenant_repair_job(session, quote.repair_job_id, quote.tenant_id)
-    if job and job.status == "awaiting_go_ahead":
-        job.status = "go_ahead" if payload.decision == "approved" else "no_go"
-        session.add(job)
-        session.add(
-            JobStatusHistory(
-                tenant_id=job.tenant_id,
-                repair_job_id=job.id,
-                old_status="awaiting_go_ahead",
-                new_status=job.status,
-                changed_by_user_id=None,
-                change_note=f"Customer {payload.decision} quote",
-            )
-        )
-        event_type = "quote_approved" if payload.decision == "approved" else "quote_declined"
-        event_summary = (
-            f"Customer approved quote for job #{job.job_number}" if payload.decision == "approved"
-            else f"Customer declined quote for job #{job.job_number} — return watch"
-        )
-        session.add(
-            TenantEventLog(
-                tenant_id=job.tenant_id,
-                actor_user_id=None,
-                entity_type="repair_job",
-                entity_id=job.id,
-                event_type=event_type,
-                event_summary=event_summary,
-            )
-        )
+    if job:
+        apply_customer_quote_decision(session, job, payload.decision, via="online link")
 
     session.commit()
 
@@ -493,7 +511,10 @@ def get_public_quote(request: Request, token: str, session: Session = Depends(ge
             session.commit()
         raise HTTPException(status_code=410, detail="Quote approval link has expired")
     items = session.exec(select(QuoteLineItem).where(QuoteLineItem.quote_id == quote.id)).all()
+    tenant = session.get(Tenant, quote.tenant_id)
     return {
+        "shop_name": tenant.name if tenant else None,
+        "shop_phone": tenant.shop_phone if tenant else None,
         "id": quote.id,
         "status": quote.status,
         "subtotal_cents": quote.subtotal_cents,

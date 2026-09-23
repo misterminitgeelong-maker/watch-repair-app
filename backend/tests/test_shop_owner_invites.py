@@ -4,7 +4,7 @@ signed in."""
 
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 _TEST_DB = Path(__file__).with_name(f"test_shop_owner_invites_{uuid4().hex}.db")
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.as_posix()}")
@@ -345,3 +345,52 @@ def test_hq_can_clear_shop_contact_and_invite_falls_back_to_owner():
         tenant = session.get(Tenant, _UUID(ctx["tenant_id"]))
         assert tenant.shop_email is None
         assert tenant.shop_phone is None
+
+
+def test_completed_invite_drops_hq_access_of_the_copied_login():
+    """The provisioned owner row starts as HQ's copied login (with HQ access);
+    once the shop claims it, the new owner must not inherit HQ admin."""
+    suffix = uuid4().hex[:8]
+    ctx = _setup_shop(suffix)
+    from app.models import ParentAccountUser
+
+    def grants_for_shop_owner() -> list:
+        with Session(engine) as session:
+            owner = session.exec(
+                select(User).where(User.tenant_id == UUID(ctx["tenant_id"])).where(User.role == "owner")
+            ).one()
+            return session.exec(select(ParentAccountUser).where(ParentAccountUser.user_id == owner.id)).all()
+
+    assert len(grants_for_shop_owner()) == 1  # the copied HQ login carries HQ access
+
+    invite = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"]).json()
+    token = invite["invite_url"].rsplit("/", 1)[-1]
+    new_email = f"claimed-{suffix}@test.local"
+    done = client.post(
+        f"/v1/public/shop-invite/{token}/complete",
+        json={"full_name": "Real Owner", "email": new_email, "password": "brandnewpass1!"},
+    )
+    assert done.status_code == 200, done.text
+
+    assert grants_for_shop_owner() == []
+
+
+def test_hq_cannot_invite_over_a_shop_that_runs_its_own_login():
+    suffix = uuid4().hex[:8]
+    from network_link_helpers import link_and_accept
+
+    hq_slug, hq_email = f"hq-own-{suffix}", f"hq-own-{suffix}@test.local"
+    _bootstrap(hq_slug, hq_email, "pro")
+    hq_h = _headers(_login(hq_slug, hq_email))
+    shop_slug, shop_email = f"own-{suffix}", f"own-{suffix}@test.local"
+    shop = _bootstrap(shop_slug, shop_email, "basic_auto_key")
+    _login(shop_slug, shop_email)  # the shop's owner uses their own login
+    linked = link_and_accept(
+        client,
+        "/v1/parent-accounts/me/link-tenant",
+        headers=hq_h,
+        json={"tenant_slug": shop_slug, "owner_email": shop_email},
+    )
+    assert linked.status_code == 200, linked.text
+    res = client.post(f"/v1/parent-accounts/me/sites/{shop['tenant_id']}/invite", headers=hq_h)
+    assert res.status_code == 409, res.text

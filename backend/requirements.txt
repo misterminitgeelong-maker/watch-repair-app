@@ -1,4 +1,4 @@
-fastapi==0.115.0
+fastapi==0.141.1
 uvicorn[standard]==0.30.6
 sqlmodel==0.0.37
 alembic==1.13.2
@@ -8,7 +8,7 @@ PyJWT>=2.10,<3
 bcrypt>=4.0.0
 pydantic-settings==2.5.2
 psycopg[binary]>=3.3,<3.4
-python-multipart==0.0.9
+python-multipart==0.0.32
 httpx==0.27.2
 # Optional for scraping (pip install playwright && playwright install chromium):
 # playwright>=1.40.0

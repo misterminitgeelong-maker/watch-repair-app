@@ -48,6 +48,7 @@ import { HqReturnBanner } from '@/lib/hqEnterShop'
 import { Search } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 import OfflineQueueBanner from './OfflineQueueBanner'
+import NetworkLinkRequestsBanner from './NetworkLinkRequestsBanner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 function SubscriptionBanner({
@@ -1009,6 +1010,7 @@ export default function AppShell() {
             safe-area inset, so scrolled-to-bottom content/buttons never sit
             underneath it. Desktop has no tab bar, so pb-7 is enough there. */}
         <main className={`app-shell-main min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7 pb-[calc(var(--ms-mobile-bar-h)+1rem)] md:pb-7 ${tourMode === 'guided' ? 'pb-[calc(var(--ms-mobile-bar-h)+5rem)]' : ''}`}>
+          <NetworkLinkRequestsBanner />
           {availableSites.length > 1 && !demoModeEnabled && (
             <div className="print-hide mb-4 hidden items-center justify-end gap-2 md:flex">
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>

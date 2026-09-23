@@ -305,6 +305,22 @@ def grant_parent_role(
     return row
 
 
+def grant_hq_owner_clone_access(session: Session, *, parent: ParentAccount, user: User) -> None:
+    """Keep the network owner's copied login inside a provisioned shop working.
+
+    Provisioning gives a new shop an owner row carrying the HQ owner's email
+    and password until the shop claims it through an invite. That login used
+    to reach HQ through an ``owner_email`` match; it now gets an explicit
+    grant, and only when it really is the network owner's address on a shop
+    this network provisioned.
+    """
+    if (user.email or "").strip().lower() != (parent.owner_email or "").strip().lower():
+        return
+    if site_for_tenant_in_parent(session, parent.id, user.tenant_id) is None:
+        return
+    grant_parent_role(session, parent_id=parent.id, user_id=user.id, role=PARENT_ROLE_HQ_ADMIN)
+
+
 def _hq_site_parent_ids_for_tenant(session: Session, tenant_id: UUID) -> list[UUID]:
     with without_scope(session):
         return list(
@@ -330,11 +346,15 @@ def parents_for_user(session: Session, user: User) -> list[ParentAccount]:
     """Networks this user can act on, in a fixed order.
 
     1. explicit access rows (oldest grant first);
-    2. networks whose HQ site is the user's own tenant;
-    3. for logins with neither, the parent account(s) whose ``owner_email``
-       matches — that is what keeps the HQ owner's cloned credentials inside
-       a provisioned shop working, and it stops matching the moment the shop
-       completes its invite and takes its own email.
+    2. networks whose HQ site is the user's own tenant.
+
+    Matching on ``ParentAccount.owner_email`` used to be a third route in.
+    Email is never verified and is only unique per shop, so anyone could sign
+    up — or create a staff login in any linked shop — with the network owner's
+    address and inherit HQ admin. Access is now granted explicitly: the
+    20260923a migration backfilled a grant for every login that had it through
+    the email match, and provisioning grants the HQ owner's shop logins as it
+    creates them.
     """
     with without_scope(session):
         explicit = session.exec(
@@ -353,14 +373,9 @@ def parents_for_user(session: Session, user: User) -> list[ParentAccount]:
             if hq_parent_ids and user.is_active
             else []
         )
-        by_email = session.exec(
-            select(ParentAccount)
-            .where(ParentAccount.owner_email == user.email)
-            .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
-        ).all()
     ordered: list[ParentAccount] = []
     seen: set[UUID] = set()
-    for parent in list(explicit) + list(via_hq_site) + list(by_email):
+    for parent in list(explicit) + list(via_hq_site):
         if parent.id in seen:
             continue
         seen.add(parent.id)
@@ -372,8 +387,7 @@ def parent_role_for_user(session: Session, parent: ParentAccount, user: User) ->
     """The user's network-level role, or None if they have no access.
 
     Explicit grant first; then the implicit role for logins inside the
-    network's HQ tenant; then ``owner_email`` as the account owner, so the
-    one email that always had full access keeps it.
+    network's HQ tenant. No email match — see parents_for_user.
     """
     row = parent_user_row(session, parent.id, user.id)
     if row:
@@ -382,8 +396,6 @@ def parent_role_for_user(session: Session, parent: ParentAccount, user: User) ->
         return None
     if parent.id in _hq_site_parent_ids_for_tenant(session, user.tenant_id):
         return implicit_hq_role_for_tenant_user(user)
-    if parent.owner_email == user.email:
-        return PARENT_ROLE_HQ_ADMIN
     return None
 
 

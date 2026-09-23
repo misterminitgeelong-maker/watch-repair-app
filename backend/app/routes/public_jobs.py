@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
@@ -183,6 +184,13 @@ def _customer_intake_title(customer_full_name: str, make: str | None, year: int 
     return f"{first} - {car}" if car else f"{first} - Job"
 
 
+def _public_shop(tenant: Tenant | None) -> dict:
+    """The shop details a customer-facing page shows."""
+    if tenant is None:
+        return {"name": None, "phone": None, "email": None}
+    return {"name": tenant.name, "phone": tenant.shop_phone, "email": tenant.shop_email}
+
+
 @router.get("/jobs/{status_token}")
 @limiter.limit(get_public_read_rate_limit)
 def get_public_job_status(request: Request, status_token: str, session: Session = Depends(get_session)):
@@ -197,15 +205,19 @@ def get_public_job_status(request: Request, status_token: str, session: Session 
         .order_by(JobStatusHistory.created_at)
     ).all()
 
+    tenant = session.get(Tenant, job.tenant_id)
+    # The job description and status-change notes are written by staff for
+    # staff ("quote the hand set, wait for go-ahead"); they are not shown to
+    # the customer. The shop's own details are, so they know who to call.
     return {
         "job_number": job.job_number,
         "status": job.status,
         "title": job.title,
-        "description": job.description,
         "priority": job.priority,
         "pre_quote_cents": job.pre_quote_cents,
         "created_at": job.created_at,
         "collection_date": job.collection_date.isoformat() if job.collection_date else None,
+        "shop": _public_shop(tenant),
         "watch": {
             "brand": watch.brand if watch else None,
             "model": watch.model if watch else None,
@@ -215,7 +227,6 @@ def get_public_job_status(request: Request, status_token: str, session: Session 
             {
                 "old_status": entry.old_status,
                 "new_status": entry.new_status,
-                "change_note": entry.change_note,
                 "created_at": entry.created_at,
             }
             for entry in history
@@ -287,7 +298,6 @@ def get_public_shoe_job_status(request: Request, status_token: str, session: Ses
             {
                 "old_status": h.old_status,
                 "new_status": h.new_status,
-                "change_note": h.change_note,
                 "created_at": isoformat_z_utc(naive_utc_from_any(h.created_at)),
             }
             for h in history
@@ -393,20 +403,19 @@ def decide_shoe_quote(
         raise HTTPException(status_code=422, detail="decision must be 'approved' or 'declined'")
 
     job.quote_status = decision
-    if decision == "approved":
-        job.status = "go_ahead"
-    else:
-        job.status = "no_go"
+    # Only move a job that is still waiting on this answer: the decision used
+    # to overwrite whatever status the bench had put the job in.
+    if job.status in ("awaiting_quote", "awaiting_go_ahead"):
+        old_status = job.status
+        job.status = "go_ahead" if decision == "approved" else "no_go"
+        session.add(ShoeJobStatusHistory(
+            tenant_id=job.tenant_id,
+            shoe_repair_job_id=job.id,
+            old_status=old_status,
+            new_status=job.status,
+            change_note=f"Customer {decision} quote via online link",
+        ))
     session.add(job)
-
-    # Status history
-    session.add(ShoeJobStatusHistory(
-        tenant_id=job.tenant_id,
-        shoe_repair_job_id=job.id,
-        old_status="awaiting_go_ahead",
-        new_status=job.status,
-        change_note=f"Customer {decision} quote via online link",
-    ))
 
     # Inbox event
     event_type = "quote_approved" if decision == "approved" else "quote_declined"
@@ -537,8 +546,12 @@ def get_public_auto_key_intake(request: Request, token: str, session: Session = 
     job = session.exec(
         select(AutoKeyJob).where(AutoKeyJob.customer_intake_token == token)
     ).first()
-    if not job or job.status != "awaiting_customer_details":
+    if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
+    if job.status != "awaiting_customer_details":
+        # Reopening the link after submitting is normal (re-tapping the SMS,
+        # refreshing). Say it's done rather than "invalid link".
+        raise HTTPException(status_code=410, detail="already_submitted")
 
     tenant = session.get(Tenant, job.tenant_id)
     customer = session.get(Customer, job.customer_id)
@@ -582,7 +595,9 @@ async def upload_public_auto_key_intake_photos(
         raise HTTPException(status_code=400, detail="Please attach at most two photos.")
 
     existing = session.exec(
-        select(Attachment).where(Attachment.auto_key_job_id == job.id)
+        select(Attachment)
+        .where(Attachment.auto_key_job_id == job.id)
+        .where(Attachment.label == CUSTOMER_KEY_PHOTO_LABEL)
     ).all()
     if len(existing) + len(incoming) > MAX_CUSTOMER_KEY_PHOTOS:
         raise HTTPException(status_code=400, detail="Please attach at most two photos.")
@@ -685,7 +700,8 @@ def submit_public_auto_key_intake(
         job.vehicle_model,
     )
     job.status = "awaiting_quote"
-    job.customer_intake_token = None
+    # The token stays so a reopened link can say "already received"; every
+    # intake endpoint refuses once the job has left awaiting_customer_details.
     session.add(job)
     session.commit()
     session.refresh(job)
@@ -848,7 +864,10 @@ def create_public_auto_key_invoice_checkout(request: Request, token: str, sessio
         },
         "success_url": f"{base}/mobile-invoice/{token}?paid=1&session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{base}/mobile-invoice/{token}?canceled=1",
-        "payment_intent_data": {"transfer_data": {"destination": tenant.stripe_connect_account_id.strip()}},
+        # Charged on the shop's own connected account (a direct charge): the shop is the merchant
+        # of record and Stripe's processing fee comes out of the shop's balance, not the platform's.
+        # The completed event arrives through the Connect webhook endpoint.
+        "stripe_account": tenant.stripe_connect_account_id.strip(),
     }
 
     customer = session.get(Customer, job.customer_id)
@@ -1109,8 +1128,10 @@ def _collect_customer_jobs(
 ) -> CustomerPortalLookupResponse:
     """Cross-tenant job lookup grouped by shop. OTP gate can wrap this later."""
     normalized = (email or "").strip().lower()
+    # Exact match on the address. ilike() on raw input treated % and _ as
+    # wildcards, so "%@%" matched every customer on the platform.
     customers = session.exec(
-        select(Customer).where(Customer.email.ilike(normalized))  # type: ignore[attr-defined]
+        select(Customer).where(func.lower(Customer.email) == normalized)
     ).all()
     if not customers:
         return CustomerPortalLookupResponse(email=normalized, shops=[])
@@ -1205,23 +1226,24 @@ class CustomerLookupRequest(SQLModel):
     include_history: bool = False
 
 
-@router.post("/customer-lookup", response_model=CustomerPortalLookupResponse)
+@router.post("/customer-lookup")
 @limiter.limit(get_public_write_rate_limit)
 def customer_lookup(
     request: Request,
     payload: CustomerLookupRequest,
-    include_history: bool = Query(default=False),
     session: Session = Depends(get_session),
 ):
-    """Return all jobs for a customer by email address (cross-tenant, grouped by shop)."""
+    """Email the customer a private link to their repairs.
+
+    This used to return every job for whatever address was typed, across
+    every shop, with the links that approve quotes and pay invoices. Owning
+    the inbox is now the proof: jobs are only shown behind the emailed link.
+    """
     email = (payload.email or "").strip().lower()
     if not email or "@" not in email:
         raise HTTPException(status_code=422, detail="Please enter a valid email address.")
-    return _collect_customer_jobs(
-        session,
-        email,
-        include_history=include_history or payload.include_history,
-    )
+    _email_portal_link(session, email)
+    return {"sent": True}
 
 
 # ── Customer portal sessions ─────────────────────────────────────────────────
@@ -1233,20 +1255,17 @@ class PortalSessionRequest(SQLModel):
     email: str
 
 
-@router.post("/portal/create-session")
-@limiter.limit(get_public_write_rate_limit)
-def create_portal_session(request: Request, payload: PortalSessionRequest, session: Session = Depends(get_session)):
-    """Create a 30-day bookmarkable portal session for the given email."""
-    email = (payload.email or "").strip().lower()
-    if not email or "@" not in email:
-        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+def _email_portal_link(session: Session, email: str) -> None:
+    """Send a 30-day portal link to ``email`` if any shop has it on file.
 
-    # Check at least one customer exists
+    Silent when there is no match, so the response never says whether an
+    address is a customer anywhere.
+    """
     customer = session.exec(
-        select(Customer).where(Customer.email.ilike(email))  # type: ignore[attr-defined]
+        select(Customer).where(func.lower(Customer.email) == email)
     ).first()
     if not customer:
-        raise HTTPException(status_code=404, detail="No repairs found for this email address.")
+        return
 
     portal_session = PortalSession(
         email=email,
@@ -1268,7 +1287,20 @@ def create_portal_session(request: Request, payload: PortalSessionRequest, sessi
         tenant_id=customer.tenant_id,
     )
 
-    return {"session_token": portal_session.token, "portal_url": portal_url, "expires_days": _PORTAL_SESSION_TTL_DAYS}
+
+@router.post("/portal/create-session")
+@limiter.limit(get_public_write_rate_limit)
+def create_portal_session(request: Request, payload: PortalSessionRequest, session: Session = Depends(get_session)):
+    """Email a 30-day bookmarkable portal link to the given address.
+
+    The link is only ever delivered by email — returning it here as well meant
+    anyone could open a session for any customer's address.
+    """
+    email = (payload.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+    _email_portal_link(session, email)
+    return {"sent": True, "expires_days": _PORTAL_SESSION_TTL_DAYS}
 
 
 @router.get("/portal/session/{token}", response_model=CustomerPortalLookupResponse)

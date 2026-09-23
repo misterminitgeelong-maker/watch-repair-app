@@ -62,6 +62,17 @@ export default function StatusPage() {
           <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
             Job #{job.job_number} • {watchTitle}
           </p>
+          {job.shop?.name && (
+            <p className="text-sm mt-1" style={{ color: 'var(--ms-text-mid)' }}>
+              {job.shop.name}
+              {job.shop.phone && (
+                <>
+                  {' · '}
+                  <a href={`tel:${job.shop.phone}`} style={{ color: 'var(--ms-accent)' }}>{job.shop.phone}</a>
+                </>
+              )}
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
@@ -75,9 +86,6 @@ export default function StatusPage() {
               <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{formatCents(job.pre_quote_cents || 0)}</p>
             </div>
           </div>
-          {job.description && (
-            <p className="text-sm mt-3" style={{ color: 'var(--ms-text-mid)' }}>{job.description}</p>
-          )}
           {job.collection_date && (
             <div className="flex items-center gap-2 text-sm mt-3 pt-3" style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text-mid)' }}>
               <span style={{ color: 'var(--ms-text-muted)' }}>Expected ready:</span>
@@ -106,7 +114,6 @@ export default function StatusPage() {
               <div key={`${entry.created_at}-${idx}`} className="flex items-start justify-between gap-4 text-sm">
                 <div>
                   <p className="font-medium capitalize" style={{ color: 'var(--ms-text)' }}>{readableStatus(entry.new_status)}</p>
-                  {entry.change_note && <p style={{ color: 'var(--ms-text-mid)' }}>{entry.change_note}</p>}
                 </div>
                 <span className="text-xs whitespace-nowrap" style={{ color: 'var(--ms-text-muted)' }}>{formatDate(entry.created_at)}</span>
               </div>
