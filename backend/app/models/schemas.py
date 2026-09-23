@@ -360,6 +360,7 @@ class ParentLeadIngestConfigResponse(SQLModel):
     parent_account_id: UUID
     mobile_lead_ingest_public_id: Optional[UUID] = None
     mobile_lead_webhook_secret_configured: bool = False
+    inbound_email_secret_configured: bool = False
     mobile_lead_default_tenant_id: Optional[UUID] = None
     mobile_lead_escalation_tenant_id: Optional[UUID] = None
     mobile_lead_offer_timeout_minutes: int = 30

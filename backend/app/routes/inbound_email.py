@@ -1,8 +1,9 @@
 """Inbound email capture: BCC'd enquiry-form emails → stored lead + HQ inbox alert.
 
 Public endpoint receives POSTs from an inbound-parse provider (SendGrid Inbound
-Parse). The provider cannot send custom headers, so the parent account's
-existing website-lead shared secret is passed as a ``key`` query parameter.
+Parse). The provider cannot send custom headers, so a dedicated inbound-email
+secret is passed as HTTP basic auth credentials in the configured URL (see
+``receive_inbound_email``).
 
 Capture-and-triage v1: no field parsing — the email is stored whole and
 surfaced in the Minit HQ inbox so a person can create the job. Auto-parsing
@@ -14,6 +15,9 @@ the deployed fastapi 0.115 + pydantic >= 2.12 combination (unresolvable
 ``ForwardRef('UUID')`` TypeAdapter).
 """
 
+import base64
+import binascii
+import logging
 import re
 from email import policy
 from email.parser import BytesParser
@@ -51,6 +55,8 @@ from ..models import (
 from ..security import verify_password
 from ..services.mobile_lead_dispatch import _escalation_tenant_id, _next_auto_key_job_number
 from .parent_accounts import _parent_for_read, _parent_for_write
+
+logger = logging.getLogger(__name__)
 
 public_router = APIRouter(prefix="/v1/public", tags=["inbound-email"])
 
@@ -108,27 +114,70 @@ def _parse_raw_mime(raw: str) -> dict[str, str | None]:
     }
 
 
+def _presented_inbound_secret(request: Request) -> str | None:
+    """Secret from HTTP basic auth (password part) or ``X-Inbound-Email-Secret``.
+
+    SendGrid Inbound Parse can't set custom headers, but it does honour
+    credentials in the webhook URL (``https://inbound:<secret>@host/...``),
+    which its HTTP client sends as an ``Authorization: Basic`` header — so the
+    secret never appears in the request line or in access logs.
+    """
+    header = (request.headers.get("x-inbound-email-secret") or "").strip()
+    if header:
+        return header
+    auth = request.headers.get("authorization") or ""
+    scheme, _, value = auth.partition(" ")
+    if scheme.lower() == "basic" and value:
+        try:
+            decoded = base64.b64decode(value.strip(), validate=True).decode("utf-8")
+        except (binascii.Error, UnicodeDecodeError):
+            return None
+        _user, sep, password = decoded.partition(":")
+        if sep and password:
+            return password
+    return None
+
+
 @public_router.post("/inbound-email/{ingest_public_id}")
 @limiter.limit("60/minute")
 async def receive_inbound_email(
     request: Request,
     ingest_public_id: UUID,
-    key: str = Query(..., min_length=16, max_length=512),
+    key: str | None = Query(default=None, max_length=512, include_in_schema=False),
     session: Session = Depends(unscoped_session),
 ):
     """Accept an inbound-parse POST (SendGrid) for a BCC'd website enquiry email.
 
     Configure the parse webhook URL as
-    ``/v1/public/inbound-email/{ingest_public_id}?key=<shared secret>`` using the
-    same secret as the website lead feed (Parent account → Website lead feed).
+    ``https://inbound:<inbound email secret>@<api host>/v1/public/inbound-email/{ingest_public_id}``
+    (HQ → Website lead routing → Inbound email). The secret is its own secret,
+    not the website lead feed's, and travels as basic auth rather than in the URL.
+
+    Legacy: until an inbound-email secret has been set, ``?key=<lead feed secret>``
+    is still accepted so an existing SendGrid setup keeps working. Once the new
+    secret is set, the query-string key is refused.
     """
     parent = session.exec(
         select(ParentAccount).where(ParentAccount.mobile_lead_ingest_public_id == ingest_public_id)
     ).first()
-    if not parent or not parent.mobile_lead_webhook_secret_hash:
+    if not parent:
         raise HTTPException(status_code=404, detail="Unknown ingest endpoint")
-    if not verify_password(key, parent.mobile_lead_webhook_secret_hash):
-        raise HTTPException(status_code=401, detail="Invalid key")
+    presented = _presented_inbound_secret(request)
+    if parent.inbound_email_secret_hash:
+        if not presented or not verify_password(presented, parent.inbound_email_secret_hash):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+    elif parent.mobile_lead_webhook_secret_hash and key and len(key) >= 16:
+        if not verify_password(key, parent.mobile_lead_webhook_secret_hash):
+            raise HTTPException(status_code=401, detail="Invalid key")
+        logger.warning(
+            "inbound email for parent %s authenticated with legacy ?key= query secret; "
+            "set a dedicated inbound email secret and move it to basic auth",
+            parent.id,
+        )
+    elif not parent.mobile_lead_webhook_secret_hash:
+        raise HTTPException(status_code=404, detail="Unknown ingest endpoint")
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     form = await request.form()
 

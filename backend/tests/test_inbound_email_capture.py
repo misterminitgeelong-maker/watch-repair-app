@@ -202,3 +202,56 @@ def test_other_parent_cannot_see_emails():
     )
     assert stranger.status_code == 404
     assert client.get("/v1/parent-accounts/me/inbound-emails", headers=other["headers"]).json() == []
+
+
+# ── HQ3: dedicated inbound secret, sent as basic auth instead of in the URL ──
+
+INBOUND_SECRET = "a-different-inbound-only-secret-456"
+
+
+def _post_email_basic(ingest_id: str, secret: str, *, query_key: str | None = None):
+    url = f"/v1/public/inbound-email/{ingest_id}"
+    if query_key:
+        url += f"?key={query_key}"
+    return client.post(
+        url,
+        auth=("inbound", secret),
+        data={
+            "from": "Web Enquiry <noreply@misterminit.example>",
+            "subject": f"Enquiry {uuid4().hex[:6]}",
+            "text": "Suburb: Chadstone",
+            "headers": f"Message-ID: <{uuid4().hex}@misterminit.example>",
+        },
+    )
+
+
+def test_hq3_dedicated_inbound_secret_via_basic_auth():
+    ctx = _setup_parent_with_ingest()
+    res = client.put(
+        "/v1/parent-accounts/me/inbound-email/secret",
+        headers=ctx["headers"],
+        json={"webhook_secret": INBOUND_SECRET},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["inbound_email_secret_configured"] is True
+
+    ok = _post_email_basic(ctx["ingest_id"], INBOUND_SECRET)
+    assert ok.status_code == 200, ok.text
+
+    # The website lead feed secret no longer opens the inbound endpoint…
+    assert _post_email_basic(ctx["ingest_id"], SECRET).status_code == 401
+    # …and neither does the old query-string key once the new secret is set.
+    assert _post_email(ctx["ingest_id"]).status_code == 401
+    # Header form works too.
+    hdr = client.post(
+        f"/v1/public/inbound-email/{ctx['ingest_id']}",
+        headers={"X-Inbound-Email-Secret": INBOUND_SECRET},
+        data={"subject": "hdr", "text": "x", "headers": f"Message-ID: <{uuid4().hex}@x>"},
+    )
+    assert hdr.status_code == 200, hdr.text
+
+
+def test_hq3_missing_credentials_rejected():
+    ctx = _setup_parent_with_ingest()
+    res = client.post(f"/v1/public/inbound-email/{ctx['ingest_id']}", data={"subject": "x"})
+    assert res.status_code == 401

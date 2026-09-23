@@ -2234,6 +2234,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/auto-key-intake/{token}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Public Auto Key Intake Photos
+         * @description Customer key photos from the booking-request form. Attached to the existing job.
+         */
+        post: operations["upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/auto-key-intake/{token}/submit": {
         parameters: {
             query?: never;
@@ -2555,8 +2575,13 @@ export interface paths {
          * @description Accept an inbound-parse POST (SendGrid) for a BCC'd website enquiry email.
          *
          *     Configure the parse webhook URL as
-         *     ``/v1/public/inbound-email/{ingest_public_id}?key=<shared secret>`` using the
-         *     same secret as the website lead feed (Parent account → Website lead feed).
+         *     ``https://inbound:<inbound email secret>@<api host>/v1/public/inbound-email/{ingest_public_id}``
+         *     (HQ → Website lead routing → Inbound email). The secret is its own secret,
+         *     not the website lead feed's, and travels as basic auth rather than in the URL.
+         *
+         *     Legacy: until an inbound-email secret has been set, ``?key=<lead feed secret>``
+         *     is still accepted so an existing SendGrid setup keeps working. Once the new
+         *     secret is set, the query-string key is refused.
          */
         post: operations["receive_inbound_email_v1_public_inbound_email__ingest_public_id__post"];
         delete?: never;
@@ -4227,6 +4252,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/inbound-email/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Inbound Email Secret
+         * @description Set the inbound-parse (BCC email) secret. Separate from the website lead feed secret.
+         */
+        put: operations["set_inbound_email_secret_v1_parent_accounts_me_inbound_email_secret_put"];
+        post?: never;
+        /** Clear Inbound Email Secret */
+        delete: operations["clear_inbound_email_secret_v1_parent_accounts_me_inbound_email_secret_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/mobile-lead-ingest/default-tenant": {
         parameters: {
             query?: never;
@@ -4652,7 +4698,7 @@ export interface paths {
         head?: never;
         /**
          * Update Linked Site
-         * @description Change what a site *is* in the network without touching its plan.
+         * @description Change a site's network role, region, or shop contact details (email/phone).
          */
         patch: operations["update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch"];
         trace?: never;
@@ -7230,6 +7276,11 @@ export interface components {
              */
             file: string;
         };
+        /** Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post */
+        Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post: {
+            /** Files */
+            files: string[];
+        };
         /** Body_upload_vswt_files_v1_reports_vswt_upload_post */
         Body_upload_vswt_files_v1_reports_vswt_upload_post: {
             /** Files */
@@ -9014,6 +9065,10 @@ export interface components {
              * @default false
              */
             owner_is_shared_hq_login: boolean;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Shop Phone */
+            shop_phone?: string | null;
         };
         /** ParentAccountSiteUpdateRequest */
         ParentAccountSiteUpdateRequest: {
@@ -9026,6 +9081,10 @@ export interface components {
              * @default false
              */
             clear_region: boolean;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Shop Phone */
+            shop_phone?: string | null;
         };
         /** ParentAccountSitesPageResponse */
         ParentAccountSitesPageResponse: {
@@ -9291,6 +9350,11 @@ export interface components {
              * @default false
              */
             mobile_lead_webhook_secret_configured: boolean;
+            /**
+             * Inbound Email Secret Configured
+             * @default false
+             */
+            inbound_email_secret_configured: boolean;
             /** Mobile Lead Default Tenant Id */
             mobile_lead_default_tenant_id?: string | null;
             /** Mobile Lead Escalation Tenant Id */
@@ -10059,6 +10123,10 @@ export interface components {
             chip_type?: string | null;
             /** Tech Notes */
             tech_notes?: string | null;
+            /** Key Photo Data */
+            key_photo_data?: string | null;
+            /** Extra Key Photo Data */
+            extra_key_photo_data?: string | null;
         };
         /** PublicUser */
         PublicUser: {
@@ -10137,7 +10205,7 @@ export interface components {
              * Item Type
              * @enum {string}
              */
-            item_type: "labor" | "part" | "fee";
+            item_type: "labor" | "part" | "fee" | "discount";
             /** Description */
             description: string;
             /** Quantity */
@@ -16694,6 +16762,41 @@ export interface operations {
             };
         };
     };
+    upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_public_auto_key_intake_v1_public_auto_key_intake__token__submit_post: {
         parameters: {
             query?: never;
@@ -17234,9 +17337,7 @@ export interface operations {
     };
     receive_inbound_email_v1_public_inbound_email__ingest_public_id__post: {
         parameters: {
-            query: {
-                key: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 ingest_public_id: string;
@@ -20589,6 +20690,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentAccountSummaryResponse"];
+                };
+            };
+        };
+    };
+    set_inbound_email_secret_v1_parent_accounts_me_inbound_email_secret_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParentMobileLeadWebhookSecretBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLeadIngestConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_inbound_email_secret_v1_parent_accounts_me_inbound_email_secret_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLeadIngestConfigResponse"];
                 };
             };
         };

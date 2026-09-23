@@ -270,6 +270,7 @@ def _lead_ingest_config(parent: ParentAccount) -> ParentLeadIngestConfigResponse
         parent_account_id=parent.id,
         mobile_lead_ingest_public_id=parent.mobile_lead_ingest_public_id,
         mobile_lead_webhook_secret_configured=bool(parent.mobile_lead_webhook_secret_hash),
+        inbound_email_secret_configured=bool(parent.inbound_email_secret_hash),
         mobile_lead_default_tenant_id=parent.mobile_lead_default_tenant_id,
         mobile_lead_escalation_tenant_id=parent.mobile_lead_escalation_tenant_id,
         mobile_lead_offer_timeout_minutes=int(parent.mobile_lead_offer_timeout_minutes or 30),
@@ -504,6 +505,54 @@ def clear_mobile_lead_webhook_secret(
     session.commit()
     session.refresh(parent)
     return _to_summary(session, parent)
+
+
+@router.put("/me/inbound-email/secret", response_model=ParentLeadIngestConfigResponse)
+def set_inbound_email_secret(
+    body: ParentMobileLeadWebhookSecretBody,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Set the inbound-parse (BCC email) secret. Separate from the website lead feed secret."""
+    current_user, parent = _parent_for_write(session, auth)
+    if parent.mobile_lead_ingest_public_id is None:
+        parent.mobile_lead_ingest_public_id = uuid4()
+    parent.inbound_email_secret_hash = hash_password(body.webhook_secret.strip())
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=None,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="inbound_email_secret_set",
+        event_summary="Set inbound email webhook secret",
+    )
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return _lead_ingest_config(parent)
+
+
+@router.delete("/me/inbound-email/secret", response_model=ParentLeadIngestConfigResponse)
+def clear_inbound_email_secret(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    current_user, parent = _parent_for_write(session, auth)
+    parent.inbound_email_secret_hash = None
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=None,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="inbound_email_secret_cleared",
+        event_summary="Cleared inbound email webhook secret",
+    )
+    session.add(parent)
+    session.commit()
+    session.refresh(parent)
+    return _lead_ingest_config(parent)
 
 
 @router.put("/me/mobile-lead-ingest/default-tenant", response_model=ParentAccountSummaryResponse)

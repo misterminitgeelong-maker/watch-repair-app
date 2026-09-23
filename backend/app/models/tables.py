@@ -109,6 +109,10 @@ class ParentAccount(SQLModel, table=True):
     # Website → Mobile Services auto-routing (multi-site): public UUID for POST URL, secret verifies caller
     mobile_lead_ingest_public_id: Optional[UUID] = Field(default=None, index=True, unique=True)
     mobile_lead_webhook_secret_hash: Optional[str] = None
+    #: Separate secret for the SendGrid inbound-parse webhook (BCC'd enquiry
+    #: emails). Sent as HTTP basic auth, never in the URL, and distinct from the
+    #: website lead feed secret so one leaking doesn't expose the other.
+    inbound_email_secret_hash: Optional[str] = None
     mobile_lead_default_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
     #: Final fallback when operators do not quote in time (typically HQ for manual quoting).
     mobile_lead_escalation_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")

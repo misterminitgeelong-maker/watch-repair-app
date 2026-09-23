@@ -342,6 +342,7 @@ export interface ParentLeadIngestConfig {
   parent_account_id: string
   mobile_lead_ingest_public_id?: string | null
   mobile_lead_webhook_secret_configured?: boolean
+  inbound_email_secret_configured?: boolean
   mobile_lead_default_tenant_id?: string | null
   mobile_lead_escalation_tenant_id?: string | null
   mobile_lead_offer_timeout_minutes?: number
@@ -3654,6 +3655,10 @@ export const setParentMobileLeadWebhookSecret = (secret: string) =>
   api.put('/parent-accounts/me/mobile-lead-ingest/secret', { webhook_secret: secret })
 export const clearParentMobileLeadWebhookSecret = () =>
   api.delete('/parent-accounts/me/mobile-lead-ingest/secret')
+export const setParentInboundEmailSecret = (secret: string) =>
+  api.put<ParentLeadIngestConfig>('/parent-accounts/me/inbound-email/secret', { webhook_secret: secret })
+export const clearParentInboundEmailSecret = () =>
+  api.delete<ParentLeadIngestConfig>('/parent-accounts/me/inbound-email/secret')
 export const createMobileSuburbRoute = (data: { suburb: string; state_code: string; target_tenant_id: string }) =>
   api.post<MobileSuburbRoute>('/parent-accounts/me/mobile-lead-routes', data)
 export const deleteMobileSuburbRoute = (id: string) =>

@@ -7326,6 +7326,57 @@
         }
       }
     },
+    "/v1/public/auto-key-intake/{token}/photos": {
+      "post": {
+        "tags": [
+          "public-jobs"
+        ],
+        "summary": "Upload Public Auto Key Intake Photos",
+        "description": "Customer key photos from the booking-request form. Attached to the existing job.",
+        "operationId": "upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/auto-key-intake/{token}/submit": {
       "post": {
         "tags": [
@@ -8118,7 +8169,7 @@
           "inbound-email"
         ],
         "summary": "Receive Inbound Email",
-        "description": "Accept an inbound-parse POST (SendGrid) for a BCC'd website enquiry email.\n\nConfigure the parse webhook URL as\n``/v1/public/inbound-email/{ingest_public_id}?key=<shared secret>`` using the\nsame secret as the website lead feed (Parent account \u2192 Website lead feed).",
+        "description": "Accept an inbound-parse POST (SendGrid) for a BCC'd website enquiry email.\n\nConfigure the parse webhook URL as\n``https://inbound:<inbound email secret>@<api host>/v1/public/inbound-email/{ingest_public_id}``\n(HQ \u2192 Website lead routing \u2192 Inbound email). The secret is its own secret,\nnot the website lead feed's, and travels as basic auth rather than in the URL.\n\nLegacy: until an inbound-email secret has been set, ``?key=<lead feed secret>``\nis still accepted so an existing SendGrid setup keeps working. Once the new\nsecret is set, the query-string key is refused.",
         "operationId": "receive_inbound_email_v1_public_inbound_email__ingest_public_id__post",
         "parameters": [
           {
@@ -8129,17 +8180,6 @@
               "type": "string",
               "format": "uuid",
               "title": "Ingest Public Id"
-            }
-          },
-          {
-            "name": "key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 16,
-              "maxLength": 512,
-              "title": "Key"
             }
           }
         ],
@@ -13884,6 +13924,77 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/inbound-email/secret": {
+      "put": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Set Inbound Email Secret",
+        "description": "Set the inbound-parse (BCC email) secret. Separate from the website lead feed secret.",
+        "operationId": "set_inbound_email_secret_v1_parent_accounts_me_inbound_email_secret_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParentMobileLeadWebhookSecretBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentLeadIngestConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Clear Inbound Email Secret",
+        "operationId": "clear_inbound_email_secret_v1_parent_accounts_me_inbound_email_secret_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentLeadIngestConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/mobile-lead-ingest/default-tenant": {
       "put": {
         "tags": [
@@ -15165,7 +15276,7 @@
           "parent-network"
         ],
         "summary": "Update Linked Site",
-        "description": "Change what a site *is* in the network without touching its plan.",
+        "description": "Change a site's network role, region, or shop contact details (email/phone).",
         "operationId": "update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch",
         "security": [
           {
@@ -21182,6 +21293,8 @@
           },
           "key_quantity": {
             "type": "integer",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
             "title": "Key Quantity",
             "default": 1
           },
@@ -21270,11 +21383,15 @@
           },
           "deposit_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Deposit Cents",
             "default": 0
           },
           "cost_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Cost Cents",
             "default": 0
           },
@@ -21555,7 +21672,9 @@
           "key_quantity": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 10000.0,
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "null"
@@ -21624,7 +21743,9 @@
           "deposit_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -21635,7 +21756,9 @@
           "cost_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -22813,11 +22936,15 @@
           },
           "quantity": {
             "type": "number",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
             "title": "Quantity",
             "default": 1
           },
           "unit_price_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Unit Price Cents"
           }
         },
@@ -23424,6 +23551,23 @@
         ],
         "title": "Body_upload_attachment_v1_attachments_post"
       },
+      "Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"
+      },
       "Body_upload_vswt_files_v1_reports_vswt_upload_post": {
         "properties": {
           "files": {
@@ -23624,6 +23768,8 @@
           },
           "price_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Price Cents"
           },
           "pricing_type": {
@@ -23689,7 +23835,9 @@
           "price_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -24848,6 +24996,8 @@
           },
           "estimated_cost_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Estimated Cost Cents",
             "default": 0
           },
@@ -25090,7 +25240,9 @@
           "estimated_cost_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -28822,6 +28974,28 @@
             "type": "boolean",
             "title": "Owner Is Shared Hq Login",
             "default": false
+          },
+          "shop_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Email"
+          },
+          "shop_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Phone"
           }
         },
         "type": "object",
@@ -28865,6 +29039,30 @@
             "type": "boolean",
             "title": "Clear Region",
             "default": false
+          },
+          "shop_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Email"
+          },
+          "shop_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Phone"
           }
         },
         "type": "object",
@@ -29427,6 +29625,11 @@
           "mobile_lead_webhook_secret_configured": {
             "type": "boolean",
             "title": "Mobile Lead Webhook Secret Configured",
+            "default": false
+          },
+          "inbound_email_secret_configured": {
+            "type": "boolean",
+            "title": "Inbound Email Secret Configured",
             "default": false
           },
           "mobile_lead_default_tenant_id": {
@@ -31955,6 +32158,28 @@
               }
             ],
             "title": "Tech Notes"
+          },
+          "key_photo_data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Photo Data"
+          },
+          "extra_key_photo_data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Key Photo Data"
           }
         },
         "type": "object",
@@ -32113,7 +32338,8 @@
             "enum": [
               "labor",
               "part",
-              "fee"
+              "fee",
+              "discount"
             ],
             "title": "Item Type"
           },
@@ -32123,10 +32349,14 @@
           },
           "quantity": {
             "type": "number",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
             "title": "Quantity"
           },
           "unit_price_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Unit Price Cents"
           }
         },
@@ -32827,16 +33057,22 @@
           },
           "deposit_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Deposit Cents",
             "default": 0
           },
           "pre_quote_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Pre Quote Cents",
             "default": 0
           },
           "cost_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Cost Cents",
             "default": 0
           },
@@ -33163,7 +33399,9 @@
           "cost_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -33174,7 +33412,9 @@
           "pre_quote_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -33219,7 +33459,9 @@
           "deposit_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -33297,6 +33539,8 @@
           },
           "pre_quote_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Pre Quote Cents",
             "default": 0
           },
@@ -34544,11 +34788,15 @@
           },
           "deposit_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Deposit Cents",
             "default": 0
           },
           "cost_cents": {
             "type": "integer",
+            "maximum": 100000000.0,
+            "minimum": 0.0,
             "title": "Cost Cents",
             "default": 0
           },
@@ -34899,7 +35147,9 @@
           "deposit_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -34910,7 +35160,9 @@
           "cost_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -34943,7 +35195,9 @@
           "unit_price_cents": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 100000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -34953,6 +35207,8 @@
           },
           "quantity": {
             "type": "number",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
             "title": "Quantity",
             "default": 1.0
           },

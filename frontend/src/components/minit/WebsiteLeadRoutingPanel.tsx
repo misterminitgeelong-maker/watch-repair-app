@@ -14,6 +14,8 @@ import {
   setParentMobileLeadDispatchSettings,
   setParentMobileLeadEscalationTenant,
   setParentMobileLeadWebhookSecret,
+  setParentInboundEmailSecret,
+  clearParentInboundEmailSecret,
   testMobileLeadRouting,
   type MobileSuburbRoute,
 } from '@/lib/api'
@@ -52,6 +54,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
   const { data: operatorsPage } = useParentAccountSites({ plan_kind: 'operator', limit: 50 })
 
   const [webhookSecret, setWebhookSecret] = useState('')
+  const [inboundSecret, setInboundSecret] = useState('')
   const [routeState, setRouteState] = useState('NSW')
   const [routeSuburb, setRouteSuburb] = useState('')
   const [routeTargetTenantId, setRouteTargetTenantId] = useState('')
@@ -161,6 +164,22 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
     onError: err => reportError(err, 'Could not clear security password.'),
   })
 
+  const setInboundSecretMut = useMutation({
+    mutationFn: (secret: string) => setParentInboundEmailSecret(secret).then(r => r.data),
+    onSuccess: () => {
+      setInboundSecret('')
+      invalidateParentQueries()
+      qc.invalidateQueries({ queryKey: ['parent-account-activity'] })
+    },
+    onError: err => reportError(err, 'Could not save inbound email password.'),
+  })
+
+  const clearInboundSecretMut = useMutation({
+    mutationFn: () => clearParentInboundEmailSecret().then(r => r.data),
+    onSuccess: () => invalidateParentQueries(),
+    onError: err => reportError(err, 'Could not clear inbound email password.'),
+  })
+
   const setDefaultTenantMut = useMutation({
     mutationFn: (tenant_id: string | null) => setParentMobileLeadDefaultTenant(tenant_id).then(r => r.data),
     onSuccess: () => invalidateParentQueries(),
@@ -210,6 +229,16 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
       ? `${API_ORIGIN || window.location.origin}/v1/public/mobile-key-leads/${ingestPublicId}`
       : ''
   const secretConfigured = data?.mobile_lead_webhook_secret_configured === true
+  const inboundSecretConfigured = leadIngest?.inbound_email_secret_configured === true
+  // SendGrid Inbound Parse sends URL credentials as an Authorization: Basic
+  // header, so the password never lands in the request line or server logs.
+  const inboundParseUrl =
+    ingestPublicId != null && ingestPublicId !== ''
+      ? (() => {
+          const u = new URL(`/v1/public/inbound-email/${ingestPublicId}`, API_ORIGIN || window.location.origin)
+          return `${u.protocol}//inbound:<inbound email password>@${u.host}${u.pathname}`
+        })()
+      : ''
   const savedDefaultTenantId = data?.mobile_lead_default_tenant_id ?? ''
   const defaultTenantDirty = defaultTenantDraft !== savedDefaultTenantId
   const savedEscalationTenantId = leadIngest?.mobile_lead_escalation_tenant_id ?? ''
@@ -281,8 +310,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
           <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Set a security password</p>
         </div>
         <p className="text-sm mb-3 ml-8" style={{ color: 'var(--ms-text-mid)' }}>
-          Your website sends this with every request. Also used for inbound email parse ({'`'}?key={'`'}).
-          Minimum 16 characters.
+          Your website sends this with every request. Minimum 16 characters.
         </p>
         <div className="ml-8 grid gap-3 md:grid-cols-2 max-w-lg">
           <Input
@@ -318,9 +346,59 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
         )}
       </div>
 
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-2">
+          <StepBadge n={3} done={inboundSecretConfigured} />
+          <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Inbound email password</p>
+        </div>
+        <p className="text-sm mb-3 ml-8" style={{ color: 'var(--ms-text-mid)' }}>
+          For BCC&apos;d enquiry emails (SendGrid Inbound Parse). Use a different password from the website one.
+          Minimum 16 characters.
+        </p>
+        <div className="ml-8 grid gap-3 md:grid-cols-2 max-w-lg">
+          <Input
+            label="Inbound email password"
+            type="password"
+            autoComplete="new-password"
+            value={inboundSecret}
+            onChange={e => setInboundSecret(e.target.value)}
+            placeholder="Make it long and random"
+          />
+          <div className="flex items-end gap-2">
+            <Button
+              onClick={() => setInboundSecretMut.mutate(inboundSecret.trim())}
+              disabled={inboundSecret.trim().length < 16 || setInboundSecretMut.isPending}
+            >
+              {setInboundSecretMut.isPending ? 'Saving…' : 'Save'}
+            </Button>
+            {inboundSecretConfigured && (
+              <Button
+                variant="ghost"
+                onClick={() => clearInboundSecretMut.mutate()}
+                disabled={clearInboundSecretMut.isPending}
+              >
+                {clearInboundSecretMut.isPending ? 'Clearing…' : 'Clear'}
+              </Button>
+            )}
+          </div>
+        </div>
+        {inboundParseUrl && (
+          <p className="text-xs mt-2 ml-8" style={{ color: 'var(--ms-text-muted)' }}>
+            SendGrid parse URL (put the password where shown):{' '}
+            <span className="font-mono break-all">{inboundParseUrl}</span>
+          </p>
+        )}
+        {!inboundSecretConfigured && secretConfigured && (
+          <p className="text-xs mt-2 ml-8" style={{ color: 'var(--ms-warning, #8A5A00)' }}>
+            Until this is set, inbound email still accepts the old {'`'}?key={'`'} link using the website password.
+            Set it and update SendGrid to stop sending that password in the URL.
+          </p>
+        )}
+      </div>
+
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <StepBadge n={3} done={(routeSummary?.total_routes ?? suburbRoutes.length) > 0 || !!savedDefaultTenantId} />
+          <StepBadge n={4} done={(routeSummary?.total_routes ?? suburbRoutes.length) > 0 || !!savedDefaultTenantId} />
           <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Dispatch & territory</p>
         </div>
         <p className="text-sm mb-3 ml-8" style={{ color: 'var(--ms-text-mid)' }}>
