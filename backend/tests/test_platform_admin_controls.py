@@ -517,3 +517,93 @@ def test_platform_reports_match_naive_loop_on_three_tenants():
     body = res.json()
     assert "totals" in body and "tenants" in body
     assert body["totals"]["tenants"] >= 3
+
+
+def _admin_headers(suffix: str) -> dict[str, str]:
+    _bootstrap_and_login(f"padm-{suffix}", f"padm-{suffix}@test.com")
+    _promote_to_platform_admin(f"padm-{suffix}@test.com")
+    login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"padm-{suffix}", "email": f"padm-{suffix}@test.com", "password": "pass123456"},
+    )
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+def test_enter_shop_token_actually_works():
+    suffix = uuid4().hex[:8]
+    _, target = _bootstrap_and_login(f"enter-{suffix}", f"enter-{suffix}@test.com")
+    entered = client.post(f"/v1/platform-admin/enter-shop/{target}", headers=_admin_headers(suffix))
+    assert entered.status_code == 200, entered.text
+    shop_headers = {"Authorization": f"Bearer {entered.json()['access_token']}"}
+    assert client.get("/v1/customers", headers=shop_headers).status_code == 200
+    assert client.get("/v1/auth/session", headers=shop_headers).json()["tenant_id"] == target
+
+
+def test_reset_owner_password_changes_it_and_signs_out_old_sessions():
+    suffix = uuid4().hex[:8]
+    old_token, target = _bootstrap_and_login(f"pw-{suffix}", f"pw-{suffix}@test.com")
+    res = client.patch(
+        f"/v1/platform-admin/tenants/{target}",
+        headers=_admin_headers(suffix),
+        json={"new_password": "BrandNewPass2026!", "name": f"Renamed {suffix}"},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["name"] == f"Renamed {suffix}"
+    new_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"pw-{suffix}", "email": f"pw-{suffix}@test.com", "password": "BrandNewPass2026!"},
+    )
+    assert new_login.status_code == 200
+    old_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"pw-{suffix}", "email": f"pw-{suffix}@test.com", "password": "pass123456"},
+    )
+    assert old_login.status_code == 401
+    with Session(engine) as db:
+        owner = db.exec(select(User).where(User.email == f"pw-{suffix}@test.com")).one()
+        live = [
+            r for r in db.exec(select(RefreshSession).where(RefreshSession.user_id == owner.id)).all()
+            if r.revoked_at is None
+        ]
+        assert len(live) == 1  # only the login made after the reset
+
+
+def test_change_plan_rejects_unknown_codes():
+    suffix = uuid4().hex[:8]
+    _, target = _bootstrap_and_login(f"plan-{suffix}", f"plan-{suffix}@test.com")
+    res = client.patch(
+        f"/v1/platform-admin/tenants/{target}/plan",
+        headers=_admin_headers(suffix),
+        json={"plan_code": "pr0", "reason": "typo"},
+    )
+    assert res.status_code in (400, 422)
+
+
+def test_delete_tenant_removes_rows_the_old_table_list_missed():
+    from app.models import EmailLog, MutationIdempotencyKey, ParentLinkRequest
+
+    suffix = uuid4().hex[:8]
+    _, target = _bootstrap_and_login(f"gone-{suffix}", f"gone-{suffix}@test.com")
+    _, other = _bootstrap_and_login(f"keep-{suffix}", f"keep-{suffix}@test.com")
+    tid = UUID(target)
+    with Session(engine) as db:
+        owner = db.exec(select(User).where(User.tenant_id == tid)).one()
+        parent = db.exec(select(ParentAccount).where(ParentAccount.owner_email == f"gone-{suffix}@test.com")).one()
+        db.add(EmailLog(tenant_id=tid, to_email="x@test.com", event="quote_sent"))
+        db.add(
+            MutationIdempotencyKey(
+                tenant_id=tid, key=f"k-{suffix}", method="POST", path="/v1/x", request_hash="h",
+                state="completed", status_code=200, response_body="{}",
+            )
+        )
+        # A request this shop's owner sent to a different shop.
+        db.add(ParentLinkRequest(parent_account_id=parent.id, tenant_id=UUID(other), requested_by_user_id=owner.id))
+        db.commit()
+
+    res = client.delete(f"/v1/platform-admin/tenants/{target}", headers=_admin_headers(suffix))
+    assert res.status_code == 204, res.text
+    with Session(engine) as db:
+        assert db.get(Tenant, tid) is None
+        assert db.exec(select(EmailLog).where(EmailLog.tenant_id == tid)).all() == []
+        assert db.exec(select(MutationIdempotencyKey).where(MutationIdempotencyKey.tenant_id == tid)).all() == []
+        assert db.get(Tenant, UUID(other)) is not None

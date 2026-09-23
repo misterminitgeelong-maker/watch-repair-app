@@ -7,6 +7,7 @@ meant to be visible: an endpoint crossing the tenant boundary says so in its
 signature, and these modules are the complete list of places that do.
 """
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -27,6 +28,7 @@ from ..dependencies import (
     stripe_billing_configured,
 )
 from ..limiter import limiter
+from ..minit_branding import MINIT_HQ_SLUG
 from ..models import (
     AuthSessionResponse,
     AuthSessionSiteOption,
@@ -73,6 +75,30 @@ def _normalize_email(value: str) -> str:
 
 def _normalize_slug(value: str) -> str:
     return value.strip().lower()
+
+
+_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,38})[a-z0-9]$")
+
+
+def _validate_new_slug(slug: str) -> None:
+    """Rules for a slug someone picks for a brand-new shop.
+
+    The slug decides product identity: ``minit-*`` and ``mmsupport`` get Mister
+    Minit branding and behaviour, so a stranger could register a shop that
+    presents as Mister Minit to its customers. Those are only made by
+    provisioning. Also keeps slugs URL-safe.
+    """
+    if not _SLUG_RE.match(slug):
+        raise HTTPException(
+            status_code=400,
+            detail="Shop ID must be 3-40 characters: lowercase letters, numbers and hyphens.",
+        )
+    reserved = {
+        MINIT_HQ_SLUG,
+        (settings.platform_admin_tenant_slug or "platform").strip().lower(),
+    }
+    if slug in reserved or slug.startswith("minit-"):
+        raise HTTPException(status_code=400, detail="That Shop ID is reserved. Choose another.")
 
 
 def _normalize_plan_code(value: str | None, default_if_empty: str = "pro") -> str:
@@ -304,6 +330,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
 @limiter.limit("10/minute")
 def signup(request: Request, payload: TenantSignupRequest, session: Session = Depends(unscoped_session)):
     tenant_slug = _normalize_slug(payload.tenant_slug)
+    _validate_new_slug(tenant_slug)
     owner_email = _normalize_email(payload.email)
     owner_name = payload.full_name.strip()
     tenant_name = payload.tenant_name.strip()
@@ -398,6 +425,7 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(unscop
         raise HTTPException(status_code=403, detail="Bootstrap is disabled")
 
     tenant_slug = _normalize_slug(payload.tenant_slug)
+    _validate_new_slug(tenant_slug)
     owner_email = _normalize_email(payload.owner_email)
     _validate_password_strength(payload.owner_password)
 
@@ -663,6 +691,8 @@ def ensure_minit_pilot_endpoint(session: Session = Depends(unscoped_session)):
     password = settings.minit_hq_owner_password or ""
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="MINIT_HQ_OWNER_PASSWORD must be at least 8 characters")
+    if settings.app_env == "production" and password == "MinitPilot2026!":
+        raise HTTPException(status_code=400, detail="MINIT_HQ_OWNER_PASSWORD is the public repo default; set a real one")
     from ..minit_provision import ensure_minit_pilot_account
 
     result = ensure_minit_pilot_account(

@@ -572,6 +572,9 @@ def ensure_minit_pilot_if_enabled(session: Session) -> dict[str, object] | None:
     password = settings.minit_hq_owner_password or ""
     if len(password) < 8:
         return {"ok": False, "reason": "minit_hq_owner_password_too_short"}
+    if settings.app_env == "production" and password == "MinitPilot2026!":
+        # The old repo default: seeding resets HQ's password to it on every boot.
+        return {"ok": False, "reason": "minit_hq_owner_password_is_public_default"}
     result = ensure_minit_pilot_account(
         session,
         parent_name=settings.minit_parent_account_name,

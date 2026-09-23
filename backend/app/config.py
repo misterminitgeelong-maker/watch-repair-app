@@ -61,7 +61,9 @@ class Settings(BaseSettings):
     minit_hq_tenant_slug: str = "mmsupport"
     minit_hq_tenant_name: str = "Mister Minit HQ"
     minit_hq_owner_email: str = "minit-hq@test.mainspring.au"
-    minit_hq_owner_password: str = "MinitPilot2026!"
+    # No default: this was "MinitPilot2026!", a password anyone with the source
+    # knew. Seeding the Minit pilot now refuses to run until one is set.
+    minit_hq_owner_password: str = ""
     allow_ensure_minit_pilot: bool = False  # Enables POST /auth/ensure-minit-pilot (one-off prod seed)
 
     # Optional global platform admin account (cross-tenant visibility)

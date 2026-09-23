@@ -102,7 +102,7 @@ def test_minit_retail_session_strips_repair_features():
     suffix = uuid4().hex[:8]
     slug = f"minit-{suffix}"
     email = f"shop-{suffix}@minit.test"
-    token = _bootstrap(slug, email, "password12345", plan_code="enterprise")
+    token = _provision_minit_shop(slug, email, "password12345")
     session = client.get("/v1/auth/session", headers={"Authorization": f"Bearer {token}"})
     assert session.status_code == 200
     body = session.json()
@@ -111,3 +111,38 @@ def test_minit_retail_session_strips_repair_features():
     assert "watch" not in body["enabled_features"]
     assert "shoe" not in body["enabled_features"]
     assert "shop_mobile_booking" in body["enabled_features"]
+
+
+def _provision_minit_shop(slug: str, email: str, password: str) -> str:
+    """Minit shops are made by provisioning, never by public signup."""
+    from sqlmodel import Session
+
+    from app.database import engine
+    from app.models import User
+    from app.security import hash_password
+
+    with Session(engine) as session:
+        tenant = Tenant(name=f"Shop {slug}", slug=slug, plan_code="enterprise")
+        session.add(tenant)
+        session.flush()
+        session.add(User(tenant_id=tenant.id, email=email, full_name="Owner", role="owner", password_hash=hash_password(password)))
+        session.commit()
+    login = client.post("/v1/auth/login", json={"tenant_slug": slug, "email": email, "password": password})
+    assert login.status_code == 200, login.text
+    return login.json()["access_token"]
+
+
+def test_public_signup_cannot_take_a_minit_slug():
+    suffix = uuid4().hex[:8]
+    for slug in (f"minit-{suffix}", "mmsupport", "platform", "Bad Slug!"):
+        res = client.post(
+            "/v1/auth/bootstrap",
+            json={
+                "tenant_name": "Imposter",
+                "tenant_slug": slug,
+                "owner_email": f"imp-{suffix}@x.test",
+                "owner_full_name": "Imp",
+                "owner_password": "password12345",
+            },
+        )
+        assert res.status_code == 400, (slug, res.text)

@@ -252,3 +252,35 @@ def test_csv_import_replace_watch_only_preserves_mobile_customers():
         assert len(ajobs) == 1
         jobs = session.exec(select(RepairJob).where(RepairJob.tenant_id == tenant_id)).all()
         assert len(jobs) == 1
+
+
+def test_only_the_owner_can_replace_existing_jobs():
+    suffix = uuid4().hex[:8]
+    slug = f"csv-roles-{suffix}"
+    owner_token = _bootstrap_and_login(slug, f"owner-{suffix}@csv.test", "pass123456")
+    owner_h = {"Authorization": f"Bearer {owner_token}"}
+    csv_text = "Customer Name,Watch Brand\nA,B\n"
+
+    for role in ("intake", "tech", "manager"):
+        email = f"{role}-{suffix}@csv.test"
+        made = client.post(
+            "/v1/users",
+            headers=owner_h,
+            json={"email": email, "full_name": role, "role": role, "password": "Passw0rd!long"},
+        )
+        assert made.status_code == 201, made.text
+        token = client.post(
+            "/v1/auth/login", json={"tenant_slug": slug, "email": email, "password": "Passw0rd!long"}
+        ).json()["access_token"]
+        res = client.post(
+            "/v1/import/csv",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"replace_existing": "true"},
+            files=_csv_file(csv_text),
+        )
+        assert res.status_code == 403, (role, res.text)
+
+    owner = client.post(
+        "/v1/import/csv", headers=owner_h, params={"replace_existing": "true"}, files=_csv_file(csv_text)
+    )
+    assert owner.status_code == 200, owner.text
