@@ -444,7 +444,7 @@ export default function PublicCustomerPortalPage() {
                       {job.status === 'unclaimed'
                         ? 'Pending'
                         : job.status === 'claimed'
-                        ? 'Assigned'
+                        ? 'Booked in'
                         : job.status}
                     </span>
                   </div>

@@ -867,7 +867,10 @@ def create_public_auto_key_invoice_checkout(request: Request, token: str, sessio
         },
         "success_url": f"{base}/mobile-invoice/{token}?paid=1&session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{base}/mobile-invoice/{token}?canceled=1",
-        "payment_intent_data": {"transfer_data": {"destination": tenant.stripe_connect_account_id.strip()}},
+        # Charged on the shop's own connected account (a direct charge): the shop is the merchant
+        # of record and Stripe's processing fee comes out of the shop's balance, not the platform's.
+        # The completed event arrives through the Connect webhook endpoint.
+        "stripe_account": tenant.stripe_connect_account_id.strip(),
     }
 
     customer = session.get(Customer, job.customer_id)

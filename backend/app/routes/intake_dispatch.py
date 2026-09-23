@@ -164,40 +164,10 @@ def claim_pool_job(
         raise HTTPException(status_code=409, detail="Job has already been claimed.")
     session.refresh(job)
 
-    # Find or create customer in this tenant
-    customer = _find_or_create_customer(session, auth.tenant_id, job)
-
-    # Build AutoKeyJob
-    ak_number = _next_auto_key_job_number(session, auth.tenant_id)
-    vehicle_bits = [job.vehicle_make, job.vehicle_model, job.registration_plate]
-    title_vehicle = " · ".join(x.strip() for x in vehicle_bits if x and x.strip())
-    title = f"Pool job — {job.customer_name}" + (f" ({title_vehicle})" if title_vehicle else "")
-
-    ak_job = AutoKeyJob(
-        tenant_id=auth.tenant_id,
-        customer_id=customer.id,
-        job_number=ak_number,
-        title=title[:500],
-        description=job.description,
-        vehicle_make=job.vehicle_make,
-        vehicle_model=job.vehicle_model,
-        vehicle_year=int(job.vehicle_year) if job.vehicle_year and job.vehicle_year.isdigit() else None,
-        registration_plate=job.registration_plate,
-        job_address=job.job_address,
-        job_type="Mobile Key",
-        status="awaiting_quote",
-        priority="normal",
-        key_quantity=1,
-        programming_status="pending",
-        deposit_cents=0,
-        cost_cents=0,
-        commission_lead_source="minit_sourced",
+    ak_job, customer = create_auto_key_job_from_intake(
+        session, auth.tenant_id, job, title_prefix="Pool job", lead_source="minit_sourced"
     )
-    session.add(ak_job)
-    session.flush()
-
-    job.resulting_job_id = ak_job.id
-    session.add(job)
+    ak_number = ak_job.job_number
 
     session.add(
         TenantEventLog(
@@ -271,6 +241,53 @@ def _require_auto_key(auth: AuthContext) -> None:
     features = PLAN_FEATURES.get(auth.plan_code, set())
     if "auto_key" not in features:
         raise HTTPException(status_code=403, detail="Mobile Services plan required")
+
+
+def create_auto_key_job_from_intake(
+    session: Session,
+    tenant_id: UUID,
+    job: IntakeJob,
+    *,
+    title_prefix: str,
+    lead_source: str,
+) -> tuple[AutoKeyJob, Customer]:
+    """Turn an intake request into a customer + auto-key job inside ``tenant_id`` and link them.
+
+    Caller is responsible for committing.
+    """
+    customer = _find_or_create_customer(session, tenant_id, job)
+
+    ak_number = _next_auto_key_job_number(session, tenant_id)
+    vehicle_bits = [job.vehicle_make, job.vehicle_model, job.registration_plate]
+    title_vehicle = " · ".join(x.strip() for x in vehicle_bits if x and x.strip())
+    title = f"{title_prefix} — {job.customer_name}" + (f" ({title_vehicle})" if title_vehicle else "")
+
+    ak_job = AutoKeyJob(
+        tenant_id=tenant_id,
+        customer_id=customer.id,
+        job_number=ak_number,
+        title=title[:500],
+        description=job.description,
+        vehicle_make=job.vehicle_make,
+        vehicle_model=job.vehicle_model,
+        vehicle_year=int(job.vehicle_year) if job.vehicle_year and job.vehicle_year.isdigit() else None,
+        registration_plate=job.registration_plate,
+        job_address=job.job_address,
+        job_type="Mobile Key",
+        status="awaiting_quote",
+        priority="normal",
+        key_quantity=1,
+        programming_status="pending",
+        deposit_cents=0,
+        cost_cents=0,
+        commission_lead_source=lead_source,
+    )
+    session.add(ak_job)
+    session.flush()
+
+    job.resulting_job_id = ak_job.id
+    session.add(job)
+    return ak_job, customer
 
 
 def _find_or_create_customer(session: Session, tenant_id: UUID, job: IntakeJob) -> Customer:

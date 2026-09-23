@@ -22,7 +22,9 @@ from ..models import (
     CustomerPortalSession,
     IntakeJob,
     Tenant,
+    TenantEventLog,
 )
+from .intake_dispatch import create_auto_key_job_from_intake
 
 router = APIRouter(prefix="/v1/public/portal", tags=["customer-portal"])
 
@@ -268,6 +270,7 @@ async def portal_profile(
 
     intake_jobs = session.exec(
         select(IntakeJob)
+        .where(IntakeJob.claimed_by_tenant_id == tenant.id)
         .where(IntakeJob.customer_phone == customer.phone)
         .order_by(IntakeJob.created_at.desc())
     ).all()
@@ -343,6 +346,10 @@ async def portal_book(
         description_parts.append(f"Preferred date: {body.preferred_date}")
     description = "\n".join(description_parts) if description_parts else None
 
+    # A booking made through a shop's own portal belongs to that shop. It is recorded as an
+    # intake already claimed by the shop (so the customer's profile can list it) and becomes an
+    # auto-key job in the shop straight away; it never goes to the shared dispatch pool, which
+    # is only for leads that don't belong to any shop yet (``/v1/public/intake``).
     intake_job = IntakeJob(
         customer_name=customer.full_name,
         customer_phone=customer.phone,
@@ -355,10 +362,28 @@ async def portal_book(
         vehicle_year=body.vehicle_year,
         registration_plate=body.registration_plate,
         description=description,
-        status="unclaimed",
+        status="claimed",
         current_ring=1,
+        claimed_by_tenant_id=tenant.id,
+        claimed_at=datetime.now(timezone.utc),
     )
     session.add(intake_job)
+    session.flush()
+    ak_job, _ = create_auto_key_job_from_intake(
+        session, tenant.id, intake_job, title_prefix="Portal booking", lead_source="shop"
+    )
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant.id,
+            actor_email="customer-portal",
+            entity_type="auto_key_job",
+            entity_id=ak_job.id,
+            event_type="portal_booking_received",
+            event_summary=(
+                f"New portal booking #{ak_job.job_number} from {customer.full_name} ({intake_job.job_address})"
+            ),
+        )
+    )
     session.commit()
     session.refresh(intake_job)
 

@@ -74,8 +74,10 @@ def test_portal_profile_returns_customer(client, bootstrap_and_login, monkeypatc
     assert body["loyalty"] is None
 
 
-def test_portal_book_creates_intake_job(client, bootstrap_and_login, monkeypatch):
-    slug = _create_shop(client, bootstrap_and_login)
+def test_portal_booking_stays_with_the_shop(client, bootstrap_and_login, monkeypatch):
+    slug = f"portal-shop-{uuid4().hex[:8]}"
+    shop_token = bootstrap_and_login(tenant_slug=slug, plan_code="enterprise")
+    shop = {"Authorization": f"Bearer {shop_token}"}
     token = _sign_in(client, monkeypatch, slug, "Booking Customer", "0422333444")["token"]
 
     async def _fake_geocode(_address: str):
@@ -97,13 +99,49 @@ def test_portal_book_creates_intake_job(client, bootstrap_and_login, monkeypatch
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["intake_job_id"]
-    assert body["status"] == "unclaimed"
+    assert body["status"] == "claimed"
 
     profile = client.get(
         f"/v1/public/portal/{slug}/profile", params={"token": token}
     ).json()
     assert len(profile["intake_jobs"]) == 1
     assert profile["intake_jobs"][0]["job_address"].startswith("123 Collins St")
+
+    # The booking is a job in this shop, and the shop is told about it.
+    jobs = client.get("/v1/auto-key-jobs", headers=shop)
+    assert jobs.status_code == 200, jobs.text
+    items = jobs.json()
+    items = items.get("items", items) if isinstance(items, dict) else items
+    booked = [j for j in items if "Booking Customer" in j["title"]]
+    assert len(booked) == 1
+    assert booked[0]["status"] == "awaiting_quote"
+    assert booked[0]["job_address"].startswith("123 Collins St")
+    inbox = client.get("/v1/inbox", headers=shop).json()
+    inbox = inbox.get("items", inbox) if isinstance(inbox, dict) else inbox
+    assert any(e["event_type"] == "portal_booking_received" for e in inbox)
+
+    # Another operator right next door can't see or claim it in the dispatch pool.
+    rival_slug = f"rival-{uuid4().hex[:8]}"
+    rival = {"Authorization": f"Bearer {bootstrap_and_login(tenant_slug=rival_slug, plan_code='enterprise')}"}
+    from uuid import UUID
+
+    from sqlmodel import Session, select
+
+    from app.database import engine
+    from app.models import IntakeJob, Tenant
+
+    with Session(engine) as s:
+        row = s.get(IntakeJob, UUID(body["intake_job_id"]))
+        assert row.status == "claimed"
+        t = s.exec(select(Tenant).where(Tenant.slug == rival_slug)).one()
+        t.base_lat, t.base_lng, t.ring_radius_km = -37.8136, 144.9631, 50
+        s.add(t)
+        s.commit()
+    pool = client.get("/v1/pool", headers=rival)
+    assert pool.status_code == 200, pool.text
+    assert body["intake_job_id"] not in [j["id"] for j in pool.json()]
+    claim = client.post(f"/v1/pool/{body['intake_job_id']}/claim", headers=rival)
+    assert claim.status_code == 409
 
 
 def test_portal_wrong_code_is_rejected_and_locks_after_five_tries(client, bootstrap_and_login, monkeypatch):
