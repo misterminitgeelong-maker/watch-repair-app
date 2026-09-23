@@ -253,16 +253,33 @@ def _dependency_names(dependant) -> list[str]:
     return out
 
 
-def test_every_unauthenticated_route_is_rate_limited():
+def _all_api_routes(routes):
+    """Every APIRoute, descending into included routers.
+
+    FastAPI >= 0.13x nests each ``include_router`` as an ``_IncludedRouter``
+    entry, so a flat walk of ``app.routes`` silently finds almost nothing.
+    """
     from fastapi.routing import APIRoute
 
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route
+        elif hasattr(route, "original_router"):
+            yield from _all_api_routes(route.original_router.routes)
+        elif hasattr(route, "routes"):
+            yield from _all_api_routes(route.routes)
+
+
+def test_every_unauthenticated_route_is_rate_limited():
     from app.limiter import limiter
     from app.main import app as fastapi_app
 
     limited = set(limiter._route_limits) | set(limiter._dynamic_route_limits)
     missing = []
-    for route in fastapi_app.routes:
-        if not isinstance(route, APIRoute) or route.path in _UNLIMITED_PUBLIC_ROUTES:
+    routes = list(_all_api_routes(fastapi_app.routes))
+    assert len(routes) > 200, f"route walker found only {len(routes)} routes"
+    for route in routes:
+        if route.path in _UNLIMITED_PUBLIC_ROUTES:
             continue
         if route.path.startswith("/v1/_test/"):
             continue  # probe routes other test modules mount on the app

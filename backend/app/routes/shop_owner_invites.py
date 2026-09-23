@@ -9,13 +9,14 @@ password, and land signed in — no separate login step.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from ..limiter import limiter, public_read_limit, public_write_limit
 from ..database import get_session, unscoped_session
 from ..dependencies import invalidate_auth_cache
+from ..refresh_cookie import deliver_tokens
 from ..models import (
     ParentAccountUser,
     RefreshSession,
@@ -82,6 +83,7 @@ def get_shop_owner_invite_public(request: Request, token: str, session: Session 
 @limiter.limit(public_write_limit)
 def complete_shop_owner_invite(
     request: Request,
+    response: Response,
     token: str,
     payload: ShopOwnerInviteCompleteRequest,
     session: Session = Depends(unscoped_session),
@@ -131,9 +133,9 @@ def complete_shop_owner_invite(
     access, access_exp, refresh, refresh_exp = _issue_session_tokens(
         session, tenant_id=tenant.id, user_id=owner.id, role=owner.role, request=request
     )
-    return TokenResponse(
+    return deliver_tokens(request, response, TokenResponse(
         access_token=access,
         expires_in_seconds=access_exp,
         refresh_token=refresh,
         refresh_expires_in_seconds=refresh_exp,
-    )
+    ))

@@ -218,3 +218,78 @@ def test_legacy_untracked_refresh_token_upgrades_once(client):
     _age_rotation(upgraded.json()["refresh_token"], 120)
     again = client.post("/v1/auth/refresh", json={"refresh_token": legacy})
     assert again.status_code == 401, again.text
+
+
+# ── L2: web app keeps the refresh token in an httpOnly cookie ────────────────
+
+COOKIE_MODE = {"X-Auth-Refresh-Mode": "cookie"}
+
+
+def test_cookie_mode_keeps_refresh_token_out_of_the_body(client):
+    from app.dependencies import invalidate_auth_cache
+    from app.refresh_cookie import REFRESH_COOKIE_NAME
+
+    slug, email, password = _bootstrap_creds(client)
+    try:
+        res = client.post(
+            "/v1/auth/login",
+            headers=COOKIE_MODE,
+            json={"tenant_slug": slug, "email": email, "password": password},
+        )
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["refresh_token"] is None
+        assert body["refresh_in_cookie"] is True
+        set_cookie = res.headers.get("set-cookie", "")
+        assert f"{REFRESH_COOKIE_NAME}=" in set_cookie
+        assert "HttpOnly" in set_cookie
+        assert "SameSite=strict" in set_cookie or "samesite=strict" in set_cookie.lower()
+        assert "Path=/v1/auth" in set_cookie
+        first_cookie = client.cookies.get(REFRESH_COOKIE_NAME)
+        assert first_cookie
+
+        # Refresh with no body token: the cookie is used and rotated.
+        refreshed = client.post("/v1/auth/refresh", headers=COOKIE_MODE, json={})
+        assert refreshed.status_code == 200, refreshed.text
+        assert refreshed.json()["refresh_token"] is None
+        assert client.cookies.get(REFRESH_COOKIE_NAME) not in (None, first_cookie)
+        access = refreshed.json()["access_token"]
+
+        # Logout with only the cookie (access token already gone) still ends it.
+        out = client.post("/v1/auth/logout", headers=COOKIE_MODE)
+        assert out.status_code == 200, out.text
+        assert out.json()["revoked"] == 1
+        assert not client.cookies.get(REFRESH_COOKIE_NAME)
+        invalidate_auth_cache()
+        assert client.get("/v1/auth/session", headers={"Authorization": f"Bearer {access}"}).status_code == 401
+    finally:
+        client.cookies.clear()
+
+
+def test_legacy_body_token_migrates_to_cookie(client):
+    from app.refresh_cookie import REFRESH_COOKIE_NAME
+
+    slug, email, password = _bootstrap_creds(client)
+    try:
+        stored = _login(client, slug, email, password)["refresh_token"]  # old tab: token in storage
+        res = client.post("/v1/auth/refresh", headers=COOKIE_MODE, json={"refresh_token": stored})
+        assert res.status_code == 200, res.text
+        assert res.json()["refresh_in_cookie"] is True
+        assert client.cookies.get(REFRESH_COOKIE_NAME)
+    finally:
+        client.cookies.clear()
+
+
+def test_remember_me_off_sets_a_browser_session_cookie(client):
+    slug, email, password = _bootstrap_creds(client)
+    try:
+        res = client.post(
+            "/v1/auth/login",
+            headers={**COOKIE_MODE, "X-Auth-Remember": "0"},
+            json={"tenant_slug": slug, "email": email, "password": password},
+        )
+        assert res.status_code == 200, res.text
+        cookie = res.headers.get("set-cookie", "").lower()
+        assert "max-age" not in cookie and "expires" not in cookie
+    finally:
+        client.cookies.clear()

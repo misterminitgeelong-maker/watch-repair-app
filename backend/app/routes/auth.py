@@ -14,7 +14,8 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session, col, func, select
 
 from ..config import settings
@@ -32,6 +33,7 @@ from ..dependencies import (
     stripe_billing_configured,
 )
 from ..limiter import auth_limit, limiter
+from ..refresh_cookie import REFRESH_COOKIE_NAME, clear_refresh_cookie, deliver_tokens, presented_refresh_token
 from ..minit_branding import MINIT_HQ_SLUG
 from ..models import (
     AuthSessionResponse,
@@ -69,9 +71,10 @@ from ..parent_network import (
     parents_for_user,
     sites_for_parent,
 )
-from ..security import create_access_token, create_refresh_token, decode_refresh_token, hash_password, verify_password
+from ..security import create_access_token, create_refresh_token, decode_access_token, decode_refresh_token, hash_password, verify_password
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
+_optional_bearer = HTTPBearer(auto_error=False)
 logger = logging.getLogger(__name__)
 
 #: Two tabs sharing stored tokens can refresh at the same instant with the same
@@ -338,7 +341,7 @@ def _seed_demo_data_for_tenant(session: Session, tenant: Tenant, actor: User) ->
 
 @router.post("/signup", response_model=TenantSignupResponse)
 @limiter.limit("10/minute")
-def signup(request: Request, payload: TenantSignupRequest, session: Session = Depends(unscoped_session)):
+def signup(request: Request, response: Response, payload: TenantSignupRequest, session: Session = Depends(unscoped_session)):
     tenant_slug = _normalize_slug(payload.tenant_slug)
     _validate_new_slug(tenant_slug)
     owner_email = _normalize_email(payload.email)
@@ -420,14 +423,14 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
     token, expires, refresh_token, refresh_expires = _issue_session_tokens(
         session, tenant_id=tenant.id, user_id=owner.id, role=owner.role, request=request
     )
-    return TenantSignupResponse(
+    return deliver_tokens(request, response, TenantSignupResponse(
         tenant_id=tenant.id,
         user=_build_public_user(owner),
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
-    )
+    ))
 
 
 @router.post("/bootstrap", response_model=BootstrapResponse)
@@ -531,8 +534,8 @@ def _issue_session_tokens(
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(get_login_rate_limit)
-def login(request: Request, payload: LoginRequest, session: Session = Depends(unscoped_session)):
-    return _login_impl(request, payload, session)
+def login(request: Request, response: Response, payload: LoginRequest, session: Session = Depends(unscoped_session)):
+    return deliver_tokens(request, response, _login_impl(request, payload, session))
 
 def _login_impl(request: Request, payload: LoginRequest, session: Session = Depends(unscoped_session)):
     tenant = session.exec(select(Tenant).where(Tenant.slug == _normalize_slug(payload.tenant_slug))).first()
@@ -577,7 +580,7 @@ def _login_impl(request: Request, payload: LoginRequest, session: Session = Depe
 
 @router.post("/multi-site-login", response_model=MultiSiteLoginResponse)
 @limiter.limit("20/minute")
-def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: Session = Depends(unscoped_session)):
+def multi_site_login(request: Request, response: Response, payload: MultiSiteLoginRequest, session: Session = Depends(unscoped_session)):
     email = _normalize_email(payload.email)
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="A valid email is required")
@@ -654,14 +657,14 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
         if selected_tenant and selected_user
         else valid_sites
     )
-    return MultiSiteLoginResponse(
+    return deliver_tokens(request, response, MultiSiteLoginResponse(
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
         active_site_tenant_id=selected.tenant_id,
         available_sites=response_sites,
-    )
+    ))
 
 
 @router.post("/demo-seed")
@@ -752,7 +755,7 @@ def ensure_minit_pilot_endpoint(request: Request, session: Session = Depends(uns
 
 @router.post("/dev-auto-login", response_model=TokenResponse)
 @limiter.limit(auth_limit)
-def dev_auto_login(request: Request, session: Session = Depends(unscoped_session)):
+def dev_auto_login(request: Request, response: Response, session: Session = Depends(unscoped_session)):
     if settings.app_env.lower() == "production" or not settings.allow_dev_auto_login:
         raise HTTPException(status_code=403, detail="Dev auto-login is disabled")
 
@@ -765,12 +768,12 @@ def dev_auto_login(request: Request, session: Session = Depends(unscoped_session
         token, expires, refresh_token, refresh_expires = _issue_session_tokens(
             session, tenant_id=tenant.id, user_id=user.id, role=user.role, request=request
         )
-        return TokenResponse(
+        return deliver_tokens(request, response, TokenResponse(
             access_token=token,
             expires_in_seconds=expires,
             refresh_token=refresh_token,
             refresh_expires_in_seconds=refresh_expires,
-        )
+        ))
 
     selected_tenant = tenants[0]
     selected_count = -1
@@ -804,19 +807,22 @@ def dev_auto_login(request: Request, session: Session = Depends(unscoped_session
     token, expires, refresh_token, refresh_expires = _issue_session_tokens(
         session, tenant_id=selected_tenant.id, user_id=user.id, role=user.role, request=request
     )
-    return TokenResponse(
+    return deliver_tokens(request, response, TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
-    )
+    ))
 
 
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit(auth_limit)
-def refresh_tokens(request: Request, payload: RefreshRequest, session: Session = Depends(unscoped_session)):
+def refresh_tokens(request: Request, response: Response, payload: RefreshRequest, session: Session = Depends(unscoped_session)):
     try:
-        claims = decode_refresh_token(payload.refresh_token)
+        presented = presented_refresh_token(request, payload.refresh_token)
+        if not presented:
+            raise ValueError("no refresh token")
+        claims = decode_refresh_token(presented)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
     tenant_id = claims.tenant_id
@@ -891,18 +897,18 @@ def refresh_tokens(request: Request, payload: RefreshRequest, session: Session =
             tenant_id, user_id, user.role, sid=sid, jti=next_jti,
             expires_minutes=max(1, int((rs_expires - now).total_seconds() // 60)),
         )
-        return TokenResponse(
+        return deliver_tokens(request, response, TokenResponse(
             access_token=token,
             expires_in_seconds=expires,
             refresh_token=refresh_token,
             refresh_expires_in_seconds=refresh_expires,
-        )
+        ))
 
     # Legacy untracked refresh token (issued before per-session tracking, or by
     # an endpoint that predates it). Upgrade it to a tracked, rotating session.
     # The legacy token's hash becomes the session's previous_jti, so presenting
     # the same legacy token again later is caught as reuse like any other.
-    legacy_id = hashlib.sha256(payload.refresh_token.encode()).hexdigest()
+    legacy_id = hashlib.sha256(presented.encode()).hexdigest()
     existing = session.exec(
         select(RefreshSession).where(RefreshSession.previous_jti == legacy_id)
     ).first()
@@ -914,12 +920,12 @@ def refresh_tokens(request: Request, payload: RefreshRequest, session: Session =
         session, tenant_id=tenant_id, user_id=user_id, role=user.role, request=request,
         previous_jti=legacy_id,
     )
-    return TokenResponse(
+    return deliver_tokens(request, response, TokenResponse(
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
-    )
+    ))
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -1037,29 +1043,50 @@ def list_sessions(
 
 
 @router.post("/logout", summary="Sign out this device")
+@limiter.limit(auth_limit)
 def logout(
-    auth: AuthContext = Depends(get_auth_context),
+    request: Request,
+    response: Response,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),
     session: Session = Depends(unscoped_session),
 ):
-    """Revoke this device's refresh session.
+    """Revoke this device's refresh session and clear its refresh cookie.
 
     Logging out used to only clear the browser, so a refresh token copied off a
     shared shop computer kept minting access tokens for its full sliding life.
+    The session is found from the access token's ``sid`` and/or the refresh
+    cookie, so logging out still works after the access token has expired.
     """
-    if not auth.sid:
-        return {"revoked": 0}
-    try:
-        sid = UUID(auth.sid)
-    except ValueError:
-        return {"revoked": 0}
-    row = session.get(RefreshSession, sid)
-    if row is None or row.user_id != auth.user_id or row.revoked_at is not None:
-        return {"revoked": 0}
-    row.revoked_at = datetime.now(timezone.utc)
-    session.add(row)
-    session.commit()
-    invalidate_auth_cache()
-    return {"revoked": 1}
+    clear_refresh_cookie(request, response)
+    sids: set[UUID] = set()
+    if credentials is not None:
+        try:
+            access_claims = decode_access_token(credentials.credentials)
+            if access_claims.sid:
+                sids.add(UUID(access_claims.sid))
+        except ValueError:
+            pass
+    cookie_token = (request.cookies.get(REFRESH_COOKIE_NAME) or "").strip()
+    if cookie_token:
+        try:
+            refresh_claims = decode_refresh_token(cookie_token)
+            if refresh_claims.sid:
+                sids.add(UUID(refresh_claims.sid))
+        except ValueError:
+            pass
+    revoked = 0
+    now = datetime.now(timezone.utc)
+    for sid in sids:
+        row = session.get(RefreshSession, sid)
+        if row is None or row.revoked_at is not None:
+            continue
+        row.revoked_at = now
+        session.add(row)
+        revoked += 1
+    if revoked:
+        session.commit()
+        invalidate_auth_cache()
+    return {"revoked": revoked}
 
 
 @router.post("/sessions/revoke-others", summary="Revoke all other sessions for current user")
@@ -1102,6 +1129,7 @@ def revoke_other_sessions(
 def switch_active_site(
     payload: ActiveSiteSwitchRequest,
     request: Request,
+    response: Response,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
@@ -1156,14 +1184,14 @@ def switch_active_site(
         if target_tenant and target_user
         else [target]
     )
-    return ActiveSiteSwitchResponse(
+    return deliver_tokens(request, response, ActiveSiteSwitchResponse(
         access_token=token,
         expires_in_seconds=expires,
         refresh_token=refresh_token,
         refresh_expires_in_seconds=refresh_expires,
         active_site_tenant_id=target.tenant_id,
         available_sites=response_sites,
-    )
+    ))
 
 
 @router.patch("/session/plan", response_model=AuthSessionResponse)

@@ -461,7 +461,7 @@
           "auth"
         ],
         "summary": "Sign out this device",
-        "description": "Revoke this device's refresh session.\n\nLogging out used to only clear the browser, so a refresh token copied off a\nshared shop computer kept minting access tokens for its full sliding life.",
+        "description": "Revoke this device's refresh session and clear its refresh cookie.\n\nLogging out used to only clear the browser, so a refresh token copied off a\nshared shop computer kept minting access tokens for its full sliding life.\nThe session is found from the access token's ``sid`` and/or the refresh\ncookie, so logging out still works after the access token has expired.",
         "operationId": "logout_v1_auth_logout_post",
         "responses": {
           "200": {
@@ -20660,6 +20660,11 @@
             ],
             "title": "Refresh Expires In Seconds"
           },
+          "refresh_in_cookie": {
+            "type": "boolean",
+            "title": "Refresh In Cookie",
+            "default": false
+          },
           "active_site_tenant_id": {
             "type": "string",
             "format": "uuid",
@@ -28536,6 +28541,11 @@
             ],
             "title": "Refresh Expires In Seconds"
           },
+          "refresh_in_cookie": {
+            "type": "boolean",
+            "title": "Refresh In Cookie",
+            "default": false
+          },
           "active_site_tenant_id": {
             "type": "string",
             "format": "uuid",
@@ -32782,14 +32792,18 @@
       "RefreshRequest": {
         "properties": {
           "refresh_token": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Refresh Token"
           }
         },
         "type": "object",
-        "required": [
-          "refresh_token"
-        ],
         "title": "RefreshRequest"
       },
       "RegionCreateRequest": {
@@ -38231,6 +38245,11 @@
               }
             ],
             "title": "Refresh Expires In Seconds"
+          },
+          "refresh_in_cookie": {
+            "type": "boolean",
+            "title": "Refresh In Cookie",
+            "default": false
           }
         },
         "type": "object",
@@ -38278,6 +38297,11 @@
               }
             ],
             "title": "Refresh Expires In Seconds"
+          },
+          "refresh_in_cookie": {
+            "type": "boolean",
+            "title": "Refresh In Cookie",
+            "default": false
           }
         },
         "type": "object",

@@ -126,7 +126,8 @@ class MultiSiteLoginRequest(SQLModel):
     password: str
 
 class RefreshRequest(SQLModel):
-    refresh_token: str
+    #: Omit when the refresh token is in the httpOnly cookie (web app).
+    refresh_token: Optional[str] = None
 
 class TokenResponse(SQLModel):
     access_token: str
@@ -134,6 +135,9 @@ class TokenResponse(SQLModel):
     expires_in_seconds: int
     refresh_token: Optional[str] = None
     refresh_expires_in_seconds: Optional[int] = None
+    #: True when the refresh token was set as an httpOnly cookie instead of
+    #: being returned here (client sent ``X-Auth-Refresh-Mode: cookie``).
+    refresh_in_cookie: bool = False
 
 class PublicUser(SQLModel):
     id: UUID
@@ -182,6 +186,9 @@ class MultiSiteLoginResponse(SQLModel):
     expires_in_seconds: int
     refresh_token: Optional[str] = None
     refresh_expires_in_seconds: Optional[int] = None
+    #: True when the refresh token was set as an httpOnly cookie instead of
+    #: being returned here (client sent ``X-Auth-Refresh-Mode: cookie``).
+    refresh_in_cookie: bool = False
     active_site_tenant_id: UUID
     available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
 
@@ -194,6 +201,9 @@ class ActiveSiteSwitchResponse(SQLModel):
     expires_in_seconds: int
     refresh_token: Optional[str] = None
     refresh_expires_in_seconds: Optional[int] = None
+    #: True when the refresh token was set as an httpOnly cookie instead of
+    #: being returned here (client sent ``X-Auth-Refresh-Mode: cookie``).
+    refresh_in_cookie: bool = False
     active_site_tenant_id: UUID
     available_sites: list[AuthSessionSiteOption] = Field(default_factory=list)
 
@@ -988,6 +998,9 @@ class TenantSignupResponse(SQLModel):
     expires_in_seconds: int
     refresh_token: Optional[str] = None
     refresh_expires_in_seconds: Optional[int] = None
+    #: True when the refresh token was set as an httpOnly cookie instead of
+    #: being returned here (client sent ``X-Auth-Refresh-Mode: cookie``).
+    refresh_in_cookie: bool = False
 
 class UserCreateRequest(SQLModel):
     email: str

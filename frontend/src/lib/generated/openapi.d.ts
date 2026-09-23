@@ -334,10 +334,12 @@ export interface paths {
         put?: never;
         /**
          * Sign out this device
-         * @description Revoke this device's refresh session.
+         * @description Revoke this device's refresh session and clear its refresh cookie.
          *
          *     Logging out used to only clear the browser, so a refresh token copied off a
          *     shared shop computer kept minting access tokens for its full sliding life.
+         *     The session is found from the access token's ``sid`` and/or the refresh
+         *     cookie, so logging out still works after the access token has expired.
          */
         post: operations["logout_v1_auth_logout_post"];
         delete?: never;
@@ -6440,6 +6442,11 @@ export interface components {
             /** Refresh Expires In Seconds */
             refresh_expires_in_seconds?: number | null;
             /**
+             * Refresh In Cookie
+             * @default false
+             */
+            refresh_in_cookie: boolean;
+            /**
              * Active Site Tenant Id
              * Format: uuid
              */
@@ -8976,6 +8983,11 @@ export interface components {
             /** Refresh Expires In Seconds */
             refresh_expires_in_seconds?: number | null;
             /**
+             * Refresh In Cookie
+             * @default false
+             */
+            refresh_in_cookie: boolean;
+            /**
              * Active Site Tenant Id
              * Format: uuid
              */
@@ -10433,7 +10445,7 @@ export interface components {
         /** RefreshRequest */
         RefreshRequest: {
             /** Refresh Token */
-            refresh_token: string;
+            refresh_token?: string | null;
         };
         /** RegionCreateRequest */
         RegionCreateRequest: {
@@ -12301,6 +12313,11 @@ export interface components {
             refresh_token?: string | null;
             /** Refresh Expires In Seconds */
             refresh_expires_in_seconds?: number | null;
+            /**
+             * Refresh In Cookie
+             * @default false
+             */
+            refresh_in_cookie: boolean;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -12317,6 +12334,11 @@ export interface components {
             refresh_token?: string | null;
             /** Refresh Expires In Seconds */
             refresh_expires_in_seconds?: number | null;
+            /**
+             * Refresh In Cookie
+             * @default false
+             */
+            refresh_in_cookie: boolean;
         };
         /** ToolkitRecommendBody */
         ToolkitRecommendBody: {

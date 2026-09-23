@@ -38,13 +38,43 @@ function emitAccessTokenUpdated(expiresInSeconds?: number): void {
   )
 }
 
-const api = axios.create({ baseURL: API_ORIGIN ? `${API_ORIGIN}/v1` : '/v1', timeout: 20000 })
+// withCredentials: the refresh token lives in an httpOnly cookie on /v1/auth,
+// which a cross-origin API (VITE_API_BASE_URL) only receives with credentials.
+const api = axios.create({ baseURL: API_ORIGIN ? `${API_ORIGIN}/v1` : '/v1', timeout: 20000, withCredentials: true })
+
+/**
+ * Stored in place of a refresh token when the real one is in the httpOnly
+ * `ms_refresh` cookie, where page scripts can't read it. Code that stashes and
+ * restores "the refresh token" (impersonation, HQ enter-shop) carries this
+ * marker through unchanged; `refreshAuth` sees it and lets the cookie do the work.
+ */
+export const REFRESH_VIA_COOKIE = '__cookie__'
+
+/** Headers asking the API to deliver refresh tokens as an httpOnly cookie. */
+export function refreshCookieHeaders(): Record<string, string> {
+  return {
+    'X-Auth-Refresh-Mode': 'cookie',
+    // "Remember me" off → the server sets a browser-session cookie.
+    'X-Auth-Remember': getRememberMe() ? '1' : '0',
+  }
+}
 
 // Attach JWT on every request
 api.interceptors.request.use((config) => {
   const token = getStoredAccessToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
+  for (const [k, v] of Object.entries(refreshCookieHeaders())) config.headers[k] = v
   return config
+})
+
+// A token response whose refresh token went into the cookie: record the marker
+// so every caller that stores `data.refresh_token` keeps working.
+api.interceptors.response.use((res) => {
+  const data = res.data as { refresh_in_cookie?: boolean; refresh_token?: string | null } | undefined
+  if (data && typeof data === 'object' && data.refresh_in_cookie === true && !data.refresh_token) {
+    data.refresh_token = REFRESH_VIA_COOKIE
+  }
+  return res
 })
 
 /** Pages a customer reaches by link, with no login of their own.
@@ -234,8 +264,9 @@ export interface TokenResponse {
   expires_in_seconds?: number
   refresh_token?: string
   refresh_expires_in_seconds?: number
+  refresh_in_cookie?: boolean
 }
 export const login = (tenant_slug: string, email: string, password: string) =>
   api.post<TokenResponse>('/auth/login', { tenant_slug, email, password })
 export const refreshAuth = (refresh_token: string) =>
-  api.post<TokenResponse>('/auth/refresh', { refresh_token })
+  api.post<TokenResponse>('/auth/refresh', refresh_token === REFRESH_VIA_COOKIE ? {} : { refresh_token })

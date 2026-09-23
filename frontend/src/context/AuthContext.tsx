@@ -9,6 +9,8 @@ import {
   getStoredAccessToken,
   getStoredRefreshToken,
   refreshAuth,
+  refreshCookieHeaders,
+  REFRESH_VIA_COOKIE,
   setStoredTokens,
   switchActiveSite,
   withApiOrigin,
@@ -115,7 +117,8 @@ function secondsUntilJwtExpiry(token: string | null): number {
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...refreshCookieHeaders() },
+    credentials: 'include',
     body: JSON.stringify(payload),
   })
 
@@ -421,9 +424,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function ensureTestSession() {
       try {
         // Optional dev helper for local demos and seeded datasets.
-        const loginResp = await postJson<{ access_token: string; refresh_token?: string }>(withApiOrigin('/v1/auth/dev-auto-login'), {})
+        const loginResp = await postJson<{ access_token: string; refresh_token?: string | null; refresh_in_cookie?: boolean }>(withApiOrigin('/v1/auth/dev-auto-login'), {})
         if (!canceled && !timedOut && loginResp.access_token) {
-          setStoredTokens(loginResp.access_token, loginResp.refresh_token ?? null)
+          setStoredTokens(
+            loginResp.access_token,
+            loginResp.refresh_token ?? (loginResp.refresh_in_cookie ? REFRESH_VIA_COOKIE : null),
+          )
           setToken(loginResp.access_token)
           setRole(parseRoleFromToken(loginResp.access_token))
         }
@@ -462,12 +468,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     proactiveRefreshTimer.current = null
     // Revoke this device's session server-side too, so a copied refresh token
     // stops working. Plain axios: no refresh-on-401 interceptor, never blocks.
+    // Always call it: the refresh cookie names the session even after the
+    // access token has expired, and the response clears the cookie.
     const accessToken = getStoredAccessToken()
-    if (accessToken) {
-      void axios
-        .post(withApiOrigin('/v1/auth/logout'), {}, { headers: { Authorization: `Bearer ${accessToken}` } })
-        .catch(() => {})
-    }
+    void axios
+      .post(withApiOrigin('/v1/auth/logout'), {}, {
+        withCredentials: true,
+        headers: { ...refreshCookieHeaders(), ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      })
+      .catch(() => {})
     clearStoredTokens()
     resetAuthState()
   }, [resetAuthState])
