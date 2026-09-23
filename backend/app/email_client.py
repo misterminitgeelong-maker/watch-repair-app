@@ -1185,6 +1185,13 @@ def _send_email(
         "subject": subject,
         "content": content,
         "categories": [event],
+        # Click tracking rewrites every link through the SendGrid link-branding
+        # domain (urlNNNN.<domain>), which has no TLS cert → browsers show
+        # NET::ERR_CERT_COMMON_NAME_INVALID. These are transactional emails
+        # carrying invite/reset/approval tokens, so links must go out untouched.
+        "tracking_settings": {
+            "click_tracking": {"enable": False, "enable_text": False},
+        },
     }
     reply = (reply_to or "").strip()
     if reply and "@" in reply and reply.lower() != from_addr.lower():
