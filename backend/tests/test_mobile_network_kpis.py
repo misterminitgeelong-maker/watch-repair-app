@@ -31,6 +31,7 @@ from app.mobile_network_kpis import (
 )
 from app.models import AutoKeyInvoice, AutoKeyJob, Customer, ParentAccount, Tenant
 from app.services.mobile_kpi_close import compile_daily_snapshot, compile_weekly_snapshot, email_weekly_snapshot
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -73,7 +74,7 @@ def _link_operator(headers: dict, operator_label: str, shop_number: str | None =
         },
     )
     assert res.status_code == 200, res.text
-    link = client.post(
+    link = link_and_accept(client,
         "/v1/parent-accounts/me/link-tenant",
         headers=headers,
         json={"tenant_slug": slug, "owner_email": email},

@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import ShopMobileBookingRequest, SmsLog, Tenant
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -91,7 +92,7 @@ def _setup_parent_network(suffix: str) -> tuple[dict[str, str], dict[str, str], 
     assert create_shop.status_code == 200, create_shop.text
     shop_site = _site_by_slug(hq_h, shop_slug)
 
-    link = client.post(
+    link = link_and_accept(client,
         "/v1/parent-accounts/me/link-tenant",
         headers=hq_h,
         json={"tenant_slug": op_slug, "owner_email": op_email},

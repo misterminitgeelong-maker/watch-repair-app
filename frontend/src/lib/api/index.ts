@@ -336,7 +336,28 @@ export interface ParentAccountSummary {
   mobile_lead_ingest_public_id?: string | null
   mobile_lead_webhook_secret_configured?: boolean
   mobile_lead_default_tenant_id?: string | null
+  /** Link requests this network sent that the shop has not answered yet. */
+  pending_link_requests?: NetworkLinkRequest[]
 }
+
+/** A network asking to add a shop; the shop's owner accepts or declines. */
+export interface NetworkLinkRequest {
+  id: string
+  parent_account_id: string
+  parent_account_name: string
+  tenant_id: string
+  tenant_slug: string
+  tenant_name: string
+  status: 'pending' | 'accepted' | 'declined'
+  requested_by_email?: string | null
+  created_at: string
+}
+
+export const listNetworkLinkRequests = () => api.get<NetworkLinkRequest[]>('/network-link-requests')
+export const acceptNetworkLinkRequest = (id: string) =>
+  api.post<NetworkLinkRequest>(`/network-link-requests/${id}/accept`)
+export const declineNetworkLinkRequest = (id: string) =>
+  api.post<NetworkLinkRequest>(`/network-link-requests/${id}/decline`)
 
 export interface ParentLeadIngestConfig {
   parent_account_id: string

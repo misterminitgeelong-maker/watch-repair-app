@@ -21,6 +21,7 @@ from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import AutoKeyJob, InboundEmail, ParentAccount, Tenant
 from app.shop_number import linked_tenant_ids_for_parent
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -92,7 +93,7 @@ def _setup_hq_with_operator(operator_label: str = "Mobile Services Burwood") -> 
 
     hq_token = _login(hq_slug, hq_email)
     headers = {"Authorization": f"Bearer {hq_token}"}
-    link = client.post(
+    link = link_and_accept(client,
         "/v1/parent-accounts/me/link-tenant",
         headers=headers,
         json={"tenant_slug": op_slug, "owner_email": op_email},

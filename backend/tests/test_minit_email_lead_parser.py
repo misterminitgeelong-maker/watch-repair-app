@@ -25,6 +25,7 @@ from app.minit_email_lead_parser import (
     parse_powerfulform_body,
 )
 from app.models import ParentAccount, Tenant
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -180,7 +181,7 @@ def _setup_parent_with_operator(operator_label: str) -> tuple[uuid4, uuid4]:
 
     hq_token = _login(hq_slug, hq_email)
     headers = {"Authorization": f"Bearer {hq_token}"}
-    link = client.post(
+    link = link_and_accept(client,
         "/v1/parent-accounts/me/link-tenant",
         headers=headers,
         json={"tenant_slug": op_slug, "owner_email": op_email},

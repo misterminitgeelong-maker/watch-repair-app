@@ -54,12 +54,34 @@ def test_shop_number_rejects_non_digits(client):
 
 
 def test_shop_number_must_be_unique_within_same_parent_account(client):
-    # Same owner email on both bootstraps -> both tenants land in one parent account/network
-    # (see _get_or_create_parent_account), which is exactly the scope shop_number uniqueness
-    # is enforced against.
+    # A second shop created from the first one's HQ lands in the same network,
+    # which is exactly the scope shop_number uniqueness is enforced against.
+    from sqlmodel import Session, select
+
+    from app.database import engine
+    from app.models import Tenant
+
     shared_email = "owner-multisite@test.com"
     headers_a = _bootstrap(client, "shopnum-multisite-a", shared_email)
-    headers_b = _bootstrap(client, "shopnum-multisite-b", shared_email)
+    with Session(engine) as session:
+        tenant_a = session.exec(select(Tenant).where(Tenant.slug == "shopnum-multisite-a")).one()
+        tenant_a.plan_code = "pro"
+        session.add(tenant_a)
+        session.commit()
+    from app.dependencies import invalidate_auth_cache
+
+    invalidate_auth_cache()
+    created = client.post(
+        "/v1/parent-accounts/me/create-tenant",
+        headers=headers_a,
+        json={"tenant_name": "Tenant shopnum-multisite-b", "tenant_slug": "shopnum-multisite-b", "plan_code": "pro"},
+    )
+    assert created.status_code == 200, created.text
+    login_b = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": "shopnum-multisite-b", "email": shared_email, "password": "pass123456"},
+    )
+    headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     ok = client.patch("/v1/settings/shop-identity", headers=headers_a, json={"shop_number": "9001"})
     assert ok.status_code == 200, ok.text

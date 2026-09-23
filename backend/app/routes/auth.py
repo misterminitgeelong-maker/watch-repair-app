@@ -18,6 +18,7 @@ from ..config import settings
 from ..database import get_session, unscoped_session
 from ..dependencies import (
     AuthContext,
+    PLAN_CODE_ALIASES,
     PLAN_FEATURES,
     VALID_PLAN_CODES,
     get_auth_context,
@@ -115,14 +116,14 @@ def _build_public_user(user: User) -> PublicUser:
     )
 
 
-def _get_or_create_parent_account(session: Session, owner_email: str, owner_name: str) -> ParentAccount:
-    parent = session.exec(
-        select(ParentAccount)
-        .where(ParentAccount.owner_email == owner_email)
-        .order_by(col(ParentAccount.created_at).asc(), col(ParentAccount.id).asc())
-    ).first()
-    if parent:
-        return parent
+def _create_parent_account(session: Session, owner_email: str, owner_name: str) -> ParentAccount:
+    """A new one-shop network for a fresh signup.
+
+    Never joins an existing network by email: the address is unverified, so
+    reusing a network whose owner_email matched made anyone who signed up with
+    that address its HQ admin. Grouping shops goes through create-tenant or an
+    accepted link request instead.
+    """
     parent = ParentAccount(name=f"{owner_name} Group", owner_email=owner_email)
     session.add(parent)
     session.flush()
@@ -142,36 +143,24 @@ def _ensure_parent_membership(session: Session, parent: ParentAccount, user: Use
     grant_parent_role(session, parent_id=parent.id, user_id=user.id, role=PARENT_ROLE_HQ_ADMIN)
 
 
-def _hq_parents_for_email(session: Session, email: str) -> list[ParentAccount]:
-    """Networks any login with this email may switch sites within.
+def _hq_parents_for_user(session: Session, user: User) -> list[ParentAccount]:
+    """Networks this one login holds an HQ role on.
 
-    A person with the same email in several tenants is one human; the site
-    switcher is theirs if any of those logins holds an HQ role on the network
-    (explicitly, or as the account owner).
+    Deliberately per login, not per email. Email is unverified and only unique
+    within a shop, so "every login with this address" let anyone who signed up
+    a shop with an HQ admin's email switch into that HQ's sites.
     """
-    users = session.exec(
-        select(User)
-        .where(User.email == email)
-        .where(User.is_active == True)  # noqa: E712
-        .order_by(col(User.created_at).asc(), col(User.id).asc())
-    ).all()
-    ordered: list[ParentAccount] = []
-    seen: set[UUID] = set()
-    for user in users:
-        for parent in parents_for_user(session, user):
-            if parent.id in seen:
-                continue
-            if not is_hq_viewer_or_admin(parent_role_for_user(session, parent, user)):
-                continue
-            seen.add(parent.id)
-            ordered.append(parent)
-    return ordered
+    return [
+        parent
+        for parent in parents_for_user(session, user)
+        if is_hq_viewer_or_admin(parent_role_for_user(session, parent, user))
+    ]
 
 
-def _build_available_sites_for_email(session: Session, email: str) -> list[AuthSessionSiteOption]:
-    """Sites this email can switch into: every tenant in a network it holds an
-    HQ role on, where a login with the same email exists."""
-    parents = _hq_parents_for_email(session, email)
+def _build_available_sites_for_user(session: Session, user: User) -> list[AuthSessionSiteOption]:
+    """Sites this login can switch into: shops in a network it holds an HQ role
+    on, where a login with the same email exists."""
+    parents = _hq_parents_for_user(session, user)
     if not parents:
         return []
 
@@ -188,7 +177,7 @@ def _build_available_sites_for_email(session: Session, email: str) -> list[AuthS
         for u in session.exec(
             select(User)
             .where(col(User.tenant_id).in_(tenant_ids))
-            .where(User.email == email)
+            .where(User.email == user.email)
             .where(User.is_active == True)  # noqa: E712
             .order_by(col(User.created_at).desc())
         ).all()
@@ -201,16 +190,16 @@ def _build_available_sites_for_email(session: Session, email: str) -> list[AuthS
     sites: list[AuthSessionSiteOption] = []
     for tenant_id in tenant_ids:
         tenant = tenants_by_id.get(tenant_id)
-        user = users_by_tenant.get(tenant_id)
-        if not tenant or not user:
+        site_user = users_by_tenant.get(tenant_id)
+        if not tenant or not site_user:
             continue
         sites.append(
             AuthSessionSiteOption(
                 tenant_id=tenant.id,
                 tenant_slug=tenant.slug,
                 tenant_name=tenant.name,
-                user_id=user.id,
-                role=user.role,
+                user_id=site_user.id,
+                role=site_user.role,
             )
         )
 
@@ -233,18 +222,18 @@ def _session_available_sites(session: Session, tenant: Tenant, user: User) -> li
 
     if is_minit_hq_ui(tenant):
         return [_site_option_for_tenant_user(tenant, user)]
-    sites = _build_available_sites_for_email(session, user.email)
+    sites = _build_available_sites_for_user(session, user)
     if not sites:
         return [_site_option_for_tenant_user(tenant, user)]
     return sites
 
 
-def _get_site_option_for_email_tenant(
+def _get_site_option_for_user_tenant(
     session: Session,
-    email: str,
+    user: User,
     tenant_id: UUID,
 ) -> AuthSessionSiteOption | None:
-    for site in _build_available_sites_for_email(session, email):
+    for site in _build_available_sites_for_user(session, user):
         if site.tenant_id == tenant_id:
             return site
     return None
@@ -356,7 +345,7 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
     session.commit()
     session.refresh(owner)
 
-    parent = _get_or_create_parent_account(session, owner_email, owner_name)
+    parent = _create_parent_account(session, owner_email, owner_name)
     _ensure_parent_membership(session, parent, owner)
     session.commit()
 
@@ -433,7 +422,7 @@ def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(unscop
     session.commit()
     session.refresh(owner)
 
-    parent = _get_or_create_parent_account(session, owner_email, payload.owner_full_name.strip())
+    parent = _create_parent_account(session, owner_email, payload.owner_full_name.strip())
     _ensure_parent_membership(session, parent, owner)
     session.commit()
 
@@ -533,15 +522,29 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="A valid email is required")
 
-    sites = _build_available_sites_for_email(session, email)
-    if not sites:
+    # Check the password against every login with this address and only use
+    # the ones it opens. Picking an arbitrary row to check the password on and
+    # then logging into a different one let a second signup with the same
+    # email walk into the first account's network.
+    candidates = session.exec(
+        select(User).where(User.email == email).where(User.is_active == True)  # noqa: E712
+    ).all()
+    verified = [u for u in candidates if verify_password(payload.password, u.password_hash)]
+    if not verified:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    candidate = session.exec(
-        select(User).where(User.email == email).where(User.is_active == True)  # noqa: E712
-    ).first()
-    if not candidate or not verify_password(payload.password, candidate.password_hash):
+    sites: list[AuthSessionSiteOption] = []
+    seen_tenants: set[UUID] = set()
+    for login in verified:
+        for site in _build_available_sites_for_user(session, login):
+            if site.tenant_id not in seen_tenants:
+                seen_tenants.add(site.tenant_id)
+                sites.append(site)
+    if not sites:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    hq_parents: list[ParentAccount] = []
+    for login in verified:
+        hq_parents.extend(_hq_parents_for_user(session, login))
 
     valid_sites = sites
     from ..minit_branding import is_minit_hq_ui
@@ -552,7 +555,6 @@ def multi_site_login(request: Request, payload: MultiSiteLoginRequest, session: 
         if tenant and is_minit_hq_ui(tenant):
             selected = site
             break
-    hq_parents = _hq_parents_for_email(session, email)
     parent = hq_parents[0] if hq_parents else None
     if parent:
         session.add(
@@ -936,6 +938,7 @@ def revoke_other_sessions(
 @router.patch("/session/site", response_model=ActiveSiteSwitchResponse)
 def switch_active_site(
     payload: ActiveSiteSwitchRequest,
+    request: Request,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
@@ -943,11 +946,11 @@ def switch_active_site(
     if not current_user or not current_user.is_active:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    target = _get_site_option_for_email_tenant(session, current_user.email, payload.tenant_id)
+    target = _get_site_option_for_user_tenant(session, current_user, payload.tenant_id)
     if not target:
         raise HTTPException(status_code=403, detail="Target site is not available for this login")
 
-    hq_parents = _hq_parents_for_email(session, current_user.email)
+    hq_parents = _hq_parents_for_user(session, current_user)
     parent = hq_parents[0] if hq_parents else None
     if parent:
         source_tenant = session.get(Tenant, auth.tenant_id)
@@ -980,8 +983,9 @@ def switch_active_site(
     )
     session.commit()
 
-    token, expires = create_access_token(target.tenant_id, target.user_id, target.role)
-    refresh_token, refresh_expires = create_refresh_token(target.tenant_id, target.user_id, target.role)
+    token, expires, refresh_token, refresh_expires = _issue_session_tokens(
+        session, tenant_id=target.tenant_id, user_id=target.user_id, role=target.role, request=request
+    )
     target_tenant = session.get(Tenant, target.tenant_id)
     target_user = session.get(User, target.user_id)
     response_sites = (
@@ -1010,8 +1014,24 @@ def update_session_plan(
     if not tenant or not user or user.tenant_id != tenant.id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+    # With Stripe on, the plan is what the shop pays for: it changes through
+    # checkout and the subscription webhook, never on the shop's say-so.
+    if (
+        stripe_billing_configured()
+        and auth.role != "platform_admin"
+        and not bool(getattr(tenant, "billing_exempt", False))
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Change your plan through billing checkout.",
+        )
+    requested = (payload.plan_code or "").strip().lower()
+    requested = PLAN_CODE_ALIASES.get(requested, requested)
+    if requested not in VALID_PLAN_CODES:
+        raise HTTPException(status_code=400, detail=f"Unsupported plan code '{payload.plan_code}'")
+
     old_plan = tenant.plan_code
-    tenant.plan_code = _normalize_plan_code(payload.plan_code)
+    tenant.plan_code = requested
     session.add(
         TenantEventLog(
             tenant_id=tenant.id,

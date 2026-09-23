@@ -15,6 +15,8 @@ from sqlmodel import Session, select
 
 from ..database import get_session, unscoped_session
 from ..models import (
+    ParentAccountUser,
+    RefreshSession,
     ShopOwnerInvite,
     ShopOwnerInviteCompleteRequest,
     ShopOwnerInvitePublicRead,
@@ -98,6 +100,20 @@ def complete_shop_owner_invite(
     owner.email = email
     owner.password_hash = hash_password(payload.password)
     session.add(owner)
+    # The row stops being HQ's copied login here: drop any HQ access it held
+    # as that copy, and sign out whoever was using it before.
+    for grant in session.exec(
+        select(ParentAccountUser).where(ParentAccountUser.user_id == owner.id)
+    ).all():
+        session.delete(grant)
+    now = datetime.now(timezone.utc)
+    for refresh_session in session.exec(
+        select(RefreshSession)
+        .where(RefreshSession.user_id == owner.id)
+        .where(RefreshSession.revoked_at.is_(None))
+    ).all():
+        refresh_session.revoked_at = now
+        session.add(refresh_session)
     invite.status = "completed"
     invite.completed_at = datetime.now(timezone.utc)
     session.add(invite)

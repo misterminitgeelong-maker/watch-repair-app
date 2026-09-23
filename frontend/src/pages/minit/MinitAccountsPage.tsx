@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useToast } from '@/lib/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Copy, Download, KeyRound, LogIn, Pencil } from 'lucide-react'
 import {
@@ -155,6 +156,7 @@ function downloadContactsCsv(sites: ParentAccountSite[]) {
 export default function MinitAccountsPage() {
   const { refreshSession, sessionUserId } = useAuth()
   const qc = useQueryClient()
+  const toast = useToast()
   const { enterShop, entering, error: enterError } = useHqEnterShop()
   const { data: regions = [] } = useRegions()
   const [error, setError] = useState('')
@@ -279,7 +281,13 @@ export default function MinitAccountsPage() {
         owner_email: linkEmail.trim().toLowerCase(),
         shop_number: shopNumber.trim() || undefined,
       }).then(r => r.data),
-    onSuccess: () => {
+    onSuccess: summary => {
+      const pending = summary.pending_link_requests ?? []
+      toast.success(
+        pending.length
+          ? 'Request sent. The shop is added once its owner accepts it.'
+          : 'Shop linked.',
+      )
       setError('')
       setShowAdd(false)
       void refreshSession()

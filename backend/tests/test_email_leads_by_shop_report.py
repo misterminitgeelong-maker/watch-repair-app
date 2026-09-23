@@ -21,6 +21,7 @@ from app.database import create_db_and_tables, engine
 from app.main import app
 from app.minit_provision import ensure_minit_pilot_account
 from app.models import InboundEmail, ParentAccount, Tenant
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -89,7 +90,7 @@ def _link_operator(headers: dict, operator_label: str) -> str:
         },
     )
     assert res.status_code == 200, res.text
-    link = client.post("/v1/parent-accounts/me/link-tenant", headers=headers, json={"tenant_slug": slug, "owner_email": email})
+    link = link_and_accept(client,"/v1/parent-accounts/me/link-tenant", headers=headers, json={"tenant_slug": slug, "owner_email": email})
     assert link.status_code == 200, link.text
     with Session(engine) as session:
         tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).one()

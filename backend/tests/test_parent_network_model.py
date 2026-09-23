@@ -39,6 +39,7 @@ from app.models import (
     User,
 )
 from app.parent_network import parent_role_for_user, parents_for_user, resolve_common_parent_id
+from network_link_helpers import link_and_accept
 
 create_db_and_tables()
 client = TestClient(app)
@@ -91,7 +92,7 @@ def _network(suffix: str) -> dict:
     op_slug = f"op-{suffix}"
     op_email = f"op-{suffix}@net.test"
     op = _bootstrap(op_slug, op_email, "basic_auto_key")
-    linked = client.post(
+    linked = link_and_accept(client,
         "/v1/parent-accounts/me/link-tenant",
         headers=hq_h,
         json={"tenant_slug": op_slug, "owner_email": op_email},
@@ -212,7 +213,7 @@ def test_a_tenant_cannot_be_linked_to_the_same_parent_twice():
         assert after == before
 
     # Linking through the API is idempotent rather than duplicating.
-    again = client.post(
+    again = link_and_accept(client,
         "/v1/parent-accounts/me/link-tenant",
         headers=net["hq"],
         json={"tenant_slug": net["op_slug"], "owner_email": net["op_email"]},

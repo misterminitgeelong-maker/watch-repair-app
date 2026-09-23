@@ -10,6 +10,7 @@ os.environ.setdefault("APP_ENV", "test")
 
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.database import create_db_and_tables
 from app.main import app
 
@@ -474,19 +475,28 @@ def test_multi_site_login_and_site_switch():
     owner_email = f"owner-{suffix}@multisite.test"
     owner_password = "pass123456"
 
-    # Bootstrap two sites with the same owner identity.
-    for site_slug in (f"site-a-{suffix}", f"site-b-{suffix}"):
-        bootstrap_res = client.post(
-            "/v1/auth/bootstrap",
-            json={
-                "tenant_name": f"Tenant {site_slug}",
-                "tenant_slug": site_slug,
-                "owner_email": owner_email,
-                "owner_full_name": "Multi Site Owner",
-                "owner_password": owner_password,
-            },
-        )
-        assert bootstrap_res.status_code == 200
+    bootstrap_res = client.post(
+        "/v1/auth/bootstrap",
+        json={
+            "tenant_name": f"Tenant site-a-{suffix}",
+            "tenant_slug": f"site-a-{suffix}",
+            "owner_email": owner_email,
+            "owner_full_name": "Multi Site Owner",
+            "owner_password": owner_password,
+            "plan_code": "enterprise",
+        },
+    )
+    assert bootstrap_res.status_code == 200
+    first = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"site-a-{suffix}", "email": owner_email, "password": owner_password},
+    )
+    created = client.post(
+        "/v1/parent-accounts/me/create-tenant",
+        headers={"Authorization": f"Bearer {first.json()['access_token']}"},
+        json={"tenant_name": f"Tenant site-b-{suffix}", "tenant_slug": f"site-b-{suffix}", "plan_code": "enterprise"},
+    )
+    assert created.status_code == 200, created.text
 
     multi_login_res = client.post(
         "/v1/auth/multi-site-login",
@@ -522,6 +532,83 @@ def test_multi_site_login_and_site_switch():
     switched_session = switched_session_res.json()
     assert switched_session["tenant_id"] == target["tenant_id"]
     assert len(switched_session["available_sites"]) == 2
+
+
+def _bootstrap_owner(slug: str, email: str, password: str, plan: str = "enterprise") -> dict:
+    res = client.post(
+        "/v1/auth/bootstrap",
+        json={
+            "tenant_name": f"Tenant {slug}",
+            "tenant_slug": slug,
+            "owner_email": email,
+            "owner_full_name": "Owner",
+            "owner_password": password,
+            "plan_code": plan,
+        },
+    )
+    assert res.status_code == 200, res.text
+    login = client.post("/v1/auth/login", json={"tenant_slug": slug, "email": email, "password": password})
+    assert login.status_code == 200, login.text
+    return {"tenant_id": res.json()["tenant_id"], "headers": {"Authorization": f"Bearer {login.json()['access_token']}"}}
+
+
+def test_signing_up_with_another_owners_email_grants_nothing_of_theirs():
+    """Email is unverified: a second signup reusing it must not reach the first."""
+    suffix = uuid4().hex[:8]
+    email = f"victim-{suffix}@shared.test"
+    victim = _bootstrap_owner(f"victim-{suffix}", email, "victim-pass-123")
+    client.post("/v1/customers", headers=victim["headers"], json={"full_name": "Victim Customer", "phone": "0400"})
+    attacker = _bootstrap_owner(f"attacker-{suffix}", email, "attacker-pass-123")
+
+    sites = client.get("/v1/parent-accounts/me/sites", headers=attacker["headers"]).json()
+    slugs = [s.get("tenant_slug") for s in sites.get("sites", sites.get("items", []))]
+    assert f"victim-{suffix}" not in slugs
+    entered = client.post(
+        f"/v1/parent-accounts/me/sites/{victim['tenant_id']}/enter", headers=attacker["headers"], json={"reason": "x"}
+    )
+    assert entered.status_code == 404
+    switched = client.patch("/v1/auth/session/site", headers=attacker["headers"], json={"tenant_id": victim["tenant_id"]})
+    assert switched.status_code == 403
+
+    # Multi-site login with the attacker's password opens only the attacker's shop.
+    multi = client.post("/v1/auth/multi-site-login", json={"email": email, "password": "attacker-pass-123"})
+    assert multi.status_code == 200
+    assert {s["tenant_id"] for s in multi.json()["available_sites"]} == {attacker["tenant_id"]}
+
+
+def test_linking_a_shop_needs_that_shops_consent():
+    suffix = uuid4().hex[:8]
+    victim = _bootstrap_owner(f"shop-{suffix}", f"shop-{suffix}@x.test", "shop-pass-123", plan="basic_watch")
+    hq = _bootstrap_owner(f"hq-{suffix}", f"hq-{suffix}@x.test", "hq-pass-123")
+    asked = client.post(
+        "/v1/parent-accounts/me/link-tenant",
+        headers=hq["headers"],
+        json={"tenant_slug": f"shop-{suffix}", "owner_email": f"shop-{suffix}@x.test"},
+    )
+    assert asked.status_code == 200
+    assert asked.json()["site_count"] == 1
+    entered = client.post(
+        f"/v1/parent-accounts/me/sites/{victim['tenant_id']}/enter", headers=hq["headers"], json={"reason": "x"}
+    )
+    assert entered.status_code == 404
+
+    [request] = client.get("/v1/network-link-requests", headers=victim["headers"]).json()
+    declined = client.post(f"/v1/network-link-requests/{request['id']}/decline", headers=victim["headers"])
+    assert declined.json()["status"] == "declined"
+    assert client.get("/v1/parent-accounts/me", headers=hq["headers"]).json()["site_count"] == 1
+    again = client.post(f"/v1/network-link-requests/{request['id']}/accept", headers=victim["headers"])
+    assert again.status_code == 409
+
+
+def test_owner_cannot_self_upgrade_plan_when_stripe_is_on(monkeypatch):
+    suffix = uuid4().hex[:8]
+    shop = _bootstrap_owner(f"plan-{suffix}", f"plan-{suffix}@x.test", "plan-pass-123", plan="basic_watch")
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_dummy")
+    res = client.patch("/v1/auth/session/plan", headers=shop["headers"], json={"plan_code": "pro"})
+    assert res.status_code == 403
+    monkeypatch.setattr(settings, "stripe_secret_key", "")
+    bogus = client.patch("/v1/auth/session/plan", headers=shop["headers"], json={"plan_code": "platinum"})
+    assert bogus.status_code in (400, 422)
 
 
 def test_parent_account_summary_and_link_tenant():
@@ -581,7 +668,30 @@ def test_parent_account_summary_and_link_tenant():
         },
     )
     assert link_res.status_code == 200
-    assert link_res.json()["site_count"] == 2
+    # Nothing is linked until the other shop agrees.
+    assert link_res.json()["site_count"] == 1
+    assert [r["tenant_slug"] for r in link_res.json()["pending_link_requests"]] == [f"parent-b-{suffix}"]
+    entered = client.post(
+        f"/v1/parent-accounts/me/sites/{bootstrap_b.json()['tenant_id']}/enter",
+        headers=headers,
+        json={"reason": "x"},
+    )
+    assert entered.status_code == 404
+
+    b_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"parent-b-{suffix}", "email": f"other-{suffix}@parent.test", "password": owner_password},
+    )
+    b_headers = {"Authorization": f"Bearer {b_login.json()['access_token']}"}
+    requests_res = client.get("/v1/network-link-requests", headers=b_headers)
+    assert requests_res.status_code == 200
+    [request] = requests_res.json()
+    accepted = client.post(f"/v1/network-link-requests/{request['id']}/accept", headers=b_headers)
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["status"] == "accepted"
+
+    summary_after = client.get("/v1/parent-accounts/me", headers=headers)
+    assert summary_after.json()["site_count"] == 2
 
     # Prevent unlinking currently active site.
     remove_active_res = client.delete(

@@ -374,6 +374,17 @@ class ParentAccountSitesPageResponse(SQLModel):
     offset: int = 0
 
 
+class ParentLinkRequestRead(SQLModel):
+    id: UUID
+    parent_account_id: UUID
+    parent_account_name: str
+    tenant_id: UUID
+    tenant_slug: str
+    tenant_name: str
+    status: str
+    requested_by_email: Optional[str] = None
+    created_at: datetime
+
 class ParentAccountSummaryResponse(SQLModel):
     parent_account_id: UUID
     parent_account_name: str
@@ -387,6 +398,8 @@ class ParentAccountSummaryResponse(SQLModel):
     mobile_lead_ingest_public_id: Optional[UUID] = None
     mobile_lead_webhook_secret_configured: bool = False
     mobile_lead_default_tenant_id: Optional[UUID] = None
+    #: Link requests this network has sent that the shop has not answered yet.
+    pending_link_requests: list[ParentLinkRequestRead] = Field(default_factory=list)
 
 class ParentAccountEventLogRead(SQLModel):
     id: UUID
