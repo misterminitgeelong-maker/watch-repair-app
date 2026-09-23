@@ -316,6 +316,7 @@ def plan_directory_import(
                 name=shop.name,
                 slug=_tenant_slug(shop.shop_number),
                 plan_code=plan_code,
+                is_minit=True,
                 business_address=shop.address[:2000] if shop.address else None,
                 shop_number=shop.shop_number,
                 minit_area=shop.area or None,

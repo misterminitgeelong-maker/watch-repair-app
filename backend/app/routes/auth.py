@@ -304,7 +304,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
 
     normalized_plan = effective_plan_code(tenant)
     enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES[LOWEST_PLAN_CODE]))
-    product = tenant_product(tenant.slug)
+    product = tenant_product(tenant)
     available_sites = _session_available_sites(session, tenant, user)
     cal_tz = settings.schedule_calendar_timezone
     now_shop = datetime.now(ZoneInfo(cal_tz))

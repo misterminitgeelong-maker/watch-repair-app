@@ -34,7 +34,7 @@ from ..dependencies import (
     require_feature,
     require_owner,
 )
-from ..minit_branding import MINIT_HQ_PLAN, tenant_product
+from ..minit_branding import MINIT_HQ_PLAN, is_minit_tenant, tenant_product
 from ..models.tables import PARENT_ROLE_HQ_ADMIN
 from ..minit_mobile_routing import resolve_mobile_operator_route
 from ..minit_mobile_territory_import import import_mobile_suburb_routes, load_territory_routes_seed
@@ -411,7 +411,7 @@ def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
         raise HTTPException(status_code=401, detail="Invalid token")
     if normalize_plan_code(auth.plan_code) != MINIT_HQ_PLAN:
         raise HTTPException(status_code=403, detail="Minit HQ plan required")
-    if tenant_product(tenant.slug) != "minit":
+    if tenant_product(tenant) != "minit":
         raise HTTPException(status_code=403, detail="Minit product required")
     return tenant
 
@@ -1540,12 +1540,16 @@ def create_tenant_from_parent_account(
         assert_shop_number_unique_in_parent(session, parent_id=parent.id, shop_number=shop_number)
 
     business_address = payload.business_address.strip()[:2000] if payload.business_address else None
+    # A site created from a Minit HQ account is a Minit site; from any other
+    # parent account it is a Mainspring shop.
+    creator_tenant = session.get(Tenant, auth.tenant_id)
     tenant = Tenant(
         name=tenant_name,
         slug=tenant_slug,
         plan_code=_normalize_plan_code(payload.plan_code),
         business_address=business_address,
         shop_number=shop_number,
+        is_minit=is_minit_tenant(creator_tenant),
     )
     session.add(tenant)
     session.flush()
@@ -2015,6 +2019,7 @@ def provision_minit_retail_shop(
         plan_code=plan_code,
         business_address=business_address,
         shop_number=shop_number,
+        is_minit=True,
     )
     session.add(tenant)
     session.flush()

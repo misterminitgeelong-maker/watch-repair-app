@@ -107,7 +107,7 @@ def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
         raise HTTPException(status_code=401, detail="Invalid token")
     if normalize_plan_code(auth.plan_code) != MINIT_HQ_PLAN:
         raise HTTPException(status_code=403, detail="Minit HQ plan required")
-    if tenant_product(tenant.slug) != "minit":
+    if tenant_product(tenant) != "minit":
         raise HTTPException(status_code=403, detail="Minit product required")
     return tenant
 

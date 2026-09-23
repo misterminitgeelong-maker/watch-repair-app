@@ -84,9 +84,10 @@ def _setup_hq_network(suffix: str) -> dict[str, str]:
         with Session(engine) as session:
             tenant = session.exec(select(Tenant).where(Tenant.slug == hq_slug)).first()
             if tenant is None:
-                tenant = Tenant(name="Minit HQ", slug=hq_slug, plan_code="enterprise")
+                tenant = Tenant(name="Minit HQ", slug=hq_slug, plan_code="enterprise", is_minit=True)
                 session.add(tenant)
                 session.flush()
+            tenant.is_minit = True
             ensure_minit_tenant_plan(session, tenant)
             user = session.exec(
                 select(User).where(User.tenant_id == tenant.id, User.email == hq_email)

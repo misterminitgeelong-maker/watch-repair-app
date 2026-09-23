@@ -35,6 +35,9 @@ class Tenant(SQLModel, table=True):
     # or future subscription webhooks (e.g. a subscription.deleted event would otherwise
     # re-flag signup_payment_pending and lock the shop out again). Set via "Stop billing".
     billing_exempt: bool = False
+    #: Mister Minit network tenant (HQ, retail shops, mobile operators). Set only
+    #: by Minit provisioning — never inferred from the slug a user typed.
+    is_minit: bool = Field(default=False, index=True)
     is_active: bool = True
     auth_revoked_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

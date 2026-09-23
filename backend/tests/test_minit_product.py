@@ -43,18 +43,29 @@ def _bootstrap(tenant_slug: str, email: str, password: str, plan_code: str = "pr
 
 
 def test_minit_hq_effective_plan_and_product():
-    tenant = Tenant(name="HQ", slug="mmsupport", plan_code="enterprise")
+    tenant = Tenant(name="HQ", slug="mmsupport", plan_code="enterprise", is_minit=True)
     assert effective_plan_code(tenant) == "minit_hq"
-    assert tenant_product("mmsupport") == "minit"
-    assert tenant_product("minit-3269") == "minit"
-    assert tenant_product("timekeepers") == "mainspring"
+    assert tenant_product(tenant) == "minit"
+    assert tenant_product(Tenant(name="Shop", slug="minit-3269", is_minit=True)) == "minit"
+    assert tenant_product(Tenant(name="TK", slug="timekeepers")) == "mainspring"
+
+
+def test_minit_identity_comes_from_the_stored_flag_not_the_slug():
+    # A Minit-looking slug without the provisioning flag is a Mainspring shop
+    # (and gets no Minit plan override)…
+    lookalike = Tenant(name="Lookalike", slug="minit-9999", plan_code="pro")
+    assert tenant_product(lookalike) == "mainspring"
+    assert effective_plan_code(lookalike) == "pro"
+    assert is_minit_hq_ui(Tenant(name="Fake HQ", slug="mmsupport", plan_code="pro")) is False
+    # …and a provisioned Minit site is Minit whatever its slug.
+    assert tenant_product(Tenant(name="Op", slug="operator-42", is_minit=True)) == "minit"
 
 
 def test_ensure_minit_hq_persists_plan():
     with Session(engine) as session:
         tenant = session.exec(select(Tenant).where(Tenant.slug == "mmsupport")).first()
         if not tenant:
-            tenant = Tenant(name="Test HQ", slug="mmsupport", plan_code="enterprise")
+            tenant = Tenant(name="Test HQ", slug="mmsupport", plan_code="enterprise", is_minit=True)
             session.add(tenant)
             session.commit()
         session.refresh(tenant)
@@ -72,7 +83,7 @@ def test_minit_hq_session_flag():
     with Session(engine) as session:
         tenant = session.exec(select(Tenant).where(Tenant.slug == "mmsupport")).first()
         if not tenant:
-            tenant = Tenant(name="Minit HQ", slug="mmsupport", plan_code="enterprise")
+            tenant = Tenant(name="Minit HQ", slug="mmsupport", plan_code="enterprise", is_minit=True)
             session.add(tenant)
             session.commit()
             session.refresh(tenant)
@@ -94,8 +105,8 @@ def test_minit_hq_session_flag():
 
 
 def test_minit_hq_ui_helper():
-    assert is_minit_hq_ui(Tenant(name="HQ", slug="mmsupport", plan_code="enterprise")) is True
-    assert is_minit_hq_ui(Tenant(name="Shop", slug="minit-3269", plan_code="booking_only")) is False
+    assert is_minit_hq_ui(Tenant(name="HQ", slug="mmsupport", plan_code="enterprise", is_minit=True)) is True
+    assert is_minit_hq_ui(Tenant(name="Shop", slug="minit-3269", plan_code="booking_only", is_minit=True)) is False
 
 
 def test_minit_retail_session_strips_repair_features():
@@ -122,7 +133,7 @@ def _provision_minit_shop(slug: str, email: str, password: str) -> str:
     from app.security import hash_password
 
     with Session(engine) as session:
-        tenant = Tenant(name=f"Shop {slug}", slug=slug, plan_code="enterprise")
+        tenant = Tenant(name=f"Shop {slug}", slug=slug, plan_code="enterprise", is_minit=True)
         session.add(tenant)
         session.flush()
         session.add(User(tenant_id=tenant.id, email=email, full_name="Owner", role="owner", password_hash=hash_password(password)))

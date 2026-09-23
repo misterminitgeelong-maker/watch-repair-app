@@ -222,11 +222,12 @@ def _get_or_create_hq_tenant(
     email = owner_email.strip().lower()
     tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
     if not tenant:
-        tenant = Tenant(name=name, slug=slug, plan_code="minit_hq")
+        tenant = Tenant(name=name, slug=slug, plan_code="minit_hq", is_minit=True)
         session.add(tenant)
         session.flush()
-    elif tenant.plan_code != "minit_hq":
+    elif tenant.plan_code != "minit_hq" or not tenant.is_minit:
         tenant.plan_code = "minit_hq"
+        tenant.is_minit = True
         session.add(tenant)
         session.flush()
 
@@ -329,6 +330,7 @@ def _create_child_tenant(
             name=shop.name,
             slug=slug,
             plan_code=plan_code,
+            is_minit=True,
             business_address=shop.business_address[:2000] if shop.business_address else None,
             shop_number=shop_number,
             minit_area=shop.area,

@@ -27,21 +27,31 @@ _MINIT_DISALLOWED_PLANS = frozenset(
 
 
 def is_minit_tenant_slug(slug: str | None) -> bool:
+    """Whether a slug is in the Minit namespace. Only for reserving names at
+    signup and for pre-login branding — identity comes from ``Tenant.is_minit``."""
     s = (slug or "").strip().lower()
     return s == MINIT_HQ_SLUG or s.startswith("minit-")
 
 
-def tenant_product(slug: str | None) -> str:
-    return "minit" if is_minit_tenant_slug(slug) else "mainspring"
+def is_minit_tenant(tenant: Tenant | None) -> bool:
+    """Mister Minit network tenant, as stored at provisioning."""
+    return bool(tenant is not None and getattr(tenant, "is_minit", False))
+
+
+def tenant_product(tenant: Tenant | None) -> str:
+    return "minit" if is_minit_tenant(tenant) else "mainspring"
+
+
+def _is_minit_hq_tenant(tenant: Tenant) -> bool:
+    return is_minit_tenant(tenant) and (tenant.slug or "").strip().lower() == MINIT_HQ_SLUG
 
 
 def target_plan_for_minit_tenant(tenant: Tenant) -> str | None:
     """Return the plan code this Minit tenant should use, or None if no change."""
-    slug = (tenant.slug or "").strip().lower()
-    if slug == MINIT_HQ_SLUG:
-        return MINIT_HQ_PLAN if normalize_plan_code(tenant.plan_code) != MINIT_HQ_PLAN else None
-    if not slug.startswith("minit-"):
+    if not is_minit_tenant(tenant):
         return None
+    if _is_minit_hq_tenant(tenant):
+        return MINIT_HQ_PLAN if normalize_plan_code(tenant.plan_code) != MINIT_HQ_PLAN else None
     normalized = normalize_plan_code(tenant.plan_code)
     if normalized in _MINIT_DISALLOWED_PLANS:
         return MINIT_SHOP_PLAN
@@ -58,8 +68,7 @@ def effective_plan_code(tenant: Tenant) -> str:
 
 def is_minit_hq_ui(tenant: Tenant) -> bool:
     """True when the active tenant should see the six-item Minit HQ sidebar."""
-    slug = (tenant.slug or "").strip().lower()
-    if slug == MINIT_HQ_SLUG:
+    if _is_minit_hq_tenant(tenant):
         return True
     return effective_plan_code(tenant) == MINIT_HQ_PLAN
 
