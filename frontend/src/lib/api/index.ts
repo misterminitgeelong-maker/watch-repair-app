@@ -1240,7 +1240,7 @@ export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineIte
 
 // Public (no auth)
 export const getPublicQuote = (token: string) =>
-  axios.get<{ id: string; status: string; subtotal_cents: number; tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
+  axios.get<{ shop_name?: string | null; shop_phone?: string | null; id: string; status: string; subtotal_cents: number; tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
   axios.post(withApiOrigin(`/v1/public/quotes/${token}/decision`), { decision, signature })
 
@@ -1248,11 +1248,11 @@ export interface PublicJobStatus {
   job_number: string
   status: string
   title: string
-  description?: string
   priority: string
   pre_quote_cents: number
   created_at: string
   collection_date?: string | null
+  shop?: { name?: string | null; phone?: string | null; email?: string | null }
   watch: {
     brand?: string
     model?: string
@@ -1261,7 +1261,6 @@ export interface PublicJobStatus {
   history: Array<{
     old_status?: string
     new_status: string
-    change_note?: string
     created_at: string
   }>
 }
@@ -1294,7 +1293,7 @@ export interface PublicShoeJobStatus {
   history: Array<{
     old_status: string | null
     new_status: string
-    change_note: string | null
+    change_note?: string | null
     created_at: string
   }>
 }

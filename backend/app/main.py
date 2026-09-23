@@ -218,9 +218,9 @@ CRITICAL_ALERT_PATH_PREFIXES: tuple[str, ...] = (
 )
 CRITICAL_ALERT_PATH_SUBSTRINGS: tuple[str, ...] = ("/v1/auto-key-jobs/invoices/",)
 
-#: Customer-facing single-use links sent by SMS. Their tokens are cleared once used
-#: (e.g. ``submit_public_auto_key_intake`` nulls ``customer_intake_token``), so a 404
-#: is the designed outcome for a link that was already used, superseded or expired.
+#: Customer-facing single-use links sent by SMS. A 404 (superseded or expired) or
+#: 410 (already used, e.g. an intake form that was submitted) is the designed
+#: outcome for a link opened again, not a failure.
 PUBLIC_LINK_PATH_PREFIXES: tuple[str, ...] = (
     "/v1/public/auto-key-intake/",
     "/v1/public/auto-key-booking/",
@@ -236,7 +236,7 @@ def _is_spent_public_link(path: str, status_code: int) -> bool:
     failures (5xx, and the 4xx that do mean something: 422 for a broken request
     contract, 429 for a customer being rate-limited) under routine traffic.
     """
-    return status_code == 404 and path.startswith(PUBLIC_LINK_PATH_PREFIXES)
+    return status_code in (404, 410) and path.startswith(PUBLIC_LINK_PATH_PREFIXES)
 
 
 def _classify_critical_workflow(path: str, method: str) -> str | None:

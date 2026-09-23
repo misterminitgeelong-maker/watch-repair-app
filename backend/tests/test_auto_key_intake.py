@@ -96,7 +96,15 @@ def test_quick_intake_public_flow():
     with Session(engine) as s:
         row = s.get(AutoKeyJob, UUID(job["id"]))
         assert row is not None
-        assert row.customer_intake_token is None
+        assert row.status == "awaiting_quote"
+        token = row.customer_intake_token
+
+    # Reopening the link afterwards says it's done rather than "invalid".
+    again = client.get(f"/v1/public/auto-key-intake/{token}")
+    assert again.status_code == 410
+    assert again.json()["detail"] == "already_submitted"
+    resubmit = client.post(f"/v1/public/auto-key-intake/{token}/submit", json={"description": "again"})
+    assert resubmit.status_code == 404
 
 
 def test_public_intake_requires_details():

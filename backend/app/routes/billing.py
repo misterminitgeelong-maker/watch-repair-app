@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from ..config import settings
-from ..database import get_session, unscoped_session
+from ..database import engine, get_session, unscoped_session
 from ..dependencies import PLAN_LIMITS, AuthContext, get_auth_context, normalize_plan_code, require_owner
 from ..models import (
     AutoKeyInvoice,
@@ -601,9 +601,16 @@ def _handle_subscription_upsert(session: Session, obj, _stripe) -> dict | None:
                     )
             tenant.stripe_subscription_id = obj.get("id")
             tenant.stripe_customer_id = obj.get("customer")
-            tenant.signup_payment_pending = False
             # Sync subscription lifecycle status
             stripe_status = obj.get("status")
+            # Only a subscription that is actually paying (or in its trial)
+            # opens the shop. "incomplete" means the first payment hasn't gone
+            # through; used to unlock anyway. A subscription that has lapsed
+            # for good gates the shop again (past_due keeps its grace period).
+            if stripe_status in ("active", "trialing"):
+                tenant.signup_payment_pending = False
+            elif stripe_status in ("unpaid", "incomplete_expired", "canceled") and not tenant.billing_exempt:
+                tenant.signup_payment_pending = True
             if stripe_status in ("trialing", "active", "past_due", "canceled", "unpaid", "incomplete", "incomplete_expired"):
                 tenant.subscription_status = stripe_status
             raw_trial_end = obj.get("trial_end")
@@ -678,7 +685,10 @@ def _handle_checkout_completed(session: Session, obj, _stripe) -> dict | None:
     # SaaS signup: unlock tenant as soon as Checkout completes (subscription.* may arrive slightly later).
     if (obj.get("mode") or "") == "subscription":
         sub_id = obj.get("subscription")
-        if sub_id:
+        # Async methods (e.g. BECS direct debit) complete checkout before the
+        # money arrives; the subscription webhook unlocks those once it does.
+        paid = (obj.get("payment_status") or "") in ("paid", "no_payment_required")
+        if sub_id and paid:
             try:
                 _stripe.api_key = settings.stripe_secret_key
                 sub = _stripe.Subscription.retrieve(sub_id)
@@ -700,6 +710,8 @@ def _handle_checkout_completed(session: Session, obj, _stripe) -> dict | None:
                             session.commit()
             except Exception:
                 logging.getLogger(__name__).exception("checkout.session.completed subscription unlock failed")
+                # Let Stripe retry rather than acknowledge an unlock that didn't happen.
+                raise
         return {"status": "ok"}
     meta = obj.get("metadata") or {}
     if meta.get("purpose") != "auto_key_invoice":
@@ -712,18 +724,39 @@ def _handle_checkout_completed(session: Session, obj, _stripe) -> dict | None:
     except ValueError:
         return {"status": "ok"}
     invoice = session.get(AutoKeyInvoice, inv_uuid)
-    if not invoice or invoice.status != "unpaid":
+    if not invoice:
         return {"status": "ok"}
     if (obj.get("payment_status") or "") != "paid":
         return {"status": "ok"}
     amount_total = obj.get("amount_total")
-    if amount_total is not None and int(amount_total) != int(invoice.total_cents):
-        logging.getLogger(__name__).warning(
-            "Stripe checkout amount_total %s != invoice.total_cents %s for invoice %s",
-            amount_total,
-            invoice.total_cents,
+    problem: str | None = None
+    if invoice.status != "unpaid":
+        problem = f"was already {invoice.status}"
+    elif amount_total is not None and int(amount_total) != int(invoice.total_cents):
+        problem = f"was for {invoice.total_cents} cents but {amount_total} cents was charged"
+    if problem:
+        # The customer's card was charged but the invoice can't take it (a
+        # second checkout tab, paid in cash first, amount changed). This used
+        # to be a log line; it needs a person to refund or reconcile it.
+        logging.getLogger(__name__).error(
+            "stripe.invoice_payment_unmatched invoice=%s session=%s problem=%s",
             invoice.id,
+            obj.get("id"),
+            problem,
         )
+        session.add(
+            TenantEventLog(
+                tenant_id=invoice.tenant_id,
+                entity_type="auto_key_invoice",
+                entity_id=invoice.id,
+                event_type="card_payment_needs_attention",
+                event_summary=(
+                    f"Card payment of {(int(amount_total or 0)) / 100:.2f} for invoice {invoice.invoice_number} "
+                    f"{problem}. Check Stripe (checkout {obj.get('id')}) and refund if it's a double payment."
+                ),
+            )
+        )
+        session.commit()
         return {"status": "ok"}
     invoice.status = "paid"
     invoice.payment_method = "stripe"
@@ -817,7 +850,20 @@ async def stripe_webhook(
 
     handler = _WEBHOOK_HANDLERS.get(event["type"])
     if handler is not None:
-        result = handler(session, obj, _stripe)
+        try:
+            result = handler(session, obj, _stripe)
+        except Exception:
+            # The event id was recorded above so a concurrent duplicate is
+            # skipped. If handling failed, forget it again: otherwise Stripe's
+            # retry is answered "duplicate" and the update is lost for good.
+            session.rollback()
+            if event_id:
+                with Session(engine) as cleanup:
+                    row = cleanup.get(StripeWebhookEvent, event_id)
+                    if row is not None:
+                        cleanup.delete(row)
+                        cleanup.commit()
+            raise
         if result is not None:
             return result
 

@@ -187,6 +187,13 @@ def _customer_intake_title(customer_full_name: str, make: str | None, year: int 
     return f"{first} - {car}" if car else f"{first} - Job"
 
 
+def _public_shop(tenant: Tenant | None) -> dict:
+    """The shop details a customer-facing page shows."""
+    if tenant is None:
+        return {"name": None, "phone": None, "email": None}
+    return {"name": tenant.name, "phone": tenant.shop_phone, "email": tenant.shop_email}
+
+
 @router.get("/jobs/{status_token}")
 @limiter.limit(get_public_read_rate_limit)
 def get_public_job_status(request: Request, status_token: str, session: Session = Depends(get_session)):
@@ -201,15 +208,19 @@ def get_public_job_status(request: Request, status_token: str, session: Session 
         .order_by(JobStatusHistory.created_at)
     ).all()
 
+    tenant = session.get(Tenant, job.tenant_id)
+    # The job description and status-change notes are written by staff for
+    # staff ("quote the hand set, wait for go-ahead"); they are not shown to
+    # the customer. The shop's own details are, so they know who to call.
     return {
         "job_number": job.job_number,
         "status": job.status,
         "title": job.title,
-        "description": job.description,
         "priority": job.priority,
         "pre_quote_cents": job.pre_quote_cents,
         "created_at": job.created_at,
         "collection_date": job.collection_date.isoformat() if job.collection_date else None,
+        "shop": _public_shop(tenant),
         "watch": {
             "brand": watch.brand if watch else None,
             "model": watch.model if watch else None,
@@ -219,7 +230,6 @@ def get_public_job_status(request: Request, status_token: str, session: Session 
             {
                 "old_status": entry.old_status,
                 "new_status": entry.new_status,
-                "change_note": entry.change_note,
                 "created_at": entry.created_at,
             }
             for entry in history
@@ -291,7 +301,6 @@ def get_public_shoe_job_status(request: Request, status_token: str, session: Ses
             {
                 "old_status": h.old_status,
                 "new_status": h.new_status,
-                "change_note": h.change_note,
                 "created_at": isoformat_z_utc(naive_utc_from_any(h.created_at)),
             }
             for h in history
@@ -397,20 +406,19 @@ def decide_shoe_quote(
         raise HTTPException(status_code=422, detail="decision must be 'approved' or 'declined'")
 
     job.quote_status = decision
-    if decision == "approved":
-        job.status = "go_ahead"
-    else:
-        job.status = "no_go"
+    # Only move a job that is still waiting on this answer: the decision used
+    # to overwrite whatever status the bench had put the job in.
+    if job.status in ("awaiting_quote", "awaiting_go_ahead"):
+        old_status = job.status
+        job.status = "go_ahead" if decision == "approved" else "no_go"
+        session.add(ShoeJobStatusHistory(
+            tenant_id=job.tenant_id,
+            shoe_repair_job_id=job.id,
+            old_status=old_status,
+            new_status=job.status,
+            change_note=f"Customer {decision} quote via online link",
+        ))
     session.add(job)
-
-    # Status history
-    session.add(ShoeJobStatusHistory(
-        tenant_id=job.tenant_id,
-        shoe_repair_job_id=job.id,
-        old_status="awaiting_go_ahead",
-        new_status=job.status,
-        change_note=f"Customer {decision} quote via online link",
-    ))
 
     # Inbox event
     event_type = "quote_approved" if decision == "approved" else "quote_declined"
@@ -541,8 +549,12 @@ def get_public_auto_key_intake(request: Request, token: str, session: Session = 
     job = session.exec(
         select(AutoKeyJob).where(AutoKeyJob.customer_intake_token == token)
     ).first()
-    if not job or job.status != "awaiting_customer_details":
+    if not job:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
+    if job.status != "awaiting_customer_details":
+        # Reopening the link after submitting is normal (re-tapping the SMS,
+        # refreshing). Say it's done rather than "invalid link".
+        raise HTTPException(status_code=410, detail="already_submitted")
 
     tenant = session.get(Tenant, job.tenant_id)
     customer = session.get(Customer, job.customer_id)
@@ -586,7 +598,9 @@ async def upload_public_auto_key_intake_photos(
         raise HTTPException(status_code=400, detail="Please attach at most two photos.")
 
     existing = session.exec(
-        select(Attachment).where(Attachment.auto_key_job_id == job.id)
+        select(Attachment)
+        .where(Attachment.auto_key_job_id == job.id)
+        .where(Attachment.label == CUSTOMER_KEY_PHOTO_LABEL)
     ).all()
     if len(existing) + len(incoming) > MAX_CUSTOMER_KEY_PHOTOS:
         raise HTTPException(status_code=400, detail="Please attach at most two photos.")
@@ -689,7 +703,8 @@ def submit_public_auto_key_intake(
         job.vehicle_model,
     )
     job.status = "awaiting_quote"
-    job.customer_intake_token = None
+    # The token stays so a reopened link can say "already received"; every
+    # intake endpoint refuses once the job has left awaiting_customer_details.
     session.add(job)
     session.commit()
     session.refresh(job)

@@ -202,6 +202,9 @@ export default function ApprovePage() {
             <WrenchIcon size={22} style={{ color: 'var(--ms-accent-hover)' }} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>Your Repair Quote</h1>
+          {q.shop_name && (
+            <p className="text-sm font-medium mt-1" style={{ color: 'var(--ms-text-mid)' }}>from {q.shop_name}</p>
+          )}
           <p className="mt-1 text-sm" style={{ color: 'var(--ms-text-muted)' }}>Review the quote below and let us know your decision.</p>
         </div>
 
@@ -280,7 +283,14 @@ export default function ApprovePage() {
         </div>
 
         <p className="text-center text-xs mt-5" style={{ color: 'var(--ms-text-muted)' }}>
-          Questions? Contact your watch repair shop directly.
+          Questions? Contact {q.shop_name || 'your watch repair shop'}
+          {q.shop_phone ? (
+            <>
+              {' on '}
+              <a href={`tel:${q.shop_phone}`} style={{ color: 'var(--ms-accent)' }}>{q.shop_phone}</a>
+            </>
+          ) : ' directly'}
+          .
         </p>
       </div>
     </div>

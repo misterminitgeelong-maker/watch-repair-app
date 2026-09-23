@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 # Use a fresh sqlite file for every test run so schema changes are always applied.
 _TEST_DB = Path(__file__).with_name(f"test_{uuid4().hex}.db")
@@ -847,3 +847,68 @@ def test_refresh_with_an_unknown_session_is_refused():
     res = client.post("/v1/auth/refresh", json={"refresh_token": refresh_token})
     assert res.status_code == 401, res.text
     assert "revoked" in res.json()["detail"].lower()
+
+
+def _job_with_sent_quote(suffix: str) -> tuple[dict, str, str]:
+    token = _bootstrap_and_login(
+        tenant_slug=f"qd-{suffix}", email=f"owner-{suffix}@qd.test", password="pass123456"
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers, _create_customer(headers))
+    job_id = client.post(
+        "/v1/repair-jobs", headers=headers, json={"watch_id": watch_id, "title": "Service", "priority": "normal"}
+    ).json()["id"]
+    quote_id = client.post(
+        "/v1/quotes",
+        headers=headers,
+        json={
+            "repair_job_id": job_id,
+            "line_items": [{"item_type": "labor", "description": "Service", "quantity": 1, "unit_price_cents": 10000}],
+        },
+    ).json()["id"]
+    approval_token = client.post(f"/v1/quotes/{quote_id}/send", headers=headers).json()["approval_token"]
+    return headers, job_id, approval_token
+
+
+def _set_job_status(job_id: str, status: str) -> None:
+    from sqlmodel import Session
+
+    from app.database import engine
+    from app.models import RepairJob
+
+    with Session(engine) as s:
+        job = s.get(RepairJob, UUID(job_id))
+        job.status = status
+        s.add(job)
+        s.commit()
+
+
+def _inbox_events(headers: dict, job_id: str) -> list[str]:
+    from sqlmodel import Session, select
+
+    from app.database import engine
+    from app.models import TenantEventLog
+
+    with Session(engine) as s:
+        return [
+            r.event_summary
+            for r in s.exec(select(TenantEventLog).where(TenantEventLog.entity_id == UUID(job_id))).all()
+            if r.event_type in ("quote_approved", "quote_declined")
+        ]
+
+
+def test_quote_decision_moves_a_job_still_awaiting_its_quote():
+    headers, job_id, approval_token = _job_with_sent_quote(uuid4().hex[:8])
+    _set_job_status(job_id, "awaiting_quote")
+    client.post(f"/v1/public/quotes/{approval_token}/decision", json={"decision": "approved"})
+    assert client.get(f"/v1/repair-jobs/{job_id}", headers=headers).json()["status"] == "go_ahead"
+    assert _inbox_events(headers, job_id)
+
+
+def test_quote_decision_on_a_job_elsewhere_still_tells_staff():
+    headers, job_id, approval_token = _job_with_sent_quote(uuid4().hex[:8])
+    _set_job_status(job_id, "awaiting_parts")
+    client.post(f"/v1/public/quotes/{approval_token}/decision", json={"decision": "declined"})
+    assert client.get(f"/v1/repair-jobs/{job_id}", headers=headers).json()["status"] == "awaiting_parts"
+    [summary] = _inbox_events(headers, job_id)
+    assert "declined" in summary and "check it" in summary

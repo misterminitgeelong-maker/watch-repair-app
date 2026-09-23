@@ -684,6 +684,8 @@ class Approval(SQLModel, table=True):
 class Invoice(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("tenant_id", "invoice_number", name="uq_invoice_tenant_invoice_number"),
+        # One invoice per quote; a double submit used to create two.
+        Index("uq_invoice_quote", "quote_id", unique=True),
         CheckConstraint("subtotal_cents >= 0", name="ck_invoice_subtotal_cents_non_negative"),
         CheckConstraint("tax_cents >= 0", name="ck_invoice_tax_cents_non_negative"),
         CheckConstraint("total_cents >= 0", name="ck_invoice_total_cents_non_negative"),

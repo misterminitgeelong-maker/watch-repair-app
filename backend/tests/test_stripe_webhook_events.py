@@ -276,3 +276,79 @@ def test_an_unhandled_event_type_is_acknowledged(client, auth_headers, stripe_co
     r = _post(client, "customer.created", {"id": "cus_x", "object": "customer"})
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+
+
+# ── fixes from the Sep 2026 walkthrough ─────────────────────────────────────────
+
+
+def test_incomplete_subscription_does_not_unlock_the_shop(client, auth_headers, stripe_configured):
+    tid = _tenant_id(client, auth_headers)
+    _set(tid, signup_payment_pending=True, stripe_subscription_id=None)
+    r = _post(client, "customer.subscription.created", {
+        "id": "sub_incomplete_1", "object": "subscription", "customer": "cus_inc_1",
+        "status": "incomplete", "trial_end": None,
+        "metadata": {"tenant_id": str(tid)}, "items": {"data": []},
+    })
+    assert r.status_code == 200
+    assert _reload(tid).signup_payment_pending is True
+
+
+def test_a_failed_handler_lets_stripe_retry_the_same_event(client, auth_headers, stripe_configured, monkeypatch):
+    import app.routes.billing as billing
+
+    tid = _tenant_id(client, auth_headers)
+    _set(tid, signup_payment_pending=True, stripe_subscription_id=None)
+    payload = _event("customer.subscription.created", {
+        "id": "sub_retry_1", "object": "subscription", "customer": "cus_retry_1",
+        "status": "active", "trial_end": None,
+        "metadata": {"tenant_id": str(tid)}, "items": {"data": []},
+    })
+    real = billing._WEBHOOK_HANDLERS["customer.subscription.created"]
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("database blip")
+
+    monkeypatch.setitem(billing._WEBHOOK_HANDLERS, "customer.subscription.created", _boom)
+    with pytest.raises(RuntimeError):
+        client.post("/v1/billing/webhook", content=payload, headers=_signed(payload))
+    monkeypatch.setitem(billing._WEBHOOK_HANDLERS, "customer.subscription.created", real)
+
+    retry = client.post("/v1/billing/webhook", content=payload, headers=_signed(payload))
+    assert retry.status_code == 200
+    assert retry.json().get("status") != "duplicate"
+    assert _reload(tid).stripe_subscription_id == "sub_retry_1"
+
+
+def test_card_payment_on_an_already_paid_invoice_alerts_the_shop(client, auth_headers, stripe_configured):
+    from app.models import AutoKeyInvoice, AutoKeyJob, Customer, TenantEventLog
+
+    tid = _tenant_id(client, auth_headers)
+    with Session(engine) as s:
+        customer = Customer(tenant_id=tid, full_name="Double Payer")
+        s.add(customer)
+        s.flush()
+        job = AutoKeyJob(tenant_id=tid, customer_id=customer.id, job_number=f"AK-{uuid4().hex[:6]}", title="Key")
+        s.add(job)
+        s.flush()
+        invoice = AutoKeyInvoice(
+            tenant_id=tid, auto_key_job_id=job.id, invoice_number=f"INV-{uuid4().hex[:6]}",
+            status="paid", total_cents=12000, subtotal_cents=12000,
+        )
+        s.add(invoice)
+        s.commit()
+        invoice_id = invoice.id
+
+    r = _post(client, "checkout.session.completed", {
+        "id": "cs_double_1", "object": "checkout.session", "mode": "payment",
+        "metadata": {"purpose": "auto_key_invoice", "auto_key_invoice_id": str(invoice_id)},
+        "payment_status": "paid", "amount_total": 12000,
+    })
+    assert r.status_code == 200
+    with Session(engine) as s:
+        alert = s.exec(
+            select(TenantEventLog)
+            .where(TenantEventLog.entity_id == invoice_id)
+            .where(TenantEventLog.event_type == "card_payment_needs_attention")
+        ).first()
+        assert alert is not None
+        assert "already paid" in alert.event_summary

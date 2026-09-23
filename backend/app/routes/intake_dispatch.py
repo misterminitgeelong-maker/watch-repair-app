@@ -4,6 +4,7 @@ from datetime import timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import update as sa_update
 from pydantic import BaseModel, Field
 from sqlmodel import Session, func, select
 
@@ -149,13 +150,19 @@ def claim_pool_job(
     )
     enforce_plan_limit(auth, "auto_key_job", ak_count)
 
-    # Mark claimed immediately (optimistic; within the same transaction)
-    job.status = "claimed"
-    job.claimed_by_tenant_id = auth.tenant_id
+    # Claim with one conditional UPDATE so two operators tapping at once can't
+    # both win: whoever's statement runs second matches no row.
     from datetime import datetime
-    job.claimed_at = datetime.now(timezone.utc)
-    session.add(job)
-    session.flush()
+    claimed = session.exec(
+        sa_update(IntakeJob)
+        .where(IntakeJob.id == job.id)
+        .where(IntakeJob.status == "unclaimed")
+        .values(status="claimed", claimed_by_tenant_id=auth.tenant_id, claimed_at=datetime.now(timezone.utc))
+    )
+    if claimed.rowcount != 1:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="Job has already been claimed.")
+    session.refresh(job)
 
     # Find or create customer in this tenant
     customer = _find_or_create_customer(session, auth.tenant_id, job)
