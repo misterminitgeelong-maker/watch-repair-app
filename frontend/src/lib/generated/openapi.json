@@ -7326,6 +7326,57 @@
         }
       }
     },
+    "/v1/public/auto-key-intake/{token}/photos": {
+      "post": {
+        "tags": [
+          "public-jobs"
+        ],
+        "summary": "Upload Public Auto Key Intake Photos",
+        "description": "Customer key photos from the booking-request form. Attached to the existing job.",
+        "operationId": "upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/auto-key-intake/{token}/submit": {
       "post": {
         "tags": [
@@ -15165,7 +15216,7 @@
           "parent-network"
         ],
         "summary": "Update Linked Site",
-        "description": "Change what a site *is* in the network without touching its plan.",
+        "description": "Change a site's network role, region, or shop contact details (email/phone).",
         "operationId": "update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch",
         "security": [
           {
@@ -23424,6 +23475,23 @@
         ],
         "title": "Body_upload_attachment_v1_attachments_post"
       },
+      "Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"
+      },
       "Body_upload_vswt_files_v1_reports_vswt_upload_post": {
         "properties": {
           "files": {
@@ -28822,6 +28890,28 @@
             "type": "boolean",
             "title": "Owner Is Shared Hq Login",
             "default": false
+          },
+          "shop_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Email"
+          },
+          "shop_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Phone"
           }
         },
         "type": "object",
@@ -28865,6 +28955,30 @@
             "type": "boolean",
             "title": "Clear Region",
             "default": false
+          },
+          "shop_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Email"
+          },
+          "shop_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Phone"
           }
         },
         "type": "object",
@@ -31955,6 +32069,28 @@
               }
             ],
             "title": "Tech Notes"
+          },
+          "key_photo_data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Photo Data"
+          },
+          "extra_key_photo_data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Key Photo Data"
           }
         },
         "type": "object",

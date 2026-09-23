@@ -2234,6 +2234,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/auto-key-intake/{token}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Public Auto Key Intake Photos
+         * @description Customer key photos from the booking-request form. Attached to the existing job.
+         */
+        post: operations["upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/auto-key-intake/{token}/submit": {
         parameters: {
             query?: never;
@@ -4652,7 +4672,7 @@ export interface paths {
         head?: never;
         /**
          * Update Linked Site
-         * @description Change what a site *is* in the network without touching its plan.
+         * @description Change a site's network role, region, or shop contact details (email/phone).
          */
         patch: operations["update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch"];
         trace?: never;
@@ -7230,6 +7250,11 @@ export interface components {
              */
             file: string;
         };
+        /** Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post */
+        Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post: {
+            /** Files */
+            files: string[];
+        };
         /** Body_upload_vswt_files_v1_reports_vswt_upload_post */
         Body_upload_vswt_files_v1_reports_vswt_upload_post: {
             /** Files */
@@ -9014,6 +9039,10 @@ export interface components {
              * @default false
              */
             owner_is_shared_hq_login: boolean;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Shop Phone */
+            shop_phone?: string | null;
         };
         /** ParentAccountSiteUpdateRequest */
         ParentAccountSiteUpdateRequest: {
@@ -9026,6 +9055,10 @@ export interface components {
              * @default false
              */
             clear_region: boolean;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Shop Phone */
+            shop_phone?: string | null;
         };
         /** ParentAccountSitesPageResponse */
         ParentAccountSitesPageResponse: {
@@ -10059,6 +10092,10 @@ export interface components {
             chip_type?: string | null;
             /** Tech Notes */
             tech_notes?: string | null;
+            /** Key Photo Data */
+            key_photo_data?: string | null;
+            /** Extra Key Photo Data */
+            extra_key_photo_data?: string | null;
         };
         /** PublicUser */
         PublicUser: {
@@ -16673,6 +16710,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_public_auto_key_intake_photos_v1_public_auto_key_intake__token__photos_post"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
