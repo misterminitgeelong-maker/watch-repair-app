@@ -217,6 +217,9 @@ def get_public_job_status(request: Request, status_token: str, session: Session 
         "pre_quote_cents": job.pre_quote_cents,
         "created_at": job.created_at,
         "collection_date": job.collection_date.isoformat() if job.collection_date else None,
+        # The one note staff deliberately wrote for the customer.
+        "customer_note": job.customer_note,
+        "customer_note_at": job.customer_note_at,
         "shop": _public_shop(tenant),
         "watch": {
             "brand": watch.brand if watch else None,
@@ -280,6 +283,8 @@ def get_public_shoe_job_status(request: Request, status_token: str, session: Ses
         "deposit_cents": job.deposit_cents,
         "estimated_total_cents": estimated_total_cents,
         "created_at": job.created_at,
+        "customer_note": job.customer_note,
+        "customer_note_at": job.customer_note_at,
         "shoe": {
             "shoe_type": shoe.shoe_type if shoe else None,
             "brand": shoe.brand if shoe else None,

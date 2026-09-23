@@ -368,3 +368,37 @@ def test_l10_geocode_is_cached_and_budgeted(monkeypatch):
         assert len(calls) == 3
     finally:
         dispatch_utils.reset_geocode_cache()
+
+
+# ── Customer-facing status note ──────────────────────────────────────────────
+
+def test_customer_note_shows_on_status_page_and_staff_note_does_not(client, auth_headers, make_customer, make_watch):
+    watch_id = make_watch(auth_headers, make_customer(auth_headers))
+    job = client.post(
+        "/v1/repair-jobs", headers=auth_headers,
+        json={"watch_id": watch_id, "title": "Service", "priority": "normal"},
+    ).json()
+    res = client.post(
+        f"/v1/repair-jobs/{job['id']}/status", headers=auth_headers,
+        json={
+            "status": "awaiting_parts",
+            "note": "Supplier quoted $40, we charge $120",
+            "customer_note": "Waiting on parts from our Swiss supplier",
+        },
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["customer_note"] == "Waiting on parts from our Swiss supplier"
+
+    public = client.get(f"/v1/public/jobs/{job['status_token']}").json()
+    assert public["customer_note"] == "Waiting on parts from our Swiss supplier"
+    assert "Supplier quoted" not in str(public)
+
+    # Moving on without a new note clears the stale one.
+    client.post(f"/v1/repair-jobs/{job['id']}/status", headers=auth_headers, json={"status": "working_on"})
+    assert client.get(f"/v1/public/jobs/{job['status_token']}").json()["customer_note"] is None
+
+    too_long = client.post(
+        f"/v1/repair-jobs/{job['id']}/status", headers=auth_headers,
+        json={"status": "working_on", "customer_note": "x" * 281},
+    )
+    assert too_long.status_code == 422

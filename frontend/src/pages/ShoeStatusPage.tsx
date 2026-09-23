@@ -75,6 +75,12 @@ export default function ShoeStatusPage() {
               <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{formatCents(balance)}</p>
             </div>
           </div>
+          {job.customer_note && (
+            <div className="mt-3 pt-3 text-sm" style={{ borderTop: '1px solid var(--ms-border)' }}>
+              <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--ms-text-muted)' }}>Update from the shop</p>
+              <p style={{ color: 'var(--ms-text)' }}>{job.customer_note}</p>
+            </div>
+          )}
           {job.description && (
             <p className="text-sm mt-3" style={{ color: 'var(--ms-text-mid)' }}>{job.description}</p>
           )}

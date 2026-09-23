@@ -1116,6 +1116,8 @@ export interface RepairJob {
   job_number: string; status_token: string; title: string; description?: string; priority: string
   status: JobStatus; salesperson?: string; collection_date?: string; deposit_cents: number; pre_quote_cents: number; cost_cents: number
   internal_notes?: string | null
+  customer_note?: string | null
+  customer_note_at?: string | null
   parts_eta?: string | null
   status_changed_at?: string | null
   created_at: string
@@ -1171,8 +1173,8 @@ export const updateJob = (id: string, data: {
   internal_notes?: string | null
   parts_eta?: string | null
 }) => api.patch<RepairJob>(`/repair-jobs/${id}`, data)
-export const updateJobStatus = (id: string, status: JobStatus, note?: string) =>
-  api.post(`/repair-jobs/${id}/status`, { status, note })
+export const updateJobStatus = (id: string, status: JobStatus, note?: string, customerNote?: string) =>
+  api.post(`/repair-jobs/${id}/status`, { status, note, ...(customerNote !== undefined ? { customer_note: customerNote } : {}) })
 export const quickStatusAction = updateJobStatus
 export const addJobNote = (id: string, note: string) =>
   api.post(`/repair-jobs/${id}/note`, { note })
@@ -1260,6 +1262,9 @@ export interface PublicJobStatus {
   pre_quote_cents: number
   created_at: string
   collection_date?: string | null
+  /** Note the shop wrote for the customer with the latest status change. */
+  customer_note?: string | null
+  customer_note_at?: string | null
   shop?: { name?: string | null; phone?: string | null; email?: string | null }
   watch: {
     brand?: string
@@ -1287,6 +1292,8 @@ export interface PublicShoeJobStatus {
   deposit_cents: number
   estimated_total_cents: number
   created_at: string
+  customer_note?: string | null
+  customer_note_at?: string | null
   shoe: {
     shoe_type?: string
     brand?: string
@@ -2447,6 +2454,8 @@ export interface ShoeRepairJobShoe {
 }
 
 export interface ShoeRepairJob {
+  customer_note?: string | null
+  customer_note_at?: string | null
   id: string
   tenant_id: string
   shoe_id: string
@@ -2513,8 +2522,8 @@ export const updateShoeRepairJob = (id: string, data: Partial<{
   deposit_cents: number; cost_cents: number
 }>) => api.patch<ShoeRepairJob>(`/shoe-repair-jobs/${id}`, data)
 
-export const updateShoeRepairJobStatus = (id: string, status: string, note?: string) =>
-  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/status`, { status, note })
+export const updateShoeRepairJobStatus = (id: string, status: string, note?: string, customerNote?: string) =>
+  api.post<ShoeRepairJob>(`/shoe-repair-jobs/${id}/status`, { status, note, ...(customerNote !== undefined ? { customer_note: customerNote } : {}) })
 export const addShoeJobNote = (id: string, note: string) =>
   api.post(`/shoe-repair-jobs/${id}/note`, { note })
 export interface ShoeJobHistoryEntry {

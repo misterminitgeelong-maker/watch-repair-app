@@ -8,6 +8,7 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select
 
+from ..job_customer_note import apply_customer_note
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, enforce_plan_limit, require_feature, require_tech_or_above
 from ..list_page import query_total, set_total_count
@@ -354,6 +355,7 @@ def update_repair_job_status(
     previous_status = job.status
     job.status = payload.status
     job.status_changed_at = datetime.now(timezone.utc)
+    apply_customer_note(job, status_changed=previous_status != job.status, customer_note=payload.customer_note)
     session.add(job)
 
     history = JobStatusHistory(
@@ -435,6 +437,7 @@ def repair_job_queue_swipe(
     previous_status = job.status
     job.status = new_status
     job.status_changed_at = datetime.now(timezone.utc)
+    apply_customer_note(job, status_changed=previous_status != new_status, customer_note=None)
     session.add(job)
     session.add(
         JobStatusHistory(

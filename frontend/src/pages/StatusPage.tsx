@@ -86,6 +86,12 @@ export default function StatusPage() {
               <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>{formatCents(job.pre_quote_cents || 0)}</p>
             </div>
           </div>
+          {job.customer_note && (
+            <div className="mt-3 pt-3 text-sm" style={{ borderTop: '1px solid var(--ms-border)' }}>
+              <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--ms-text-muted)' }}>Update from the shop</p>
+              <p style={{ color: 'var(--ms-text)' }}>{job.customer_note}</p>
+            </div>
+          )}
           {job.collection_date && (
             <div className="flex items-center gap-2 text-sm mt-3 pt-3" style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text-mid)' }}>
               <span style={{ color: 'var(--ms-text-muted)' }}>Expected ready:</span>

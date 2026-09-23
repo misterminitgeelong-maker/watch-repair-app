@@ -298,8 +298,16 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
   const qc = useQueryClient()
   const [status, setStatus] = useState<JobStatus>(job.status)
   const [note, setNote] = useState('')
+  const [customerNote, setCustomerNote] = useState('')
   const mut = useMutation({
-    mutationFn: () => updateJobStatus(job.id, status, note || undefined),
+    mutationFn: () =>
+      updateJobStatus(
+        job.id,
+        status,
+        note || undefined,
+        // Same status + blank: leave the current customer note alone.
+        customerNote.trim() || status !== job.status ? customerNote.trim() : undefined,
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['job', job.id] })
       qc.invalidateQueries({ queryKey: ['jobs'] })
@@ -315,7 +323,12 @@ function StatusModal({ job, onClose }: { job: RepairJob; onClose: () => void }) 
         <Select label="New Status" value={status} onChange={e => setStatus(e.target.value as JobStatus)}>
           {statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </Select>
-        <Input label="Note (optional)" value={note} onChange={e => setNote(e.target.value)} placeholder="Parts arrived, awaiting…" />
+        <Input label="Staff note (optional)" value={note} onChange={e => setNote(e.target.value)} placeholder="Parts arrived, awaiting…" />
+        <Input label="Note for customer (optional)" value={customerNote} onChange={e => setCustomerNote(e.target.value.slice(0, 280))} placeholder="Waiting on parts from our Swiss supplier" />
+        <p className="text-xs -mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+          Shown on the customer&apos;s status page. The staff note above is never shown to them.
+          {job.customer_note ? <> Currently showing: &ldquo;{job.customer_note}&rdquo; (replaced when the status changes).</> : null}
+        </p>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>{mut.isPending ? 'Updating…' : 'Update'}</Button>

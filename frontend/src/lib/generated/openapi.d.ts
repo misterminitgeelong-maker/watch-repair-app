@@ -10807,6 +10807,10 @@ export interface components {
              * @enum {string}
              */
             status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
+            /** Customer Note */
+            customer_note?: string | null;
+            /** Customer Note At */
+            customer_note_at?: string | null;
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -10960,6 +10964,10 @@ export interface components {
              * @enum {string}
              */
             status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
+            /** Customer Note */
+            customer_note?: string | null;
+            /** Customer Note At */
+            customer_note_at?: string | null;
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -11001,6 +11009,8 @@ export interface components {
             status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "parts_to_order" | "sent_to_labanda" | "quoted_by_labanda" | "at_third_party_for_quoting" | "third_party_quote_approved" | "at_third_party_repairer" | "service" | "completed" | "awaiting_collection" | "collected" | "en_route" | "on_site" | "pending_booking" | "booked" | "awaiting_customer_details" | "quote_sent" | "awaiting_booking_confirmation" | "booking_confirmed" | "booking_on_hold" | "booking_completed" | "job_delayed" | "work_completed" | "invoice_paid" | "failed_job";
             /** Note */
             note?: string | null;
+            /** Customer Note */
+            customer_note?: string | null;
         };
         /** RepairQueueDayRead */
         RepairQueueDayRead: {
@@ -11391,6 +11401,10 @@ export interface components {
             priority: string;
             /** Status */
             status: string;
+            /** Customer Note */
+            customer_note?: string | null;
+            /** Customer Note At */
+            customer_note_at?: string | null;
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -11553,6 +11567,10 @@ export interface components {
             priority: string;
             /** Status */
             status: string;
+            /** Customer Note */
+            customer_note?: string | null;
+            /** Customer Note At */
+            customer_note_at?: string | null;
             /** Salesperson */
             salesperson?: string | null;
             /** Collection Date */
@@ -11621,6 +11639,8 @@ export interface components {
             status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "completed" | "awaiting_collection" | "collected";
             /** Note */
             note?: string | null;
+            /** Customer Note */
+            customer_note?: string | null;
         };
         /** ShoeUpdate */
         ShoeUpdate: {

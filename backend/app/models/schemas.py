@@ -1130,6 +1130,8 @@ class RepairJobRead(SQLModel):
     description: Optional[str] = None
     priority: Literal["low", "normal", "high", "urgent"]
     status: JobStatus
+    customer_note: Optional[str] = None
+    customer_note_at: Optional[datetime] = None
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int
@@ -1154,6 +1156,9 @@ class RepairJobCreateResponse(RepairJobRead):
 class RepairJobStatusUpdate(SQLModel):
     status: JobStatus
     note: Optional[str] = None
+    #: Shown to the customer on their status page. Omit to clear it on a
+    #: status change (a note belongs to the status it was written for).
+    customer_note: Optional[str] = Field(default=None, max_length=280)
 
 class JobNotePayload(SQLModel):
     """Lightweight payload for adding a free-text note without changing status."""
@@ -1418,6 +1423,8 @@ class ShoeRepairJobRead(SQLModel):
     description: Optional[str] = None
     priority: str
     status: str
+    customer_note: Optional[str] = None
+    customer_note_at: Optional[datetime] = None
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int
@@ -1447,6 +1454,9 @@ class ShoeRepairJobCreateResponse(ShoeRepairJobRead):
 class ShoeRepairJobStatusUpdate(SQLModel):
     status: ShoeJobStatus
     note: Optional[str] = None
+    #: Shown to the customer on their status page. Omit to clear it on a
+    #: status change (a note belongs to the status it was written for).
+    customer_note: Optional[str] = Field(default=None, max_length=280)
 
 class ShoeJobStatusHistoryRead(SQLModel):
     id: UUID

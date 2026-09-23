@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, delete, func, select
 
+from ..job_customer_note import apply_customer_note
 from ..database import get_session
 from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, require_feature, require_tech_or_above
 from ..models import (
@@ -348,6 +349,7 @@ def update_shoe_repair_job_status(
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
     old_status = job.status
     job.status = payload.status
+    apply_customer_note(job, status_changed=old_status != job.status, customer_note=payload.customer_note)
     session.add(job)
 
     # Record history

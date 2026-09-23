@@ -72,8 +72,15 @@ function StatusModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void
   const qc = useQueryClient()
   const [status, setStatus] = useState(job.status)
   const [note, setNote] = useState('')
+  const [customerNote, setCustomerNote] = useState('')
   const mut = useMutation({
-    mutationFn: () => updateShoeRepairJobStatus(job.id, status, note || undefined),
+    mutationFn: () =>
+      updateShoeRepairJobStatus(
+        job.id,
+        status,
+        note || undefined,
+        customerNote.trim() || status !== job.status ? customerNote.trim() : undefined,
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['shoe-repair-job', job.id] })
       qc.invalidateQueries({ queryKey: ['shoe-repair-jobs'] })
@@ -89,7 +96,12 @@ function StatusModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => void
             <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
           ))}
         </Select>
-        <Input label="Note (optional)" value={note} onChange={e => setNote(e.target.value)} placeholder="Ready for collection, waiting on parts…" />
+        <Input label="Staff note (optional)" value={note} onChange={e => setNote(e.target.value)} placeholder="Ready for collection, waiting on parts…" />
+        <Input label="Note for customer (optional)" value={customerNote} onChange={e => setCustomerNote(e.target.value.slice(0, 280))} placeholder="Waiting on parts from our Swiss supplier" />
+        <p className="text-xs -mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+          Shown on the customer&apos;s status page. The staff note above is never shown to them.
+          {job.customer_note ? <> Currently showing: &ldquo;{job.customer_note}&rdquo; (replaced when the status changes).</> : null}
+        </p>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>

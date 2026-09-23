@@ -33840,6 +33840,29 @@
             ],
             "title": "Status"
           },
+          "customer_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note"
+          },
+          "customer_note_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note At"
+          },
           "salesperson": {
             "anyOf": [
               {
@@ -34335,6 +34358,29 @@
             ],
             "title": "Status"
           },
+          "customer_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note"
+          },
+          "customer_note_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note At"
+          },
           "salesperson": {
             "anyOf": [
               {
@@ -34532,6 +34578,18 @@
               }
             ],
             "title": "Note"
+          },
+          "customer_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 280
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note"
           }
         },
         "type": "object",
@@ -35523,6 +35581,29 @@
             "type": "string",
             "title": "Status"
           },
+          "customer_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note"
+          },
+          "customer_note_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note At"
+          },
           "salesperson": {
             "anyOf": [
               {
@@ -36027,6 +36108,29 @@
             "type": "string",
             "title": "Status"
           },
+          "customer_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note"
+          },
+          "customer_note_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note At"
+          },
           "salesperson": {
             "anyOf": [
               {
@@ -36257,6 +36361,18 @@
               }
             ],
             "title": "Note"
+          },
+          "customer_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 280
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Note"
           }
         },
         "type": "object",

@@ -586,6 +586,11 @@ class RepairJob(SQLModel, table=True):
     internal_notes: Optional[str] = None
     parts_eta: Optional[date] = None
     status_changed_at: Optional[datetime] = None
+    #: Note shown to the customer on their status page ("waiting on parts from
+    #: the Swiss supplier"). Set with a status change; the next status change
+    #: replaces or clears it. Staff notes (change_note) are never shown.
+    customer_note: Optional[str] = Field(default=None, max_length=280)
+    customer_note_at: Optional[datetime] = None
     custom_fields_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -881,6 +886,9 @@ class ShoeRepairJob(SQLModel, table=True):
     description: Optional[str] = None
     priority: str = "normal"
     status: str = "awaiting_go_ahead"
+    #: Customer-facing note for the status page (see RepairJob.customer_note).
+    customer_note: Optional[str] = Field(default=None, max_length=280)
+    customer_note_at: Optional[datetime] = None
     salesperson: Optional[str] = None
     collection_date: Optional[date] = None
     deposit_cents: int = 0
