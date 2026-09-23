@@ -226,3 +226,126 @@ def test_l9_request_body_limit_rejects_before_parsing(client, monkeypatch):
 
     res = client.post("/v1/public/auto-key-intake/not-a-token/submit", content=_gen())
     assert res.status_code == 413, res.text
+
+
+# ── Rate limits: every unauthenticated route has one ─────────────────────────
+
+# Routes deliberately left unlimited: health probes, and provider webhooks that
+# are authenticated by signature and whose volume is set by the provider.
+_UNLIMITED_PUBLIC_ROUTES = {
+    "/v1/health",
+    "/v1/ready",
+    "/v1/seed-status",
+    "/v1/debug/demo-status",
+    "/v1/debug/sms-status",
+    "/v1/billing/webhook",
+    "/v1/billing/xero/callback",
+    "/v1/webhooks/xero",
+    "/v1/webhook/sms/incoming",
+}
+
+
+def _dependency_names(dependant) -> list[str]:
+    out: list[str] = []
+    for dep in dependant.dependencies:
+        out.append(getattr(dep.call, "__qualname__", str(dep.call)))
+        out.extend(_dependency_names(dep))
+    return out
+
+
+def test_every_unauthenticated_route_is_rate_limited():
+    from fastapi.routing import APIRoute
+
+    from app.limiter import limiter
+    from app.main import app as fastapi_app
+
+    limited = set(limiter._route_limits) | set(limiter._dynamic_route_limits)
+    missing = []
+    for route in fastapi_app.routes:
+        if not isinstance(route, APIRoute) or route.path in _UNLIMITED_PUBLIC_ROUTES:
+            continue
+        names = _dependency_names(route.dependant)
+        authenticated = any(
+            n in ("get_auth_context", "_check") or n.startswith("require") or ".require" in n
+            or ("auth" in n.lower() and "context" in n.lower())
+            for n in names
+        )
+        if authenticated:
+            continue
+        key = f"{route.endpoint.__module__}.{route.endpoint.__name__}"
+        if key not in limited:
+            missing.append(f"{sorted(route.methods)} {route.path}")
+    assert not missing, "Unauthenticated routes without a rate limit:\n" + "\n".join(missing)
+
+
+# ── L10: address lookups are cached and budgeted ─────────────────────────────
+
+def test_l10_geocode_is_cached_and_budgeted(monkeypatch):
+    import asyncio
+
+    from app import dispatch_utils
+
+    calls: list[str] = []
+
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url, params=None):
+            calls.append(params["address"])
+            if "nowhere" in params["address"]:
+                return _Resp({"status": "ZERO_RESULTS", "results": []})
+            return _Resp({"status": "OK", "results": [{"geometry": {"location": {"lat": -37.8, "lng": 145.0}}}]})
+
+    monkeypatch.setattr(dispatch_utils.settings, "google_maps_web_services_key", "k")
+    monkeypatch.setattr(dispatch_utils.settings, "geocode_max_calls_per_minute", 3)
+    monkeypatch.setattr(dispatch_utils.httpx, "AsyncClient", _Client)
+    dispatch_utils.reset_geocode_cache()
+    try:
+        run = asyncio.run
+        assert run(dispatch_utils.geocode_address("1 Main St, Chadstone")) == (-37.8, 145.0)
+        # Same address with different spacing/case: served from cache.
+        assert run(dispatch_utils.geocode_address("  1 main st,   CHADSTONE ")) == (-37.8, 145.0)
+        assert len(calls) == 1
+
+        # A definitive miss is cached too.
+        for _ in range(3):
+            try:
+                run(dispatch_utils.geocode_address("nowhere road"))
+            except ValueError:
+                pass
+        assert len(calls) == 2
+
+        # Budget: 3 real calls a minute; the fourth distinct address is refused.
+        run(dispatch_utils.geocode_address("2 Main St"))
+        try:
+            run(dispatch_utils.geocode_address("3 Main St"))
+        except ValueError as exc:
+            assert "busy" in str(exc)
+        else:
+            raise AssertionError("geocode budget was not enforced")
+        assert len(calls) == 3
+
+        try:
+            run(dispatch_utils.geocode_address("x" * 1000))
+        except ValueError:
+            pass
+        assert len(calls) == 3
+    finally:
+        dispatch_utils.reset_geocode_cache()

@@ -18,7 +18,7 @@ from ..config import settings
 from ..upload_limits import read_upload_capped
 from ..auto_key_status import AUTO_KEY_AWAITING_CONFIRMATION_STATUSES, AUTO_KEY_BOOKED_STATUSES
 from ..database import get_session
-from ..limiter import limiter
+from ..limiter import limiter, public_read_limit, public_write_limit
 
 logger = logging.getLogger(__name__)
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
@@ -47,12 +47,8 @@ router = APIRouter(prefix="/v1/public", tags=["public-jobs"])
 # Public customer booking-request intake (including optional key photos).
 
 
-def get_public_read_rate_limit() -> str:
-    return settings.rate_limit_public_test if settings.app_env == "test" else settings.rate_limit_public_read
-
-
-def get_public_write_rate_limit() -> str:
-    return settings.rate_limit_public_test if settings.app_env == "test" else settings.rate_limit_public_write
+get_public_read_rate_limit = public_read_limit
+get_public_write_rate_limit = public_write_limit
 
 from .attachments import (  # noqa: E402
     CUSTOMER_KEY_PHOTO_LABEL,

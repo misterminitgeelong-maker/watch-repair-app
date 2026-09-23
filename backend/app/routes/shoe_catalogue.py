@@ -7,7 +7,9 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+
+from ..limiter import limiter, reference_read_limit
 
 router = APIRouter(prefix="/v1/shoe-catalogue", tags=["shoe-catalogue"])
 
@@ -32,13 +34,16 @@ for _group in _CATALOGUE["groups"]:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/groups")
-def list_groups():
+@limiter.limit(reference_read_limit)
+def list_groups(request: Request):
     """All category groups (id + label)."""
     return [{"id": g["id"], "label": g["label"]} for g in _CATALOGUE["groups"]]
 
 
 @router.get("/items")
+@limiter.limit(reference_read_limit)
 def search_items(
+    request: Request,
     q: Optional[str] = Query(default=None, description="Search name (case-insensitive)"),
     group: Optional[str] = Query(default=None, description="Filter by group id"),
 ):
@@ -59,7 +64,8 @@ def search_items(
 
 
 @router.get("/items/{key}")
-def get_item(key: str):
+@limiter.limit(reference_read_limit)
+def get_item(request: Request, key: str):
     """Single catalogue item by its key."""
     from fastapi import HTTPException
     item = _ITEM_INDEX.get(key)
@@ -69,12 +75,14 @@ def get_item(key: str):
 
 
 @router.get("/combos")
-def list_combos():
+@limiter.limit(reference_read_limit)
+def list_combos(request: Request):
     """All combo discount rules."""
     return _CATALOGUE["combos"]
 
 
 @router.get("/guarantee")
-def get_guarantee():
+@limiter.limit(reference_read_limit)
+def get_guarantee(request: Request):
     """Guarantee text for shoe repairs."""
     return _CATALOGUE["guarantee"]

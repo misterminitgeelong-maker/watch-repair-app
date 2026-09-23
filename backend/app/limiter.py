@@ -42,3 +42,31 @@ def client_ip_key(request: Request) -> str:
 
 # storage_uri=None lets slowapi use its default in-memory storage.
 limiter = Limiter(key_func=client_ip_key, storage_uri=_storage_uri)
+
+
+def _is_test() -> bool:
+    return settings.app_env == "test"
+
+
+def public_read_limit() -> str:
+    """Per-IP limit for unauthenticated GETs (status pages, catalogues, invites)."""
+    return settings.rate_limit_public_test if _is_test() else settings.rate_limit_public_read
+
+
+def public_write_limit() -> str:
+    """Per-IP limit for unauthenticated writes (bookings, intake, decisions)."""
+    return settings.rate_limit_public_test if _is_test() else settings.rate_limit_public_write
+
+
+def auth_limit() -> str:
+    """Per-IP limit for unauthenticated auth endpoints (bootstrap, refresh)."""
+    return settings.rate_limit_auth_login_test if _is_test() else settings.rate_limit_auth_login
+
+
+def reference_read_limit() -> str:
+    """Per-IP limit for public reference data (catalogues, job templates)."""
+    return settings.rate_limit_public_test if _is_test() else settings.rate_limit_reference_read
+
+
+def attachment_download_limit() -> str:
+    return settings.rate_limit_public_test if _is_test() else settings.rate_limit_attachment_download

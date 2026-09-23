@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+
+from ..limiter import limiter, reference_read_limit
 
 router = APIRouter(prefix="/v1/watch-catalogue", tags=["watch-catalogue"])
 
@@ -39,13 +41,15 @@ def _movement_quote(m: dict) -> int:
 
 
 @router.get("/groups")
-def list_groups():
+@limiter.limit(reference_read_limit)
+def list_groups(request: Request):
     """All repair category groups (id + label)."""
     return [{"id": g["id"], "label": g["label"]} for g in _CATALOGUE["groups"]]
 
 
 @router.get("/repairs-config")
-def get_repairs_config():
+@limiter.limit(reference_read_limit)
+def get_repairs_config(request: Request):
     """Catalogue config including combos for price calculation."""
     return {
         "combos": _CATALOGUE.get("combos", []),
@@ -54,7 +58,9 @@ def get_repairs_config():
 
 
 @router.get("/items")
+@limiter.limit(reference_read_limit)
 def search_items(
+    request: Request,
     q: Optional[str] = Query(default=None, description="Search name (case-insensitive)"),
     group: Optional[str] = Query(default=None, description="Filter by group id"),
 ):
@@ -69,7 +75,8 @@ def search_items(
 
 
 @router.get("/items/{key}")
-def get_item(key: str):
+@limiter.limit(reference_read_limit)
+def get_item(request: Request, key: str):
     """Single catalogue item by key."""
     from fastapi import HTTPException
     item = _ITEM_INDEX.get(key)
@@ -79,7 +86,8 @@ def get_item(key: str):
 
 
 @router.get("/movements")
-def list_movements():
+@limiter.limit(reference_read_limit)
+def list_movements(request: Request):
     """All mechanical movements with purchase cost. Used for cost + margin when updating jobs."""
     movements = [
         {**m, "quote_cents": _movement_quote(m)}
@@ -93,7 +101,8 @@ def list_movements():
 
 
 @router.get("/movements/{key}/quote")
-def get_movement_quote(key: str):
+@limiter.limit(reference_read_limit)
+def get_movement_quote(request: Request, key: str):
     """Return quoted price in cents. RRP = max(minimum_rrp_cents, cost * (1 + margin/100))."""
     from fastapi import HTTPException
     m = _MOVEMENT_INDEX.get(key)

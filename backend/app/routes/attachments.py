@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Request
 from PIL import Image, UnidentifiedImageError
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, RedirectResponse
@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
 
+from ..limiter import attachment_download_limit, limiter
 from ..config import settings
 from ..upload_limits import read_upload_capped
 from ..database import get_session
@@ -236,7 +237,9 @@ async def upload_attachment(
 
 
 @router.get("/download/{storage_key:path}")
+@limiter.limit(attachment_download_limit)
 def download_attachment(
+    request: Request,
     storage_key: str,
     credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer),
     dl_token: str | None = Query(default=None),

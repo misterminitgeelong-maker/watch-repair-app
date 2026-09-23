@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 
 from ..database import get_session
 from ..dispatch_utils import geocode_address
-from ..limiter import limiter
+from ..limiter import limiter, public_read_limit
 from ..loyalty_utils import _get_tiers, _resolve_tier, _rolling_12m_spend, get_or_create_loyalty
 from ..models import (
     Customer,
@@ -161,7 +161,9 @@ async def portal_lookup(
 
 
 @router.get("/{slug}/profile", response_model=ProfileResponse)
+@limiter.limit(public_read_limit)
 async def portal_profile(
+    request: Request,
     slug: str,
     token: str = Query(...),
     session: Session = Depends(get_session),

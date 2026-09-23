@@ -7,11 +7,12 @@ import secrets
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlmodel import Session, delete, func, select
 
+from ..limiter import limiter, reference_read_limit
 from ..config import settings
 from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
@@ -425,7 +426,8 @@ class JobTemplateRead(BaseModel):
 
 
 @router.get("/job-templates", response_model=list[JobTemplateRead])
-def list_job_templates():
+@limiter.limit(reference_read_limit)
+def list_job_templates(request: Request):
     return [JobTemplateRead(**t) for t in JOB_TEMPLATES]
 
 

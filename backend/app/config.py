@@ -156,6 +156,11 @@ class Settings(BaseSettings):
     # Reads are generous; anything that mutates, emails, or creates a Stripe session is tight.
     rate_limit_public_read: str = "60/minute"
     rate_limit_public_write: str = "10/minute"
+    # Reference data (catalogues, job templates) and attachment downloads are
+    # fetched in bursts by the app itself — a shop with several staff behind one
+    # IP must not trip them — so they get a looser cap than customer pages.
+    rate_limit_reference_read: str = "300/minute"
+    rate_limit_attachment_download: str = "600/minute"
     rate_limit_public_test: str = "1000/minute"
     # Shared limiter storage backend for multi-instance deployments, e.g.
     # "redis://localhost:6379/0" or "memcached://localhost:11211".
@@ -163,6 +168,9 @@ class Settings(BaseSettings):
     # instance / pilot but NOT safe behind a load balancer (each instance keeps
     # its own counters). Set this to a shared backend before horizontal scaling.
     rate_limit_storage_uri: str = ""
+    # Cap on real Google Geocoding API calls per minute per process (cache hits
+    # don't count). 0 disables the cap.
+    geocode_max_calls_per_minute: int = 60
 
     # Public quote approval token lifetime from send time.
     quote_approval_token_ttl_hours: int = 168

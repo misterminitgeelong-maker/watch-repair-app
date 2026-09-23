@@ -26,7 +26,7 @@ from ..dependencies import (
     require_owner,
     stripe_billing_configured,
 )
-from ..limiter import limiter
+from ..limiter import auth_limit, limiter
 from ..models import (
     AuthSessionResponse,
     AuthSessionSiteOption,
@@ -405,7 +405,8 @@ def signup(request: Request, payload: TenantSignupRequest, session: Session = De
 
 
 @router.post("/bootstrap", response_model=BootstrapResponse)
-def bootstrap_tenant(payload: TenantBootstrap, session: Session = Depends(unscoped_session)):
+@limiter.limit(auth_limit)
+def bootstrap_tenant(request: Request, payload: TenantBootstrap, session: Session = Depends(unscoped_session)):
     if not settings.allow_public_bootstrap:
         raise HTTPException(status_code=403, detail="Bootstrap is disabled")
 
@@ -634,7 +635,8 @@ def seed_demo_data(
 
 
 @router.post("/ensure-testing-tenant")
-def ensure_testing_tenant_endpoint(session: Session = Depends(unscoped_session)):
+@limiter.limit(auth_limit)
+def ensure_testing_tenant_endpoint(request: Request, session: Session = Depends(unscoped_session)):
     """Force-create/update the testing tenant from env vars. Use when login fails with 'Invalid credentials'.
     Enable with ALLOW_ENSURE_TESTING_TENANT=true or when APP_ENV is not production."""
     if settings.app_env.lower() == "production" and not settings.allow_ensure_testing_tenant:
@@ -651,7 +653,8 @@ def ensure_testing_tenant_endpoint(session: Session = Depends(unscoped_session))
 
 
 @router.post("/ensure-minit-pilot")
-def ensure_minit_pilot_endpoint(session: Session = Depends(unscoped_session)):
+@limiter.limit(auth_limit)
+def ensure_minit_pilot_endpoint(request: Request, session: Session = Depends(unscoped_session)):
     """Create or refresh Mister Minit HQ + pilot shops from MINIT_* env vars.
 
     Use when Minit login returns 'Invalid credentials' because the pilot was never seeded on this database.
@@ -686,7 +689,8 @@ def ensure_minit_pilot_endpoint(session: Session = Depends(unscoped_session)):
 
 
 @router.post("/dev-auto-login", response_model=TokenResponse)
-def dev_auto_login(session: Session = Depends(unscoped_session)):
+@limiter.limit(auth_limit)
+def dev_auto_login(request: Request, session: Session = Depends(unscoped_session)):
     if settings.app_env.lower() == "production" or not settings.allow_dev_auto_login:
         raise HTTPException(status_code=403, detail="Dev auto-login is disabled")
 
@@ -745,7 +749,8 @@ def dev_auto_login(session: Session = Depends(unscoped_session)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh_tokens(payload: RefreshRequest, session: Session = Depends(unscoped_session)):
+@limiter.limit(auth_limit)
+def refresh_tokens(request: Request, payload: RefreshRequest, session: Session = Depends(unscoped_session)):
     try:
         claims = decode_refresh_token(payload.refresh_token)
     except ValueError:
