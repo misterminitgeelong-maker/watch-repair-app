@@ -9195,6 +9195,16 @@ export interface components {
             shop_email?: string | null;
             /** Shop Phone */
             shop_phone?: string | null;
+            /** Owner Invite Status */
+            owner_invite_status?: string | null;
+            /** Owner Invite Sent At */
+            owner_invite_sent_at?: string | null;
+            /** Owner Invite Expires At */
+            owner_invite_expires_at?: string | null;
+            /** Owner Invite Completed At */
+            owner_invite_completed_at?: string | null;
+            /** Owner Last Sign In At */
+            owner_last_sign_in_at?: string | null;
         };
         /** ParentAccountSiteUpdateRequest */
         ParentAccountSiteUpdateRequest: {

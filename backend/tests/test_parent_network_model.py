@@ -691,3 +691,53 @@ def test_hq_can_edit_shop_identity_contact_and_viewers_cannot():
         json={"shop_email": "other@minit.test"},
     )
     assert denied.status_code == 403, denied.text
+
+
+# ── 11. HQ can see whether an invited shop has accepted and is live ─────────
+
+
+def test_sites_show_whether_the_owner_invite_was_accepted():
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+    num = str(int(suffix[:4], 16) % 8000 + 1000 + 41)
+
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={
+            "shop_number": num,
+            "tenant_name": f"Invited {suffix}",
+            "owner_email": f"owner.{suffix}@franchise.test",
+            "owner_full_name": "Owner Person",
+        },
+    )
+    assert made.status_code == 200, made.text
+    site = next(s for s in made.json()["sites"] if s["shop_number"] == num)
+    assert site["owner_invite_status"] is None
+    assert site["owner_last_sign_in_at"] is None
+
+    def current_site():
+        sites = client.get("/v1/parent-accounts/me/sites", headers=hq_h, params={"search": num}).json()["sites"]
+        return next(s for s in sites if s["tenant_id"] == site["tenant_id"])
+
+    invite = client.post(f"/v1/parent-accounts/me/sites/{site['tenant_id']}/invite", headers=hq_h)
+    assert invite.status_code == 200, invite.text
+    token = invite.json()["invite_url"].rsplit("/", 1)[-1]
+
+    waiting = current_site()
+    assert waiting["owner_invite_status"] == "pending"
+    assert waiting["owner_invite_sent_at"] and waiting["owner_invite_expires_at"]
+    assert waiting["owner_invite_completed_at"] is None
+
+    done = client.post(
+        f"/v1/public/shop-invite/{token}/complete",
+        json={"full_name": "Owner Person", "email": f"owner.{suffix}@franchise.test", "password": "Str0ng!Passw0rd"},
+    )
+    assert done.status_code == 200, done.text
+
+    live = current_site()
+    assert live["owner_invite_status"] == "completed"
+    assert live["owner_invite_completed_at"]
+    # Accepting signs the owner straight in, so the shop shows as used.
+    assert live["owner_last_sign_in_at"]

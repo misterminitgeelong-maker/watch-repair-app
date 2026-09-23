@@ -109,6 +109,54 @@ function OwnerContact({ site, onEdit }: { site: ParentAccountSite; onEdit?: () =
   )
 }
 
+function shortDate(value?: string | null) {
+  if (!value) return ''
+  return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
+
+/** Where the owner invite stands, in words HQ can act on. */
+function inviteStatusLabel(site: ParentAccountSite): { text: string; tone: 'live' | 'waiting' | 'problem' | 'none' } {
+  switch (site.owner_invite_status) {
+    case 'completed': {
+      const accepted = shortDate(site.owner_invite_completed_at)
+      const lastIn = shortDate(site.owner_last_sign_in_at)
+      return {
+        text: `Live — accepted ${accepted}${lastIn ? ` · last signed in ${lastIn}` : ''}`,
+        tone: 'live',
+      }
+    }
+    case 'pending':
+      return {
+        text: `Invite sent ${shortDate(site.owner_invite_sent_at)} — not accepted yet (expires ${shortDate(site.owner_invite_expires_at)})`,
+        tone: 'waiting',
+      }
+    case 'expired':
+      return { text: `Invite expired ${shortDate(site.owner_invite_expires_at)} without being accepted`, tone: 'problem' }
+    case 'revoked':
+      return { text: 'Invite cancelled', tone: 'problem' }
+    default:
+      return { text: 'Not invited yet', tone: 'none' }
+  }
+}
+
+const INVITE_TONE_STYLE: Record<'live' | 'waiting' | 'problem' | 'none', { color: string; backgroundColor: string }> = {
+  live: { color: '#1A6A3A', backgroundColor: '#E6F4EA' },
+  waiting: { color: '#8A5010', backgroundColor: '#FDF3E1' },
+  problem: { color: 'var(--ms-error)', backgroundColor: '#FDF0EE' },
+  none: { color: 'var(--ms-text-muted)', backgroundColor: 'transparent' },
+}
+
+function InviteStatus({ site }: { site: ParentAccountSite }) {
+  const { text, tone } = inviteStatusLabel(site)
+  return (
+    <p className="text-xs mt-1">
+      <span className="inline-block rounded px-1.5 py-0.5" style={INVITE_TONE_STYLE[tone]}>
+        {text}
+      </span>
+    </p>
+  )
+}
+
 function csvCell(value: string | null | undefined) {
   const text = (value ?? '').toString()
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
@@ -128,6 +176,7 @@ function downloadContactsCsv(sites: ParentAccountSite[]) {
     'Owner login email',
     'Owner mobile',
     'Has franchisee contact',
+    'Invite status',
   ]
   const rows = sites.map(site => [
     site.shop_number ?? '',
@@ -143,6 +192,7 @@ function downloadContactsCsv(sites: ParentAccountSite[]) {
     site.owner_is_shared_hq_login && !shopInviteEmail(site) && !shopInvitePhone(site)
       ? 'No — shared HQ login'
       : 'Yes',
+    inviteStatusLabel(site).text,
   ])
   const csv = [header, ...rows].map(cols => cols.map(csvCell).join(',')).join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
@@ -485,6 +535,7 @@ export default function MinitAccountsPage() {
                   {areaRegion ? `${areaRegion} · ` : ''}login {site.tenant_slug} · {site.plan_code}
                 </p>
                 <OwnerContact site={site} onEdit={canEdit ? () => openContact(site) : undefined} />
+                <InviteStatus site={site} />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {canEdit && regions.length > 0 && (
@@ -565,6 +616,7 @@ export default function MinitAccountsPage() {
                   {areaRegion ? `${areaRegion} · ` : ''}{site.tenant_slug} · {site.plan_code}
                 </p>
                 <OwnerContact site={site} onEdit={canEdit ? () => openContact(site) : undefined} />
+                <InviteStatus site={site} />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {openShopButton(site)}

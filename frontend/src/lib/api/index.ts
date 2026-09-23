@@ -147,6 +147,13 @@ export interface ParentAccountSite {
   shop_email?: string | null
   /** Tenant shop-identity phone used when SMS-ing an owner invite. */
   shop_phone?: string | null
+  /** Latest owner invite; null when HQ has never sent one. */
+  owner_invite_status?: 'pending' | 'completed' | 'expired' | 'revoked' | null
+  owner_invite_sent_at?: string | null
+  owner_invite_expires_at?: string | null
+  owner_invite_completed_at?: string | null
+  /** Last time the owner signed in themselves (HQ entering the shop doesn't count). */
+  owner_last_sign_in_at?: string | null
 }
 
 export interface ParentAccountUser {

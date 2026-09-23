@@ -236,6 +236,14 @@ class ParentAccountSiteRead(SQLModel):
     #: Tenant shop-identity phone (invoices / invite SMS). Distinct from the
     #: owner's personal mobile.
     shop_phone: Optional[str] = None
+    #: Latest owner invite: pending | completed | expired | revoked, or None if
+    #: HQ has never sent one. "completed" means the franchisee set their login.
+    owner_invite_status: Optional[str] = None
+    owner_invite_sent_at: Optional[datetime] = None
+    owner_invite_expires_at: Optional[datetime] = None
+    owner_invite_completed_at: Optional[datetime] = None
+    #: Last time the shop owner signed in themselves (HQ "enter shop" doesn't count).
+    owner_last_sign_in_at: Optional[datetime] = None
 
 
 class ParentAccountSiteUpdateRequest(SQLModel):

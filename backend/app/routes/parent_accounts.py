@@ -150,6 +150,49 @@ def _owner_users_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUI
     return owners
 
 
+def _latest_invites_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUID, ShopOwnerInvite]:
+    """Most recent owner invite per tenant — the one HQ cares about."""
+    if not tenant_ids:
+        return {}
+    latest: dict[UUID, ShopOwnerInvite] = {}
+    for invite in session.exec(
+        select(ShopOwnerInvite)
+        .where(col(ShopOwnerInvite.tenant_id).in_(tenant_ids))
+        .order_by(col(ShopOwnerInvite.created_at).desc())
+    ).all():
+        latest.setdefault(invite.tenant_id, invite)
+    return latest
+
+
+def _last_sign_in_by_user(session: Session, user_ids: list[UUID]) -> dict[UUID, datetime]:
+    """Latest sign-in activity per user, from their refresh sessions.
+
+    HQ's "enter shop" mints a bare access token with no RefreshSession, so this
+    only ever reflects the owner signing in themselves.
+    """
+    if not user_ids:
+        return {}
+    rows = session.exec(
+        select(RefreshSession.user_id, func.max(RefreshSession.last_used_at))
+        .where(col(RefreshSession.user_id).in_(user_ids))
+        .group_by(RefreshSession.user_id)
+    ).all()
+    return {user_id: last for user_id, last in rows if last is not None}
+
+
+def _invite_status(invite: ShopOwnerInvite | None) -> str | None:
+    """Invite status as HQ should read it: a pending invite past its expiry is expired."""
+    if invite is None:
+        return None
+    if invite.status == "pending":
+        expires_at = invite.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            return "expired"
+    return invite.status
+
+
 _SHOP_CONTACT_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -202,6 +245,8 @@ def _site_reads_for_sites(
         for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()
     }
     owners = _owner_users_by_tenant(session, tenant_ids)
+    invites = _latest_invites_by_tenant(session, tenant_ids)
+    last_sign_in = _last_sign_in_by_user(session, [u.id for u in owners.values()])
     if regions_by_id is None:
         regions_by_id = _regions_by_id(session, sites[0].parent_account_id)
 
@@ -219,6 +264,7 @@ def _site_reads_for_sites(
         if not tenant or not user:
             continue
         region = regions_by_id.get(site.region_id) if site.region_id else None
+        invite = invites.get(site.tenant_id)
         reads.append(
             ParentAccountSiteRead(
                 tenant_id=tenant.id,
@@ -240,6 +286,11 @@ def _site_reads_for_sites(
                 ),
                 shop_email=tenant.shop_email,
                 shop_phone=tenant.shop_phone,
+                owner_invite_status=_invite_status(invite),
+                owner_invite_sent_at=invite.created_at if invite else None,
+                owner_invite_expires_at=invite.expires_at if invite else None,
+                owner_invite_completed_at=invite.completed_at if invite else None,
+                owner_last_sign_in_at=last_sign_in.get(user.id),
             )
         )
     return sorted(reads, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
