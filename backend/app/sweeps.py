@@ -70,6 +70,11 @@ def all_sweeps() -> list[Sweep]:
 
         return send_due_quote_reminders
 
+    def _shop_owner_invite_reminders() -> SweepFn:
+        from .services.shop_owner_invite_reminders import send_due_shop_owner_invite_reminders
+
+        return send_due_shop_owner_invite_reminders
+
     def _shop_mobile_booking_pool() -> SweepFn:
         from .routes.shop_mobile_bookings import process_due_shop_mobile_bookings
 
@@ -122,6 +127,13 @@ def all_sweeps() -> list[Sweep]:
             interval_minutes=settings.quote_reminder_check_interval_minutes,
             load=_quote_reminders,
             notable_keys=("watch_sent", "mobile_sent"),
+        ),
+        Sweep(
+            name="shop_owner_invite_reminders",
+            enabled=settings.shop_owner_invite_reminder_enabled,
+            interval_minutes=settings.shop_owner_invite_reminder_check_interval_minutes,
+            load=_shop_owner_invite_reminders,
+            notable_keys=("sent", "unreachable"),
         ),
         Sweep(
             name="shop_mobile_booking_pool",

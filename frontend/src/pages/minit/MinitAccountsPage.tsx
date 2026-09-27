@@ -10,9 +10,11 @@ import {
   MINIT_INVITE_PLAN_OPTIONS,
   MINIT_SHOP_TYPE_OPTIONS,
   provisionMinitShop,
+  resendExpiredShopOwnerInvites,
   unlinkTenantFromParentAccount,
   updateLinkedSite,
   type MinitShopType,
+  type OwnerStage,
   type ParentAccountSite,
   type PlanCode,
   type ShopOwnerInvite,
@@ -120,6 +122,12 @@ function inviteStatusLabel(site: ParentAccountSite): { text: string; tone: 'live
     case 'completed': {
       const accepted = shortDate(site.owner_invite_completed_at)
       const lastIn = shortDate(site.owner_last_sign_in_at)
+      if (site.owner_stage === 'quiet') {
+        return {
+          text: `Accepted ${accepted} but quiet — ${lastIn ? `last signed in ${lastIn}` : 'no sign-in since'}`,
+          tone: 'waiting',
+        }
+      }
       return {
         text: `Live — accepted ${accepted}${lastIn ? ` · last signed in ${lastIn}` : ''}`,
         tone: 'live',
@@ -145,6 +153,14 @@ const INVITE_TONE_STYLE: Record<'live' | 'waiting' | 'problem' | 'none', { color
   problem: { color: 'var(--ms-error)', backgroundColor: '#FDF0EE' },
   none: { color: 'var(--ms-text-muted)', backgroundColor: 'transparent' },
 }
+
+const OWNER_STAGE_CHIPS: { stage: OwnerStage; label: string; tone: keyof typeof INVITE_TONE_STYLE }[] = [
+  { stage: 'live', label: 'Live', tone: 'live' },
+  { stage: 'quiet', label: 'Quiet 14+ days', tone: 'waiting' },
+  { stage: 'waiting', label: 'Invite waiting', tone: 'waiting' },
+  { stage: 'expired', label: 'Invite expired', tone: 'problem' },
+  { stage: 'not_invited', label: 'Not invited', tone: 'none' },
+]
 
 function InviteStatus({ site }: { site: ParentAccountSite }) {
   const { text, tone } = inviteStatusLabel(site)
@@ -247,14 +263,36 @@ export default function MinitAccountsPage() {
   }, [search])
 
   const { data: summary, isLoading: summaryLoading } = useParentAccount()
+  const [stageFilter, setStageFilter] = useState<OwnerStage | null>(null)
   const { data: retailPage, isLoading: retailLoading } = useParentAccountSites({
     plan_kind: 'retail',
     limit: retailLimit,
     search: debouncedSearch || undefined,
+    owner_stage: stageFilter ?? undefined,
   })
   const { data: operatorsPage } = useParentAccountSites({
     plan_kind: 'operator',
     limit: 50,
+    owner_stage: stageFilter ?? undefined,
+  })
+  // Counts cover every shop in each list, whatever the filter, so the strip
+  // always shows the whole rollout.
+  const stageCounts = OWNER_STAGE_CHIPS.map(chip => ({
+    ...chip,
+    count: (retailPage?.owner_stage_counts?.[chip.stage] ?? 0) + (operatorsPage?.owner_stage_counts?.[chip.stage] ?? 0),
+  }))
+  const expiredCount = stageCounts.find(c => c.stage === 'expired')?.count ?? 0
+  const resendExpiredMut = useMutation({
+    mutationFn: () => resendExpiredShopOwnerInvites().then(r => r.data),
+    onSuccess: result => {
+      setError('')
+      const skipped = result.skipped_no_contact
+        ? ` ${result.skipped_no_contact} skipped — no email or phone on file.`
+        : ''
+      toast.success(`Sent ${result.resent} fresh invite${result.resent === 1 ? '' : 's'}.${skipped}`)
+      qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not resend the expired invites.')),
   })
 
   const retailSites = retailPage?.sites ?? []
@@ -478,6 +516,64 @@ export default function MinitAccountsPage() {
         </div>
       )}
 
+      {stageCounts.some(c => c.count > 0) && (
+        <Card className="mb-6 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>Owner invites</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
+                Tap a status to list only those shops.
+              </p>
+            </div>
+            {canEdit && expiredCount > 0 && (
+              <Button
+                variant="secondary"
+                className="text-xs px-3 py-1.5"
+                onClick={() => resendExpiredMut.mutate()}
+                disabled={resendExpiredMut.isPending}
+                title="Send a fresh 7-day link to every shop whose invite ran out unaccepted"
+              >
+                {resendExpiredMut.isPending ? 'Sending…' : `Resend ${expiredCount} expired`}
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {stageCounts.map(chip => {
+              const active = stageFilter === chip.stage
+              return (
+                <button
+                  key={chip.stage}
+                  type="button"
+                  onClick={() => {
+                    setStageFilter(active ? null : chip.stage)
+                    setRetailLimit(50)
+                  }}
+                  aria-pressed={active}
+                  className="text-xs rounded px-2.5 py-1"
+                  style={{
+                    ...INVITE_TONE_STYLE[chip.tone],
+                    border: active ? '1.5px solid currentColor' : '1px solid var(--ms-border)',
+                    fontWeight: active ? 600 : 400,
+                  }}
+                >
+                  {chip.label} · {chip.count}
+                </button>
+              )
+            })}
+            {stageFilter && (
+              <button
+                type="button"
+                className="text-xs underline"
+                style={{ color: 'var(--ms-accent)' }}
+                onClick={() => setStageFilter(null)}
+              >
+                Show all
+              </button>
+            )}
+          </div>
+        </Card>
+      )}
+
       <Card className="mb-6 overflow-hidden">
         <div
           className="px-5 py-3 flex flex-wrap items-center justify-between gap-3"
@@ -511,7 +607,9 @@ export default function MinitAccountsPage() {
             </div>
           )}
         </div>
-        {retailTotal === 0 ? (
+        {retailTotal === 0 && stageFilter ? (
+          <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops with this invite status.</p>
+        ) : retailTotal === 0 ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops linked yet.</p>
         ) : retailSites.length === 0 && !retailLoading ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>
@@ -553,7 +651,7 @@ export default function MinitAccountsPage() {
                   </Select>
                 )}
                 {openShopButton(site)}
-                {canEdit && (
+                {canEdit && site.owner_invite_status !== 'completed' && (
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"
@@ -620,7 +718,7 @@ export default function MinitAccountsPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {openShopButton(site)}
-                {canEdit && (
+                {canEdit && site.owner_invite_status !== 'completed' && (
                 <Button
                   variant="ghost"
                   className="text-xs px-3 py-1.5"

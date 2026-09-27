@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { listParentAccountSites } from '@/lib/api'
+import { listParentAccountSites, type OwnerStage } from '@/lib/api'
 
 export const PARENT_ACCOUNT_SITES_QUERY_KEY = ['parent-account-sites'] as const
 
@@ -9,6 +9,7 @@ export type ParentAccountSitesParams = {
   search?: string
   region?: string
   plan_kind?: 'retail' | 'operator' | 'all'
+  owner_stage?: OwnerStage
 }
 
 export function useParentAccountSites(params: ParentAccountSitesParams = {}) {
@@ -18,6 +19,7 @@ export function useParentAccountSites(params: ParentAccountSitesParams = {}) {
     search,
     region,
     plan_kind = 'all',
+    owner_stage,
   } = params
 
   return useQuery({
@@ -28,6 +30,7 @@ export function useParentAccountSites(params: ParentAccountSitesParams = {}) {
       offset,
       search?.trim() || '',
       region?.trim() || '',
+      owner_stage ?? '',
     ] as const,
     queryFn: () =>
       listParentAccountSites({
@@ -36,6 +39,7 @@ export function useParentAccountSites(params: ParentAccountSitesParams = {}) {
         search: search?.trim() || undefined,
         region: region?.trim() || undefined,
         plan_kind,
+        owner_stage,
       }).then(r => r.data),
     staleTime: 120_000,
     gcTime: 300_000,

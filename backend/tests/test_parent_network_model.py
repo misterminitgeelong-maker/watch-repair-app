@@ -741,3 +741,177 @@ def test_sites_show_whether_the_owner_invite_was_accepted():
     assert live["owner_invite_completed_at"]
     # Accepting signs the owner straight in, so the shop shows as used.
     assert live["owner_last_sign_in_at"]
+
+
+# ── 12. Owner stages: totals, filter, quiet shops, expired resends, reminders ─
+
+
+def _invited_shop(net: dict, suffix: str, offset: int) -> tuple[str, str]:
+    """Provision a shop with its own owner contact and send it an invite.
+    Returns (tenant_id, invite token)."""
+    num = str(int(suffix[:4], 16) % 8000 + 1000 + offset)
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=net["hq"],
+        json={
+            "shop_number": num,
+            "tenant_name": f"Stage {offset} {suffix}",
+            "owner_email": f"stage{offset}.{suffix}@franchise.test",
+            "owner_full_name": "Stage Owner",
+        },
+    )
+    assert made.status_code == 200, made.text
+    tenant_id = next(s for s in made.json()["sites"] if s["shop_number"] == num)["tenant_id"]
+    invite = client.post(f"/v1/parent-accounts/me/sites/{tenant_id}/invite", headers=net["hq"])
+    assert invite.status_code == 200, invite.text
+    return tenant_id, invite.json()["invite_url"].rsplit("/", 1)[-1]
+
+
+def _accept(token: str, suffix: str, offset: int) -> None:
+    done = client.post(
+        f"/v1/public/shop-invite/{token}/complete",
+        json={"full_name": "Stage Owner", "email": f"stage{offset}.{suffix}@franchise.test", "password": "Str0ng!Passw0rd"},
+    )
+    assert done.status_code == 200, done.text
+
+
+def test_owner_stage_counts_filter_and_quiet_shops():
+    from datetime import datetime, timedelta, timezone
+
+    from app.models import RefreshSession, ShopOwnerInvite
+
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+
+    live_id, live_token = _invited_shop(net, suffix, 51)
+    quiet_id, quiet_token = _invited_shop(net, suffix, 52)
+    waiting_id, _ = _invited_shop(net, suffix, 53)
+    expired_id, _ = _invited_shop(net, suffix, 54)
+    _accept(live_token, suffix, 51)
+    _accept(quiet_token, suffix, 52)
+
+    with Session(engine) as db:
+        # The quiet shop accepted a month ago and hasn't been back since.
+        long_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        inv = db.exec(select(ShopOwnerInvite).where(ShopOwnerInvite.tenant_id == UUID(quiet_id))).one()
+        inv.completed_at = long_ago
+        db.add(inv)
+        for rs in db.exec(select(RefreshSession).where(RefreshSession.user_id == inv.owner_user_id)).all():
+            rs.created_at = long_ago
+            rs.last_used_at = long_ago
+            db.add(rs)
+        expired = db.exec(select(ShopOwnerInvite).where(ShopOwnerInvite.tenant_id == UUID(expired_id))).one()
+        expired.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+        db.add(expired)
+        db.commit()
+
+    page = client.get("/v1/parent-accounts/me/sites", headers=hq_h).json()
+    stage_of = {s["tenant_id"]: s["owner_stage"] for s in page["sites"]}
+    assert stage_of[live_id] == "live"
+    assert stage_of[quiet_id] == "quiet"
+    assert stage_of[waiting_id] == "waiting"
+    assert stage_of[expired_id] == "expired"
+    counts = page["owner_stage_counts"]
+    assert counts["live"] >= 1 and counts["quiet"] >= 1 and counts["waiting"] >= 1 and counts["expired"] >= 1
+    assert sum(counts.values()) == page["total"]
+
+    only_waiting = client.get(
+        "/v1/parent-accounts/me/sites", headers=hq_h, params={"owner_stage": "waiting"}
+    ).json()
+    assert {s["tenant_id"] for s in only_waiting["sites"]} == {waiting_id}
+    # Totals still describe the whole network, not the filtered page.
+    assert only_waiting["owner_stage_counts"] == counts
+
+    bad = client.get("/v1/parent-accounts/me/sites", headers=hq_h, params={"owner_stage": "nope"})
+    assert bad.status_code == 400
+
+
+def test_hq_era_sessions_do_not_count_as_the_owner_signing_in():
+    from datetime import datetime, timedelta, timezone
+
+    from app.models import RefreshSession, ShopOwnerInvite
+
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    tenant_id, token = _invited_shop(net, suffix, 61)
+    with Session(engine) as db:
+        inv = db.exec(select(ShopOwnerInvite).where(ShopOwnerInvite.tenant_id == UUID(tenant_id))).one()
+        # HQ used this login a week before the shop took it over.
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        db.add(RefreshSession(
+            tenant_id=UUID(tenant_id), user_id=inv.owner_user_id, jti=uuid4().hex,
+            created_at=week_ago, last_used_at=week_ago, expires_at=week_ago + timedelta(days=30),
+        ))
+        db.commit()
+    _accept(token, suffix, 61)
+
+    site = next(
+        s for s in client.get("/v1/parent-accounts/me/sites", headers=net["hq"]).json()["sites"]
+        if s["tenant_id"] == tenant_id
+    )
+    assert site["owner_last_sign_in_at"] >= site["owner_invite_completed_at"][:19]
+
+
+def test_accepting_an_invite_shows_in_hq_activity():
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    _, token = _invited_shop(net, suffix, 71)
+    _accept(token, suffix, 71)
+    activity = client.get("/v1/parent-accounts/me/activity", headers=net["hq"]).json()
+    assert any(e["event_type"] == "shop_owner_invite_accepted" for e in activity)
+
+
+def test_resend_expired_invites_sends_fresh_links_to_reachable_shops():
+    from datetime import datetime, timedelta, timezone
+
+    from app.models import ShopOwnerInvite
+
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    tenant_id, _ = _invited_shop(net, suffix, 81)
+    with Session(engine) as db:
+        inv = db.exec(select(ShopOwnerInvite).where(ShopOwnerInvite.tenant_id == UUID(tenant_id))).one()
+        inv.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+        db.add(inv)
+        db.commit()
+
+    res = client.post("/v1/parent-accounts/me/sites/resend-expired-invites", headers=net["hq"])
+    assert res.status_code == 200, res.text
+    assert res.json()["resent"] == 1
+
+    site = next(
+        s for s in client.get("/v1/parent-accounts/me/sites", headers=net["hq"]).json()["sites"]
+        if s["tenant_id"] == tenant_id
+    )
+    assert site["owner_stage"] == "waiting"
+
+
+def test_reminder_sweep_nudges_each_expiring_invite_once():
+    from datetime import datetime, timedelta, timezone
+
+    from app.models import ShopOwnerInvite
+    from app.services.shop_owner_invite_reminders import send_due_shop_owner_invite_reminders
+
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    tenant_id, _ = _invited_shop(net, suffix, 91)
+    with Session(engine) as db:
+        inv = db.exec(select(ShopOwnerInvite).where(ShopOwnerInvite.tenant_id == UUID(tenant_id))).one()
+        inv.expires_at = datetime.now(timezone.utc) + timedelta(hours=20)
+        db.add(inv)
+        db.commit()
+
+        first = send_due_shop_owner_invite_reminders(db)
+        assert first["due"] >= 1
+        db.refresh(inv)
+        assert inv.reminder_sent_at is not None
+
+        second = send_due_shop_owner_invite_reminders(db)
+        still_due = db.exec(
+            select(ShopOwnerInvite)
+            .where(ShopOwnerInvite.tenant_id == UUID(tenant_id))
+            .where(ShopOwnerInvite.reminder_sent_at.is_(None))
+        ).all()
+        assert still_due == []
+        assert second["due"] <= first["due"] - 1

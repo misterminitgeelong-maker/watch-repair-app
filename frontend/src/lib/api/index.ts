@@ -156,7 +156,11 @@ export interface ParentAccountSite {
   owner_invite_completed_at?: string | null
   /** Last time the owner signed in themselves (HQ entering the shop doesn't count). */
   owner_last_sign_in_at?: string | null
+  owner_stage?: OwnerStage
 }
+
+/** Where a shop's owner is: live, quiet (accepted, 14+ days since sign-in), waiting, expired, not_invited. */
+export type OwnerStage = 'live' | 'quiet' | 'waiting' | 'expired' | 'not_invited'
 
 export interface ParentAccountUser {
   user_id: string
@@ -385,6 +389,8 @@ export interface ParentAccountSitesPage {
   total: number
   limit: number
   offset: number
+  /** Shops per owner stage across the whole filtered scope, not just this page. */
+  owner_stage_counts?: Partial<Record<OwnerStage, number>>
 }
 
 export interface ParentAccountActivityEvent {
@@ -410,6 +416,7 @@ export const listParentAccountSites = (params?: {
   search?: string
   region?: string
   plan_kind?: 'retail' | 'operator' | 'all'
+  owner_stage?: OwnerStage
 }) => api.get<ParentAccountSitesPage>('/parent-accounts/me/sites', { params })
 export const listParentAccountActivity = (limit = 50, offset = 0) =>
   api.get<ParentAccountActivityEvent[]>('/parent-accounts/me/activity', { params: { limit, offset } })
@@ -480,6 +487,10 @@ export const MINIT_INVITE_PLAN_OPTIONS: Array<{ code: PlanCode; label: string }>
  * Pass `planCode` to set the shop's plan/tier at the same time. */
 export const createShopOwnerInvite = (tenantId: string, planCode?: PlanCode | string) =>
   api.post<ShopOwnerInvite>(`/parent-accounts/me/sites/${tenantId}/invite`, planCode ? { plan_code: planCode } : {})
+export const resendExpiredShopOwnerInvites = () =>
+  api.post<{ resent: number; skipped_no_contact: number; skipped_claimed: number }>(
+    '/parent-accounts/me/sites/resend-expired-invites',
+  )
 export const getShopOwnerInvite = (tenantId: string) =>
   api.get<ShopOwnerInvite | null>(`/parent-accounts/me/sites/${tenantId}/invite`)
 

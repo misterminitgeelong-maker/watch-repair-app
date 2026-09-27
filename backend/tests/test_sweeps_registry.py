@@ -34,6 +34,8 @@ EXPECTED_SWEEPS = {
     "mobile_kpi_close",
     "notification_redelivery",
     "retention",
+    # Added after the extraction: nudges unaccepted shop-owner invites before expiry.
+    "shop_owner_invite_reminders",
 }
 
 

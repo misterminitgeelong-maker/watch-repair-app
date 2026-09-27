@@ -247,6 +247,8 @@ class ParentAccountSiteRead(SQLModel):
     owner_invite_completed_at: Optional[datetime] = None
     #: Last time the shop owner signed in themselves (HQ "enter shop" doesn't count).
     owner_last_sign_in_at: Optional[datetime] = None
+    #: live | quiet (accepted, no sign-in for 14+ days) | waiting | expired | not_invited
+    owner_stage: str = "not_invited"
 
 
 class ParentAccountSiteUpdateRequest(SQLModel):
@@ -394,6 +396,8 @@ class ParentAccountSitesPageResponse(SQLModel):
     total: int = 0
     limit: int = 100
     offset: int = 0
+    #: Shops per owner stage across the whole filtered scope (not just this page).
+    owner_stage_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class ParentLinkRequestRead(SQLModel):
@@ -527,6 +531,14 @@ class ShopOwnerInviteRead(SQLModel):
     #: endpoint; the GET (latest-invite-status) endpoint leaves these False.
     email_sent: bool = False
     sms_sent: bool = False
+
+class ShopOwnerInviteBulkResendResponse(SQLModel):
+    resent: int = 0
+    #: No shop email or phone on file, so a link would reach nobody.
+    skipped_no_contact: int = 0
+    #: The shop has taken over its login since, so it no longer needs one.
+    skipped_claimed: int = 0
+
 
 class ShopOwnerInvitePublicRead(SQLModel):
     tenant_name: str

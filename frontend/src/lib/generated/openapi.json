@@ -14851,6 +14851,24 @@
               "title": "Plan Kind"
             },
             "description": "Filter by retail, operator, or all (default)."
+          },
+          {
+            "name": "owner_stage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by owner stage: live, quiet, waiting, expired, or not_invited.",
+              "title": "Owner Stage"
+            },
+            "description": "Filter by owner stage: live, quiet, waiting, expired, or not_invited."
           }
         ],
         "responses": {
@@ -15108,6 +15126,33 @@
             }
           }
         }
+      }
+    },
+    "/v1/parent-accounts/me/sites/resend-expired-invites": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Resend Expired Shop Owner Invites",
+        "description": "Send a fresh link to every shop whose last invite ran out unaccepted.\n\nShops with no email or phone on file are skipped (the link would reach\nnobody), as are logins the shop has since taken over.",
+        "operationId": "resend_expired_shop_owner_invites_v1_parent_accounts_me_sites_resend_expired_invites_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopOwnerInviteBulkResendResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/parent-accounts/me/create-tenant": {
@@ -29562,6 +29607,11 @@
               }
             ],
             "title": "Owner Last Sign In At"
+          },
+          "owner_stage": {
+            "type": "string",
+            "title": "Owner Stage",
+            "default": "not_invited"
           }
         },
         "type": "object",
@@ -29657,6 +29707,13 @@
             "type": "integer",
             "title": "Offset",
             "default": 0
+          },
+          "owner_stage_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Owner Stage Counts"
           }
         },
         "type": "object",
@@ -37370,6 +37427,27 @@
           "plan_code"
         ],
         "title": "ShopMobileOperatorOption"
+      },
+      "ShopOwnerInviteBulkResendResponse": {
+        "properties": {
+          "resent": {
+            "type": "integer",
+            "title": "Resent",
+            "default": 0
+          },
+          "skipped_no_contact": {
+            "type": "integer",
+            "title": "Skipped No Contact",
+            "default": 0
+          },
+          "skipped_claimed": {
+            "type": "integer",
+            "title": "Skipped Claimed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "ShopOwnerInviteBulkResendResponse"
       },
       "ShopOwnerInviteCompleteRequest": {
         "properties": {

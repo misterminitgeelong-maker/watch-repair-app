@@ -330,6 +330,8 @@ class ShopOwnerInvite(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime
     completed_at: Optional[datetime] = None
+    #: Set when the reminder sweep re-sent the link shortly before expiry.
+    reminder_sent_at: Optional[datetime] = None
 
 class ParentLinkRequest(SQLModel, table=True):
     """HQ asking to add an existing shop to its network, pending the shop's say-so.

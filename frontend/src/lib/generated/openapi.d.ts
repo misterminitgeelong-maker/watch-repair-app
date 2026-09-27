@@ -4669,6 +4669,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/sites/resend-expired-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Expired Shop Owner Invites
+         * @description Send a fresh link to every shop whose last invite ran out unaccepted.
+         *
+         *     Shops with no email or phone on file are skipped (the link would reach
+         *     nobody), as are logins the shop has since taken over.
+         */
+        post: operations["resend_expired_shop_owner_invites_v1_parent_accounts_me_sites_resend_expired_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/create-tenant": {
         parameters: {
             query?: never;
@@ -9322,6 +9345,11 @@ export interface components {
             owner_invite_completed_at?: string | null;
             /** Owner Last Sign In At */
             owner_last_sign_in_at?: string | null;
+            /**
+             * Owner Stage
+             * @default not_invited
+             */
+            owner_stage: string;
         };
         /** ParentAccountSiteUpdateRequest */
         ParentAccountSiteUpdateRequest: {
@@ -9358,6 +9386,10 @@ export interface components {
              * @default 0
              */
             offset: number;
+            /** Owner Stage Counts */
+            owner_stage_counts?: {
+                [key: string]: number;
+            };
         };
         /** ParentAccountSummaryResponse */
         ParentAccountSummaryResponse: {
@@ -11931,6 +11963,24 @@ export interface components {
             plan_code: string;
             /** Routing Rule */
             routing_rule?: string | null;
+        };
+        /** ShopOwnerInviteBulkResendResponse */
+        ShopOwnerInviteBulkResendResponse: {
+            /**
+             * Resent
+             * @default 0
+             */
+            resent: number;
+            /**
+             * Skipped No Contact
+             * @default 0
+             */
+            skipped_no_contact: number;
+            /**
+             * Skipped Claimed
+             * @default 0
+             */
+            skipped_claimed: number;
         };
         /** ShopOwnerInviteCompleteRequest */
         ShopOwnerInviteCompleteRequest: {
@@ -21597,6 +21647,8 @@ export interface operations {
                 region?: string | null;
                 /** @description Filter by retail, operator, or all (default). */
                 plan_kind?: string | null;
+                /** @description Filter by owner stage: live, quiet, waiting, expired, or not_invited. */
+                owner_stage?: string | null;
             };
             header?: never;
             path?: never;
@@ -21751,6 +21803,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_expired_shop_owner_invites_v1_parent_accounts_me_sites_resend_expired_invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOwnerInviteBulkResendResponse"];
                 };
             };
         };

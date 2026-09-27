@@ -8,6 +8,7 @@ password, and land signed in — no separate login step.
 """
 
 from datetime import datetime, timezone
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +18,10 @@ from ..limiter import limiter, public_read_limit, public_write_limit
 from ..database import get_session, unscoped_session
 from ..dependencies import invalidate_auth_cache
 from ..refresh_cookie import deliver_tokens
+from .. import email_client
+from ..config import settings
 from ..models import (
+    ParentAccountEventLog,
     ParentAccountUser,
     RefreshSession,
     ShopOwnerInvite,
@@ -60,6 +64,31 @@ def _load_pending_invite(session: Session, token: str) -> ShopOwnerInvite:
         }.get(invite.status, "This invite is no longer valid.")
         raise HTTPException(status_code=410, detail=detail)
     return invite
+
+
+def _tell_hq_invite_accepted(
+    session: Session, *, invite: ShopOwnerInvite, tenant: Tenant, owner_name: str, owner_email: str
+) -> None:
+    """Best-effort email to the HQ person who sent the invite. Never raises —
+    the shop is already signed in and must not see an error for this."""
+    sender = session.get(User, invite.created_by_user_id)
+    if sender is None or not (sender.email or "").strip():
+        return
+    try:
+        email_client.send_shop_owner_invite_accepted_email(
+            to_email=sender.email,
+            tenant_name=tenant.name,
+            shop_number=tenant.shop_number,
+            owner_full_name=owner_name,
+            owner_email=owner_email,
+            accounts_url=f"{settings.public_base_url.rstrip('/')}/minit/accounts",
+            session=session,
+            tenant_id=sender.tenant_id,
+        )
+        session.commit()
+    except Exception:
+        session.rollback()
+        logging.getLogger(__name__).exception("Failed to email HQ that tenant %s accepted its invite", tenant.id)
 
 
 @router.get("/{token}", response_model=ShopOwnerInvitePublicRead)
@@ -123,12 +152,24 @@ def complete_shop_owner_invite(
     invite.status = "completed"
     invite.completed_at = datetime.now(timezone.utc)
     session.add(invite)
+    # HQ's activity feed shows the shop went live, whoever is looking.
+    session.add(
+        ParentAccountEventLog(
+            parent_account_id=invite.parent_account_id,
+            tenant_id=tenant.id,
+            actor_user_id=owner.id,
+            actor_email=email,
+            event_type="shop_owner_invite_accepted",
+            event_summary=f"{full_name} accepted the owner invite for '{tenant.name}' — the shop is live",
+        )
+    )
     try:
         session.commit()
     except IntegrityError:
         session.rollback()
         raise HTTPException(status_code=409, detail="That email is already in use on this account")
     invalidate_auth_cache()
+    _tell_hq_invite_accepted(session, invite=invite, tenant=tenant, owner_name=full_name, owner_email=email)
 
     access, access_exp, refresh, refresh_exp = _issue_session_tokens(
         session, tenant_id=tenant.id, user_id=owner.id, role=owner.role, request=request

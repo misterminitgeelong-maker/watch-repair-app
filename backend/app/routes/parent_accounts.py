@@ -83,6 +83,7 @@ from ..models import (
     ShopBookingUsageShopBreakdown,
     ShopMobileBookingRequest,
     ShopOwnerInvite,
+    ShopOwnerInviteBulkResendResponse,
     ShopOwnerInviteCreateRequest,
     ShopOwnerInviteRead,
     Tenant,
@@ -151,33 +152,60 @@ def _owner_users_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUI
 
 
 def _latest_invites_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUID, ShopOwnerInvite]:
-    """Most recent owner invite per tenant — the one HQ cares about."""
+    """The owner invite HQ cares about per tenant.
+
+    That is the most recent one — unless an earlier invite was accepted. A shop
+    that has claimed its login stays live even if HQ sends it another link.
+    """
     if not tenant_ids:
         return {}
     latest: dict[UUID, ShopOwnerInvite] = {}
+    accepted: dict[UUID, ShopOwnerInvite] = {}
     for invite in session.exec(
         select(ShopOwnerInvite)
         .where(col(ShopOwnerInvite.tenant_id).in_(tenant_ids))
         .order_by(col(ShopOwnerInvite.created_at).desc())
     ).all():
         latest.setdefault(invite.tenant_id, invite)
-    return latest
+        if invite.status == "completed":
+            accepted.setdefault(invite.tenant_id, invite)
+    return {**latest, **accepted}
 
 
-def _last_sign_in_by_user(session: Session, user_ids: list[UUID]) -> dict[UUID, datetime]:
-    """Latest sign-in activity per user, from their refresh sessions.
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
-    HQ's "enter shop" mints a bare access token with no RefreshSession, so this
-    only ever reflects the owner signing in themselves.
+
+def _last_sign_in_by_user(session: Session, since_by_user: dict[UUID, datetime]) -> dict[UUID, datetime]:
+    """Latest sign-in activity per owner since they accepted their invite.
+
+    Before a shop claims its login, that same user row is HQ's copied login, so
+    only sessions started after acceptance are the owner's own. HQ's "enter
+    shop" mints a bare access token with no RefreshSession, so it never counts.
     """
-    if not user_ids:
+    if not since_by_user:
         return {}
-    rows = session.exec(
-        select(RefreshSession.user_id, func.max(RefreshSession.last_used_at))
-        .where(col(RefreshSession.user_id).in_(user_ids))
-        .group_by(RefreshSession.user_id)
-    ).all()
-    return {user_id: last for user_id, last in rows if last is not None}
+    last: dict[UUID, datetime] = {}
+    for user_id, created_at, last_used_at in session.exec(
+        select(RefreshSession.user_id, RefreshSession.created_at, RefreshSession.last_used_at)
+        .where(col(RefreshSession.user_id).in_(list(since_by_user)))
+        .where(col(RefreshSession.created_at) >= min(since_by_user.values()))
+    ).all():
+        # Accepting signs the owner in within the same request, a moment after
+        # completed_at is stamped — allow for that ordering.
+        if _aware(created_at) < _aware(since_by_user[user_id]) - timedelta(minutes=1):
+            continue
+        if last_used_at is not None and (user_id not in last or _aware(last_used_at) > last[user_id]):
+            last[user_id] = _aware(last_used_at)
+    return last
+
+
+def _accepted_since_by_owner(invites: dict[UUID, ShopOwnerInvite]) -> dict[UUID, datetime]:
+    return {
+        inv.owner_user_id: inv.completed_at
+        for inv in invites.values()
+        if inv.status == "completed" and inv.completed_at is not None
+    }
 
 
 def _invite_status(invite: ShopOwnerInvite | None) -> str | None:
@@ -191,6 +219,42 @@ def _invite_status(invite: ShopOwnerInvite | None) -> str | None:
         if expires_at < datetime.now(timezone.utc):
             return "expired"
     return invite.status
+
+
+#: A live shop whose owner hasn't signed in for this long is flagged "quiet".
+OWNER_QUIET_AFTER_DAYS = 14
+OWNER_STAGES = ("live", "quiet", "waiting", "expired", "not_invited")
+
+
+def _owner_stage(
+    invite_status: str | None, last_sign_in: datetime | None, accepted_at: datetime | None = None
+) -> str:
+    """One word for where a shop's owner is: the bucket HQ counts and filters by."""
+    if invite_status == "completed":
+        last_seen = last_sign_in or accepted_at
+        if last_seen is None:
+            return "quiet"
+        quiet_since = datetime.now(timezone.utc) - timedelta(days=OWNER_QUIET_AFTER_DAYS)
+        return "quiet" if _aware(last_seen) < quiet_since else "live"
+    if invite_status == "pending":
+        return "waiting"
+    if invite_status in ("expired", "revoked"):
+        return "expired"
+    return "not_invited"
+
+
+def _owner_stages_by_tenant(session: Session, tenant_ids: list[UUID]) -> dict[UUID, str]:
+    owners = _owner_users_by_tenant(session, tenant_ids)
+    invites = _latest_invites_by_tenant(session, tenant_ids)
+    last_sign_in = _last_sign_in_by_user(session, _accepted_since_by_owner(invites))
+    return {
+        tenant_id: _owner_stage(
+            _invite_status(invites.get(tenant_id)),
+            last_sign_in.get(owners[tenant_id].id) if tenant_id in owners else None,
+            invites[tenant_id].completed_at if tenant_id in invites else None,
+        )
+        for tenant_id in tenant_ids
+    }
 
 
 _SHOP_CONTACT_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -246,7 +310,7 @@ def _site_reads_for_sites(
     }
     owners = _owner_users_by_tenant(session, tenant_ids)
     invites = _latest_invites_by_tenant(session, tenant_ids)
-    last_sign_in = _last_sign_in_by_user(session, [u.id for u in owners.values()])
+    last_sign_in = _last_sign_in_by_user(session, _accepted_since_by_owner(invites))
     if regions_by_id is None:
         regions_by_id = _regions_by_id(session, sites[0].parent_account_id)
 
@@ -265,6 +329,8 @@ def _site_reads_for_sites(
             continue
         region = regions_by_id.get(site.region_id) if site.region_id else None
         invite = invites.get(site.tenant_id)
+        invite_status = _invite_status(invite)
+        signed_in_at = last_sign_in.get(user.id)
         reads.append(
             ParentAccountSiteRead(
                 tenant_id=tenant.id,
@@ -286,11 +352,12 @@ def _site_reads_for_sites(
                 ),
                 shop_email=tenant.shop_email,
                 shop_phone=tenant.shop_phone,
-                owner_invite_status=_invite_status(invite),
+                owner_invite_status=invite_status,
                 owner_invite_sent_at=invite.created_at if invite else None,
                 owner_invite_expires_at=invite.expires_at if invite else None,
                 owner_invite_completed_at=invite.completed_at if invite else None,
-                owner_last_sign_in_at=last_sign_in.get(user.id),
+                owner_last_sign_in_at=signed_in_at,
+                owner_stage=_owner_stage(invite_status, signed_in_at, invite.completed_at if invite else None),
             )
         )
     return sorted(reads, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
@@ -348,6 +415,7 @@ def _filtered_parent_sites(
     search: str | None,
     region: str | None,
     plan_kind: str | None,
+    owner_stage: str | None = None,
 ) -> ParentAccountSitesPageResponse:
     kind = (plan_kind or "all").strip().lower()
     role_filter = _PLAN_KIND_TO_ROLE.get(kind)
@@ -373,6 +441,19 @@ def _filtered_parent_sites(
         if not all_sites:
             return ParentAccountSitesPageResponse(sites=[], total=0, limit=limit, offset=offset)
 
+    # Totals cover every site in scope (kind and region), not just this page,
+    # so HQ can see how the whole rollout stands at a glance.
+    stages = _owner_stages_by_tenant(session, [site.tenant_id for site in all_sites])
+    stage_counts = {stage: 0 for stage in OWNER_STAGES}
+    for stage in stages.values():
+        stage_counts[stage] += 1
+    if owner_stage:
+        all_sites = [site for site in all_sites if stages.get(site.tenant_id) == owner_stage]
+        if not all_sites:
+            return ParentAccountSitesPageResponse(
+                sites=[], total=0, limit=limit, offset=offset, owner_stage_counts=stage_counts
+            )
+
     site_by_tenant = {site.tenant_id: site for site in all_sites}
     stmt = select(Tenant).where(col(Tenant.id).in_(list(site_by_tenant)))
 
@@ -394,11 +475,15 @@ def _filtered_parent_sites(
         stmt.order_by(Tenant.name.asc(), Tenant.slug.asc()).offset(offset).limit(limit)
     ).all()
     if not tenants:
-        return ParentAccountSitesPageResponse(sites=[], total=total, limit=limit, offset=offset)
+        return ParentAccountSitesPageResponse(
+            sites=[], total=total, limit=limit, offset=offset, owner_stage_counts=stage_counts
+        )
 
     ordered_sites = [site_by_tenant[t.id] for t in tenants if t.id in site_by_tenant]
     sites = _site_reads_for_sites(session, ordered_sites, regions_by_id=regions_by_id)
-    return ParentAccountSitesPageResponse(sites=sites, total=total, limit=limit, offset=offset)
+    return ParentAccountSitesPageResponse(
+        sites=sites, total=total, limit=limit, offset=offset, owner_stage_counts=stage_counts
+    )
 
 
 def _normalize_suburb(name: str) -> str:
@@ -991,12 +1076,18 @@ def list_parent_account_sites(
         default=None,
         description="Filter by retail, operator, or all (default).",
     ),
+    owner_stage: str | None = Query(
+        default=None,
+        description="Filter by owner stage: live, quiet, waiting, expired, or not_invited.",
+    ),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
     user, parent, _, my_region_id = _parent_for_scoped_read(session, auth)
     if plan_kind and plan_kind.strip().lower() not in {"retail", "operator", "all"}:
         raise HTTPException(status_code=400, detail="plan_kind must be retail, operator, or all")
+    if owner_stage and owner_stage not in OWNER_STAGES:
+        raise HTTPException(status_code=400, detail=f"owner_stage must be one of: {', '.join(OWNER_STAGES)}")
     if my_region_id is not None:
         # A regional manager only ever sees their own region, whatever they ask for.
         region = str(my_region_id)
@@ -1009,6 +1100,7 @@ def list_parent_account_sites(
         search=search,
         region=region,
         plan_kind=plan_kind,
+        owner_stage=owner_stage,
     )
 
 
@@ -1300,6 +1392,8 @@ def _send_shop_owner_invite_notifications(
     invite: ShopOwnerInvite,
     tenant: Tenant,
     owner: User,
+    is_reminder: bool = False,
+    expiry_days: int = SHOP_OWNER_INVITE_EXPIRY_DAYS,
 ) -> tuple[bool, bool]:
     """Best-effort: text and/or email the invite link to the franchisee. Never
     raises — a delivery failure shouldn't undo an invite that's already
@@ -1316,9 +1410,10 @@ def _send_shop_owner_invite_notifications(
             tenant_name=tenant.name,
             shop_number=tenant.shop_number,
             invite_url=invite_url,
-            expiry_days=SHOP_OWNER_INVITE_EXPIRY_DAYS,
+            expiry_days=expiry_days,
             session=session,
             tenant_id=tenant.id,
+            is_reminder=is_reminder,
         )
     except Exception:
         logging.getLogger(__name__).exception("Failed to send shop-owner invite email for tenant %s", tenant.id)
@@ -1331,7 +1426,7 @@ def _send_shop_owner_invite_notifications(
                 tenant_name=tenant.name,
                 shop_number=tenant.shop_number,
                 invite_url=invite_url,
-                expiry_days=SHOP_OWNER_INVITE_EXPIRY_DAYS,
+                expiry_days=expiry_days,
             )
         except Exception:
             logging.getLogger(__name__).exception("Failed to send shop-owner invite SMS for tenant %s", tenant.id)
@@ -1454,6 +1549,21 @@ def create_shop_owner_invite(
                 event_summary=f"Changed '{tenant.name}' plan from {previous_plan} to {normalized_plan}",
             )
 
+    invite, email_sent, sms_sent = _issue_shop_owner_invite(
+        session, parent=parent, current_user=current_user, tenant=tenant, owner_user=owner_user
+    )
+    return _shop_owner_invite_read(session, invite, email_sent=email_sent, sms_sent=sms_sent)
+
+
+def _issue_shop_owner_invite(
+    session: Session,
+    *,
+    parent: ParentAccount,
+    current_user: User,
+    tenant: Tenant,
+    owner_user: User,
+) -> tuple[ShopOwnerInvite, bool, bool]:
+    """Create a fresh invite for a shop, revoke any older pending one, and send it."""
     # Reissuing revokes any invite still pending for this tenant, so a shop
     # never has two live claim links.
     pending = session.exec(
@@ -1488,8 +1598,47 @@ def create_shop_owner_invite(
 
     email_sent, sms_sent = _send_shop_owner_invite_notifications(session, invite=invite, tenant=tenant, owner=owner_user)
     session.commit()
+    return invite, email_sent, sms_sent
 
-    return _shop_owner_invite_read(session, invite, email_sent=email_sent, sms_sent=sms_sent)
+
+@router.post("/me/sites/resend-expired-invites", response_model=ShopOwnerInviteBulkResendResponse)
+def resend_expired_shop_owner_invites(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Send a fresh link to every shop whose last invite ran out unaccepted.
+
+    Shops with no email or phone on file are skipped (the link would reach
+    nobody), as are logins the shop has since taken over.
+    """
+    current_user, parent = _parent_for_write(session, auth)
+    sites = sites_for_parent(session, parent.id)
+    stages = _owner_stages_by_tenant(session, [site.tenant_id for site in sites])
+    expired_ids = [tid for tid, stage in stages.items() if stage == "expired"]
+    tenants = {t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_(expired_ids))).all()} if expired_ids else {}
+    owners = _owner_users_by_tenant(session, expired_ids)
+
+    resent = 0
+    skipped_no_contact = 0
+    skipped_claimed = 0
+    for tenant_id in expired_ids:
+        tenant = tenants.get(tenant_id)
+        owner_user = owners.get(tenant_id)
+        if tenant is None or owner_user is None:
+            continue
+        if not shop_invite_email(tenant, owner_user) and not shop_invite_phone(tenant, owner_user):
+            skipped_no_contact += 1
+            continue
+        if not _owner_login_is_unclaimed(session, parent, owner_user):
+            skipped_claimed += 1
+            continue
+        _issue_shop_owner_invite(
+            session, parent=parent, current_user=current_user, tenant=tenant, owner_user=owner_user
+        )
+        resent += 1
+    return ShopOwnerInviteBulkResendResponse(
+        resent=resent, skipped_no_contact=skipped_no_contact, skipped_claimed=skipped_claimed
+    )
 
 
 @router.get("/me/sites/{tenant_id}/invite", response_model=Optional[ShopOwnerInviteRead])

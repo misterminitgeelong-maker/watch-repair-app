@@ -452,6 +452,7 @@ def send_shop_owner_invite_email(
     expiry_days: int,
     session: Session | None = None,
     tenant_id: UUID | None = None,
+    is_reminder: bool = False,
 ) -> tuple[bool, str | None]:
     """Email a franchisee their one-time link to set up their own shop login."""
     if not (to_email or "").strip():
@@ -461,6 +462,8 @@ def send_shop_owner_invite_email(
         shop_label += f" (#{shop_number})"
 
     subject = f"Set up your {shop_label} login"
+    if is_reminder:
+        subject = f"Reminder: {subject} — link expires soon"
     body_plain = (
         f"Hi {owner_full_name.strip() or 'there'},\n\n"
         f"Set up your own login for {shop_label} — this replaces the shared HQ login "
@@ -488,7 +491,56 @@ def send_shop_owner_invite_email(
         body_plain=body_plain,
         body_html=body_html,
         shop_name="Mister Minit HQ",
-        event="shop_owner_invite",
+        event="shop_owner_invite_reminder" if is_reminder else "shop_owner_invite",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
+def send_shop_owner_invite_accepted_email(
+    *,
+    to_email: str,
+    tenant_name: str,
+    shop_number: str | None,
+    owner_full_name: str,
+    owner_email: str,
+    accounts_url: str,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+) -> tuple[bool, str | None]:
+    """Tell the HQ person who sent an owner invite that the shop has accepted it."""
+    if not (to_email or "").strip():
+        return False, None
+    shop_label = tenant_name.strip()
+    if shop_number:
+        shop_label += f" (#{shop_number})"
+    who = owner_full_name.strip() or owner_email
+
+    subject = f"{shop_label} accepted its invite and is live"
+    body_plain = (
+        f"{who} ({owner_email}) accepted the owner invite for {shop_label} and now signs in "
+        f"with their own login.\n\n"
+        f"See every shop's invite status: {accounts_url}\n"
+    )
+    body_html = render_transactional_email(
+        title=subject,
+        preheader=f"{who} set up their own login",
+        greeting="Hi,",
+        intro_html=(
+            f"<strong>{_html.escape(who)}</strong> ({_html.escape(owner_email)}) accepted the owner invite for "
+            f"<strong>{_html.escape(shop_label)}</strong> and now signs in with their own login."
+        ),
+        shop=ShopInfo(name="Mainspring"),
+        cta_label="See invite status for all shops",
+        cta_url=accounts_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mainspring",
+        event="shop_owner_invite_accepted",
         session=session,
         tenant_id=tenant_id,
     )

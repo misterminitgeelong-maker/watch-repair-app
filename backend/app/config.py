@@ -194,6 +194,12 @@ class Settings(BaseSettings):
     # How often the in-app scheduler checks for due reminders.
     quote_reminder_check_interval_minutes: int = 60
 
+    # Shop-owner invite reminder: one nudge when an unaccepted invite is close
+    # to expiring, re-sending the same link by email and/or SMS.
+    shop_owner_invite_reminder_enabled: bool = True
+    shop_owner_invite_reminder_hours_before_expiry: int = 48
+    shop_owner_invite_reminder_check_interval_minutes: int = 60
+
     # Outbound notification retry: inline (timeouts/5xx) then an out-of-band sweep.
     notification_inline_retry_attempts: int = 3
     notification_redelivery_max_attempts: int = 5
