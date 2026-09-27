@@ -5,7 +5,7 @@ import axios from 'axios'
 import { CheckCircle, KeyRound } from 'lucide-react'
 import { completeShopOwnerInvite, getApiErrorMessage, getShopOwnerInvitePublic } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
-import { seedLoginTenantHint } from '@/lib/minitProduct'
+import { rememberShopId } from '@/lib/rememberedShopId'
 import { Button, Card, Input, Spinner } from '@/components/ui'
 
 function loadErrorCopy(error: unknown): { title: string; body: string } {
@@ -44,7 +44,7 @@ export default function ShopOwnerInvitePage() {
     mutationFn: () => completeShopOwnerInvite(token!, { full_name: fullName.trim(), email: email.trim(), password }),
     onSuccess: ({ data }) => {
       // Pre-fill the Shop ID on this device's login page next time.
-      if (invite?.tenant_slug) seedLoginTenantHint(invite.tenant_slug)
+      if (invite?.tenant_slug) rememberShopId(invite.tenant_slug)
       setSession(data.access_token, data.refresh_token, data.expires_in_seconds)
       navigate('/dashboard', { replace: true })
     },

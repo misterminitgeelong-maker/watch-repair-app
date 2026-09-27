@@ -920,3 +920,33 @@ def test_reminder_sweep_nudges_each_expiring_invite_once():
         ).all()
         assert still_due == []
         assert second["due"] <= first["due"] - 1
+
+
+# ── 13. An invited owner can sign in with email + password alone ──────────────
+
+
+def test_invited_owner_signs_in_without_their_shop_id():
+    from app.models import Tenant
+
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    tenant_id, token = _invited_shop(net, suffix, 95)
+    _accept(token, suffix, 95)
+    email = f"stage95.{suffix}@franchise.test"
+
+    res = client.post("/v1/auth/multi-site-login", json={"email": email, "password": "Str0ng!Passw0rd"})
+    assert res.status_code == 200, res.text
+    assert res.json()["active_site_tenant_id"] == tenant_id
+
+    wrong = client.post("/v1/auth/multi-site-login", json={"email": email, "password": "Wr0ng!Passw0rd"})
+    assert wrong.status_code == 401
+
+    # The fallback goes through the normal Shop ID sign-in, so a suspended
+    # shop stays locked out.
+    with Session(engine) as db:
+        tenant = db.get(Tenant, UUID(tenant_id))
+        tenant.is_active = False
+        db.add(tenant)
+        db.commit()
+    suspended = client.post("/v1/auth/multi-site-login", json={"email": email, "password": "Str0ng!Passw0rd"})
+    assert suspended.status_code == 403

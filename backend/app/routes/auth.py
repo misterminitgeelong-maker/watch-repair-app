@@ -608,6 +608,38 @@ def multi_site_login(request: Request, response: Response, payload: MultiSiteLog
                 seen_tenants.add(site.tenant_id)
                 sites.append(site)
     if not sites:
+        # Not HQ: an ordinary shop owner who left Shop ID blank. When exactly
+        # one login matches, sign in to it through the normal Shop ID path so
+        # every check that path makes (suspended shop etc.) still applies.
+        if len(verified) == 1:
+            own_tenant = session.get(Tenant, verified[0].tenant_id)
+            if own_tenant is not None:
+                tokens = _login_impl(
+                    request,
+                    LoginRequest(tenant_slug=own_tenant.slug, email=email, password=payload.password),
+                    session,
+                )
+                return deliver_tokens(request, response, MultiSiteLoginResponse(
+                    access_token=tokens.access_token,
+                    expires_in_seconds=tokens.expires_in_seconds,
+                    refresh_token=tokens.refresh_token,
+                    refresh_expires_in_seconds=tokens.refresh_expires_in_seconds,
+                    active_site_tenant_id=own_tenant.id,
+                    available_sites=[
+                        AuthSessionSiteOption(
+                            tenant_id=own_tenant.id,
+                            tenant_slug=own_tenant.slug,
+                            tenant_name=own_tenant.name,
+                            user_id=verified[0].id,
+                            role=verified[0].role,
+                        )
+                    ],
+                ))
+        if len(verified) > 1:
+            raise HTTPException(
+                status_code=400,
+                detail="This email signs in to more than one shop. Enter your Shop ID to choose which.",
+            )
         raise HTTPException(status_code=401, detail="Invalid credentials")
     hq_parents: list[ParentAccount] = []
     for login in verified:

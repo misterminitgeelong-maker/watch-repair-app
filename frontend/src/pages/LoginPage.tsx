@@ -5,7 +5,8 @@ import axios from 'axios'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
-import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, readLastLoginTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
+import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
+import { forgetShopId, readRememberedShopId, rememberShopId } from '@/lib/rememberedShopId'
 import { enableDemoMode, isDemoModeEnabled, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 import { AUTO_KEY_VIEWS_KEY, clearSavedView } from '@/lib/savedViews'
 import { persistTheme, readStoredTheme } from '@/context/ThemeContext'
@@ -27,7 +28,7 @@ export default function LoginPage() {
   }), [])
 
   // Pre-filled with the Shop ID this device last signed in to (or claimed an invite for).
-  const [slug, setSlug] = useState(() => readLastLoginTenantSlug() ?? '')
+  const [slug, setSlug] = useState(readRememberedShopId)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'single' | 'multi'>('single')
@@ -67,7 +68,11 @@ export default function LoginPage() {
       const { data } = byEmail
         ? await multiSiteLogin(email, password)
         : await login(slug, email, password)
-      if (!byEmail) seedLoginTenantHint(slug)
+      if (!byEmail) {
+        seedLoginTenantHint(slug)
+        if (rememberMe) rememberShopId(slug)
+        else forgetShopId()
+      }
       enableDemoMode(false)
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
       if (!byEmail) applyMinitBrandingIfNeeded(slug)
