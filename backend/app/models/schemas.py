@@ -542,6 +542,8 @@ class ShopOwnerInviteBulkResendResponse(SQLModel):
 
 class ShopOwnerInvitePublicRead(SQLModel):
     tenant_name: str
+    #: The Shop ID the owner signs in with next time, alongside their email.
+    tenant_slug: str = ""
     shop_number: Optional[str] = None
     masked_email: str
     status: str

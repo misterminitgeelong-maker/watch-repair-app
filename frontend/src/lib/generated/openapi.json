@@ -37495,6 +37495,11 @@
             "type": "string",
             "title": "Tenant Name"
           },
+          "tenant_slug": {
+            "type": "string",
+            "title": "Tenant Slug",
+            "default": ""
+          },
           "shop_number": {
             "anyOf": [
               {

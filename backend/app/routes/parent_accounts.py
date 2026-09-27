@@ -1414,6 +1414,7 @@ def _send_shop_owner_invite_notifications(
             session=session,
             tenant_id=tenant.id,
             is_reminder=is_reminder,
+            tenant_slug=tenant.slug,
         )
     except Exception:
         logging.getLogger(__name__).exception("Failed to send shop-owner invite email for tenant %s", tenant.id)

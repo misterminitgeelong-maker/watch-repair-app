@@ -453,6 +453,7 @@ def send_shop_owner_invite_email(
     session: Session | None = None,
     tenant_id: UUID | None = None,
     is_reminder: bool = False,
+    tenant_slug: str | None = None,
 ) -> tuple[bool, str | None]:
     """Email a franchisee their one-time link to set up their own shop login."""
     if not (to_email or "").strip():
@@ -464,11 +465,17 @@ def send_shop_owner_invite_email(
     subject = f"Set up your {shop_label} login"
     if is_reminder:
         subject = f"Reminder: {subject} — link expires soon"
+    shop_id_line = (
+        f"Your Shop ID is {tenant_slug}. Next time, sign in at mainspring.au with it and your email.\n\n"
+        if tenant_slug
+        else ""
+    )
     body_plain = (
         f"Hi {owner_full_name.strip() or 'there'},\n\n"
         f"Set up your own login for {shop_label} — this replaces the shared HQ login "
         f"you may have been using, with your own email and password.\n\n"
         f"Set up your login: {invite_url}\n\n"
+        f"{shop_id_line}"
         f"This link is one-time use and expires in {expiry_days} days. "
         f"If you weren't expecting this, contact Mister Minit HQ.\n"
     )
@@ -476,6 +483,11 @@ def send_shop_owner_invite_email(
         f"Set up your own login for <strong>{_html.escape(shop_label)}</strong> — this replaces the "
         f"shared HQ login you may have been using, with your own email and password."
     )
+    if tenant_slug:
+        intro_html += (
+            f"<br><br>Your Shop ID is <strong>{_html.escape(tenant_slug)}</strong>. "
+            f"Next time, sign in with it and your email."
+        )
     body_html = render_transactional_email(
         title=f"Set up your {shop_label} login",
         preheader=f"One-time link, expires in {expiry_days} days",

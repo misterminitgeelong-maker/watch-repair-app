@@ -5,6 +5,7 @@ import axios from 'axios'
 import { CheckCircle, KeyRound } from 'lucide-react'
 import { completeShopOwnerInvite, getApiErrorMessage, getShopOwnerInvitePublic } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
+import { seedLoginTenantHint } from '@/lib/minitProduct'
 import { Button, Card, Input, Spinner } from '@/components/ui'
 
 function loadErrorCopy(error: unknown): { title: string; body: string } {
@@ -42,6 +43,8 @@ export default function ShopOwnerInvitePage() {
   const mut = useMutation({
     mutationFn: () => completeShopOwnerInvite(token!, { full_name: fullName.trim(), email: email.trim(), password }),
     onSuccess: ({ data }) => {
+      // Pre-fill the Shop ID on this device's login page next time.
+      if (invite?.tenant_slug) seedLoginTenantHint(invite.tenant_slug)
       setSession(data.access_token, data.refresh_token, data.expires_in_seconds)
       navigate('/dashboard', { replace: true })
     },
@@ -96,6 +99,15 @@ export default function ShopOwnerInvitePage() {
               Replace the shared HQ login (currently <strong>{invite.masked_email}</strong>) with your own email and
               password. Once you save, you&rsquo;ll be signed in.
             </p>
+            {invite.tenant_slug && (
+              <p
+                className="text-sm mb-6 rounded-lg px-3 py-2"
+                style={{ color: 'var(--ms-text)', backgroundColor: 'var(--ms-surface-muted, #F1ECE3)' }}
+              >
+                Your Shop ID is <strong>{invite.tenant_slug}</strong>. Next time, sign in with it and the email you
+                choose below.
+              </p>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input

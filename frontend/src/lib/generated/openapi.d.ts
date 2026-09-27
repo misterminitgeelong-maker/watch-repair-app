@@ -12000,6 +12000,11 @@ export interface components {
         ShopOwnerInvitePublicRead: {
             /** Tenant Name */
             tenant_name: string;
+            /**
+             * Tenant Slug
+             * @default
+             */
+            tenant_slug: string;
             /** Shop Number */
             shop_number?: string | null;
             /** Masked Email */

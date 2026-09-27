@@ -496,6 +496,8 @@ export const getShopOwnerInvite = (tenantId: string) =>
 
 export interface ShopOwnerInvitePublic {
   tenant_name: string
+  /** The Shop ID the owner signs in with next time, alongside their email. */
+  tenant_slug?: string
   shop_number?: string | null
   masked_email: string
   status: string

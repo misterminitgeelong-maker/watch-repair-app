@@ -101,6 +101,7 @@ def get_shop_owner_invite_public(request: Request, token: str, session: Session 
         raise HTTPException(status_code=404, detail="Invite not found")
     return ShopOwnerInvitePublicRead(
         tenant_name=tenant.name,
+        tenant_slug=tenant.slug,
         shop_number=tenant.shop_number,
         masked_email=_mask_email(owner.email),
         status=invite.status,

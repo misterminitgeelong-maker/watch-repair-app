@@ -5,7 +5,7 @@ import axios from 'axios'
 import { getRememberMe, getApiErrorMessage, login, multiSiteLogin, seedDemoData, setRememberMe } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { applyMinitBrandingIfNeeded, isMinitTenantSlug } from '@/lib/minitBranding'
-import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
+import { defaultHomePathForMinit, homePathAfterLogin, isMinitHqTenantSlug, readLastLoginTenantSlug, seedLoginTenantHint } from '@/lib/minitProduct'
 import { enableDemoMode, isDemoModeEnabled, resetAllPageTutorials, resetDemoTour } from '@/lib/onboarding'
 import { AUTO_KEY_VIEWS_KEY, clearSavedView } from '@/lib/savedViews'
 import { persistTheme, readStoredTheme } from '@/context/ThemeContext'
@@ -26,7 +26,8 @@ export default function LoginPage() {
     password: String(import.meta.env.VITE_DEMO_PASSWORD ?? 'Admin'),
   }), [])
 
-  const [slug, setSlug] = useState('')
+  // Pre-filled with the Shop ID this device last signed in to (or claimed an invite for).
+  const [slug, setSlug] = useState(() => readLastLoginTenantSlug() ?? '')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'single' | 'multi'>('single')
@@ -60,18 +61,21 @@ export default function LoginPage() {
     setLoading(true)
     try {
       setRememberMe(rememberMe)
-      const { data } = mode === 'multi'
+      // A blank Shop ID signs in by email and password alone, so an owner who
+      // has forgotten theirs isn't locked out.
+      const byEmail = mode === 'multi' || !slug.trim()
+      const { data } = byEmail
         ? await multiSiteLogin(email, password)
         : await login(slug, email, password)
-      if (mode === 'single') seedLoginTenantHint(slug)
+      if (!byEmail) seedLoginTenantHint(slug)
       enableDemoMode(false)
       setToken(data.access_token, data.refresh_token, data.expires_in_seconds)
-      if (mode === 'single') applyMinitBrandingIfNeeded(slug)
-      if (mode === 'single' && isMinitHqTenantSlug(slug)) {
+      if (!byEmail) applyMinitBrandingIfNeeded(slug)
+      if (!byEmail && isMinitHqTenantSlug(slug)) {
         void import('@/pages/minit/MinitOperationsPage')
       }
       markJustLoggedIn()
-      navigate(nextPath ?? (mode === 'single' ? homePathAfterLogin(slug) : '/dashboard'))
+      navigate(nextPath ?? (!byEmail ? homePathAfterLogin(slug) : '/dashboard'))
     } catch (err) {
       if (axios.isAxiosError(err) && (!err.response || (err.response.status >= 500))) {
         setError('Server is temporarily unavailable. Please try again in a moment.')
@@ -211,13 +215,12 @@ export default function LoginPage() {
 
             {mode === 'single' && (
               <MarketingField
-                label="Shop ID"
+                label="Shop ID (leave blank if you don't know it)"
                 value={slug}
                 onChange={setSlug}
                 placeholder="myshop"
                 autoComplete="organization"
                 autoFocus
-                required
               />
             )}
             <MarketingField

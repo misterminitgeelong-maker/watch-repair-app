@@ -725,6 +725,11 @@ def test_sites_show_whether_the_owner_invite_was_accepted():
     assert invite.status_code == 200, invite.text
     token = invite.json()["invite_url"].rsplit("/", 1)[-1]
 
+    # The claim page tells the owner the Shop ID they'll sign in with next time.
+    public = client.get(f"/v1/public/shop-invite/{token}")
+    assert public.status_code == 200, public.text
+    assert public.json()["tenant_slug"] == site["tenant_slug"]
+
     waiting = current_site()
     assert waiting["owner_invite_status"] == "pending"
     assert waiting["owner_invite_sent_at"] and waiting["owner_invite_expires_at"]
