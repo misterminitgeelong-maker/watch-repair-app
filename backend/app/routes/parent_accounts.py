@@ -1466,14 +1466,17 @@ def _owner_login_is_unclaimed(session: Session, parent: ParentAccount, owner: Us
     """True when the shop's owner login is still HQ's to hand over: a copy of
     an HQ admin's login, or an account nobody has ever signed in to."""
     hq_emails = {(parent.owner_email or "").strip().lower()}
-    for grant in session.exec(
-        select(ParentAccountUser)
+    # One query: a network can hold hundreds of admin grants (every shop still
+    # on HQ's copied login has one), and one lookup per grant made an invite
+    # take over a minute.
+    for email in session.exec(
+        select(User.email)
+        .join(ParentAccountUser, col(ParentAccountUser.user_id) == col(User.id))
         .where(ParentAccountUser.parent_account_id == parent.id)
         .where(ParentAccountUser.role == PARENT_ROLE_HQ_ADMIN)
+        .distinct()
     ).all():
-        grantee = session.get(User, grant.user_id)
-        if grantee is not None:
-            hq_emails.add((grantee.email or "").strip().lower())
+        hq_emails.add((email or "").strip().lower())
     if (owner.email or "").strip().lower() in hq_emails:
         return True
     signed_in = session.exec(

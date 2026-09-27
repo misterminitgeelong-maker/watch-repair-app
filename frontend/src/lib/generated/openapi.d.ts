@@ -9467,6 +9467,11 @@ export interface components {
              * @default explicit
              */
             source: string;
+            /**
+             * Shared Login Count
+             * @default 0
+             */
+            shared_login_count: number;
             /** Is Active */
             is_active: boolean;
             /**

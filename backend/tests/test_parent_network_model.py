@@ -950,3 +950,51 @@ def test_invited_owner_signs_in_without_their_shop_id():
         db.commit()
     suspended = client.post("/v1/auth/multi-site-login", json={"email": email, "password": "Str0ng!Passw0rd"})
     assert suspended.status_code == 403
+
+
+# ── 14. Shops on HQ's shared login: one staff row, still invitable ───────────
+
+
+def test_shared_login_copies_fold_into_one_staff_row_and_stay_invitable():
+    from app.parent_network import grant_parent_role
+    from app.models import ParentAccountSite
+
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+    base = int(suffix[:4], 16) % 8000 + 1000
+
+    shared_ids = []
+    for offset in (101, 102, 103):
+        made = client.post(
+            "/v1/parent-accounts/me/provision-shop",
+            headers=hq_h,
+            json={"shop_number": str(base + offset), "tenant_name": f"Shared {offset} {suffix}"},
+        )
+        assert made.status_code == 200, made.text
+        shared_ids.append(next(s for s in made.json()["sites"] if s["shop_number"] == str(base + offset))["tenant_id"])
+
+    # The old model left an explicit admin grant on every copy of HQ's login.
+    with Session(engine) as db:
+        parent_id = db.exec(
+            select(ParentAccountSite.parent_account_id).where(ParentAccountSite.tenant_id == UUID(shared_ids[0]))
+        ).one()
+        for tid in shared_ids:
+            copy = db.exec(select(User).where(User.tenant_id == UUID(tid))).one()
+            grant_parent_role(db, parent_id=parent_id, user_id=copy.id, role="hq_admin", region_id=None)
+        db.commit()
+
+    staff = client.get("/v1/parent-accounts/me/users", headers=hq_h).json()
+    hq_rows = [s for s in staff if s["email"] == net["hq_email"] and s["role"] == "hq_admin"]
+    assert len(hq_rows) == 1
+    assert hq_rows[0]["shared_login_count"] >= 3
+
+    # A shared-login shop is still HQ's to hand over, so it can be invited.
+    patched = client.patch(
+        f"/v1/parent-accounts/me/sites/{shared_ids[0]}",
+        headers=hq_h,
+        json={"shop_email": f"shared.{suffix}@franchise.test"},
+    )
+    assert patched.status_code == 200, patched.text
+    invite = client.post(f"/v1/parent-accounts/me/sites/{shared_ids[0]}/invite", headers=hq_h)
+    assert invite.status_code == 200, invite.text

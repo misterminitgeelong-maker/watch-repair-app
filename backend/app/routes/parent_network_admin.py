@@ -322,6 +322,28 @@ def _parent_user_reads(session: Session, parent: ParentAccount) -> list[ParentAc
     return reads
 
 
+def _collapse_shared_logins(reads: list[ParentAccountUserRead]) -> list[ParentAccountUserRead]:
+    """One row per person and access level.
+
+    Every shop provisioned on HQ's shared login carries a copy of that login,
+    and each copy holds its own grant — a network of 400 shops listed the same
+    HQ person 400 times. Fold copies (same email, role and region) into the
+    first row and say how many there were. Counting admins still uses the full
+    list, so this only changes what is shown.
+    """
+    kept: dict[tuple[str, str, UUID | None], ParentAccountUserRead] = {}
+    out: list[ParentAccountUserRead] = []
+    for read in reads:
+        key = ((read.email or "").strip().lower(), read.role, read.region_id)
+        first = kept.get(key)
+        if first is None:
+            kept[key] = read
+            out.append(read)
+        else:
+            first.shared_login_count += 1
+    return out
+
+
 def _admin_count(session: Session, parent: ParentAccount) -> int:
     return sum(1 for r in _parent_user_reads(session, parent) if r.role == PARENT_ROLE_HQ_ADMIN)
 
@@ -333,7 +355,7 @@ def list_parent_account_users(
 ):
     """Everyone with explicit network-level access."""
     _user, parent, _ = _parent_for_read(session, auth)
-    return _parent_user_reads(session, parent)
+    return _collapse_shared_logins(_parent_user_reads(session, parent))
 
 
 @router.put("/me/users", response_model=list[ParentAccountUserRead])
@@ -397,7 +419,7 @@ def grant_parent_account_role(
         ),
     )
     session.commit()
-    return _parent_user_reads(session, parent)
+    return _collapse_shared_logins(_parent_user_reads(session, parent))
 
 
 @router.delete("/me/users/{user_id}", response_model=list[ParentAccountUserRead])
@@ -432,7 +454,7 @@ def revoke_parent_account_role(
         event_summary=f"Removed network access for {target.email if target else user_id}",
     )
     session.commit()
-    return _parent_user_reads(session, parent)
+    return _collapse_shared_logins(_parent_user_reads(session, parent))
 
 
 # ── regions ──────────────────────────────────────────────────────────────────

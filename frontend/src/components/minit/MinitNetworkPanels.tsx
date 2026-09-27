@@ -292,6 +292,12 @@ export function HqStaffCard({ canEdit, currentUserId }: { canEdit: boolean; curr
               <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
                 {ROLE_LABEL[u.role]}{u.region_name ? ` · ${u.region_name} only` : ''} · {SOURCE_LABEL[u.source]} · {u.tenant_slug} ({u.tenant_role})
               </p>
+              {(u.shared_login_count ?? 0) > 0 && (
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
+                  Also the shared login on {u.shared_login_count} shop{u.shared_login_count === 1 ? '' : 's'} — each
+                  drops off when that shop accepts its owner invite.
+                </p>
+              )}
             </div>
             {canEdit && u.user_id !== currentUserId && (
               <div className="flex items-center gap-2">

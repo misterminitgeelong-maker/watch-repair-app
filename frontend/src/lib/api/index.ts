@@ -175,6 +175,8 @@ export interface ParentAccountUser {
   region_name?: string | null
   /** explicit (granted) | hq_site (implied by being in the HQ tenant) | owner_email */
   source: 'explicit' | 'hq_site' | 'owner_email'
+  /** Shop logins that are copies of this person's shared HQ login, folded into this row. */
+  shared_login_count?: number
   is_active: boolean
   created_at: string
 }

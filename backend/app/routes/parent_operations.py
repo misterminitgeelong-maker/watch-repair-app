@@ -1405,11 +1405,11 @@ def get_mobile_kpi_recipients(
 ):
     _require_minit_hq(auth, session)
     _user, parent, _ = _parent_for_read(session, auth)
-    from .parent_network_admin import _parent_user_reads
+    from .parent_network_admin import _collapse_shared_logins, _parent_user_reads
     from ..parent_network import parent_user_row
 
     recipients = []
-    for read in _parent_user_reads(session, parent):
+    for read in _collapse_shared_logins(_parent_user_reads(session, parent)):
         grant = parent_user_row(session, parent.id, read.user_id)
         recipients.append(
             MobileKpiRecipientRead(

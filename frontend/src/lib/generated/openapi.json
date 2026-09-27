@@ -29922,6 +29922,11 @@
             "title": "Source",
             "default": "explicit"
           },
+          "shared_login_count": {
+            "type": "integer",
+            "title": "Shared Login Count",
+            "default": 0
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active"

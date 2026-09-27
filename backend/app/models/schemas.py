@@ -279,6 +279,9 @@ class ParentAccountUserRead(SQLModel):
     #: explicit (a granted row) | hq_site (implied by being in the HQ tenant)
     #: | owner_email (implied by being the account owner's login).
     source: str = "explicit"
+    #: How many shop logins are copies of this same person's HQ login (the
+    #: shared credentials provisioned shops start with), folded into this row.
+    shared_login_count: int = 0
     is_active: bool
     created_at: datetime
 
