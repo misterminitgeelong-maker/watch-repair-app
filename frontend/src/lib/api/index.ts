@@ -4561,3 +4561,31 @@ export const getVswtWeeklyReportPdf = (params: { week?: number; shopNumbers: str
       ...(params.compareWithinSelection ? { compare_within_selection: true } : {}),
     },
   })
+
+export interface MvMergeCandidate {
+  mv_tenant_id: string
+  mv_name: string
+  mv_shop_number?: string | null
+  mv_owner: string
+  operator_tenant_id?: string | null
+  operator_name?: string | null
+  operator_shop_number?: string | null
+  /** Why the two shops were paired: phone | shop_number | name. */
+  reasons: string[]
+  preselected: boolean
+  note?: string | null
+  blocked: boolean
+}
+export interface MvMergePreview {
+  candidates: MvMergeCandidate[]
+  unmatched_operators: { tenant_id: string; name: string; shop_number?: string | null }[]
+}
+export interface MvMergeResult {
+  mv_tenant_id: string
+  operator_tenant_id: string
+  ok: boolean
+  message: string
+}
+export const getMvMergePreview = () => api.get<MvMergePreview>('/parent-accounts/me/mv-merge/preview')
+export const runMvMerge = (pairs: { mv_tenant_id: string; operator_tenant_id: string }[]) =>
+  api.post<{ results: MvMergeResult[] }>('/parent-accounts/me/mv-merge', { pairs })

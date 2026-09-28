@@ -998,3 +998,98 @@ def test_shared_login_copies_fold_into_one_staff_row_and_stay_invitable():
     assert patched.status_code == 200, patched.text
     invite = client.post(f"/v1/parent-accounts/me/sites/{shared_ids[0]}/invite", headers=hq_h)
     assert invite.status_code == 200, invite.text
+
+
+# ── 15. Mobile vans imported twice fold into one shop ────────────────────────
+
+
+def _provision(hq_h, number, name, shop_type="physical", **owner):
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=hq_h,
+        json={"shop_number": number, "tenant_name": name, "shop_type": shop_type, **owner},
+    )
+    assert made.status_code == 200, made.text
+    return next(s for s in made.json()["sites"] if s["shop_number"] == number)
+
+
+def test_mv_merge_pairs_vans_and_folds_the_operator_into_the_mv_shop():
+    from app.models import Customer, MobileSuburbRoute, ParentAccountSite, Tenant
+
+    suffix = uuid4().hex[:8]
+    net = _network(suffix)
+    hq_h = net["hq"]
+    base = int(suffix[:4], 16) % 5000 + 1000
+
+    # Pair 1: same phone, same place — the strong case.
+    op1 = _provision(hq_h, str(base + 1), f"Mobile Services Bribie {suffix}", "mobile")
+    mv1 = _provision(hq_h, str(base + 2), f"Bribie {suffix} (MV)",
+                     owner_email=f"steve.{suffix}@x.test", owner_full_name="Steve", owner_mobile="+61401001308")
+    # Pair 2: renamed but same phone (Pacific Fair ↔ Broadbeach).
+    op2 = _provision(hq_h, str(base + 3), f"Mobile Services Broadbeach {suffix}", "mobile")
+    mv2 = _provision(hq_h, str(base + 4), f"Pacific Fair {suffix} (MV)",
+                     owner_email=f"stephen.{suffix}@x.test", owner_full_name="Stephen", owner_mobile="0451 533 456")
+    # Pair 3: name only — shown, not ticked.
+    op3 = _provision(hq_h, str(base + 5), f"Mobile Services Nambour {suffix}", "mobile")
+    mv3 = _provision(hq_h, str(base + 6), f"Nambour {suffix} (MV)",
+                     owner_email=f"luke.{suffix}@x.test", owner_full_name="Luke", owner_mobile="0400862299")
+    # Pair 4: operator already has a customer — blocked.
+    op4 = _provision(hq_h, str(base + 7), f"Mobile Services Dapto {suffix}", "mobile")
+    mv4 = _provision(hq_h, str(base + 8), f"Dapto {suffix} (MV)",
+                     owner_email=f"jae.{suffix}@x.test", owner_full_name="Jae", owner_mobile="0421829661")
+
+    with Session(engine) as db:
+        for site, phone in ((op1, "0401001308"), (op2, "0451533456"), (op3, "0490447704"), (op4, "0421829661")):
+            t = db.get(Tenant, UUID(site["tenant_id"]))
+            t.mobile_dispatch_phone = phone
+            db.add(t)
+        parent_id = db.exec(
+            select(ParentAccountSite.parent_account_id).where(ParentAccountSite.tenant_id == UUID(op1["tenant_id"]))
+        ).one()
+        db.add(MobileSuburbRoute(parent_account_id=parent_id, state_code="QLD",
+                                 suburb_normalized=f"bongaree{suffix}", target_tenant_id=UUID(op1["tenant_id"])))
+        db.add(Customer(tenant_id=UUID(op4["tenant_id"]), full_name="Existing customer"))
+        db.commit()
+
+    preview = client.get("/v1/parent-accounts/me/mv-merge/preview", headers=hq_h)
+    assert preview.status_code == 200, preview.text
+    by_mv = {c["mv_tenant_id"]: c for c in preview.json()["candidates"]}
+
+    c1 = by_mv[mv1["tenant_id"]]
+    assert c1["operator_tenant_id"] == op1["tenant_id"] and c1["preselected"] is True
+    assert "phone" in c1["reasons"] and "name" in c1["reasons"]
+    c2 = by_mv[mv2["tenant_id"]]
+    assert c2["operator_tenant_id"] == op2["tenant_id"] and c2["preselected"] is True
+    c3 = by_mv[mv3["tenant_id"]]
+    assert c3["operator_tenant_id"] == op3["tenant_id"] and c3["preselected"] is False and c3["note"]
+    c4 = by_mv[mv4["tenant_id"]]
+    assert c4["blocked"] is True and c4["preselected"] is False
+
+    res = client.post(
+        "/v1/parent-accounts/me/mv-merge",
+        headers=hq_h,
+        json={"pairs": [
+            {"mv_tenant_id": mv1["tenant_id"], "operator_tenant_id": op1["tenant_id"]},
+            {"mv_tenant_id": mv4["tenant_id"], "operator_tenant_id": op4["tenant_id"]},
+        ]},
+    )
+    assert res.status_code == 200, res.text
+    results = {r["mv_tenant_id"]: r for r in res.json()["results"]}
+    assert results[mv1["tenant_id"]]["ok"] is True
+    assert results[mv4["tenant_id"]]["ok"] is False  # blocked pair is refused, others still run
+
+    with Session(engine) as db:
+        route = db.exec(select(MobileSuburbRoute).where(MobileSuburbRoute.suburb_normalized == f"bongaree{suffix}")).one()
+        assert str(route.target_tenant_id) == mv1["tenant_id"]
+        mv_site = db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == UUID(mv1["tenant_id"]))).one()
+        assert mv_site.network_role == "operator"
+        mv_tenant = db.get(Tenant, UUID(mv1["tenant_id"]))
+        assert mv_tenant.plan_code != "booking_only"
+        assert mv_tenant.mobile_dispatch_phone == "0401001308"
+        op_tenant = db.get(Tenant, UUID(op1["tenant_id"]))
+        assert op_tenant.is_active is False  # suspended, not deleted
+        assert db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == UUID(op1["tenant_id"]))).first() is None
+
+    operators = client.get("/v1/parent-accounts/me/sites", headers=hq_h, params={"plan_kind": "operator"}).json()["sites"]
+    ids = {s["tenant_id"] for s in operators}
+    assert mv1["tenant_id"] in ids and op1["tenant_id"] not in ids

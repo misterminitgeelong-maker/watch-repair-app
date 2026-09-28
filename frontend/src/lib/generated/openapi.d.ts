@@ -4865,6 +4865,46 @@ export interface paths {
         patch: operations["update_linked_site_v1_parent_accounts_me_sites__tenant_id__patch"];
         trace?: never;
     };
+    "/v1/parent-accounts/me/mv-merge/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Mv Merge
+         * @description Pair each (MV) shop with its duplicate Mobile Services operator. Changes nothing.
+         */
+        get: operations["preview_mv_merge_v1_parent_accounts_me_mv_merge_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/mv-merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Mv Merge
+         * @description Merge the ticked pairs, one at a time: a pair that fails leaves the rest.
+         */
+        post: operations["run_mv_merge_v1_parent_accounts_me_mv_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/network-link-requests": {
         parameters: {
             query?: never;
@@ -9134,6 +9174,102 @@ export interface components {
             active_site_tenant_id: string;
             /** Available Sites */
             available_sites?: components["schemas"]["AuthSessionSiteOption"][];
+        };
+        /** MvMergeCandidateRead */
+        MvMergeCandidateRead: {
+            /**
+             * Mv Tenant Id
+             * Format: uuid
+             */
+            mv_tenant_id: string;
+            /** Mv Name */
+            mv_name: string;
+            /** Mv Shop Number */
+            mv_shop_number?: string | null;
+            /**
+             * Mv Owner
+             * @default
+             */
+            mv_owner: string;
+            /** Operator Tenant Id */
+            operator_tenant_id?: string | null;
+            /** Operator Name */
+            operator_name?: string | null;
+            /** Operator Shop Number */
+            operator_shop_number?: string | null;
+            /** Reasons */
+            reasons?: string[];
+            /**
+             * Preselected
+             * @default false
+             */
+            preselected: boolean;
+            /** Note */
+            note?: string | null;
+            /**
+             * Blocked
+             * @default false
+             */
+            blocked: boolean;
+        };
+        /** MvMergeOperatorRead */
+        MvMergeOperatorRead: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+        };
+        /** MvMergePair */
+        MvMergePair: {
+            /**
+             * Mv Tenant Id
+             * Format: uuid
+             */
+            mv_tenant_id: string;
+            /**
+             * Operator Tenant Id
+             * Format: uuid
+             */
+            operator_tenant_id: string;
+        };
+        /** MvMergePreviewResponse */
+        MvMergePreviewResponse: {
+            /** Candidates */
+            candidates?: components["schemas"]["MvMergeCandidateRead"][];
+            /** Unmatched Operators */
+            unmatched_operators?: components["schemas"]["MvMergeOperatorRead"][];
+        };
+        /** MvMergeRequest */
+        MvMergeRequest: {
+            /** Pairs */
+            pairs?: components["schemas"]["MvMergePair"][];
+        };
+        /** MvMergeResponse */
+        MvMergeResponse: {
+            /** Results */
+            results?: components["schemas"]["MvMergeResult"][];
+        };
+        /** MvMergeResult */
+        MvMergeResult: {
+            /**
+             * Mv Tenant Id
+             * Format: uuid
+             */
+            mv_tenant_id: string;
+            /**
+             * Operator Tenant Id
+             * Format: uuid
+             */
+            operator_tenant_id: string;
+            /** Ok */
+            ok: boolean;
+            /** Message */
+            message: string;
         };
         /** NotificationPrefsRead */
         NotificationPrefsRead: {
@@ -22130,6 +22266,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentAccountSiteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_mv_merge_v1_parent_accounts_me_mv_merge_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MvMergePreviewResponse"];
+                };
+            };
+        };
+    };
+    run_mv_merge_v1_parent_accounts_me_mv_merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MvMergeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MvMergeResponse"];
                 };
             };
             /** @description Validation Error */

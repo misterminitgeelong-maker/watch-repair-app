@@ -56,6 +56,12 @@ from ..models import (
     MobileSuburbRouteOperatorSummary,
     MobileSuburbRouteRead,
     MobileSuburbRoutesSummary,
+    MvMergeCandidateRead,
+    MvMergeOperatorRead,
+    MvMergePreviewResponse,
+    MvMergeRequest,
+    MvMergeResponse,
+    MvMergeResult,
     ParentAccount,
     ParentAccountCreateTenantRequest,
     ParentImportShopsResponse,
@@ -2283,3 +2289,74 @@ def unlink_tenant_from_parent_account(
     session.commit()
     session.refresh(parent)
     return _to_summary(session, parent)
+
+
+# ── Mobile van duplicates: fold "Mobile Services X" into "X (MV)" ─────────────
+
+
+@router.get("/me/mv-merge/preview", response_model=MvMergePreviewResponse)
+def preview_mv_merge(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Pair each (MV) shop with its duplicate Mobile Services operator. Changes nothing."""
+    from ..minit_mv_merge import find_mv_merge_candidates, unmatched_operators
+
+    _current_user, parent = _parent_for_write(session, auth)
+    candidates = find_mv_merge_candidates(session, parent.id)
+    return MvMergePreviewResponse(
+        candidates=[MvMergeCandidateRead(**vars(c)) for c in candidates],
+        unmatched_operators=[
+            MvMergeOperatorRead(tenant_id=t.id, name=t.name, shop_number=t.shop_number)
+            for t in unmatched_operators(session, parent.id, candidates)
+        ],
+    )
+
+
+@router.post("/me/mv-merge", response_model=MvMergeResponse)
+def run_mv_merge(
+    payload: MvMergeRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Merge the ticked pairs, one at a time: a pair that fails leaves the rest."""
+    from ..minit_mv_merge import MvMergeError, merge_mv_into_operator
+
+    current_user, parent = _parent_for_write(session, auth)
+    results: list[MvMergeResult] = []
+    for pair in payload.pairs:
+        try:
+            moved = merge_mv_into_operator(
+                session,
+                parent=parent,
+                mv_tenant_id=pair.mv_tenant_id,
+                operator_tenant_id=pair.operator_tenant_id,
+                actor=current_user,
+            )
+            routes = sum(n for key, n in moved.items() if key.startswith("mobilesuburbroute."))
+            results.append(MvMergeResult(
+                mv_tenant_id=pair.mv_tenant_id,
+                operator_tenant_id=pair.operator_tenant_id,
+                ok=True,
+                message=f"Merged; {routes} suburb route{'s' if routes != 1 else ''} moved",
+            ))
+        except MvMergeError as exc:
+            session.rollback()
+            results.append(MvMergeResult(
+                mv_tenant_id=pair.mv_tenant_id, operator_tenant_id=pair.operator_tenant_id, ok=False, message=str(exc)
+            ))
+        except Exception:
+            session.rollback()
+            logging.getLogger(__name__).exception(
+                "MV merge failed mv=%s op=%s", pair.mv_tenant_id, pair.operator_tenant_id
+            )
+            results.append(MvMergeResult(
+                mv_tenant_id=pair.mv_tenant_id,
+                operator_tenant_id=pair.operator_tenant_id,
+                ok=False,
+                message="Something went wrong merging this pair; nothing was changed for it",
+            ))
+    if any(r.ok for r in results):
+        _sync_extra_location_billing(session, parent.id)
+        session.commit()
+    return MvMergeResponse(results=results)
