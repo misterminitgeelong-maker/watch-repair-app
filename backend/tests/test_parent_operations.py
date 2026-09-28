@@ -252,3 +252,94 @@ def test_hq_manager_can_read_operations_overview():
         headers=_headers(manager_token),
     )
     assert overview.status_code == 200, overview.text
+
+
+def test_invited_mobile_van_sales_still_reach_minit_hq():
+    """A van's owner takes over its login from HQ's invite, then works in the
+    normal Mobile Services app. What they sell must still show in HQ's reports."""
+    from uuid import UUID
+
+    from app.models import AutoKeyInvoice
+
+    suffix = uuid4().hex[:8]
+    ctx = _setup_hq_network(suffix)
+    van_num = str(int(suffix[:4], 16) % 8000 + 1000 + 77)
+    owner_email = f"van-owner-{suffix}@franchise.test"
+
+    made = client.post(
+        "/v1/parent-accounts/me/provision-shop",
+        headers=ctx["hq"],
+        json={
+            "shop_number": van_num,
+            "tenant_name": f"Van {suffix}",
+            "shop_type": "mobile",
+            "owner_email": owner_email,
+            "owner_full_name": "Van Owner",
+        },
+    )
+    assert made.status_code == 200, made.text
+    van = next(s for s in made.json()["sites"] if s["shop_number"] == van_num)
+    assert van["network_role"] == "operator"
+
+    invite = client.post(f"/v1/parent-accounts/me/sites/{van['tenant_id']}/invite", headers=ctx["hq"])
+    assert invite.status_code == 200, invite.text
+    token = invite.json()["invite_url"].rsplit("/", 1)[-1]
+    done = client.post(
+        f"/v1/public/shop-invite/{token}/complete",
+        json={"full_name": "Van Owner", "email": owner_email, "password": "Str0ng!Passw0rd"},
+    )
+    assert done.status_code == 200, done.text
+    van_h = _headers(done.json()["access_token"])
+
+    # The van keeps its Minit identity and its Auto Key plan.
+    me = client.get("/v1/auth/session", headers=van_h)
+    assert me.status_code == 200, me.text
+    assert me.json()["product"] == "minit"
+    assert me.json()["plan_code"] == "basic_auto_key"
+    assert "auto_key" in me.json()["enabled_features"]
+    assert me.json()["is_minit_hq_ui"] is False
+
+    customer = client.post("/v1/customers", headers=van_h, json={"full_name": "Van Customer", "phone": "0400123456"})
+    assert customer.status_code == 201, customer.text
+    job = client.post(
+        "/v1/auto-key-jobs",
+        headers=van_h,
+        json={
+            "customer_id": customer.json()["id"],
+            "title": f"Van sale {suffix}",
+            "key_quantity": 1,
+            "priority": "normal",
+            "status": "awaiting_quote",
+            "programming_status": "pending",
+            "deposit_cents": 0,
+            "cost_cents": 0,
+        },
+    )
+    assert job.status_code == 201, job.text
+    with Session(engine) as session:
+        session.add(
+            AutoKeyInvoice(
+                tenant_id=UUID(van["tenant_id"]),
+                auto_key_job_id=UUID(job.json()["id"]),
+                invoice_number=f"AKI-{suffix}",
+                status="paid",
+                total_cents=18500,
+            )
+        )
+        session.commit()
+
+    # Still linked to HQ as an operator after the owner took over the login.
+    operators = client.get(
+        "/v1/parent-accounts/me/sites", headers=ctx["hq"], params={"plan_kind": "operator"}
+    ).json()["sites"]
+    assert van["tenant_id"] in {s["tenant_id"] for s in operators}
+
+    report = client.get(
+        "/v1/parent-accounts/me/operations/mobile-jobs",
+        headers=ctx["hq"],
+        params={"operator_tenant_id": van["tenant_id"]},
+    )
+    assert report.status_code == 200, report.text
+    jobs = report.json()["jobs"]
+    assert [j["id"] for j in jobs] == [job.json()["id"]]
+    assert jobs[0]["paid_cents"] == 18500
