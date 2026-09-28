@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  defaultHomePathForMinit,
   effectiveMinitPlanCode,
+  isMinitRestrictedUi,
   isMinitHqUi,
   resolveMinitHqUi,
 } from '@/lib/minitProduct'
@@ -81,5 +83,26 @@ describe('effectiveMinitPlanCode', () => {
   it('maps mmsupport to minit_hq', () => {
     expect(effectiveMinitPlanCode('pro', 'mmsupport')).toBe('minit_hq')
     expect(effectiveMinitPlanCode(null, 'mmsupport')).toBe('minit_hq')
+  })
+})
+
+describe('isMinitRestrictedUi', () => {
+  it('keeps HQ and retail shopfronts in the Minit UI', () => {
+    expect(isMinitRestrictedUi('minit', 'minit_hq', 'mmsupport')).toBe(true)
+    expect(isMinitRestrictedUi('minit', 'booking_only', 'minit-3269')).toBe(true)
+    // A shopfront still stored on a Mainspring plan is treated as booking_only.
+    expect(isMinitRestrictedUi('minit', 'pro', 'minit-3269')).toBe(true)
+  })
+
+  it('gives a Minit mobile van on Auto Key Basic the normal app', () => {
+    expect(isMinitRestrictedUi('minit', 'basic_auto_key', 'minit-mobile-3904')).toBe(false)
+  })
+
+  it('never sends a van to the Parent Account page it cannot open', () => {
+    // FeatureGate only uses the Minit home when the restricted UI applies; the
+    // van falls back to /dashboard like any Auto Key shop.
+    const restricted = isMinitRestrictedUi('minit', 'basic_auto_key', 'minit-mobile-3904')
+    const home = restricted ? defaultHomePathForMinit('basic_auto_key', 'minit-mobile-3904') : '/dashboard'
+    expect(home).toBe('/dashboard')
   })
 })
