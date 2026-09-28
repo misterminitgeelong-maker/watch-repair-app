@@ -284,6 +284,7 @@ def send_invoice(
     shop_name = (tenant.name if tenant else None) or "Your repair shop"
     from ..email_client import send_invoice_email
     from ..pdf_invoice import build_invoice_pdf
+    from ..minit_branding import customer_brand_color, customer_logo_url, document_branding
 
     line_items = _line_items_payload(session, invoice.quote_id)
     try:
@@ -297,8 +298,7 @@ def send_invoice(
             shop_phone=tenant.shop_phone if tenant else None,
             shop_email=tenant.shop_email if tenant else None,
             payment_instructions=tenant.payment_instructions if tenant else None,
-            logo_url=tenant.logo_url if tenant else None,
-            brand_color=tenant.brand_color if tenant else None,
+            **document_branding(tenant),
             line_items=line_items,
             subtotal_cents=invoice.subtotal_cents,
             tax_cents=invoice.tax_cents,
@@ -319,8 +319,8 @@ def send_invoice(
         currency=invoice.currency,
         shop_name=shop_name,
         line_items=line_items,
-        shop_logo_url=tenant.logo_url if tenant else None,
-        shop_brand_color=tenant.brand_color if tenant else None,
+        shop_logo_url=customer_logo_url(tenant),
+        shop_brand_color=customer_brand_color(tenant),
         pdf_bytes=pdf_bytes,
         pay_url=invoice.xero_online_invoice_url,
         session=session,

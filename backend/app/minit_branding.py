@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from sqlmodel import Session
 
+from .config import settings
 from .dependencies import normalize_plan_code
 from .models import Tenant
 
@@ -40,6 +43,59 @@ def is_minit_tenant(tenant: Tenant | None) -> bool:
 
 def tenant_product(tenant: Tenant | None) -> str:
     return "minit" if is_minit_tenant(tenant) else "mainspring"
+
+
+# ── Customer-facing branding ──────────────────────────────────────────────────
+# Everything a Mister Minit shop's customers see (portal, status pages, invoices,
+# quotes) carries the Mister Minit logo, whatever the shop has set for itself.
+
+#: Served by the frontend from ``frontend/public``.
+MINIT_LOGO_PUBLIC_PATH = "/minit-logo-cropped.jpg"
+#: The same file, bundled with the backend so PDFs never fetch it over HTTP.
+MINIT_LOGO_ASSET = Path(__file__).parent / "assets" / "minit-logo.jpg"
+#: Mister Minit red — the portal accent for Minit shops with no colour of their own.
+MINIT_ACCENT_COLOR = "#E31837"
+#: Mister Minit navy — the accent on Minit invoices and quotes.
+MINIT_DOCUMENT_COLOR = "#2B3990"
+
+
+def customer_logo_url(tenant: Tenant | None) -> str | None:
+    """Absolute logo URL to show customers (emails, portal, public pages)."""
+    if is_minit_tenant(tenant):
+        return f"{settings.public_base_url.rstrip('/')}{MINIT_LOGO_PUBLIC_PATH}"
+    return (tenant.logo_url or None) if tenant else None
+
+
+def customer_brand_color(tenant: Tenant | None) -> str | None:
+    if tenant is None:
+        return None
+    if is_minit_tenant(tenant):
+        return tenant.brand_color or MINIT_ACCENT_COLOR
+    return tenant.brand_color
+
+
+def document_branding(tenant: Tenant | None) -> dict:
+    """Logo and accent keyword arguments for ``pdf_invoice`` builders."""
+    if is_minit_tenant(tenant):
+        return {
+            "logo_url": None,
+            "logo_path": str(MINIT_LOGO_ASSET),
+            "brand_color": MINIT_DOCUMENT_COLOR,
+        }
+    return {
+        "logo_url": tenant.logo_url if tenant else None,
+        "logo_path": None,
+        "brand_color": tenant.brand_color if tenant else None,
+    }
+
+
+def public_shop_branding(tenant: Tenant | None) -> dict:
+    """Branding fields merged into public (customer-facing) API responses."""
+    return {
+        "is_minit": is_minit_tenant(tenant),
+        "logo_url": customer_logo_url(tenant),
+        "brand_color": customer_brand_color(tenant),
+    }
 
 
 def _is_minit_hq_tenant(tenant: Tenant) -> bool:

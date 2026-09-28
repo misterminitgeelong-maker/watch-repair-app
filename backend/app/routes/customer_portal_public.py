@@ -14,6 +14,7 @@ from ..config import settings
 from ..database import get_session
 from ..dispatch_utils import geocode_address
 from ..limiter import limiter, public_read_limit
+from ..minit_branding import public_shop_branding
 from ..loyalty_utils import _get_tiers, _resolve_tier, _rolling_12m_spend, get_or_create_loyalty
 from ..models import (
     Customer,
@@ -97,6 +98,20 @@ class LoyaltyOut(BaseModel):
     rolling_12m_spend_cents: int
 
 
+class PortalShopOut(BaseModel):
+    """The shop's public face: what the portal shows before and after sign-in."""
+
+    name: str
+    logo_url: Optional[str] = None
+    brand_color: Optional[str] = None
+    #: Mister Minit network shop — the portal shows the Mister Minit logo.
+    is_minit: bool = False
+
+
+def _portal_shop(tenant: Tenant) -> PortalShopOut:
+    return PortalShopOut(name=tenant.name, **public_shop_branding(tenant))
+
+
 class ProfileResponse(BaseModel):
     customer_id: str
     name: str
@@ -104,6 +119,7 @@ class ProfileResponse(BaseModel):
     email: Optional[str]
     intake_jobs: list[IntakeJobOut]
     loyalty: Optional[LoyaltyOut]
+    shop: Optional[PortalShopOut] = None
 
 
 class BookBody(BaseModel):
@@ -137,6 +153,17 @@ def _hash_code(tenant_id: UUID, phone: str, code: str) -> str:
 
 def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+@router.get("/{slug}/shop", response_model=PortalShopOut)
+@limiter.limit(public_read_limit)
+async def portal_shop(
+    request: Request,
+    slug: str,
+    session: Session = Depends(get_session),
+):
+    """Name and branding for the sign-in screen (nothing about any customer)."""
+    return _portal_shop(_resolve_tenant(slug, session))
 
 
 @router.post("/{slug}/lookup")
@@ -316,6 +343,7 @@ async def portal_profile(
             for j in intake_jobs
         ],
         loyalty=loyalty_out,
+        shop=_portal_shop(tenant),
     )
 
 

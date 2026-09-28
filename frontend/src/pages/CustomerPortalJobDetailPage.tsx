@@ -6,6 +6,7 @@ import {
   getPublicAutoKeyJobStatus,
   getPublicJobStatus,
   getPublicShoeJobStatus,
+  type PublicShopInfo,
 } from '@/lib/api'
 import { CustomerPortalJobCard, StatusPill } from '@/components/CustomerPortalJobCard'
 import {
@@ -23,6 +24,18 @@ import { clsx } from 'clsx'
 
 type JobType = 'watch' | 'shoe' | 'auto_key'
 
+interface ShopBrand {
+  name?: string | null
+  logoUrl?: string | null
+  accent?: string | null
+  minit?: boolean
+}
+
+function brandFromShop(shop?: PublicShopInfo | null): ShopBrand | undefined {
+  if (!shop) return undefined
+  return { name: shop.name, logoUrl: shop.logo_url, accent: shop.brand_color, minit: shop.is_minit }
+}
+
 function BackLink({ to }: { to: string }) {
   return (
     <Link to={to} className="pt-link pt-link--on-ink">
@@ -36,20 +49,20 @@ function DetailShell({
   title,
   subtitle,
   backTo,
-  shopName,
+  shop,
   children,
 }: {
   eyebrow?: ReactNode
   title: ReactNode
   subtitle?: ReactNode
   backTo: string
-  shopName?: string | null
+  shop?: ShopBrand
   children?: ReactNode
 }) {
   return (
-    <PortalPage>
+    <PortalPage accent={shop?.accent} minit={!!shop?.minit}>
       <PortalHero
-        brand={{ name: shopName }}
+        brand={{ name: shop?.name, logoUrl: shop?.logoUrl, minit: !!shop?.minit }}
         barRight={<BackLink to={backTo} />}
         eyebrow={eyebrow}
         title={title}
@@ -199,7 +212,7 @@ function WatchJobDetail({ token, backTo }: { token: string; backTo: string }) {
       title={data.title}
       subtitle={watchTitle}
       backTo={backTo}
-      shopName={data.shop?.name}
+      shop={brandFromShop(data.shop)}
     >
       <StatusHero type="watch" status={data.status} />
       <ShopNote note={data.customer_note} at={data.customer_note_at} />
@@ -232,6 +245,7 @@ function ShoeJobDetail({ token, backTo }: { token: string; backTo: string }) {
       title={data.title}
       subtitle={shoeTitle}
       backTo={backTo}
+      shop={brandFromShop(data.shop)}
     >
       <StatusHero type="shoe" status={data.status} />
       <ShopNote note={data.customer_note} at={data.customer_note_at} />
@@ -255,6 +269,7 @@ function ShoeJobDetail({ token, backTo }: { token: string; backTo: string }) {
         </section>
       )}
       <HistoryTimeline jobType="shoe" history={data.history} />
+      <ShopContact name={data.shop?.name} phone={data.shop?.phone} email={data.shop?.email} />
     </DetailShell>
   )
 }
@@ -272,8 +287,9 @@ function AutoKeyJobDetail({ token, backTo }: { token: string; backTo: string }) 
   const shopStub = {
     tenant_id: '',
     shop_name: data.shop_name,
-    logo_url: null,
-    brand_color: null,
+    logo_url: data.shop_logo_url ?? null,
+    brand_color: data.shop_brand_color ?? null,
+    is_minit: !!data.shop_is_minit,
     shop_phone: data.shop_phone ?? null,
     shop_email: data.shop_email ?? null,
     jobs: [],
@@ -299,7 +315,12 @@ function AutoKeyJobDetail({ token, backTo }: { token: string; backTo: string }) 
       title={data.title}
       subtitle={vehicle || undefined}
       backTo={backTo}
-      shopName={data.shop_name}
+      shop={{
+        name: data.shop_name,
+        logoUrl: data.shop_logo_url,
+        accent: data.shop_brand_color,
+        minit: data.shop_is_minit,
+      }}
     >
       <CustomerPortalJobCard job={jobCard} shop={shopStub} linkToDetail={false} />
       {hasFacts && (

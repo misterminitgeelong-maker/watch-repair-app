@@ -1271,6 +1271,17 @@ export const getPublicQuote = (token: string) =>
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
   axios.post(withApiOrigin(`/v1/public/quotes/${token}/decision`), { decision, signature })
 
+/** The shop as a customer-facing page shows it. */
+export interface PublicShopInfo {
+  name?: string | null
+  phone?: string | null
+  email?: string | null
+  /** Mister Minit network shop — show the Mister Minit logo. */
+  is_minit?: boolean
+  logo_url?: string | null
+  brand_color?: string | null
+}
+
 export interface PublicJobStatus {
   job_number: string
   status: string
@@ -1282,7 +1293,7 @@ export interface PublicJobStatus {
   /** Note the shop wrote for the customer with the latest status change. */
   customer_note?: string | null
   customer_note_at?: string | null
-  shop?: { name?: string | null; phone?: string | null; email?: string | null }
+  shop?: PublicShopInfo
   watch: {
     brand?: string
     model?: string
@@ -1301,6 +1312,7 @@ export const getPublicJobQrUrl = (token: string) =>
   withApiOrigin(`/v1/public/jobs/${token}/qr`)
 
 export interface PublicShoeJobStatus {
+  shop?: PublicShopInfo
   job_number: string
   status: string
   title: string
@@ -1368,6 +1380,8 @@ export interface CustomerPortalShop {
   brand_color?: string | null
   shop_phone?: string | null
   shop_email?: string | null
+  /** Mister Minit network shop — show the Mister Minit logo. */
+  is_minit?: boolean
   jobs?: CustomerPortalJob[]
 }
 
@@ -3856,6 +3870,10 @@ export interface PublicAutoKeyInvoice {
   line_items: AutoKeyQuoteLineItem[]
   can_pay_online?: boolean
   shop_name?: string
+  /** Mister Minit network shop — show the Mister Minit logo. */
+  shop_is_minit?: boolean
+  shop_logo_url?: string | null
+  shop_brand_color?: string | null
   job_number?: string
   job_title?: string
 }
@@ -3940,6 +3958,9 @@ export interface PublicAutoKeyJobStatus {
   shop_name: string
   shop_phone?: string | null
   shop_email?: string | null
+  shop_is_minit?: boolean
+  shop_logo_url?: string | null
+  shop_brand_color?: string | null
   quote_total_cents: number
   currency: string
   pending_actions: CustomerPortalPendingAction[]
@@ -4073,7 +4094,19 @@ export interface PortalProfile {
   email?: string
   intake_jobs: PortalIntakeJob[]
   loyalty?: PortalLoyalty
+  shop?: PortalShop | null
 }
+
+/** A shop's name and branding, as its booking portal shows it. */
+export interface PortalShop {
+  name: string
+  logo_url?: string | null
+  brand_color?: string | null
+  /** Mister Minit network shop — show the Mister Minit logo. */
+  is_minit?: boolean
+}
+
+export const portalGetShop = (slug: string) => api.get<PortalShop>(`/public/portal/${slug}/shop`)
 
 /** Texts a sign-in code to the phone; portalVerify exchanges it for a session. */
 export const portalLookup = (slug: string, name: string, phone: string) =>

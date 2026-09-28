@@ -24,6 +24,7 @@ import {
 import { portalJobStage } from '@/lib/portalStatus'
 import { CustomerPortalJobCard, PortalEmptyState } from '@/components/CustomerPortalJobCard'
 import {
+  MinitLogoPlate,
   PortalBody,
   PortalHero,
   PortalLoading,
@@ -31,7 +32,7 @@ import {
   Segmented,
   Switch,
 } from '@/components/portal/PortalChrome'
-import { greeting } from '@/components/portal/portalUtils'
+import { greeting, minitBranchName } from '@/components/portal/portalUtils'
 
 type ViewMode = 'active' | 'history'
 
@@ -99,7 +100,9 @@ function ShopSection({
     <section className="pt-stack" aria-label={shop.shop_name}>
       {showHeader && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 4px 0' }}>
-          {shop.logo_url ? (
+          {shop.is_minit ? (
+            <MinitLogoPlate small />
+          ) : shop.logo_url ? (
             <img
               src={shop.logo_url}
               alt=""
@@ -118,7 +121,7 @@ function ShopSection({
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
             <h2 className="pt-serif" style={{ fontSize: 22, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {shop.shop_name}
+              {(shop.is_minit && minitBranchName(shop.shop_name)) || shop.shop_name}
             </h2>
             <p className="pt-label" style={{ margin: '2px 0 0' }}>
               {jobs.length} repair{jobs.length !== 1 ? 's' : ''}
@@ -258,7 +261,7 @@ function SessionView({ token }: { token: string }) {
       <PortalPage>
         <PortalHero
           eyebrow="Link expired"
-          title={<>This link has <em>wound down.</em></>}
+          title={<>This link has <em>run its course.</em></>}
           lede={error}
         >
           <div style={{ marginTop: 24 }}>
@@ -271,17 +274,20 @@ function SessionView({ token }: { token: string }) {
     )
   }
 
-  if (data === null) return <PortalLoading label="Winding up your repairs…" />
+  if (data === null) return <PortalLoading label="Gathering your repairs…" />
 
   const shops = data.shops ?? []
   const summary = summarize(data)
   const onlyShop = shops.length === 1 ? shops[0] : null
+  // One brand across the top: the shop's when there's one, Mister Minit's when
+  // every shop is in the Minit network.
+  const minit = shops.length > 0 && shops.every((s) => s.is_minit)
   let running = 0
 
   return (
-    <PortalPage accent={onlyShop?.brand_color}>
+    <PortalPage accent={onlyShop?.brand_color} minit={minit}>
       <PortalHero
-        brand={{ name: onlyShop?.shop_name, logoUrl: onlyShop?.logo_url }}
+        brand={{ name: onlyShop?.shop_name, logoUrl: onlyShop?.logo_url, minit }}
         barRight={
           <button
             type="button"
@@ -367,7 +373,7 @@ function SessionView({ token }: { token: string }) {
 function PortalFooter() {
   return (
     <p className="pt-label" style={{ textAlign: 'center', paddingTop: 16, opacity: 0.8 }}>
-      Crafted with care · Mainspring
+      Powered by Mainspring
     </p>
   )
 }

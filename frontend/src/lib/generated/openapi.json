@@ -8134,6 +8134,49 @@
         }
       }
     },
+    "/v1/public/portal/{slug}/shop": {
+      "get": {
+        "tags": [
+          "customer-portal"
+        ],
+        "summary": "Portal Shop",
+        "description": "Name and branding for the sign-in screen (nothing about any customer).",
+        "operationId": "portal_shop_v1_public_portal__slug__shop_get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalShopOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/portal/{slug}/lookup": {
       "post": {
         "tags": [
@@ -25979,6 +26022,11 @@
             ],
             "title": "Shop Email"
           },
+          "is_minit": {
+            "type": "boolean",
+            "title": "Is Minit",
+            "default": false
+          },
           "jobs": {
             "items": {
               "$ref": "#/components/schemas/CustomerPortalJobRead"
@@ -31830,6 +31878,47 @@
         ],
         "title": "PortalSessionRequest"
       },
+      "PortalShopOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "brand_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Color"
+          },
+          "is_minit": {
+            "type": "boolean",
+            "title": "Is Minit",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "PortalShopOut",
+        "description": "The shop's public face: what the portal shows before and after sign-in."
+      },
       "ProfileResponse": {
         "properties": {
           "customer_id": {
@@ -31873,6 +31962,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/LoyaltyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "shop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortalShopOut"
               },
               {
                 "type": "null"

@@ -125,9 +125,15 @@ export default function MobileInvoicePage() {
           </p>
         )}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <FileText size={22} style={{ color: 'var(--ms-accent-hover)' }} />
-          </div>
+          {inv.shop_is_minit ? (
+            <img src="/minit-logo-cropped.jpg" alt="Mister Minit" className="h-14 w-auto mx-auto mb-4 object-contain rounded-lg" />
+          ) : inv.shop_logo_url ? (
+            <img src={inv.shop_logo_url} alt={inv.shop_name ?? ''} className="h-12 w-auto max-w-[200px] mx-auto mb-4 object-contain" />
+          ) : (
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
+              <FileText size={22} style={{ color: 'var(--ms-accent-hover)' }} />
+            </div>
+          )}
           <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>
             Invoice
           </h1>

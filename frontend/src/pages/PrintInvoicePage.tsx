@@ -4,9 +4,11 @@ import { ChevronLeft, Printer } from 'lucide-react'
 import { getInvoice, getJob, getPublicJobQrUrl } from '@/lib/api'
 import { Spinner } from '@/components/ui'
 import { formatCents, formatDate } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 
 export default function PrintInvoicePage() {
   const { id } = useParams<{ id: string }>()
+  const { product } = useAuth()
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
     queryFn: () => getInvoice(id!).then(r => r.data?.invoice ?? r.data),
@@ -57,10 +59,14 @@ export default function PrintInvoicePage() {
         >
           {/* Shop header */}
           <div className="flex items-start justify-between mb-10">
-            <div>
-              <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>Mainspring</h1>
-              <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>Professional Watch Services</p>
-            </div>
+            {product === 'minit' ? (
+              <img src="/minit-logo-cropped.jpg" alt="Mister Minit" className="h-16 w-auto object-contain" />
+            ) : (
+              <div>
+                <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>Mainspring</h1>
+                <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>Professional Repair Services</p>
+              </div>
+            )}
             <div className="text-right">
               <p className="text-3xl font-extrabold" style={{ color: 'var(--ms-text)' }}>INVOICE</p>
               <p className="font-mono text-sm mt-1" style={{ color: 'var(--ms-text-mid)' }}>#{invoice.invoice_number}</p>
@@ -99,7 +105,7 @@ export default function PrintInvoicePage() {
             <tbody>
               {/* Placeholder row — backend invoices don't expose line items directly yet */}
               <tr style={{ borderBottom: '1px solid var(--ms-border)' }}>
-                <td className="py-3" style={{ color: 'var(--ms-text-mid)' }}>Watch Repair Services</td>
+                <td className="py-3" style={{ color: 'var(--ms-text-mid)' }}>Repair Services</td>
                 <td className="py-3 text-right" style={{ color: 'var(--ms-text-muted)' }}>1</td>
                 <td className="py-3 text-right" style={{ color: 'var(--ms-text-muted)' }}>{formatCents(invoice.subtotal_cents)}</td>
                 <td className="py-3 text-right font-medium" style={{ color: 'var(--ms-text)' }}>{formatCents(invoice.subtotal_cents)}</td>
@@ -150,7 +156,7 @@ export default function PrintInvoicePage() {
           )}
 
           <div className="pt-6 text-center text-xs" style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text-muted)' }}>
-            <p>Thank you for choosing our watch repair service.</p>
+            <p>Thank you for choosing us.</p>
             <p className="mt-1">Please retain this invoice for your records.</p>
           </div>
         </div>

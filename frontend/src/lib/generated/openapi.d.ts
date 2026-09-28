@@ -2588,6 +2588,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/portal/{slug}/shop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Portal Shop
+         * @description Name and branding for the sign-in screen (nothing about any customer).
+         */
+        get: operations["portal_shop_v1_public_portal__slug__shop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/portal/{slug}/lookup": {
         parameters: {
             query?: never;
@@ -8101,6 +8121,11 @@ export interface components {
             shop_phone?: string | null;
             /** Shop Email */
             shop_email?: string | null;
+            /**
+             * Is Minit
+             * @default false
+             */
+            is_minit: boolean;
             /** Jobs */
             jobs?: components["schemas"]["CustomerPortalJobRead"][];
         };
@@ -10206,6 +10231,23 @@ export interface components {
             /** Email */
             email: string;
         };
+        /**
+         * PortalShopOut
+         * @description The shop's public face: what the portal shows before and after sign-in.
+         */
+        PortalShopOut: {
+            /** Name */
+            name: string;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Brand Color */
+            brand_color?: string | null;
+            /**
+             * Is Minit
+             * @default false
+             */
+            is_minit: boolean;
+        };
         /** ProfileResponse */
         ProfileResponse: {
             /** Customer Id */
@@ -10219,6 +10261,7 @@ export interface components {
             /** Intake Jobs */
             intake_jobs: components["schemas"]["IntakeJobOut"][];
             loyalty: components["schemas"]["LoyaltyOut"] | null;
+            shop?: components["schemas"]["PortalShopOut"] | null;
         };
         /** Prospect */
         Prospect: {
@@ -17714,6 +17757,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_shop_v1_public_portal__slug__shop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalShopOut"];
                 };
             };
             /** @description Validation Error */

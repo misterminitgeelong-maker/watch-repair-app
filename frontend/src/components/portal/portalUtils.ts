@@ -37,3 +37,13 @@ export function jobTypeLabel(type: CustomerPortalJob['type']) {
   if (type === 'auto_key') return 'Car keys'
   return 'Watch repair'
 }
+
+/** Mister Minit's logo (tight crop, white background) and brand colours. */
+export const MINIT_LOGO_SRC = '/minit-logo-cropped.jpg'
+export const MINIT_RED = '#E31837'
+export const MINIT_NAVY = '#2B3990'
+
+/** "Mister Minit Chadstone" → "Chadstone"; "" when the name is just the brand. */
+export function minitBranchName(name: string | null | undefined): string {
+  return (name ?? '').trim().replace(/^mister\s*minit\b\s*[-–—·:|]?\s*/i, '')
+}

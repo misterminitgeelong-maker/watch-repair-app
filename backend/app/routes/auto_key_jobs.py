@@ -305,6 +305,7 @@ def _send_mobile_quote_email(
 ) -> tuple[bool, str | None, str | None]:
     from ..email_client import email_skip_reason, send_mobile_quote_email
     from ..pdf_invoice import build_quote_pdf
+    from ..minit_branding import customer_brand_color, customer_logo_url, document_branding
 
     email = (customer.email or "").strip()
     skip = email_skip_reason(email)
@@ -323,8 +324,7 @@ def _send_mobile_quote_email(
             shop_address=tenant.business_address if tenant else None,
             shop_phone=tenant.shop_phone if tenant else None,
             shop_email=tenant.shop_email if tenant else None,
-            logo_url=tenant.logo_url if tenant else None,
-            brand_color=tenant.brand_color if tenant else None,
+            **document_branding(tenant),
             line_items=line_items,
             subtotal_cents=quote.subtotal_cents,
             tax_cents=quote.tax_cents,
@@ -350,8 +350,8 @@ def _send_mobile_quote_email(
         shop_phone=tenant.shop_phone if tenant else None,
         shop_email=tenant.shop_email if tenant else None,
         shop_abn=tenant.abn if tenant else None,
-        shop_logo_url=tenant.logo_url if tenant else None,
-        shop_brand_color=tenant.brand_color if tenant else None,
+        shop_logo_url=customer_logo_url(tenant),
+        shop_brand_color=customer_brand_color(tenant),
         pdf_bytes=pdf_bytes,
         session=session,
         tenant_id=tenant_id,
@@ -376,6 +376,7 @@ def _send_mobile_invoice_notifications(
     from ..email_client import email_skip_reason, send_mobile_invoice_email
     from ..models import Tenant
     from ..pdf_invoice import build_invoice_pdf
+    from ..minit_branding import customer_brand_color, customer_logo_url, document_branding
 
     first = _customer_first_name(customer)
     view_url = f"{settings.public_base_url.rstrip('/')}/mobile-invoice/{invoice.customer_view_token}"
@@ -423,8 +424,7 @@ def _send_mobile_invoice_notifications(
             shop_phone=tenant.shop_phone if tenant else None,
             shop_email=tenant.shop_email if tenant else None,
             payment_instructions=tenant.payment_instructions if tenant else None,
-            logo_url=tenant.logo_url if tenant else None,
-            brand_color=tenant.brand_color if tenant else None,
+            **document_branding(tenant),
             line_items=line_items,
             subtotal_cents=invoice.subtotal_cents,
             tax_cents=invoice.tax_cents,
@@ -452,8 +452,8 @@ def _send_mobile_invoice_notifications(
         shop_phone=tenant.shop_phone if tenant else None,
         shop_email=tenant.shop_email if tenant else None,
         shop_abn=tenant.abn if tenant else None,
-        shop_logo_url=tenant.logo_url if tenant else None,
-        shop_brand_color=tenant.brand_color if tenant else None,
+        shop_logo_url=customer_logo_url(tenant),
+        shop_brand_color=customer_brand_color(tenant),
         pdf_bytes=pdf_bytes,
         session=session,
         tenant_id=tenant_id,

@@ -2,7 +2,7 @@ import { useId, useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { portalStageIndex, STAGE_ORDER, type PortalStage } from '@/lib/portalStatus'
-import { portalAccentStyle, STAGE_COPY } from './portalUtils'
+import { MINIT_LOGO_SRC, minitBranchName, portalAccentStyle, STAGE_COPY } from './portalUtils'
 import './portal.css'
 import { clsx } from 'clsx'
 
@@ -10,12 +10,15 @@ import { clsx } from 'clsx'
 export function PortalPage({
   children,
   accent,
+  minit = false,
 }: {
   children: ReactNode
   accent?: string | null
+  /** Mister Minit shop: Minit navy and red. */
+  minit?: boolean
 }) {
   return (
-    <div className="pt" style={portalAccentStyle(accent)}>
+    <div className={clsx('pt', minit && 'pt--minit')} style={portalAccentStyle(accent)}>
       {children}
     </div>
   )
@@ -106,6 +109,15 @@ export function PortalDial({ size = 132, spinner = false }: { size?: number; spi
   )
 }
 
+/** The Mister Minit logo on its white plate. */
+export function MinitLogoPlate({ small = false }: { small?: boolean }) {
+  return (
+    <span className={clsx('pt-logo-plate', small && 'pt-logo-plate--sm')}>
+      <img src={MINIT_LOGO_SRC} alt="Mister Minit" />
+    </span>
+  )
+}
+
 /** The ink header every portal page opens with. */
 export function PortalHero({
   eyebrow,
@@ -119,23 +131,27 @@ export function PortalHero({
   eyebrow?: ReactNode
   title: ReactNode
   lede?: ReactNode
-  brand?: { name?: string | null; logoUrl?: string | null; to?: string }
+  brand?: { name?: string | null; logoUrl?: string | null; to?: string; minit?: boolean }
   barRight?: ReactNode
   showDial?: boolean
   children?: ReactNode
 }) {
-  const brandName = brand?.name?.trim() || 'Mainspring'
-  const mark = brand?.logoUrl ? (
+  const brandName = brand?.name?.trim() || (brand?.minit ? 'Mister Minit' : 'Mainspring')
+  const mark = brand?.minit ? (
+    <MinitLogoPlate />
+  ) : brand?.logoUrl ? (
     <img src={brand.logoUrl} alt="" className="pt-wordmark-mark" />
   ) : (
     <span className="pt-wordmark-mark pt-serif" style={{ fontSize: 17 }}>
       {brandName.charAt(0).toUpperCase()}
     </span>
   )
+  // Next to the Minit logo, "Mister Minit Chadstone" only needs "Chadstone".
+  const shownName = brand?.minit ? minitBranchName(brandName) : brandName
   const wordmark = (
     <>
       {mark}
-      <span className="pt-wordmark-name">{brandName}</span>
+      {shownName && <span className="pt-wordmark-name">{shownName}</span>}
     </>
   )
 
@@ -156,7 +172,7 @@ export function PortalHero({
             <h1 className="pt-display">{title}</h1>
             {lede && <p className="pt-lede">{lede}</p>}
           </div>
-          {showDial && (
+          {showDial && !brand?.minit && (
             <div className="pt-hero-dial pt-pop" style={{ animationDelay: '0.15s' }}>
               <PortalDial />
             </div>

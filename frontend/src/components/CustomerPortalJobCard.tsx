@@ -13,7 +13,7 @@ import {
 } from '@/lib/api'
 import { portalJobStage, portalJobStatusLabel, type PortalStage } from '@/lib/portalStatus'
 import {
-  Watch,
+  Wrench,
   ChevronRight,
   Loader2,
   BellRing,
@@ -383,7 +383,7 @@ export function PortalEmptyState({ shop }: { shop?: CustomerPortalShop | null })
     <div className="pt-card pt-card-pad pt-rise" style={{ textAlign: 'center', padding: '36px 24px' }}>
       <div style={{ display: 'inline-block', marginBottom: 14 }}>
         <StageRing stage="received" size={72}>
-          <Watch size={22} strokeWidth={1.5} />
+          <Wrench size={22} strokeWidth={1.5} />
         </StageRing>
       </div>
       <p className="pt-serif" style={{ fontSize: 26, margin: 0 }}>Nothing on the bench</p>

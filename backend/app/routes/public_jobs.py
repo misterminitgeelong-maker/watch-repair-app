@@ -23,6 +23,7 @@ from ..limiter import limiter, public_read_limit, public_write_limit
 
 logger = logging.getLogger(__name__)
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
+from ..minit_branding import customer_brand_color, customer_logo_url, is_minit_tenant, public_shop_branding
 from ..models import (
     Attachment,
     AutoKeyInvoice,
@@ -187,8 +188,13 @@ def _customer_intake_title(customer_full_name: str, make: str | None, year: int 
 def _public_shop(tenant: Tenant | None) -> dict:
     """The shop details a customer-facing page shows."""
     if tenant is None:
-        return {"name": None, "phone": None, "email": None}
-    return {"name": tenant.name, "phone": tenant.shop_phone, "email": tenant.shop_email}
+        return {"name": None, "phone": None, "email": None, "is_minit": False, "logo_url": None, "brand_color": None}
+    return {
+        "name": tenant.name,
+        "phone": tenant.shop_phone,
+        "email": tenant.shop_email,
+        **public_shop_branding(tenant),
+    }
 
 
 @router.get("/jobs/{status_token}")
@@ -273,8 +279,10 @@ def get_public_shoe_job_status(request: Request, status_token: str, session: Ses
     estimated_total_cents = int(
         sum((item.unit_price_cents or 0) * item.quantity for item in items if item.unit_price_cents is not None)
     )
+    tenant = session.get(Tenant, job.tenant_id)
 
     return {
+        "shop": _public_shop(tenant),
         "job_number": job.job_number,
         "status": job.status,
         "title": job.title,
@@ -770,6 +778,9 @@ def get_public_auto_key_invoice(request: Request, token: str, session: Session =
 
     return {
         "shop_name": shop_name,
+        "shop_is_minit": is_minit_tenant(tenant),
+        "shop_logo_url": customer_logo_url(tenant),
+        "shop_brand_color": customer_brand_color(tenant),
         "job_number": job.job_number,
         "job_title": job.title,
         "invoice_number": invoice.invoice_number,
@@ -921,6 +932,9 @@ def get_public_auto_key_job_status(request: Request, status_token: str, session:
         "shop_name": tenant.name if tenant else "Mobile Services",
         "shop_phone": tenant.shop_phone if tenant else None,
         "shop_email": tenant.shop_email if tenant else None,
+        "shop_is_minit": is_minit_tenant(tenant),
+        "shop_logo_url": customer_logo_url(tenant),
+        "shop_brand_color": customer_brand_color(tenant),
         "quote_total_cents": quote.total_cents if quote else 0,
         "currency": quote.currency if quote else "AUD",
         "pending_actions": _portal_pending_actions_for_auto_key(session, job),
@@ -961,6 +975,8 @@ class CustomerPortalShopRead(SQLModel):
     brand_color: Optional[str] = None
     shop_phone: Optional[str] = None
     shop_email: Optional[str] = None
+    #: Mister Minit network shop — the portal shows the Mister Minit logo.
+    is_minit: bool = False
     jobs: list[CustomerPortalJobRead] = Field(default_factory=list)
 
 
@@ -1214,10 +1230,11 @@ def _collect_customer_jobs(
                 CustomerPortalShopRead(
                     tenant_id=str(tenant_id),
                     shop_name=(tenant.name if tenant else None) or "Shop",
-                    logo_url=tenant.logo_url if tenant else None,
-                    brand_color=tenant.brand_color if tenant else None,
+                    logo_url=customer_logo_url(tenant),
+                    brand_color=customer_brand_color(tenant),
                     shop_phone=tenant.shop_phone if tenant else None,
                     shop_email=tenant.shop_email if tenant else None,
+                    is_minit=is_minit_tenant(tenant),
                     jobs=shop_jobs[:_PORTAL_MAX_JOBS_PER_SHOP],
                 )
             )

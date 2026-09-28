@@ -51,6 +51,28 @@ def _resolve_accent(brand_color: str | None) -> colors.Color:
     return _ACCENT
 
 
+def _sized_logo(data: bytes) -> Image | None:
+    img = Image(io.BytesIO(data))
+    iw, ih = img.imageWidth, img.imageHeight
+    if not iw or not ih:
+        return None
+    scale = min(_LOGO_MAX_H / ih, _LOGO_MAX_W / iw, 1.0)
+    img.drawHeight = ih * scale
+    img.drawWidth = iw * scale
+    img.hAlign = "LEFT"
+    return img
+
+
+def _load_logo_file(path: str) -> Image | None:
+    """Load a logo bundled with the app (e.g. Mister Minit's); never raise."""
+    try:
+        with open(path, "rb") as fh:
+            return _sized_logo(fh.read())
+    except Exception:
+        logger.warning("Bundled logo %s could not be rendered; using text header", path, exc_info=True)
+        return None
+
+
 def _fetch_logo(logo_url: str | None) -> Image | None:
     """Fetch an http(s) logo into a reportlab Image; never raise on failure."""
     url = (logo_url or "").strip()
@@ -63,15 +85,7 @@ def _fetch_logo(logo_url: str | None) -> Image | None:
             resp = client.get(url)
         if resp.status_code != 200 or not resp.content:
             return None
-        img = Image(io.BytesIO(resp.content))
-        iw, ih = img.imageWidth, img.imageHeight
-        if not iw or not ih:
-            return None
-        scale = min(_LOGO_MAX_H / ih, _LOGO_MAX_W / iw, 1.0)
-        img.drawHeight = ih * scale
-        img.drawWidth = iw * scale
-        img.hAlign = "LEFT"
-        return img
+        return _sized_logo(resp.content)
     except Exception:
         logger.warning("Logo fetch/render failed for %s; using text header", url, exc_info=True)
         return None
@@ -90,6 +104,7 @@ def build_invoice_pdf(
     shop_email: str | None = None,
     payment_instructions: str | None = None,
     logo_url: str | None = None,
+    logo_path: str | None = None,
     brand_color: str | None = None,
     line_items: Sequence[dict],
     subtotal_cents: int = 0,
@@ -111,6 +126,7 @@ def build_invoice_pdf(
         shop_phone=shop_phone,
         shop_email=shop_email,
         logo_url=logo_url,
+        logo_path=logo_path,
         brand_color=brand_color,
         footer_label="PAYMENT DETAILS",
         footer_text=payment_instructions,
@@ -134,6 +150,7 @@ def build_quote_pdf(
     shop_phone: str | None = None,
     shop_email: str | None = None,
     logo_url: str | None = None,
+    logo_path: str | None = None,
     brand_color: str | None = None,
     line_items: Sequence[dict],
     subtotal_cents: int = 0,
@@ -156,6 +173,7 @@ def build_quote_pdf(
         shop_phone=shop_phone,
         shop_email=shop_email,
         logo_url=logo_url,
+        logo_path=logo_path,
         brand_color=brand_color,
         footer_label="NOTES",
         footer_text=note or "This quote is an estimate based on the information provided. Final price may vary if additional work is required.",
@@ -188,6 +206,7 @@ def _build_document_pdf(
     total_cents: int,
     currency: str,
     logo_url: str | None = None,
+    logo_path: str | None = None,
     brand_color: str | None = None,
 ) -> bytes:
     """Shared invoice/quote PDF renderer."""
@@ -248,7 +267,7 @@ def _build_document_pdf(
     story = []
 
     # ── Header row: logo or shop name (left) / INVOICE label (right) ──
-    logo_flowable = _fetch_logo(logo_url)
+    logo_flowable = _load_logo_file(logo_path) if logo_path else _fetch_logo(logo_url)
     left_header = logo_flowable if logo_flowable is not None else Paragraph(shop_name, heading)
     header_data = [
         [

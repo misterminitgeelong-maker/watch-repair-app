@@ -16,7 +16,9 @@ import {
   portalVerify,
   portalGetProfile,
   portalBook,
+  portalGetShop,
   type PortalProfile,
+  type PortalShop,
 } from '@/lib/api'
 import {
   PortalBody,
@@ -61,6 +63,18 @@ export default function PublicCustomerPortalPage() {
   const storageKey = `portal_token_${slug}`
 
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(storageKey))
+  const [shopInfo, setShopInfo] = useState<PortalShop | null>(null)
+
+  // The shop's name and logo (Mister Minit's, for Minit shops) for the header,
+  // before anyone signs in. Cosmetic: the page works without it.
+  useEffect(() => {
+    if (!slug) return
+    let cancelled = false
+    portalGetShop(slug)
+      .then((r) => { if (!cancelled) setShopInfo(r.data) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [slug])
   const [profile, setProfile] = useState<PortalProfile | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -187,11 +201,14 @@ export default function PublicCustomerPortalPage() {
     setCode('')
   }
 
+  const shop = profile?.shop ?? shopInfo
+
   // --- Lookup screen ---
   if (!token || (!profile && !loading)) {
     return (
-      <PortalPage>
+      <PortalPage accent={shop?.brand_color} minit={!!shop?.is_minit}>
         <PortalHero
+          brand={{ name: shop?.name, logoUrl: shop?.logo_url, minit: !!shop?.is_minit }}
           eyebrow="Mobile key service"
           title={<>Keys cut and coded, <em>wherever you are.</em></>}
           lede="Sign in with your name and mobile number and we’ll text you a code. Then book a visit, track it, and check your points."
@@ -298,8 +315,9 @@ export default function PublicCustomerPortalPage() {
 
   // --- Portal screen ---
   return (
-    <PortalPage>
+    <PortalPage accent={shop?.brand_color} minit={!!shop?.is_minit}>
       <PortalHero
+        brand={{ name: shop?.name, logoUrl: shop?.logo_url, minit: !!shop?.is_minit }}
         barRight={
           <button type="button" onClick={handleSignOut} className="pt-btn-ghost pt-btn-ghost--on-ink">
             <LogOut size={13} /> Sign out
