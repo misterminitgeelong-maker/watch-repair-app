@@ -24,6 +24,7 @@ import { useHqEnterShop } from '@/lib/hqEnterShop'
 import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
 import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { HqStaffCard, REGIONS_QUERY_KEY, RegionsCard, useRegions } from '@/components/minit/MinitNetworkPanels'
+import { MvMergeModal } from '@/components/minit/MvMergeModal'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
 function formatAreaRegion(area?: string | null, region?: string | null) {
@@ -264,6 +265,7 @@ export default function MinitAccountsPage() {
 
   const { data: summary, isLoading: summaryLoading } = useParentAccount()
   const [stageFilter, setStageFilter] = useState<OwnerStage | null>(null)
+  const [showMvMerge, setShowMvMerge] = useState(false)
   const { data: retailPage, isLoading: retailLoading } = useParentAccountSites({
     plan_kind: 'retail',
     limit: retailLimit,
@@ -595,7 +597,7 @@ export default function MinitAccountsPage() {
               </span>
             </Button>
           )}
-          {retailTotal > 0 && (
+          {(retailTotal > 0 || search.trim() !== '') && (
             <div className="w-full sm:w-64">
               <Input
                 type="search"
@@ -609,6 +611,8 @@ export default function MinitAccountsPage() {
         </div>
         {retailTotal === 0 && stageFilter ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops with this invite status.</p>
+        ) : retailTotal === 0 && debouncedSearch ? (
+          <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No shops match your search.</p>
         ) : retailTotal === 0 ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops linked yet.</p>
         ) : retailSites.length === 0 && !retailLoading ? (
@@ -695,8 +699,23 @@ export default function MinitAccountsPage() {
 
       {operators.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
-            Mobile operators ({operators.length})
+          <div
+            className="px-5 py-3 flex flex-wrap items-center justify-between gap-3"
+            style={{ borderBottom: '1px solid var(--ms-border)' }}
+          >
+            <span className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>
+              Mobile operators ({operators.length})
+            </span>
+            {canEdit && (
+              <Button
+                variant="secondary"
+                className="text-xs px-3 py-1.5"
+                onClick={() => setShowMvMerge(true)}
+                title="Fold each 'Mobile Services' shop into its matching '(MV)' shop"
+              >
+                Merge MV duplicates
+              </Button>
+            )}
           </div>
           {operators.map(site => {
             const areaRegion = formatAreaRegion(site.area, site.region)
@@ -752,6 +771,8 @@ export default function MinitAccountsPage() {
         <RegionsCard canEdit={canEdit} />
         <HqStaffCard canEdit={canEdit} currentUserId={sessionUserId ?? undefined} />
       </div>
+
+      {showMvMerge && <MvMergeModal onClose={() => setShowMvMerge(false)} />}
 
       {showAdd && (
         <Modal title="Add shop" onClose={() => setShowAdd(false)}>

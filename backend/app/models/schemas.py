@@ -2080,3 +2080,50 @@ class LoyaltyProfileResponse(SQLModel):
 class PointsAdjustRequest(SQLModel):
     points_delta: int
     note: str
+
+
+class MvMergeCandidateRead(SQLModel):
+    mv_tenant_id: UUID
+    mv_name: str
+    mv_shop_number: Optional[str] = None
+    mv_owner: str = ""
+    operator_tenant_id: Optional[UUID] = None
+    operator_name: Optional[str] = None
+    operator_shop_number: Optional[str] = None
+    #: phone | shop_number | name — why the two shops were paired.
+    reasons: list[str] = Field(default_factory=list)
+    preselected: bool = False
+    note: Optional[str] = None
+    blocked: bool = False
+
+
+class MvMergeOperatorRead(SQLModel):
+    tenant_id: UUID
+    name: str
+    shop_number: Optional[str] = None
+
+
+class MvMergePreviewResponse(SQLModel):
+    candidates: list[MvMergeCandidateRead] = Field(default_factory=list)
+    #: Mobile Services shops no (MV) shop matched.
+    unmatched_operators: list[MvMergeOperatorRead] = Field(default_factory=list)
+
+
+class MvMergePair(SQLModel):
+    mv_tenant_id: UUID
+    operator_tenant_id: UUID
+
+
+class MvMergeRequest(SQLModel):
+    pairs: list[MvMergePair] = Field(default_factory=list)
+
+
+class MvMergeResult(SQLModel):
+    mv_tenant_id: UUID
+    operator_tenant_id: UUID
+    ok: bool
+    message: str
+
+
+class MvMergeResponse(SQLModel):
+    results: list[MvMergeResult] = Field(default_factory=list)

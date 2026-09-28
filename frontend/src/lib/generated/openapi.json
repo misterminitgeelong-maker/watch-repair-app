@@ -15675,6 +15675,80 @@
         }
       }
     },
+    "/v1/parent-accounts/me/mv-merge/preview": {
+      "get": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Preview Mv Merge",
+        "description": "Pair each (MV) shop with its duplicate Mobile Services operator. Changes nothing.",
+        "operationId": "preview_mv_merge_v1_parent_accounts_me_mv_merge_preview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MvMergePreviewResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/parent-accounts/me/mv-merge": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Run Mv Merge",
+        "description": "Merge the ticked pairs, one at a time: a pair that fails leaves the rest.",
+        "operationId": "run_mv_merge_v1_parent_accounts_me_mv_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MvMergeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MvMergeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/network-link-requests": {
       "get": {
         "tags": [
@@ -28966,6 +29040,229 @@
           "active_site_tenant_id"
         ],
         "title": "MultiSiteLoginResponse"
+      },
+      "MvMergeCandidateRead": {
+        "properties": {
+          "mv_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Mv Tenant Id"
+          },
+          "mv_name": {
+            "type": "string",
+            "title": "Mv Name"
+          },
+          "mv_shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mv Shop Number"
+          },
+          "mv_owner": {
+            "type": "string",
+            "title": "Mv Owner",
+            "default": ""
+          },
+          "operator_tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Tenant Id"
+          },
+          "operator_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Name"
+          },
+          "operator_shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Shop Number"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "preselected": {
+            "type": "boolean",
+            "title": "Preselected",
+            "default": false
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "blocked": {
+            "type": "boolean",
+            "title": "Blocked",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "mv_tenant_id",
+          "mv_name"
+        ],
+        "title": "MvMergeCandidateRead"
+      },
+      "MvMergeOperatorRead": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "name"
+        ],
+        "title": "MvMergeOperatorRead"
+      },
+      "MvMergePair": {
+        "properties": {
+          "mv_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Mv Tenant Id"
+          },
+          "operator_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Operator Tenant Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mv_tenant_id",
+          "operator_tenant_id"
+        ],
+        "title": "MvMergePair"
+      },
+      "MvMergePreviewResponse": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/MvMergeCandidateRead"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "unmatched_operators": {
+            "items": {
+              "$ref": "#/components/schemas/MvMergeOperatorRead"
+            },
+            "type": "array",
+            "title": "Unmatched Operators"
+          }
+        },
+        "type": "object",
+        "title": "MvMergePreviewResponse"
+      },
+      "MvMergeRequest": {
+        "properties": {
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/MvMergePair"
+            },
+            "type": "array",
+            "title": "Pairs"
+          }
+        },
+        "type": "object",
+        "title": "MvMergeRequest"
+      },
+      "MvMergeResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/MvMergeResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "title": "MvMergeResponse"
+      },
+      "MvMergeResult": {
+        "properties": {
+          "mv_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Mv Tenant Id"
+          },
+          "operator_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Operator Tenant Id"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mv_tenant_id",
+          "operator_tenant_id",
+          "ok",
+          "message"
+        ],
+        "title": "MvMergeResult"
       },
       "NotificationPrefsRead": {
         "properties": {
