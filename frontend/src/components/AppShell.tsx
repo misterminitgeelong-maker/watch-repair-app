@@ -796,7 +796,7 @@ export default function AppShell() {
   useEffect(() => {
     if (demoModeEnabled || !platformConsole) return
     if (!location.pathname.startsWith('/platform-admin')) {
-      navigate('/platform-admin/shops', { replace: true })
+      navigate('/platform-admin/overview', { replace: true })
     }
   }, [demoModeEnabled, platformConsole, location.pathname, navigate])
 

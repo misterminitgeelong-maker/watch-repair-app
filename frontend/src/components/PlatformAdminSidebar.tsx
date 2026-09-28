@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
-import { BarChart3, Building2, CreditCard, LogOut, ScrollText, Users } from 'lucide-react'
+import { BarChart3, Building2, CreditCard, LayoutDashboard, LogOut, ScrollText, Users } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
  * Entering a shop switches to that shop's normal sidebar.
  */
 export const PLATFORM_ADMIN_NAV = [
+  { to: '/platform-admin/overview', label: 'Overview', icon: LayoutDashboard },
   { to: '/platform-admin/shops', label: 'Shops', icon: Building2 },
   { to: '/platform-admin/billing', label: 'Billing', icon: CreditCard },
   { to: '/platform-admin/audit', label: 'Audit log', icon: ScrollText },
@@ -68,6 +69,7 @@ export default function PlatformAdminSidebar({
         </div>
       </div>
 
+      <div className="px-6 pt-6 text-[10px] font-semibold uppercase tracking-[0.18em] opacity-60">Manage your network</div>
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6" aria-label="Platform admin">
         {PLATFORM_ADMIN_NAV.map(item => (
           <NavLink
