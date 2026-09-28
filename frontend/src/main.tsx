@@ -5,7 +5,9 @@ import './index.css'
 import App from './App.tsx'
 import { applyTheme, readStoredTheme } from '@/context/ThemeContext'
 import { APP_BUILD_ID, stampBuildMetaTag } from '@/lib/buildInfo'
+import { installDomMutationGuard } from '@/lib/domMutationGuard'
 
+installDomMutationGuard()
 applyTheme(readStoredTheme())
 stampBuildMetaTag()
 
