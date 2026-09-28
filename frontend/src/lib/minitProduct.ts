@@ -192,16 +192,19 @@ export function mergeEnabledFeatures(planCode: PlanCode, enabled: FeatureKey[]):
   return [...new Set([...enabled, ...fromPlan])]
 }
 
-/** True when the tenant should see the Minit mobile-network UI (not Mainspring repair POS). */
+/**
+ * True when the tenant should see the Minit mobile-network UI (not Mainspring repair POS).
+ * Only HQ and retail shopfronts (booking_only) get it. A Minit mobile van runs on an
+ * Auto Key plan and needs the normal Mobile Services screens; the restricted UI has no
+ * home for it and parked it on a Parent Account page it cannot open.
+ */
 export function isMinitRestrictedUi(
-  product: TenantProduct | null | undefined,
+  _product: TenantProduct | null | undefined,
   planCode: PlanCode | null | undefined,
   tenantSlug?: string | null,
 ): boolean {
-  if (product === 'minit') return true
   const effective = effectiveMinitPlanCode(planCode, tenantSlug)
-  if (isMinitHqPlan(effective) || isMinitBookingOnlyPlan(effective)) return true
-  return isMinitTenantSlug(tenantSlug)
+  return isMinitHqPlan(effective) || isMinitBookingOnlyPlan(effective)
 }
 
 export function minitHqAllowedPath(pathname: string): boolean {
