@@ -25,6 +25,7 @@ import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAcc
 import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { HqStaffCard, REGIONS_QUERY_KEY, RegionsCard, useRegions } from '@/components/minit/MinitNetworkPanels'
 import { MvMergeModal } from '@/components/minit/MvMergeModal'
+import { LoadError } from '@/components/minit/LoadError'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
 function formatAreaRegion(area?: string | null, region?: string | null) {
@@ -266,15 +267,27 @@ export default function MinitAccountsPage() {
   const { data: summary, isLoading: summaryLoading } = useParentAccount()
   const [stageFilter, setStageFilter] = useState<OwnerStage | null>(null)
   const [showMvMerge, setShowMvMerge] = useState(false)
-  const { data: retailPage, isLoading: retailLoading } = useParentAccountSites({
+  const {
+    data: retailPage,
+    isLoading: retailLoading,
+    isError: retailError,
+    error: retailLoadError,
+    refetch: refetchRetail,
+  } = useParentAccountSites({
     plan_kind: 'retail',
     limit: retailLimit,
     search: debouncedSearch || undefined,
     owner_stage: stageFilter ?? undefined,
   })
-  const { data: operatorsPage } = useParentAccountSites({
+  // Every van, not a first page: a van left off this list can't be invited.
+  const {
+    data: operatorsPage,
+    isError: operatorsError,
+    error: operatorsLoadError,
+    refetch: refetchOperators,
+  } = useParentAccountSites({
     plan_kind: 'operator',
-    limit: 50,
+    limit: 500,
     owner_stage: stageFilter ?? undefined,
   })
   // Counts cover every shop in each list, whatever the filter, so the strip
@@ -609,7 +622,14 @@ export default function MinitAccountsPage() {
             </div>
           )}
         </div>
-        {retailTotal === 0 && stageFilter ? (
+        {retailError && !retailPage ? (
+          <LoadError
+            className="m-4"
+            error={retailLoadError}
+            message="Could not load shops."
+            onRetry={() => void refetchRetail()}
+          />
+        ) : retailTotal === 0 && stageFilter ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No retail shops with this invite status.</p>
         ) : retailTotal === 0 && debouncedSearch ? (
           <p className="px-5 py-6 text-sm" style={{ color: 'var(--ms-text-muted)' }}>No shops match your search.</p>
@@ -696,6 +716,14 @@ export default function MinitAccountsPage() {
           </>
         )}
       </Card>
+
+      {operatorsError && !operatorsPage && (
+        <LoadError
+          error={operatorsLoadError}
+          message="Could not load mobile operators."
+          onRetry={() => void refetchOperators()}
+        />
+      )}
 
       {operators.length > 0 && (
         <Card className="overflow-hidden">

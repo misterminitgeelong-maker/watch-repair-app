@@ -50,8 +50,9 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
   const qc = useQueryClient()
   const { data } = useParentAccount()
   const { data: leadIngest } = useParentLeadIngest()
-  const { data: retailPage } = useParentAccountSites({ plan_kind: 'retail', limit: 50 })
-  const { data: operatorsPage } = useParentAccountSites({ plan_kind: 'operator', limit: 50 })
+  // The pickers below must offer every shop and van, not just the first page.
+  const { data: retailPage } = useParentAccountSites({ plan_kind: 'retail', limit: 500 })
+  const { data: operatorsPage } = useParentAccountSites({ plan_kind: 'operator', limit: 500 })
 
   const [webhookSecret, setWebhookSecret] = useState('')
   const [inboundSecret, setInboundSecret] = useState('')

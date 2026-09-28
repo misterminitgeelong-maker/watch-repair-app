@@ -25,6 +25,7 @@ import { formatCents, formatDate } from '@/lib/utils'
 import { Button, Card, Input, PageHeader, Spinner } from '@/components/ui'
 import { useParentAccount } from '@/hooks/useParentAccount'
 import { defaultReportFromDate, defaultReportToDate, toIsoEnd, toIsoStart } from './dateRange'
+import { LoadError } from '@/components/minit/LoadError'
 
 type TabKey = 'live' | 'daily' | 'weekly' | 'recipients' | 'jobs'
 const TABS: { key: TabKey; label: string }[] = [
@@ -235,7 +236,7 @@ function OperatorTable({
 }
 
 function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['minit-email-leads-by-shop', fromYmd, toYmd],
     queryFn: () =>
       getParentEmailLeadsByShopReport({
@@ -250,7 +251,9 @@ function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: st
       <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
         Email enquiries grouped by the operator each one names.
       </p>
-      {isLoading || !data ? (
+      {isError && !data ? (
+        <LoadError className="" error={error} message="Could not load enquiries by shop." onRetry={() => void refetch()} />
+      ) : isLoading || !data ? (
         <Spinner />
       ) : (data.shops ?? []).length === 0 ? (
         <Card className="p-4">
@@ -487,7 +490,9 @@ export default function MinitMobileReportsPage() {
               </Button>
             </div>
           </div>
-          {!shownLivePeriod ? (
+          {!shownLivePeriod && liveQuery.isError ? (
+            <LoadError className="" error={liveQuery.error} message="Could not load live figures." onRetry={() => void liveQuery.refetch()} />
+          ) : !shownLivePeriod ? (
             <Card className="p-6">
               <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
                 Compiling {liveScope === 'day' ? "today's" : "this week's"} live figures. The last 9pm freeze will show here if it is already on file.
@@ -503,7 +508,9 @@ export default function MinitMobileReportsPage() {
       )}
 
       {tab === 'daily' && (
-        daysQuery.isLoading && dayList.length === 0 ? <Spinner /> : dayList.length === 0 ? (
+        daysQuery.isError && dayList.length === 0 ? (
+          <LoadError className="" error={daysQuery.error} message="Could not load daily reports." onRetry={() => void daysQuery.refetch()} />
+        ) : daysQuery.isLoading && dayList.length === 0 ? <Spinner /> : dayList.length === 0 ? (
           <Card className="p-5"><p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>No 9pm daily reports compiled yet. They appear after 9pm Sydney time.</p></Card>
         ) : (
           <>
@@ -561,7 +568,9 @@ export default function MinitMobileReportsPage() {
       )}
 
       {tab === 'weekly' && (
-        weeksQuery.isLoading && weekList.length === 0 ? <Spinner /> : weekList.length === 0 ? (
+        weeksQuery.isError && weekList.length === 0 ? (
+          <LoadError className="" error={weeksQuery.error} message="Could not load weekly reports." onRetry={() => void weeksQuery.refetch()} />
+        ) : weeksQuery.isLoading && weekList.length === 0 ? <Spinner /> : weekList.length === 0 ? (
           <Card className="p-5"><p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>No Saturday weekly reports compiled yet. They appear after 11:05pm Saturday Sydney time.</p></Card>
         ) : (
           <>
@@ -609,7 +618,9 @@ export default function MinitMobileReportsPage() {
       )}
 
       {tab === 'recipients' && (
-        recipientsQuery.isLoading || !recipientsQuery.data ? <Spinner /> : (
+        recipientsQuery.isError && !recipientsQuery.data ? (
+          <LoadError className="" error={recipientsQuery.error} message="Could not load report recipients." onRetry={() => void recipientsQuery.refetch()} />
+        ) : recipientsQuery.isLoading || !recipientsQuery.data ? <Spinner /> : (
           <>
             <Card className="p-5 mb-5">
               <p className="text-sm font-semibold mb-2" style={{ color: 'var(--ms-text)' }}>Saturday CSV email</p>
@@ -690,7 +701,9 @@ export default function MinitMobileReportsPage() {
             )}
           </Card>
           <EnquiriesByShopSection fromYmd={fromYmd} toYmd={toYmd} />
-          {!jobsData ? (
+          {!jobsData && jobsQuery.isError ? (
+            <LoadError error={jobsQuery.error} message="Could not load mobile jobs." onRetry={() => void jobsQuery.refetch()} />
+          ) : !jobsData ? (
             <Spinner />
           ) : (
             <>

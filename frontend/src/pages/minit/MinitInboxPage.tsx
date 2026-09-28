@@ -14,6 +14,7 @@ import {
   type InboundEmailJobCreateResult,
 } from '@/lib/api'
 import { useParentLeadIngest } from '@/hooks/useParentLeadIngest'
+import { LoadError } from '@/components/minit/LoadError'
 import { Button, Card, EmptyState, Input, PageHeader, Spinner, Textarea } from '@/components/ui'
 
 function formatDate(s: string) {
@@ -295,17 +296,19 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJo
 }
 
 export default function MinitInboxPage() {
-  const { data: alerts, isLoading: inboxLoading } = useQuery({
+  const alertsQuery = useQuery({
     queryKey: ['inbox', 0],
     queryFn: () => getInbox(50, 0).then(r => r.data),
   })
 
-  const { data: emailLeads, isLoading: emailsLoading } = useQuery({
+  const emailsQuery = useQuery({
     queryKey: ['inbound-emails'],
     queryFn: () => listInboundEmails().then(r => r.data),
   })
 
-  const { data: leadIngest, isLoading: ingestLoading } = useParentLeadIngest()
+  const { data: alerts, isLoading: inboxLoading } = alertsQuery
+  const { data: emailLeads, isLoading: emailsLoading } = emailsQuery
+  const { data: leadIngest, isLoading: ingestLoading, isError: ingestError } = useParentLeadIngest()
 
   if (inboxLoading || emailsLoading) return <Spinner />
 
@@ -318,7 +321,10 @@ export default function MinitInboxPage() {
     : null
   const ingestReady = Boolean(ingestPublicId && leadIngest?.mobile_lead_webhook_secret_configured)
   const forceHq = leadIngest?.mobile_lead_force_hq_dispatch === true
-  const isEmpty = networkAlerts.length === 0 && emails.length === 0
+  // A failed load is not an empty inbox — say so instead of "Nothing in the inbox yet".
+  const alertsFailed = alertsQuery.isError && !alerts
+  const emailsFailed = emailsQuery.isError && !emailLeads
+  const isEmpty = !alertsFailed && !emailsFailed && networkAlerts.length === 0 && emails.length === 0
 
   return (
     <div>
@@ -327,7 +333,22 @@ export default function MinitInboxPage() {
         HQ triage for website mobile key leads, BCC email enquiries, and escalated dispatch alerts.
       </p>
 
-      {!ingestReady && !ingestLoading && (
+      {alertsFailed && (
+        <LoadError
+          error={alertsQuery.error}
+          message="Could not load network alerts."
+          onRetry={() => void alertsQuery.refetch()}
+        />
+      )}
+      {emailsFailed && (
+        <LoadError
+          error={emailsQuery.error}
+          message="Could not load email enquiries."
+          onRetry={() => void emailsQuery.refetch()}
+        />
+      )}
+
+      {!ingestReady && !ingestLoading && !ingestError && (
         <Card className="mb-6 p-5">
           <div className="flex items-start gap-3">
             <MessageSquare size={20} style={{ color: 'var(--ms-accent)', flexShrink: 0, marginTop: 2 }} />

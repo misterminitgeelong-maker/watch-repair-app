@@ -4,6 +4,7 @@ import { formatTenantLabel, type ParentAccountSite } from '@/lib/api'
 import { useParentAccount } from '@/hooks/useParentAccount'
 import { useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { useRegions } from '@/components/minit/MinitNetworkPanels'
+import { LoadError } from '@/components/minit/LoadError'
 import { MinitShopImport } from '@/components/MinitShopImport'
 import { MinitDirectoryImport } from '@/components/MinitDirectoryImport'
 import { Button, Card, Input, PageHeader, Select } from '@/components/ui'
@@ -193,16 +194,28 @@ export default function MinitShopsPage() {
     limit: 500,
   })
 
-  const { data: retailPage, isLoading: retailLoading, isFetching: retailFetching } = useParentAccountSites({
+  const {
+    data: retailPage,
+    isLoading: retailLoading,
+    isFetching: retailFetching,
+    isError: retailError,
+    error: retailLoadError,
+    refetch: refetchRetail,
+  } = useParentAccountSites({
     plan_kind: 'retail',
     limit: 500,
     search: debouncedSearch || undefined,
     region: regionFilter || undefined,
   })
 
-  const { data: operatorsPage } = useParentAccountSites({
+  const {
+    data: operatorsPage,
+    isError: operatorsError,
+    error: operatorsLoadError,
+    refetch: refetchOperators,
+  } = useParentAccountSites({
     plan_kind: 'operator',
-    limit: 50,
+    limit: 500,
   })
 
   const retailSites = retailPage?.sites ?? []
@@ -280,11 +293,13 @@ export default function MinitShopsPage() {
           />
         </div>
         <p className="text-sm pb-2 sm:pb-0" style={{ color: 'var(--ms-text-muted)' }}>
-          {isLoading ? 'Loading shops…' : `${retailSites.length} of ${retailTotal} shops`}
+          {isLoading ? 'Loading shops…' : retailError && !retailPage ? 'Shops unavailable' : `${retailSites.length} of ${retailTotal} shops`}
         </p>
       </div>
 
-      {isLoading ? (
+      {retailError && !retailPage ? (
+        <LoadError error={retailLoadError} message="Could not load shops." onRetry={() => void refetchRetail()} />
+      ) : isLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {REGION_ORDER.slice(0, 4).map(r => (
             <RegionSkeleton key={r} />
@@ -308,6 +323,10 @@ export default function MinitShopsPage() {
             <RegionShopsCard key={region} region={region} shops={shops} />
           ))}
         </div>
+      )}
+
+      {operatorsError && !operatorsPage && (
+        <LoadError error={operatorsLoadError} message="Could not load mobile operators." onRetry={() => void refetchOperators()} />
       )}
 
       {operators.length > 0 && (
