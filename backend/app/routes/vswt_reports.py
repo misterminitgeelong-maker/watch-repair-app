@@ -46,6 +46,7 @@ from ..models import (
 from ..parent_network import site_for_tenant_preferring_hq
 from ..vswt_insights import baseline_for, build_shop_narrative, shop_alerts
 from ..pdf_vswt_report import build_weekly_report_pdf
+from ..vswt_workbook import build_all_weeks_workbook
 from ..vswt_kpis import (
     CATEGORY_SALES_KEYS,
     COLUMN_MAP,
@@ -720,6 +721,37 @@ def export_vswt_csv(
         content=output.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=regional-report.csv"},
+    )
+
+
+@router.get("/export/workbook")
+def export_vswt_workbook(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Every uploaded week for every shop as one Excel workbook: a contents tab linking to a tab
+    per shop, region totals by week, and a flat all-data tab for filtering and pivots."""
+    if _shop_number_for(auth, session) is None:
+        raise HTTPException(status_code=403, detail="A linked Minit shop is required for regional exports.")
+    rows = list(session.exec(select(VswtWeeklyShopMetric)).all())
+    if not rows:
+        raise HTTPException(status_code=404, detail="No regional data is available for export.")
+
+    by_week: dict[int, list[VswtWeeklyShopMetric]] = {}
+    for row in rows:
+        by_week.setdefault(row.week_seq, []).append(row)
+    sales_ranks = {
+        (week, shop): rank
+        for week, week_rows in by_week.items()
+        for shop, rank in _ranks_for_week(week_rows, "sales_ty").items()
+    }
+    content = build_all_weeks_workbook(rows, sales_ranks)
+    weeks = sorted(by_week)
+    filename = f"vswt-all-weeks-{weeks[0]}-to-{weeks[-1]}.xlsx"
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

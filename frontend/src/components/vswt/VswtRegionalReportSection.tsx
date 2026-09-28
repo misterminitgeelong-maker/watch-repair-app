@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDownRight, ArrowUpRight, Gauge, GitCompareArrows, LayoutGrid, Table2, Trophy, LineChart as LineChartIcon, Upload, Search, FileText, ClipboardList } from 'lucide-react'
-import { getVswtExportCsv, getVswtSummary, getVswtTargets, getVswtWeeks, putVswtTargets, type VswtKpiGroup, type VswtSummary, type VswtUnavailable } from '@/lib/api'
+import { getApiErrorMessage, getVswtAllWeeksWorkbook, getVswtExportCsv, getVswtSummary, getVswtTargets, getVswtWeeks, putVswtTargets, type VswtKpiGroup, type VswtSummary, type VswtUnavailable } from '@/lib/api'
 import { Button, Card, EmptyState, Spinner } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { VswtRankGauge } from './VswtRankGauge'
@@ -236,6 +236,7 @@ function TargetPanel({ summary, targets, onChange, canEdit, saving, onSave }: { 
   </Card>
 }
 function InsightsPanel({ summary, weeks, onExport }: { summary: VswtSummary; weeks: { week: number; uploaded_at: string | null }[]; onExport: () => void }) {
+  const workbook = useMutation({ mutationFn: downloadAllWeeksWorkbook })
   const insights: string[] = []
   for (const [label, metric] of [['Sales', summary.sales], ['Customers', summary.customers], ['Jobs', summary.jobs]] as const) {
     if (metric.value != null && metric.prev_value != null && metric.value !== metric.prev_value) insights.push(`${label} ${metric.value > metric.prev_value ? 'increased' : 'fell'} ${fmtVswtVal(Math.abs(metric.value - metric.prev_value), label === 'Sales' ? 'currency' : 'count')} week over week.`)
@@ -243,7 +244,8 @@ function InsightsPanel({ summary, weeks, onExport }: { summary: VswtSummary; wee
   if (!insights.length) insights.push('Add another weekly upload to unlock movement insights.')
   const latestUpload = weeks.find(w => w.week === summary.latest_week)?.uploaded_at
   return <Card className="p-4">
-    <div className="flex justify-between items-baseline gap-3 mb-3"><p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Performance signals</p><Button onClick={onExport} variant="secondary" className="text-xs">Export CSV</Button></div>
+    <div className="flex justify-between items-baseline gap-3 mb-3"><p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Performance signals</p><div className="flex flex-wrap gap-2 justify-end"><Button onClick={() => workbook.mutate()} disabled={workbook.isPending} className="text-xs">{workbook.isPending ? 'Building workbook…' : 'All weeks (Excel)'}</Button><Button onClick={onExport} variant="secondary" className="text-xs">Export CSV</Button></div></div>
+    {workbook.isError && <p className="text-xs mb-2" style={{ color: '#A33838' }}>{getApiErrorMessage(workbook.error, "Couldn't build the workbook.")}</p>}
     <div className="space-y-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>{insights.map(i => <p key={i}>• {i}</p>)}</div>
     <p className="text-[11px] mt-3" style={{ color: 'var(--ms-text-muted)' }}>{latestUpload ? `Latest data uploaded ${new Date(latestUpload).toLocaleDateString()}.` : 'Upload timestamp unavailable.'} {weeks.length} weekly upload{weeks.length === 1 ? '' : 's'} on file.</p>
   </Card>
@@ -252,6 +254,16 @@ async function downloadRegionalCsv() {
   const response = await getVswtExportCsv()
   const url = URL.createObjectURL(response.data)
   const link = document.createElement('a'); link.href = url; link.download = 'regional-report.csv'; link.click(); URL.revokeObjectURL(url)
+}
+
+/** Every week for every shop in one Excel file: a Contents tab linking to one tab per shop, plus
+ * network totals by week and a flat All data tab for filtering and pivots. */
+async function downloadAllWeeksWorkbook() {
+  const response = await getVswtAllWeeksWorkbook()
+  const disposition = String(response.headers['content-disposition'] ?? '')
+  const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? 'vswt-all-weeks.xlsx'
+  const url = URL.createObjectURL(response.data)
+  const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url)
 }
 
 function VswtStatCard({ label, currentValue, value, previousValue, previousRank, type, rank, n }: { label: string; currentValue: number | null; value: string; previousValue: number | null; previousRank: number | null; type: 'currency' | 'count'; rank: number | null; n: number }) {

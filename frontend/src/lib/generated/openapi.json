@@ -5068,6 +5068,31 @@
         }
       }
     },
+    "/v1/reports/vswt/export/workbook": {
+      "get": {
+        "tags": [
+          "vswt"
+        ],
+        "summary": "Export Vswt Workbook",
+        "description": "Every uploaded week for every shop as one Excel workbook: a contents tab linking to a tab\nper shop, region totals by week, and a flat all-data tab for filtering and pivots.",
+        "operationId": "export_vswt_workbook_v1_reports_vswt_export_workbook_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/reports/vswt/weeks/{week_seq}": {
       "delete": {
         "tags": [

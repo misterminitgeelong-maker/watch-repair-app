@@ -348,7 +348,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Total-Count"],
+    # Content-Disposition carries download filenames (e.g. the VSWT all-weeks workbook).
+    expose_headers=["X-Total-Count", "Content-Disposition"],
 )
 
 

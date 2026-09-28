@@ -1511,6 +1511,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reports/vswt/export/workbook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Vswt Workbook
+         * @description Every uploaded week for every shop as one Excel workbook: a contents tab linking to a tab
+         *     per shop, region totals by week, and a flat all-data tab for filtering and pivots.
+         */
+        get: operations["export_vswt_workbook_v1_reports_vswt_export_workbook_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/reports/vswt/weeks/{week_seq}": {
         parameters: {
             query?: never;
@@ -15918,6 +15939,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_vswt_workbook_v1_reports_vswt_export_workbook_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

@@ -11,7 +11,7 @@ from sqlmodel import Session
 from app.database import engine
 from app.models import Tenant, VswtWeeklyShopMetric
 from app.routes.vswt_reports import _average, _parse_vswt_workbook, _peer_rows, _rank_of
-from app.vswt_kpis import COLUMN_MAP
+from app.vswt_kpis import COLUMN_MAP, KPI_DEFS
 
 
 # ── Workbook builder (mirrors the real VSWT-WSS Summary sheet layout) ──────────────────────
@@ -910,3 +910,78 @@ def test_weekly_regional_email_preference_round_trips(vswt_client):
     assert updated.status_code == 200, updated.text
     assert updated.json()["enabled"] is True
     assert vswt_client.get("/v1/reports/vswt/email-preference", headers=headers).json()["enabled"] is True
+
+
+# ── All-weeks Excel workbook ─────────────────────────────────────────────────────────────
+
+def _wb_metric(week, shop_number, shop_name, sales_ty, **extra) -> VswtWeeklyShopMetric:
+    return VswtWeeklyShopMetric(week_seq=week, shop_number=shop_number, shop_name=shop_name,
+                                area_name="VIC SOUTH", store_format="FR", comp_status="Comp",
+                                sales_ty=sales_ty, **extra)
+
+
+def test_all_weeks_workbook_has_contents_network_all_data_and_a_tab_per_shop():
+    from app.vswt_workbook import build_all_weeks_workbook
+
+    rows = [
+        _wb_metric(40, "3269", "Chadstone", 50000, sales_ly=40000, jobs_ty=100),
+        _wb_metric(41, "3269", "Chadstone", 60000, sales_ly=50000, jobs_ty=120),
+        _wb_metric(41, "3904", "Doncaster/Box Hill", 70000, sales_ly=None, jobs_ty=150),
+    ]
+    ranks = {(40, "3269"): 1, (41, "3904"): 1, (41, "3269"): 2}
+    wb = openpyxl.load_workbook(io.BytesIO(build_all_weeks_workbook(rows, ranks)))
+
+    # "/" is not allowed in a sheet name, so it is replaced rather than breaking the file.
+    assert wb.sheetnames == ["Contents", "Network by week", "All data", "3269 Chadstone", "3904 Doncaster Box Hill"]
+
+    contents = wb["Contents"]
+    assert "Week 40 to week 41" in contents["A2"].value
+    assert contents["A8"].value == "3269"
+    assert contents["B8"].value == "Chadstone"
+    assert contents["B8"].hyperlink.location == "'3269 Chadstone'!A1"
+    assert contents["F8"].value == 2  # weeks on file
+    assert contents["I8"].value == 110000  # total sales
+
+    network = wb["Network by week"]
+    assert [c.value for c in network[4]][:3] == [41, 2, 130000]
+    # Only shops reporting both years count towards the LY change: 60000 / 50000 - 1.
+    assert network["E4"].value == pytest.approx(0.2)
+
+    all_data = wb["All data"]
+    assert all_data.max_row == 2 + len(rows)
+    assert [all_data["A3"].value, all_data["B3"].value, all_data["H3"].value] == [40, "3269", 1]
+
+    shop = wb["3269 Chadstone"]
+    assert shop["A1"].value == "3269 · Chadstone"
+    assert [shop["A6"].value, shop["A7"].value] == [40, 41]
+    assert shop["A8"].value == "Total"
+    sales_col = 4 + [k.key for k in KPI_DEFS].index("sales_ty")
+    assert shop.cell(row=8, column=sales_col).value == 110000
+    assert shop.cell(row=9, column=sales_col).value == 55000
+
+
+def test_all_weeks_workbook_endpoint(vswt_client):
+    headers, tenant_id = _bootstrap(vswt_client, "vswt-workbook", "owner-wb@test.com")
+    _set_shop_number(tenant_id, "3269")
+    for week, sales in ((95, 50000), (96, 55000)):
+        raw = _build_workbook(week, [_shop_row(3269, "Chadstone", sales), _shop_row(3904, "Doncaster", 70000)])
+        up = vswt_client.post("/v1/reports/vswt/upload", headers=headers,
+                              files=[("files", (f"VSWT-WSS__{week}.xlsx", raw, "application/octet-stream"))])
+        b = up.json()["batch"][0]
+        vswt_client.post("/v1/reports/vswt/commit", headers=headers,
+                         json={"batch": [{"filename": b["filename"], "week_number": week, "rows": b["rows"]}]})
+
+    res = vswt_client.get("/v1/reports/vswt/export/workbook", headers=headers)
+    assert res.status_code == 200, res.text
+    assert res.headers["content-type"].startswith("application/vnd.openxmlformats")
+    assert "attachment" in res.headers["content-disposition"]
+    wb = openpyxl.load_workbook(io.BytesIO(res.content))
+    assert {"Contents", "Network by week", "All data", "3269 Chadstone", "3904 Doncaster"} <= set(wb.sheetnames)
+    weeks = [c.value for c in wb["3269 Chadstone"]["A"][5:] if isinstance(c.value, int)]
+    assert {95, 96} <= set(weeks)
+
+
+def test_all_weeks_workbook_requires_linked_shop(vswt_client):
+    headers, _tid = _bootstrap(vswt_client, "vswt-workbook-noshop", "owner-wbns@test.com")
+    res = vswt_client.get("/v1/reports/vswt/export/workbook", headers=headers)
+    assert res.status_code == 403

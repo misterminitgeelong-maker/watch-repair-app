@@ -4516,6 +4516,10 @@ export interface VswtWeekSummary {
 export const getVswtWeeks = () => api.get<{ weeks: VswtWeekSummary[] }>('/reports/vswt/weeks')
 export const getVswtExportCsv = (params: { week?: number; shop_number?: string } = {}) =>
   api.get<Blob>('/reports/vswt/export', { params, responseType: 'blob' })
+/** Every week for every shop as one .xlsx (contents tab linking to a tab per shop). A full year
+ * of the whole network takes a few seconds to build, so it gets a longer timeout than the default. */
+export const getVswtAllWeeksWorkbook = () =>
+  api.get<Blob>('/reports/vswt/export/workbook', { responseType: 'blob', timeout: 180000 })
 export const deleteVswtWeek = (week: number) => api.delete<{ deleted_week: number }>(`/reports/vswt/weeks/${week}`)
 
 export interface VswtUploadBatchItem {
