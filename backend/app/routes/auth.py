@@ -855,12 +855,31 @@ def dev_auto_login(request: Request, response: Response, session: Session = Depe
 @limiter.limit(auth_limit)
 def refresh_tokens(request: Request, response: Response, payload: RefreshRequest, session: Session = Depends(unscoped_session)):
     try:
+        return _refresh_tokens_impl(request, response, payload, session)
+    except HTTPException as exc:
+        # Say why a refresh failed. Everyone being signed out mid-shift shows up
+        # only as "401" otherwise. No token material is logged.
+        logger.warning(
+            "auth.refresh_failed status=%s detail=%r cookie=%s body_token=%s",
+            exc.status_code,
+            exc.detail,
+            bool(request.cookies.get(REFRESH_COOKIE_NAME)),
+            bool((payload.refresh_token or "").strip()),
+        )
+        raise
+
+
+def _refresh_tokens_impl(request: Request, response: Response, payload: RefreshRequest, session: Session):
+    try:
         presented = presented_refresh_token(request, payload.refresh_token)
         if not presented:
             raise ValueError("no refresh token")
         claims = decode_refresh_token(presented)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    except ValueError as exc:
+        # Name the underlying failure (missing, bad signature, expired) so the
+        # refresh_failed log line can tell them apart.
+        cause = type(exc.__cause__).__name__ if exc.__cause__ is not None else str(exc)
+        raise HTTPException(status_code=401, detail=f"Invalid or expired refresh token ({cause})") from exc
     tenant_id = claims.tenant_id
     user_id = claims.user_id
 

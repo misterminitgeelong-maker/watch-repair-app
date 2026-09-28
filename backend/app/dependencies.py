@@ -1,3 +1,4 @@
+import logging
 import hashlib
 import time
 from dataclasses import dataclass
@@ -299,9 +300,16 @@ def _resolve_auth_context(
         )
 
         return ctx
-    except HTTPException:
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            logging.getLogger("mainspring.auth").warning(
+                "auth.access_rejected detail=%r path=%s", exc.detail, request.url.path
+            )
         raise
     except Exception as exc:
+        logging.getLogger("mainspring.auth").warning(
+            "auth.access_rejected detail=%r path=%s", type(exc).__name__, request.url.path
+        )
         raise HTTPException(status_code=401, detail="Invalid token") from exc
 
 
