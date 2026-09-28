@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Search, Link2, Copy, Check, History, Sparkles } from 'lucide-react'
+import {
+  ArrowRight,
+  Bell,
+  Bookmark,
+  Check,
+  Copy,
+  History,
+  Loader2,
+  Mail,
+  MailCheck,
+  Phone,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react'
 import {
   createPortalSession,
   getPortalSession,
@@ -8,34 +21,21 @@ import {
   type CustomerPortalLookupResponse,
   type CustomerPortalShop,
 } from '@/lib/api'
+import { portalJobStage } from '@/lib/portalStatus'
 import { CustomerPortalJobCard, PortalEmptyState } from '@/components/CustomerPortalJobCard'
+import {
+  PortalBody,
+  PortalHero,
+  PortalLoading,
+  PortalPage,
+  Segmented,
+  Switch,
+} from '@/components/portal/PortalChrome'
+import { greeting } from '@/components/portal/portalUtils'
 
-function ViewToggle({ mode, onChange }: { mode: 'active' | 'history'; onChange: (m: 'active' | 'history') => void }) {
-  return (
-    <div
-      className="flex rounded-xl p-1 gap-1"
-      style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-    >
-      {(['active', 'history'] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => onChange(m)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors"
-          style={{
-            backgroundColor: mode === m ? 'var(--ms-accent)' : 'transparent',
-            color: mode === m ? '#fff' : 'var(--ms-text-muted)',
-          }}
-        >
-          {m === 'history' ? <History size={13} /> : <Sparkles size={13} />}
-          {m === 'active' ? 'Active' : 'History'}
-        </button>
-      ))}
-    </div>
-  )
-}
+type ViewMode = 'active' | 'history'
 
-function BookmarkBanner({ sessionToken }: { email: string; sessionToken: string; emailSent?: boolean }) {
+function BookmarkBanner({ sessionToken }: { sessionToken: string }) {
   const [copied, setCopied] = useState(false)
   const url = `${window.location.origin}/customer-portal/s/${sessionToken}`
 
@@ -47,29 +47,32 @@ function BookmarkBanner({ sessionToken }: { email: string; sessionToken: string;
   }
 
   return (
-    <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-      <div className="flex items-start gap-3">
-        <Link2 size={18} style={{ color: 'var(--ms-accent)', flexShrink: 0, marginTop: 2 }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Bookmark this page</p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-            We emailed you this link — valid for 30 days. You can also copy it below.
-          </p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs truncate flex-1 font-mono" style={{ color: 'var(--ms-text-mid)' }}>{url}</span>
-            <button
-              type="button"
-              onClick={copy}
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg shrink-0"
-              style={{
-                backgroundColor: copied ? 'rgba(31,109,76,0.12)' : 'var(--ms-bg)',
-                color: copied ? '#1F6D4C' : 'var(--ms-accent)',
-                border: '1px solid var(--ms-border-strong)',
-              }}
-            >
-              {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-            </button>
-          </div>
+    <div className="pt-card pt-card-pad" style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+      <span
+        style={{
+          width: 38, height: 38, borderRadius: 12, display: 'grid', placeItems: 'center', flexShrink: 0,
+          background: 'color-mix(in srgb, var(--pt-brass) 14%, transparent)', color: 'var(--pt-brass)',
+        }}
+      >
+        <Bookmark size={17} />
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Keep this page handy</p>
+        <p className="pt-muted" style={{ fontSize: 13, margin: '3px 0 0' }}>
+          We emailed you this link — it works for 30 days. Bookmark it or copy it below.
+        </p>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '6px 6px 6px 12px',
+            borderRadius: 12, background: 'var(--pt-card-alt)', border: '1px solid var(--pt-line)',
+          }}
+        >
+          <span className="pt-mono pt-muted" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {url}
+          </span>
+          <button type="button" onClick={copy} className={copied ? 'pt-btn pt-btn--sm' : 'pt-btn-ghost'} style={{ flexShrink: 0 }}>
+            {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+          </button>
         </div>
       </div>
     </div>
@@ -80,54 +83,72 @@ function ShopSection({
   shop,
   sessionToken,
   onRefresh,
+  showHeader,
+  startIndex,
 }: {
   shop: CustomerPortalShop
   sessionToken?: string | null
   onRefresh?: () => void
+  showHeader: boolean
+  startIndex: number
 }) {
+  const jobs = shop.jobs ?? []
+  const phone = shop.shop_phone?.trim()
+  const email = shop.shop_email?.trim()
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-3">
-        {shop.logo_url ? (
-          <img
-            src={shop.logo_url}
-            alt=""
-            className="w-10 h-10 rounded-lg object-contain shrink-0"
-            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}
-          />
-        ) : (
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold"
-            style={{
-              backgroundColor: shop.brand_color ? `${shop.brand_color}18` : 'var(--ms-surface)',
-              color: shop.brand_color || 'var(--ms-accent)',
-              border: `1px solid ${shop.brand_color ? `${shop.brand_color}44` : 'var(--ms-border)'}`,
-            }}
-          >
-            {shop.shop_name.charAt(0).toUpperCase()}
+    <section className="pt-stack" aria-label={shop.shop_name}>
+      {showHeader && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 4px 0' }}>
+          {shop.logo_url ? (
+            <img
+              src={shop.logo_url}
+              alt=""
+              style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'contain', background: 'var(--pt-card)', border: '1px solid var(--pt-line)', flexShrink: 0 }}
+            />
+          ) : (
+            <span
+              className="pt-serif"
+              style={{
+                width: 40, height: 40, borderRadius: 12, display: 'grid', placeItems: 'center', flexShrink: 0, fontSize: 20,
+                background: 'var(--pt-ink)', color: '#D9BD8C',
+              }}
+            >
+              {shop.shop_name.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 className="pt-serif" style={{ fontSize: 22, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {shop.shop_name}
+            </h2>
+            <p className="pt-label" style={{ margin: '2px 0 0' }}>
+              {jobs.length} repair{jobs.length !== 1 ? 's' : ''}
+            </p>
           </div>
-        )}
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold truncate" style={{ color: 'var(--ms-text)' }}>{shop.shop_name}</h2>
-          <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-            {(shop.jobs ?? []).length} repair{(shop.jobs ?? []).length !== 1 ? 's' : ''}
-          </p>
+          {phone && (
+            <a href={`tel:${phone}`} className="pt-btn-ghost" aria-label={`Call ${shop.shop_name}`} style={{ padding: 9 }}>
+              <Phone size={14} />
+            </a>
+          )}
+          {email && (
+            <a href={`mailto:${email}`} className="pt-btn-ghost" aria-label={`Email ${shop.shop_name}`} style={{ padding: 9 }}>
+              <Mail size={14} />
+            </a>
+          )}
         </div>
-      </div>
-      {(shop.jobs ?? []).length === 0 ? (
+      )}
+      {jobs.length === 0 ? (
         <PortalEmptyState shop={shop} />
       ) : (
-        <div className="space-y-2">
-          {(shop.jobs ?? []).map((job) => (
-            <CustomerPortalJobCard
-              key={`${job.type}-${job.job_number}`}
-              job={job}
-              shop={shop}
-              sessionToken={sessionToken}
-              onRefresh={onRefresh}
-            />
-          ))}
-        </div>
+        jobs.map((job, i) => (
+          <CustomerPortalJobCard
+            key={`${job.type}-${job.job_number}`}
+            job={job}
+            shop={shop}
+            sessionToken={sessionToken}
+            onRefresh={onRefresh}
+            index={startIndex + i}
+          />
+        ))
       )}
     </section>
   )
@@ -155,87 +176,67 @@ function PortalNotifyPrefs({
   }
 
   return (
-    <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-      <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Status notifications</p>
-      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--ms-text)' }}>
-        <input type="checkbox" checked={emailOn} onChange={e => { setEmailOn(e.target.checked); save({ status_notify_email: e.target.checked }) }} />
-        Email me when job status changes
-      </label>
-      <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--ms-text)' }}>
-        <input type="checkbox" checked={smsOn} onChange={e => { setSmsOn(e.target.checked); save({ status_notify_sms: e.target.checked }) }} />
-        SMS me when job status changes
-      </label>
-    </div>
-  )
-}
-
-function PortalResults({
-  data,
-  email,
-  sessionToken,
-  viewMode,
-  onViewModeChange,
-  onRefresh,
-  loading,
-}: {
-  data: CustomerPortalLookupResponse
-  email: string
-  sessionToken?: string | null
-  viewMode: 'active' | 'history'
-  onViewModeChange: (m: 'active' | 'history') => void
-  onRefresh?: () => void
-  loading?: boolean
-}) {
-  const totalJobs = (data.shops ?? []).reduce((n, s) => n + (s.jobs ?? []).length, 0)
-  const firstShop = (data.shops ?? [])[0] ?? null
-
-  return (
-    <div className="space-y-5">
-      <ViewToggle mode={viewMode} onChange={onViewModeChange} />
-
-      {loading && (
-        <p className="text-center text-sm" style={{ color: 'var(--ms-text-muted)' }}>Updating…</p>
-      )}
-
-      {totalJobs === 0 ? (
-        <PortalEmptyState shop={firstShop} />
-      ) : (
-        (data.shops ?? []).map((shop) => (
-          <ShopSection key={shop.tenant_id} shop={shop} sessionToken={sessionToken} onRefresh={onRefresh} />
-        ))
-      )}
-
-      {sessionToken && (
-        <PortalNotifyPrefs
-          sessionToken={sessionToken}
-          initialEmail={data.status_notify_email ?? undefined}
-          initialSms={data.status_notify_sms ?? undefined}
-        />
-      )}
-      {sessionToken && viewMode === 'active' && totalJobs > 0 && (
-        <BookmarkBanner email={email} sessionToken={sessionToken} />
-      )}
-    </div>
-  )
-}
-
-function PortalShell({ children, subtitle }: { children: React.ReactNode; subtitle?: string }) {
-  return (
-    <div className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
-      <div className="max-w-lg mx-auto space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--ms-text)' }}>My Repairs</h1>
-          {subtitle && <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>{subtitle}</p>}
+    <div className="pt-card pt-card-pad">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <Bell size={15} style={{ color: 'var(--pt-brass)' }} />
+        <p className="pt-label" style={{ margin: 0 }}>Keep me posted</p>
+      </div>
+      <div className="pt-switch-row">
+        <div>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Email updates</p>
+          <p className="pt-muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>When a repair moves to its next stage</p>
         </div>
-        {children}
+        <Switch
+          label="Email me when job status changes"
+          checked={emailOn}
+          onChange={(v) => { setEmailOn(v); save({ status_notify_email: v }) }}
+        />
+      </div>
+      <div className="pt-switch-row">
+        <div>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Text messages</p>
+          <p className="pt-muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>An SMS for the same updates</p>
+        </div>
+        <Switch
+          label="SMS me when job status changes"
+          checked={smsOn}
+          onChange={(v) => { setSmsOn(v); save({ status_notify_sms: v }) }}
+        />
       </div>
     </div>
   )
 }
 
+function summarize(data: CustomerPortalLookupResponse) {
+  let workshop = 0
+  let ready = 0
+  let waiting = 0
+  let total = 0
+  for (const shop of data.shops ?? []) {
+    for (const job of shop.jobs ?? []) {
+      total += 1
+      const stage = portalJobStage(job.type, job.status)
+      if (stage === 'ready') ready += 1
+      else if (stage === 'in_progress' || stage === 'received') workshop += 1
+      if ((job.pending_actions ?? []).some((a) => a.kind !== 'job_receipt' && a.kind !== 'auto_key_invoice_receipt')) {
+        waiting += 1
+      }
+    }
+  }
+  return { workshop, ready, waiting, total }
+}
+
+function headline(s: ReturnType<typeof summarize>, mode: ViewMode) {
+  if (mode === 'history') return <>Every repair, <em>on record.</em></>
+  if (s.waiting > 0) return <>We need a quick <em>yes</em> from you.</>
+  if (s.ready > 0) return <>Something’s <em>ready</em> for you.</>
+  if (s.total > 0) return <>Your repairs, <em>in good hands.</em></>
+  return <>All quiet <em>on the bench.</em></>
+}
+
 function SessionView({ token }: { token: string }) {
   const [data, setData] = useState<CustomerPortalLookupResponse | null>(null)
-  const [viewMode, setViewMode] = useState<'active' | 'history'>('active')
+  const [viewMode, setViewMode] = useState<ViewMode>('active')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -254,38 +255,120 @@ function SessionView({ token }: { token: string }) {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
-        <div className="max-w-md text-center space-y-3">
-          <p className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>Link expired</p>
-          <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>{error}</p>
-          <Link to="/customer-portal" className="text-sm font-medium" style={{ color: 'var(--ms-accent)' }}>
-            Enter your email again →
-          </Link>
-        </div>
-      </div>
+      <PortalPage>
+        <PortalHero
+          eyebrow="Link expired"
+          title={<>This link has <em>wound down.</em></>}
+          lede={error}
+        >
+          <div style={{ marginTop: 24 }}>
+            <Link to="/customer-portal" className="pt-btn">
+              Send me a fresh link <ArrowRight size={15} />
+            </Link>
+          </div>
+        </PortalHero>
+      </PortalPage>
     )
   }
 
-  if (data === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Loading your repairs…</p>
-      </div>
-    )
-  }
+  if (data === null) return <PortalLoading label="Winding up your repairs…" />
+
+  const shops = data.shops ?? []
+  const summary = summarize(data)
+  const onlyShop = shops.length === 1 ? shops[0] : null
+  let running = 0
 
   return (
-    <PortalShell subtitle={data.email ?? undefined}>
-      <PortalResults
-        data={data}
-        email={data.email || ''}
-        sessionToken={token}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onRefresh={load}
-        loading={loading}
-      />
-    </PortalShell>
+    <PortalPage accent={onlyShop?.brand_color}>
+      <PortalHero
+        brand={{ name: onlyShop?.shop_name, logoUrl: onlyShop?.logo_url }}
+        barRight={
+          <button
+            type="button"
+            className="pt-btn-ghost pt-btn-ghost--on-ink"
+            onClick={load}
+            disabled={loading}
+            aria-label="Refresh"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          </button>
+        }
+        eyebrow={greeting()}
+        title={headline(summary, viewMode)}
+        lede={data.email ? <>Signed in as <span style={{ color: 'var(--pt-on-ink)' }}>{data.email}</span></> : undefined}
+      >
+        {viewMode === 'active' && summary.total > 0 && (
+          <div className="pt-stats pt-rise" style={{ animationDelay: '0.2s' }}>
+            {summary.workshop > 0 && (
+              <span className="pt-stat">
+                <span className="pt-stat-dot" style={{ color: 'var(--pt-accent)' }} />
+                <b>{summary.workshop}</b> in the workshop
+              </span>
+            )}
+            {summary.ready > 0 && (
+              <span className="pt-stat">
+                <Sparkles size={13} style={{ color: '#D9BD8C' }} />
+                <b>{summary.ready}</b> ready to collect
+              </span>
+            )}
+            {summary.waiting > 0 && (
+              <span className="pt-stat">
+                <span className="pt-stat-dot" style={{ color: '#E4B45E' }} />
+                <b>{summary.waiting}</b> waiting on you
+              </span>
+            )}
+          </div>
+        )}
+      </PortalHero>
+
+      <PortalBody>
+        <Segmented<ViewMode>
+          label="Which repairs to show"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: 'active', label: 'Current', icon: <Sparkles size={14} /> },
+            { value: 'history', label: 'History', icon: <History size={14} /> },
+          ]}
+        />
+
+        {summary.total === 0 ? (
+          <PortalEmptyState shop={shops[0] ?? null} />
+        ) : (
+          shops.map((shop) => {
+            const start = running
+            running += (shop.jobs ?? []).length
+            return (
+              <ShopSection
+                key={shop.tenant_id}
+                shop={shop}
+                sessionToken={token}
+                onRefresh={load}
+                showHeader={shops.length > 1 || !!shop.shop_phone || !!shop.shop_email}
+                startIndex={start}
+              />
+            )
+          })
+        )}
+
+        <PortalNotifyPrefs
+          sessionToken={token}
+          initialEmail={data.status_notify_email ?? undefined}
+          initialSms={data.status_notify_sms ?? undefined}
+        />
+        {viewMode === 'active' && summary.total > 0 && <BookmarkBanner sessionToken={token} />}
+
+        <PortalFooter />
+      </PortalBody>
+    </PortalPage>
+  )
+}
+
+function PortalFooter() {
+  return (
+    <p className="pt-label" style={{ textAlign: 'center', paddingTop: 16, opacity: 0.8 }}>
+      Crafted with care · Mainspring
+    </p>
   )
 }
 
@@ -316,57 +399,74 @@ function CustomerPortalLookupPage() {
   }
 
   return (
-    <div className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
-      <div className="max-w-lg mx-auto space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--ms-text)' }}>
-            Track Your Repairs
-          </h1>
-          <p style={{ color: 'var(--ms-text-muted)' }}>
-            Enter your email and we'll send you a private link to your repairs at every shop you use.
-          </p>
+    <PortalPage>
+      <PortalHero
+        eyebrow="Repair tracking"
+        title={<>Where’s my <em>repair?</em></>}
+        lede="Enter your email and we’ll send you a private link to every repair, at every shop you use."
+      />
+      <PortalBody>
+        {sentTo ? (
+          <div role="status" className="pt-card pt-card-pad pt-rise" style={{ textAlign: 'center', padding: '36px 24px' }}>
+            <span
+              className="pt-pop"
+              style={{
+                width: 64, height: 64, borderRadius: 999, display: 'inline-grid', placeItems: 'center',
+                background: 'var(--pt-ok-soft)', color: 'var(--pt-ok)',
+              }}
+            >
+              <MailCheck size={28} />
+            </span>
+            <p className="pt-serif" style={{ fontSize: 28, margin: '16px 0 0' }}>Check your inbox</p>
+            <p className="pt-muted" style={{ fontSize: 14, margin: '8px auto 0', maxWidth: 360, lineHeight: 1.55 }}>
+              If we have repairs for <strong style={{ color: 'var(--pt-text)' }}>{sentTo}</strong>, a link to them is on
+              its way. It works for 30 days — bookmark it once it arrives.
+            </p>
+            <button type="button" className="pt-link" style={{ marginTop: 18 }} onClick={() => setSentTo(null)}>
+              Use a different email
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="pt-card pt-card-pad pt-rise" style={{ padding: 24 }}>
+            <label className="pt-field">
+              <span>Email address</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+                className="pt-input"
+              />
+            </label>
+            <button type="submit" disabled={loading} className="pt-btn pt-btn--block" style={{ marginTop: 14, padding: '13px 18px' }}>
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+              {loading ? 'Sending…' : 'Email me my link'}
+            </button>
+            {error && <p className="pt-flash pt-flash--err" style={{ marginTop: 12, justifyContent: 'center', width: '100%' }}>{error}</p>}
+            <p className="pt-muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '14px 0 0' }}>
+              No password needed. Your link is private to you.
+            </p>
+          </form>
+        )}
+
+        <div className="pt-rise" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, animationDelay: '0.15s' }}>
+          {[
+            { k: 'Live status', v: 'From bench to ready' },
+            { k: 'Approve quotes', v: 'In one tap' },
+            { k: 'Message the shop', v: 'Right from the job' },
+          ].map((f) => (
+            <div key={f.k} className="pt-card" style={{ padding: '14px 12px', textAlign: 'center' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>{f.k}</p>
+              <p className="pt-muted" style={{ fontSize: 11.5, margin: '3px 0 0' }}>{f.v}</p>
+            </div>
+          ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required
-            className="w-full px-4 py-3 rounded-xl text-sm"
-            style={{
-              backgroundColor: 'var(--ms-surface)',
-              border: '1px solid var(--ms-border-strong)',
-              color: 'var(--ms-text)',
-              outline: 'none',
-            }}
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-opacity"
-            style={{ backgroundColor: 'var(--ms-accent)', color: '#fff', opacity: loading ? 0.7 : 1 }}
-          >
-            <Search size={15} />
-            {loading ? 'Sending…' : 'Email me my link'}
-          </button>
-        </form>
-
-        {error && <p className="text-sm text-center" style={{ color: 'var(--ms-error)' }}>{error}</p>}
-
-        {sentTo && (
-          <div
-            role="status"
-            className="rounded-xl p-4 text-sm text-center"
-            style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}
-          >
-            If we have repairs for <strong>{sentTo}</strong>, a link to them is on its way. It works for 30 days —
-            bookmark it once it arrives.
-          </div>
-        )}
-      </div>
-    </div>
+        <PortalFooter />
+      </PortalBody>
+    </PortalPage>
   )
 }
 

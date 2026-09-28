@@ -1,41 +1,135 @@
+import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Clock } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Mail, MapPin, MessageSquareQuote, Phone } from 'lucide-react'
 import {
   getPublicAutoKeyJobStatus,
   getPublicJobStatus,
   getPublicShoeJobStatus,
 } from '@/lib/api'
-import { CustomerPortalJobCard } from '@/components/CustomerPortalJobCard'
-import { portalJobStatusLabel } from '@/lib/portalStatus'
+import { CustomerPortalJobCard, StatusPill } from '@/components/CustomerPortalJobCard'
+import {
+  PortalBody,
+  PortalHero,
+  PortalLoading,
+  PortalPage,
+  StageRing,
+  StageStepper,
+} from '@/components/portal/PortalChrome'
+import { jobIcon, jobTypeLabel, STAGE_COPY } from '@/components/portal/portalUtils'
+import { portalJobStage, portalJobStatusLabel } from '@/lib/portalStatus'
 import { formatDate } from '@/lib/utils'
+import { clsx } from 'clsx'
+
+type JobType = 'watch' | 'shoe' | 'auto_key'
+
+function BackLink({ to }: { to: string }) {
+  return (
+    <Link to={to} className="pt-link pt-link--on-ink">
+      <ArrowLeft size={14} /> My repairs
+    </Link>
+  )
+}
 
 function DetailShell({
+  eyebrow,
   title,
   subtitle,
   backTo,
+  shopName,
   children,
 }: {
-  title: string
-  subtitle?: string
+  eyebrow?: ReactNode
+  title: ReactNode
+  subtitle?: ReactNode
   backTo: string
-  children: React.ReactNode
+  shopName?: string | null
+  children?: ReactNode
 }) {
   return (
-    <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
-      <div className="max-w-lg mx-auto space-y-4">
-        <Link
-          to={backTo}
-          className="inline-flex items-center gap-1.5 text-sm font-medium"
-          style={{ color: 'var(--ms-accent)', textDecoration: 'none' }}
-        >
-          <ArrowLeft size={14} /> Back to my repairs
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>{title}</h1>
-          {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>{subtitle}</p>}
+    <PortalPage>
+      <PortalHero
+        brand={{ name: shopName }}
+        barRight={<BackLink to={backTo} />}
+        eyebrow={eyebrow}
+        title={title}
+        lede={subtitle}
+        showDial={false}
+      />
+      <PortalBody>{children}</PortalBody>
+    </PortalPage>
+  )
+}
+
+/** The big status card at the top of a job's page: ring, pill, stepper. */
+function StatusHero({ type, status }: { type: JobType; status: string }) {
+  const stage = portalJobStage(type, status)
+  const Icon = jobIcon(type)
+  return (
+    <section className="pt-card pt-rise" style={{ overflow: 'hidden' }}>
+      <div className="pt-card-pad" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <StageRing stage={stage} size={92}>
+          <Icon size={28} strokeWidth={1.5} />
+        </StageRing>
+        <div style={{ minWidth: 0 }}>
+          <p className="pt-label" style={{ margin: 0 }}>Where it’s at</p>
+          <p className="pt-serif" style={{ fontSize: 30, lineHeight: 1.05, margin: '6px 0 8px' }}>{STAGE_COPY[stage]}</p>
+          <StatusPill stage={stage} label={portalJobStatusLabel(type, status)} />
         </div>
-        {children}
+      </div>
+      <div style={{ padding: '4px 20px 20px' }}>
+        <StageStepper stage={stage} />
+      </div>
+    </section>
+  )
+}
+
+function ShopNote({ note, at }: { note?: string | null; at?: string | null }) {
+  if (!note?.trim()) return null
+  return (
+    <div className="pt-callout pt-callout--note pt-rise" style={{ animationDelay: '0.08s', padding: 18 }}>
+      <MessageSquareQuote size={18} className="pt-callout-icon" />
+      <div>
+        <p className="pt-label" style={{ margin: 0 }}>A note from the shop{at ? ` · ${formatDate(at)}` : ''}</p>
+        <p className="pt-quote">“{note.trim()}”</p>
+      </div>
+    </div>
+  )
+}
+
+function FactRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 0' }}>
+      <span style={{ color: 'var(--pt-brass)', marginTop: 2, flexShrink: 0 }}>{icon}</span>
+      <div style={{ minWidth: 0 }}>
+        <p className="pt-label" style={{ margin: 0 }}>{label}</p>
+        <div style={{ fontSize: 14.5, marginTop: 3, color: 'var(--pt-text)' }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function ShopContact({
+  name,
+  phone,
+  email,
+}: {
+  name?: string | null
+  phone?: string | null
+  email?: string | null
+}) {
+  const p = phone?.trim()
+  const e = email?.trim()
+  if (!p && !e) return null
+  return (
+    <div className="pt-card pt-card-pad pt-rise" style={{ animationDelay: '0.2s' }}>
+      <p className="pt-label" style={{ margin: 0 }}>Questions?</p>
+      <p className="pt-serif" style={{ fontSize: 22, margin: '4px 0 14px' }}>
+        {name ? <>Talk to {name}</> : 'Talk to the shop'}
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {p && <a href={`tel:${p}`} className="pt-btn pt-btn--sm"><Phone size={13} /> {p}</a>}
+        {e && <a href={`mailto:${e}`} className="pt-btn-ghost"><Mail size={13} /> Email</a>}
       </div>
     </div>
   )
@@ -49,23 +143,43 @@ function HistoryTimeline({
   history: Array<{ old_status?: string | null; new_status: string; change_note?: string | null; created_at: string }>
 }) {
   if (!history.length) return null
+  // Newest first: the top of the list is where the job is now.
+  const entries = [...history].sort((a, b) => b.created_at.localeCompare(a.created_at))
   return (
-    <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Timeline</p>
-      {history.map((entry, idx) => (
-        <div key={idx} className="flex gap-3 text-sm">
-          <span className="shrink-0 text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)', minWidth: 72 }}>
-            {formatDate(entry.created_at)}
-          </span>
-          <div>
-            <p style={{ color: 'var(--ms-text)' }}>{portalJobStatusLabel(jobType, entry.new_status)}</p>
-            {entry.change_note && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{entry.change_note}</p>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
+    <section className="pt-card pt-card-pad pt-rise" style={{ animationDelay: '0.12s' }}>
+      <p className="pt-label" style={{ margin: '0 0 16px' }}>The journey so far</p>
+      <ol className="pt-timeline">
+        {entries.map((entry, idx) => (
+          <li
+            key={`${entry.created_at}-${idx}`}
+            className={clsx('pt-tl-item', idx === 0 && 'pt-tl-item--latest')}
+            style={{ animationDelay: `${0.15 + Math.min(idx, 8) * 0.05}s` }}
+          >
+            <span className="pt-tl-dot" />
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 14.5, fontWeight: idx === 0 ? 700 : 500, color: idx === 0 ? 'var(--pt-text)' : 'var(--pt-text-mid)' }}>
+                {portalJobStatusLabel(jobType, entry.new_status)}
+              </p>
+              <p className="pt-muted" style={{ margin: '2px 0 0', fontSize: 12 }}>{formatDate(entry.created_at)}</p>
+              {entry.change_note && (
+                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--pt-text-mid)' }}>{entry.change_note}</p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
+function NotFound({ backTo }: { backTo: string }) {
+  return (
+    <DetailShell
+      eyebrow="Job not found"
+      title={<>We couldn’t find <em>that repair.</em></>}
+      subtitle="This link may have expired. Head back to your repairs, or contact the shop for a fresh link."
+      backTo={backTo}
+    />
   )
 }
 
@@ -75,31 +189,29 @@ function WatchJobDetail({ token, backTo }: { token: string; backTo: string }) {
     queryFn: () => getPublicJobStatus(token).then((r) => r.data),
   })
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
-        <Clock className="animate-spin" style={{ color: 'var(--ms-text-muted)' }} />
-      </div>
-    )
-  }
-  if (isError || !data) {
-    return (
-      <DetailShell title="Job not found" backTo={backTo}>
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>This link may have expired.</p>
-      </DetailShell>
-    )
-  }
+  if (isLoading) return <PortalLoading label="Opening the case back…" />
+  if (isError || !data) return <NotFound backTo={backTo} />
 
   const watchTitle = [data.watch?.brand, data.watch?.model].filter(Boolean).join(' ') || 'Watch repair'
   return (
-    <DetailShell title={data.title} subtitle={`#${data.job_number} · ${watchTitle}`} backTo={backTo}>
-      <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-        <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Status</p>
-        <p className="text-lg font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>
-          {portalJobStatusLabel('watch', data.status)}
-        </p>
-      </div>
+    <DetailShell
+      eyebrow={<>{jobTypeLabel('watch')} · #{data.job_number}</>}
+      title={data.title}
+      subtitle={watchTitle}
+      backTo={backTo}
+      shopName={data.shop?.name}
+    >
+      <StatusHero type="watch" status={data.status} />
+      <ShopNote note={data.customer_note} at={data.customer_note_at} />
+      {data.collection_date && (
+        <div className="pt-card pt-card-pad pt-rise" style={{ paddingTop: 8, paddingBottom: 8 }}>
+          <FactRow icon={<CalendarClock size={17} />} label="Expected ready">
+            {data.collection_date}
+          </FactRow>
+        </div>
+      )}
       <HistoryTimeline jobType="watch" history={data.history} />
+      <ShopContact name={data.shop?.name} phone={data.shop?.phone} email={data.shop?.email} />
     </DetailShell>
   )
 }
@@ -110,39 +222,37 @@ function ShoeJobDetail({ token, backTo }: { token: string; backTo: string }) {
     queryFn: () => getPublicShoeJobStatus(token).then((r) => r.data),
   })
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
-        <Clock className="animate-spin" style={{ color: 'var(--ms-text-muted)' }} />
-      </div>
-    )
-  }
-  if (isError || !data) {
-    return (
-      <DetailShell title="Job not found" backTo={backTo}>
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>This link may have expired.</p>
-      </DetailShell>
-    )
-  }
+  if (isLoading) return <PortalLoading label="Checking the workbench…" />
+  if (isError || !data) return <NotFound backTo={backTo} />
 
   const shoeTitle = [data.shoe?.brand, data.shoe?.shoe_type].filter(Boolean).join(' · ') || 'Shoe repair'
   return (
-    <DetailShell title={data.title} subtitle={`#${data.job_number} · ${shoeTitle}`} backTo={backTo}>
-      <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-        <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Status</p>
-        <p className="text-lg font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>
-          {portalJobStatusLabel('shoe', data.status)}
-        </p>
-      </div>
+    <DetailShell
+      eyebrow={<>{jobTypeLabel('shoe')} · #{data.job_number}</>}
+      title={data.title}
+      subtitle={shoeTitle}
+      backTo={backTo}
+    >
+      <StatusHero type="shoe" status={data.status} />
+      <ShopNote note={data.customer_note} at={data.customer_note_at} />
       {data.items?.length > 0 && (
-        <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Work items</p>
-          {data.items.map((item, idx) => (
-            <p key={idx} className="text-sm" style={{ color: 'var(--ms-text)' }}>
-              {item.item_name} × {item.quantity}
-            </p>
-          ))}
-        </div>
+        <section className="pt-card pt-card-pad pt-rise" style={{ animationDelay: '0.1s' }}>
+          <p className="pt-label" style={{ margin: '0 0 8px' }}>The work</p>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {data.items.map((item, idx) => (
+              <li
+                key={idx}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', fontSize: 14.5,
+                  borderTop: idx ? '1px solid var(--pt-line)' : undefined,
+                }}
+              >
+                <span>{item.item_name}</span>
+                <span className="pt-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>× {item.quantity}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <HistoryTimeline jobType="shoe" history={data.history} />
     </DetailShell>
@@ -155,20 +265,8 @@ function AutoKeyJobDetail({ token, backTo }: { token: string; backTo: string }) 
     queryFn: () => getPublicAutoKeyJobStatus(token).then((r) => r.data),
   })
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)' }}>
-        <Clock className="animate-spin" style={{ color: 'var(--ms-text-muted)' }} />
-      </div>
-    )
-  }
-  if (isError || !data) {
-    return (
-      <DetailShell title="Job not found" backTo={backTo}>
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>This link may have expired.</p>
-      </DetailShell>
-    )
-  }
+  if (isLoading) return <PortalLoading label="Finding your booking…" />
+  if (isError || !data) return <NotFound backTo={backTo} />
 
   const vehicle = [data.vehicle_make, data.vehicle_year, data.vehicle_model].filter(Boolean).join(' ')
   const shopStub = {
@@ -193,21 +291,31 @@ function AutoKeyJobDetail({ token, backTo }: { token: string; backTo: string }) 
     pending_actions: data.pending_actions,
   }
 
+  const hasFacts = !!(data.job_address || data.scheduled_at || data.description)
+
   return (
-    <DetailShell title={data.title} subtitle={`#${data.job_number} · ${data.shop_name}`} backTo={backTo}>
-      <CustomerPortalJobCard job={jobCard} shop={shopStub} />
-      <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
-        <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Status</p>
-        <p className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
-          {portalJobStatusLabel('auto_key', data.status)}
-        </p>
-        {data.job_address && (
-          <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>Location: {data.job_address}</p>
-        )}
-        {data.description && (
-          <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>{data.description}</p>
-        )}
-      </div>
+    <DetailShell
+      eyebrow={<>{jobTypeLabel('auto_key')} · #{data.job_number}</>}
+      title={data.title}
+      subtitle={vehicle || undefined}
+      backTo={backTo}
+      shopName={data.shop_name}
+    >
+      <CustomerPortalJobCard job={jobCard} shop={shopStub} linkToDetail={false} />
+      {hasFacts && (
+        <section className="pt-card pt-card-pad pt-rise" style={{ paddingTop: 8, paddingBottom: 8, animationDelay: '0.1s' }}>
+          {data.scheduled_at && (
+            <FactRow icon={<CalendarClock size={17} />} label="Booked for">{formatDate(data.scheduled_at)}</FactRow>
+          )}
+          {data.job_address && (
+            <FactRow icon={<MapPin size={17} />} label="Location">{data.job_address}</FactRow>
+          )}
+          {data.description && (
+            <FactRow icon={<MessageSquareQuote size={17} />} label="The job">{data.description}</FactRow>
+          )}
+        </section>
+      )}
+      <ShopContact name={data.shop_name} phone={data.shop_phone} email={data.shop_email} />
     </DetailShell>
   )
 }
@@ -218,9 +326,7 @@ export default function CustomerPortalJobDetailPage() {
 
   if (!statusToken || !jobType) {
     return (
-      <DetailShell title="Invalid link" backTo={backTo}>
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>Missing job reference.</p>
-      </DetailShell>
+      <DetailShell eyebrow="Invalid link" title={<>That link is <em>missing a piece.</em></>} subtitle="Missing job reference." backTo={backTo} />
     )
   }
 
@@ -229,8 +335,6 @@ export default function CustomerPortalJobDetailPage() {
   if (jobType === 'auto_key') return <AutoKeyJobDetail token={statusToken} backTo={backTo} />
 
   return (
-    <DetailShell title="Unknown job type" backTo={backTo}>
-      <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>This job type is not supported.</p>
-    </DetailShell>
+    <DetailShell eyebrow="Unknown job type" title="We can’t show this one." subtitle="This job type is not supported." backTo={backTo} />
   )
 }
