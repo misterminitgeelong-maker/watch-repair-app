@@ -31890,6 +31890,11 @@
             "title": "Has Stripe Subscription",
             "default": false
           },
+          "is_minit": {
+            "type": "boolean",
+            "title": "Is Minit",
+            "default": false
+          },
           "user_count": {
             "type": "integer",
             "title": "User Count"

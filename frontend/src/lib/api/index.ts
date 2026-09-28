@@ -1960,6 +1960,7 @@ export interface PlatformTenant {
   subscription_status?: string | null
   trial_end?: string | null
   has_stripe_subscription?: boolean
+  is_minit?: boolean
   user_count: number
   created_at: string
 }

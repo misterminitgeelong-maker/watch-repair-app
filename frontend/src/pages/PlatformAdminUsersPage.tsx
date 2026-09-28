@@ -6,6 +6,7 @@ import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, ge
 import { Card, EmptyState, Modal, Spinner } from '@/components/ui'
 import { useAdminEnterShop } from '@/lib/adminImpersonation'
 import { formatCents } from '@/lib/money'
+import { isMinitHqTenantSlug } from '@/lib/minitProduct'
 import './platformAdmin.css'
 
 type Tab = 'overview' | 'shops' | 'billing' | 'audit' | 'users' | 'reports'
@@ -249,7 +250,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     },
     onError: (err) => setAdminActionError(`Delete failed: ${getApiErrorMessage(err)}`),
   })
-  const [planModal, setPlanModal] = useState<{ tenantId: string; name: string; currentPlan: string } | null>(null)
+  const [planModal, setPlanModal] = useState<{ tenantId: string; name: string; currentPlan: string; options: string[]; minit: boolean } | null>(null)
   const [planModalValue, setPlanModalValue] = useState('')
   const [planModalReason, setPlanModalReason] = useState('')
   const [editModal, setEditModal] = useState<{ tenantId: string; name: string; slug: string } | null>(null)
@@ -306,6 +307,9 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     onError: (err) => setEditError(getApiErrorMessage(err)),
   })
   const PLAN_OPTIONS = ['basic_watch', 'basic_shoe', 'basic_auto_key', 'basic_watch_shoe', 'basic_watch_auto_key', 'basic_shoe_auto_key', 'basic_all_tabs', 'pro']
+  // Mister Minit shops only keep these; any other plan is switched back on their next sign-in.
+  const planOptionsFor = (t: { slug: string; is_minit?: boolean }) =>
+    !t.is_minit ? PLAN_OPTIONS : isMinitHqTenantSlug(t.slug) ? ['minit_hq'] : ['booking_only', 'basic_auto_key']
   function requireSlugConfirmation(shopName: string, shopSlug: string, actionLabel: string) {
     const typed = window.prompt(`Type shop slug "${shopSlug}" to ${actionLabel} ${shopName}:`, '') ?? ''
     if (typed.trim() !== shopSlug) {
@@ -428,7 +432,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                           Force Logout
                         </button>
                         <button
-                          onClick={() => { setPlanModal({ tenantId: t.id, name: t.name, currentPlan: t.plan_code }); setPlanModalValue(t.plan_code) }}
+                          onClick={() => { setPlanModal({ tenantId: t.id, name: t.name, currentPlan: t.plan_code, options: planOptionsFor(t), minit: Boolean(t.is_minit) }); setPlanModalValue(t.plan_code) }}
                           className="text-xs px-3 py-1.5 rounded-lg font-medium"
                           style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
                         >
@@ -564,8 +568,13 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
               value={planModalValue}
               onChange={e => setPlanModalValue(e.target.value)}
             >
-              {!PLAN_OPTIONS.includes(planModal.currentPlan) && <option value={planModal.currentPlan}>{formatLabel(planModal.currentPlan)} (current)</option>}{PLAN_OPTIONS.map(p => <option key={p} value={p}>{formatLabel(p)}</option>)}
+              {!planModal.options.includes(planModal.currentPlan) && <option value={planModal.currentPlan}>{formatLabel(planModal.currentPlan)} (current)</option>}{planModal.options.map(p => <option key={p} value={p}>{formatLabel(p)}</option>)}
             </select>
+            {planModal.minit && (
+              <p className="text-xs mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+                Mister Minit shop: shopfronts run on Booking Only and mobile vans on Basic Auto Key. Changing the plan does not move the shop between HQ&rsquo;s shop and van lists.
+              </p>
+            )}
             <input
               className="w-full rounded-lg px-3 py-2.5 text-sm mb-4 outline-none"
               style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text)' }}

@@ -996,6 +996,8 @@ class PlatformTenantRead(SQLModel):
     subscription_status: Optional[str] = None
     trial_end: Optional[datetime] = None
     has_stripe_subscription: bool = False
+    #: Mister Minit network shop — its plan is limited to what HQ runs on.
+    is_minit: bool = False
     user_count: int
     created_at: datetime
 

@@ -114,6 +114,20 @@ def target_plan_for_minit_tenant(tenant: Tenant) -> str | None:
     return None
 
 
+#: Plans a Minit shop can hold without being switched on its next sign-in.
+#: HQ is kept on minit_hq; ``minit_hq`` on any other shop would hand it HQ's nav.
+MINIT_SITE_PLANS: frozenset[str] = frozenset({MINIT_SHOP_PLAN, "basic_auto_key"})
+
+
+def allowed_plans_for_minit_tenant(tenant: Tenant) -> frozenset[str] | None:
+    """Plans a platform admin may set on this tenant, or None when any plan goes."""
+    if not is_minit_tenant(tenant):
+        return None
+    if _is_minit_hq_tenant(tenant):
+        return frozenset({MINIT_HQ_PLAN})
+    return MINIT_SITE_PLANS
+
+
 def effective_plan_code(tenant: Tenant) -> str:
     """Plan used for features and UI without persisting."""
     override = target_plan_for_minit_tenant(tenant)

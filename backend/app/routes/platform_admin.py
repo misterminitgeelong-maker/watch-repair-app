@@ -23,6 +23,7 @@ from ..dependencies import (
     normalize_plan_code,
     require_platform_admin,
 )
+from ..minit_branding import allowed_plans_for_minit_tenant, is_minit_tenant
 from ..models import (
     RefreshSession,
     AutoKeyJob,
@@ -124,6 +125,7 @@ def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
         subscription_status=tenant.subscription_status,
         trial_end=tenant.trial_end,
         has_stripe_subscription=bool((tenant.stripe_subscription_id or "").strip()),
+        is_minit=is_minit_tenant(tenant),
         user_count=user_count,
         created_at=tenant.created_at,
     )
@@ -182,6 +184,7 @@ def list_all_tenants(
             signup_payment_pending=t.signup_payment_pending,
             billing_exempt=t.billing_exempt,
             subscription_status=t.subscription_status,
+            is_minit=is_minit_tenant(t),
             user_count=user_counts.get(t.id, 0),
             created_at=t.created_at,
         )
@@ -297,6 +300,16 @@ def set_tenant_plan(
         # normalize_plan_code falls back to "pro" for anything unknown, so a
         # typo here used to hand the shop every feature.
         raise HTTPException(status_code=400, detail=f"Unsupported plan code '{payload.plan_code}'")
+    # A Minit shop on any other plan is quietly switched back on its next
+    # sign-in (a van set to Pro lands on booking_only and loses Mobile
+    # Services), so refuse it here instead of letting it look saved.
+    minit_plans = allowed_plans_for_minit_tenant(tenant)
+    if minit_plans is not None and requested not in minit_plans:
+        allowed = " or ".join(sorted(minit_plans))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mister Minit shops can only be on {allowed}.",
+        )
     old_plan = tenant.plan_code
     tenant.plan_code = requested
     session.add(tenant)

@@ -579,6 +579,39 @@ def test_change_plan_rejects_unknown_codes():
     assert res.status_code in (400, 422)
 
 
+def test_change_plan_keeps_minit_shops_on_plans_they_can_hold():
+    from app.models import Tenant
+
+    suffix = uuid4().hex[:8]
+    _, target = _bootstrap_and_login(f"mvan-{suffix}", f"mvan-{suffix}@test.com")
+    with Session(engine) as db:
+        tenant = db.get(Tenant, UUID(target))
+        tenant.is_minit = True
+        tenant.plan_code = "basic_auto_key"
+        db.add(tenant)
+        db.commit()
+    headers = _admin_headers(suffix)
+
+    listed = client.get("/v1/platform-admin/tenants", headers=headers).json()
+    assert next(t for t in listed if t["id"] == target)["is_minit"] is True
+
+    # Pro would be switched back to booking_only on the van's next sign-in,
+    # and minit_hq would hand a shop HQ's screens.
+    for plan in ("pro", "basic_watch", "minit_hq"):
+        res = client.patch(
+            f"/v1/platform-admin/tenants/{target}/plan", headers=headers, json={"plan_code": plan}
+        )
+        assert res.status_code == 400, (plan, res.text)
+        assert "Mister Minit" in res.json()["detail"]
+
+    ok = client.patch(
+        f"/v1/platform-admin/tenants/{target}/plan", headers=headers, json={"plan_code": "booking_only"}
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["plan_code"] == "booking_only"
+    assert ok.json()["is_minit"] is True
+
+
 def test_delete_tenant_removes_rows_the_old_table_list_missed():
     from app.models import EmailLog, MutationIdempotencyKey, ParentLinkRequest
 

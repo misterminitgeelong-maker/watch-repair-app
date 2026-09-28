@@ -68,6 +68,19 @@ describe('platform console', () => {
     prompt.mockRestore()
   })
 
+  it('offers a Mister Minit van only the plans it can keep', async () => {
+    const user = userEvent.setup()
+    vi.mocked(listPlatformTenants).mockResolvedValue({
+      data: [{ ...tenants[0], id: 'van', slug: 'minit-mobile-3904', name: 'Geelong Van', plan_code: 'basic_auto_key', is_minit: true }],
+    } as Awaited<ReturnType<typeof listPlatformTenants>>)
+    renderPage('/platform-admin/shops')
+    await user.click(await screen.findByRole('button', { name: 'Manage Geelong Van' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Change Plan' }))
+    const options = within(screen.getByLabelText('New plan')).getAllByRole('option').map(o => o.getAttribute('value'))
+    expect(options).toEqual(['booking_only', 'basic_auto_key'])
+    expect(screen.getByText(/Mister Minit shop/)).toBeInTheDocument()
+  })
+
   it('shows a failed users request as an error rather than an empty directory', async () => {
     vi.mocked(listPlatformUsers).mockRejectedValue(new Error('Offline'))
     renderPage('/platform-admin/users')

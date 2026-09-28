@@ -10264,6 +10264,11 @@ export interface components {
              * @default false
              */
             has_stripe_subscription: boolean;
+            /**
+             * Is Minit
+             * @default false
+             */
+            is_minit: boolean;
             /** User Count */
             user_count: number;
             /**
