@@ -1266,8 +1266,17 @@ export const createInvoiceFromQuote = (quoteId: string) =>
 export const getQuoteLineItems = (quoteId: string) => api.get<Array<QuoteLineItemInput & { id: string; total_price_cents: number }>>(`/quotes/${quoteId}/line-items`)
 
 // Public (no auth)
+
+/** Flat shop branding on public quote/invoice responses. */
+export interface ShopBrandingFields {
+  /** Mister Minit network shop — show the Mister Minit logo. */
+  shop_is_minit?: boolean
+  shop_logo_url?: string | null
+  shop_brand_color?: string | null
+}
+
 export const getPublicQuote = (token: string) =>
-  axios.get<{ shop_name?: string | null; shop_phone?: string | null; id: string; status: string; subtotal_cents: number; tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
+  axios.get<ShopBrandingFields & { shop_name?: string | null; shop_phone?: string | null; id: string; status: string; subtotal_cents: number; tax_cents: number; gst_enabled: boolean; gst_inclusive: boolean; total_cents: number; currency: string; sent_at?: string; approval_token_expires_at?: string; line_items: Array<{ item_type: string; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }> }>(withApiOrigin(`/v1/public/quotes/${token}`))
 export const submitQuoteDecision = (token: string, decision: 'approved' | 'declined', signature?: string | null) =>
   axios.post(withApiOrigin(`/v1/public/quotes/${token}/decision`), { decision, signature })
 
@@ -2603,7 +2612,7 @@ export const resendShoeNotification = (jobId: string, event: string) =>
 export const sendShoeQuote = (jobId: string) =>
   api.post<ShoeRepairJob>(`/shoe-repair-jobs/${jobId}/send-quote`)
 
-export interface PublicShoeQuote {
+export interface PublicShoeQuote extends ShopBrandingFields {
   job_number: string
   title: string
   description?: string
@@ -3908,7 +3917,7 @@ export const confirmPublicAutoKeyBooking = (token: string, body?: { signatureDat
     signer_name: body?.signerName,
   })
 
-export interface PublicAutoKeyQuote {
+export interface PublicAutoKeyQuote extends ShopBrandingFields {
   quote_id: string
   status: string
   job_number: string

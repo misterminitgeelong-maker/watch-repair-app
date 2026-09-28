@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { ShopLogo } from '@/components/ShopLogo'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import axios from 'axios'
 import { CheckCircle, XCircle, Clock, Footprints } from 'lucide-react'
@@ -119,9 +120,16 @@ export default function ShoeApprovePage() {
     <div className="min-h-screen py-10 px-4" style={bg}>
       <div className="max-w-xl mx-auto space-y-5">
         <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <Footprints size={22} style={{ color: 'var(--ms-accent-hover)' }} />
-          </div>
+          <ShopLogo
+            minit={q.shop_is_minit}
+            logoUrl={q.shop_logo_url}
+            name={q.shop_name}
+            fallback={
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
+                <Footprints size={22} style={{ color: 'var(--ms-accent-hover)' }} />
+              </div>
+            }
+          />
           <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>
             Your Shoe Repair Quote
           </h1>

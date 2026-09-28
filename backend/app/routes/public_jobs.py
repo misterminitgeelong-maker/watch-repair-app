@@ -23,7 +23,13 @@ from ..limiter import limiter, public_read_limit, public_write_limit
 
 logger = logging.getLogger(__name__)
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
-from ..minit_branding import customer_brand_color, customer_logo_url, is_minit_tenant, public_shop_branding
+from ..minit_branding import (
+    customer_brand_color,
+    customer_logo_url,
+    is_minit_tenant,
+    public_shop_branding,
+    public_shop_branding_fields,
+)
 from ..models import (
     Attachment,
     AutoKeyInvoice,
@@ -372,6 +378,7 @@ def get_public_shoe_quote(request: Request, token: str, session: Session = Depen
         "quote_status": job.quote_status,
         "quote_approval_token_expires_at": isoformat_z_utc(naive_utc_from_any(job.quote_approval_token_expires_at)) if job.quote_approval_token_expires_at else None,
         "shop_name": shop_name,
+        **public_shop_branding_fields(tenant),
         "shoe": {
             "shoe_type": shoe.shoe_type if shoe else None,
             "brand": shoe.brand if shoe else None,
@@ -1466,6 +1473,7 @@ def get_public_auto_key_quote(request: Request, token: str, session: Session = D
         "scheduled_at": isoformat_z_utc(job.scheduled_at),
         "shop_name": tenant.name if tenant else "Mobile Services",
         "shop_phone": None,
+        **public_shop_branding_fields(tenant),
         "customer_name": customer.full_name if customer else None,
         "subtotal_cents": quote.subtotal_cents,
         "tax_cents": quote.tax_cents,

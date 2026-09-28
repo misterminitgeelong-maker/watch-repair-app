@@ -30,6 +30,7 @@ from ..models import (
 from ..limiter import limiter
 from ..tenant_helpers import get_tenant_quote, get_tenant_repair_job
 from .. import sms
+from ..minit_branding import public_shop_branding_fields
 
 router = APIRouter(prefix="/v1", tags=["quotes"])
 
@@ -515,6 +516,7 @@ def get_public_quote(request: Request, token: str, session: Session = Depends(ge
     return {
         "shop_name": tenant.name if tenant else None,
         "shop_phone": tenant.shop_phone if tenant else None,
+        **public_shop_branding_fields(tenant),
         "id": quote.id,
         "status": quote.status,
         "subtotal_cents": quote.subtotal_cents,

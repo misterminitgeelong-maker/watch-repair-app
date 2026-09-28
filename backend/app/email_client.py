@@ -78,6 +78,22 @@ def _format_line_items(line_items: Sequence[dict], currency: str | None = None) 
     return "\n".join(lines) if lines else ""
 
 
+def _customer_shop_info(shop_name: str, session: Session | None, tenant_id: UUID | None) -> ShopInfo:
+    """The shop header for an email to a customer: its logo and colour (for a
+    Mister Minit shop, Mister Minit's). Falls back to the name alone."""
+    if session is None or tenant_id is None:
+        return ShopInfo(name=shop_name)
+    try:
+        from .minit_branding import customer_brand_color, customer_logo_url
+        from .models import Tenant
+
+        tenant = session.get(Tenant, tenant_id)
+    except Exception:
+        logger.warning("Could not load branding for tenant %s", tenant_id, exc_info=True)
+        return ShopInfo(name=shop_name)
+    return ShopInfo(name=shop_name, logo_url=customer_logo_url(tenant), brand_color=customer_brand_color(tenant))
+
+
 def send_quote_sent_email(
     *,
     to_email: str,
@@ -112,7 +128,7 @@ def send_quote_sent_email(
             f"Here is your quote for <strong>watch repair job #{_html.escape(job_number)}</strong>. "
             "Tap below to approve or decline."
         ),
-        shop=ShopInfo(name=shop_name),
+        shop=_customer_shop_info(shop_name, session, tenant_id),
         cta_label="Review quote",
         cta_url=approval_url,
         line_items=line_items or [],
@@ -666,7 +682,7 @@ def send_portal_bookmark_email(
             "Use the button below to see all your active repairs. "
             f"This link stays valid for <strong>{expires_days} days</strong>."
         ),
-        shop=ShopInfo(name=shop_name),
+        shop=_customer_shop_info(shop_name, session, tenant_id),
         cta_label="Open my repairs",
         cta_url=portal_url,
     )
@@ -710,7 +726,7 @@ def send_portal_status_email(
         preheader=f"New status: {new_label}",
         greeting="Hi,",
         intro_html=f"<strong>{_html.escape(shop_name)}</strong> updated your job. New status: <strong>{_html.escape(new_label)}</strong>.",
-        shop=ShopInfo(name=shop_name),
+        shop=_customer_shop_info(shop_name, session, tenant_id),
         cta_label="View job",
         cta_url=status_url,
     )
@@ -754,7 +770,7 @@ def send_job_ready_email(
         intro_html=(
             f"Good news — your watch (<strong>job #{_html.escape(job_number)}</strong>) is ready for collection."
         ),
-        shop=ShopInfo(name=shop_name),
+        shop=_customer_shop_info(shop_name, session, tenant_id),
         cta_label="Check job status",
         cta_url=status_url,
     )

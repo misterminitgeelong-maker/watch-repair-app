@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import { ShopLogo } from '@/components/ShopLogo'
 import { useQuery } from '@tanstack/react-query'
 import { Clock, RefreshCw, Wrench } from 'lucide-react'
 import { getPublicJobStatus, type PublicJobStatus } from '@/lib/api'
@@ -53,9 +54,16 @@ export default function StatusPage() {
     <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <Wrench size={22} style={{ color: 'var(--ms-accent-hover)' }} />
-          </div>
+          <ShopLogo
+            minit={job.shop?.is_minit}
+            logoUrl={job.shop?.logo_url}
+            name={job.shop?.name}
+            fallback={
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
+                <Wrench size={22} style={{ color: 'var(--ms-accent-hover)' }} />
+              </div>
+            }
+          />
           <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>
             Live Repair Status
           </h1>

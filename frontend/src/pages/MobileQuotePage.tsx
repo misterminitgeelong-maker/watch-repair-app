@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import { ShopLogo } from '@/components/ShopLogo'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { CheckCircle, XCircle, MapPin, Car, PenLine } from 'lucide-react'
@@ -205,9 +206,16 @@ export default function MobileQuotePage() {
 
         {/* Header */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
-            <img src="/mainspring-icon.svg" alt="Mainspring" style={{ width: 30, height: 30 }} />
-          </div>
+          <ShopLogo
+            minit={quote.shop_is_minit}
+            logoUrl={quote.shop_logo_url}
+            name={quote.shop_name}
+            fallback={
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-3" style={{ backgroundColor: '#EEE6DA' }}>
+                <img src="/mainspring-icon.svg" alt="Mainspring" style={{ width: 30, height: 30 }} />
+              </div>
+            }
+          />
           <h1 className="text-xl font-bold" style={{ color: 'var(--ms-text)' }}>{quote.shop_name}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
             Quote for job #{quote.job_number}

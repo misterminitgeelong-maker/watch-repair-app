@@ -142,3 +142,9 @@ def ensure_minit_tenant_plan(session: Session, tenant: Tenant) -> Tenant:
 def ensure_minit_corporate_plan(session: Session, tenant: Tenant) -> Tenant:
     """Backward-compatible alias for HQ plan fix."""
     return ensure_minit_tenant_plan(session, tenant)
+
+
+def public_shop_branding_fields(tenant: Tenant | None) -> dict:
+    """``public_shop_branding`` as flat ``shop_*`` keys, for responses that
+    describe the shop with top-level ``shop_name``/``shop_phone`` fields."""
+    return {f"shop_{k}": v for k, v in public_shop_branding(tenant).items()}

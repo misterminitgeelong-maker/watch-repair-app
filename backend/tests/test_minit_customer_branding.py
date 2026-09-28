@@ -108,3 +108,32 @@ def test_portal_leaves_other_shops_alone(client: TestClient):
     (shop,) = _portal_view(client, email).json()["shops"]
     assert shop["is_minit"] is False
     assert shop["logo_url"] is None
+
+
+def test_customer_emails_carry_minit_logo():
+    from app.email_client import _customer_shop_info
+
+    with Session(engine) as session:
+        tenant = Tenant(name="Mister Minit Chadstone", slug=f"minit-{uuid4().hex[:6]}", is_minit=True)
+        session.add(tenant)
+        session.commit()
+        info = _customer_shop_info("Mister Minit Chadstone", session, tenant.id)
+        assert info.logo_url and info.logo_url.endswith(MINIT_LOGO_PUBLIC_PATH)
+        assert info.brand_color
+
+        # No session or tenant: just the name, as before.
+        assert _customer_shop_info("Shop", None, None).logo_url is None
+
+
+def test_shoe_status_page_flags_minit_shops(client: TestClient):
+    from tests.test_customer_portal_lookup import _create_shoe_job
+
+    headers = _bootstrap(client)
+    slug = headers.pop("tenant_slug")
+    job = _create_shoe_job(client, headers, f"shoe-{uuid4().hex[:8]}@portal.test", "Heels")
+    _mark_minit(slug)
+
+    res = client.get(f"/v1/public/shoe-jobs/{job.status_token}")
+    assert res.status_code == 200, res.text
+    assert res.json()["shop"]["is_minit"] is True
+    assert res.json()["shop"]["logo_url"].endswith(MINIT_LOGO_PUBLIC_PATH)

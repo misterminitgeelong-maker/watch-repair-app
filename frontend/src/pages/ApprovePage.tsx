@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { ShopLogo } from '@/components/ShopLogo'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import axios from 'axios'
 import { CheckCircle, XCircle, Clock, WrenchIcon } from 'lucide-react'
@@ -198,9 +199,16 @@ export default function ApprovePage() {
     <div className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--ms-bg)' }}>
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ backgroundColor: '#EEE6DA' }}>
-            <WrenchIcon size={22} style={{ color: 'var(--ms-accent-hover)' }} />
-          </div>
+          <ShopLogo
+            minit={q.shop_is_minit}
+            logoUrl={q.shop_logo_url}
+            name={q.shop_name}
+            fallback={
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ backgroundColor: '#EEE6DA' }}>
+                <WrenchIcon size={22} style={{ color: 'var(--ms-accent-hover)' }} />
+              </div>
+            }
+          />
           <h1 className="text-2xl font-bold" style={{ color: 'var(--ms-text)' }}>Your Repair Quote</h1>
           {q.shop_name && (
             <p className="text-sm font-medium mt-1" style={{ color: 'var(--ms-text-mid)' }}>from {q.shop_name}</p>
