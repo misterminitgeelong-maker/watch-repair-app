@@ -1177,6 +1177,7 @@ export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
 export const updateJob = (id: string, data: {
   customer_account_id?: string | null
+  job_number?: string
   title?: string
   cost_cents?: number
   pre_quote_cents?: number

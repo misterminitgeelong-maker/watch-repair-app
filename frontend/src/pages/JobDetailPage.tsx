@@ -342,6 +342,7 @@ function EditTicketModal({ job, watch, customer, onClose }: { job: RepairJob; wa
   const qc = useQueryClient()
   const [err, setErr] = useState('')
   const [form, setForm] = useState({
+    job_number: job.job_number ?? '',
     title: job.title ?? '',
     description: job.description ?? '',
     priority: job.priority ?? 'normal',
@@ -363,6 +364,7 @@ function EditTicketModal({ job, watch, customer, onClose }: { job: RepairJob; wa
   const mut = useMutation({
     mutationFn: async () => {
       const jobPayload: Parameters<typeof updateJob>[1] = {
+        job_number: form.job_number.trim(),
         title: form.title.trim(),
         description: form.description,
         priority: form.priority,
@@ -393,13 +395,14 @@ function EditTicketModal({ job, watch, customer, onClose }: { job: RepairJob; wa
     onError: (e) => setErr(getApiErrorMessage(e, 'Failed to save changes.')),
   })
 
-  const canSave = form.title.trim().length > 0 && (!customer || form.full_name.trim().length > 0)
+  const canSave = form.title.trim().length > 0 && form.job_number.trim().length > 0 && (!customer || form.full_name.trim().length > 0)
 
   return (
     <Modal title={`Edit ticket #${job.job_number}`} onClose={onClose}>
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <section className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>Job</p>
+          <Input label="Ticket number" value={form.job_number} onChange={e => set('job_number', e.target.value)} />
           <Input label="Services / title" value={form.title} onChange={e => set('title', e.target.value)} />
           <Textarea label="Fault / intake notes" value={form.description} onChange={e => set('description', e.target.value)} />
           <div className="grid grid-cols-2 gap-2">

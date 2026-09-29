@@ -1199,6 +1199,7 @@ class RepairJobIntakeUpdate(SQLModel):
 
 class RepairJobFieldUpdate(SQLModel):
     customer_account_id: Optional[UUID] = None
+    job_number: Optional[str] = Field(default=None, max_length=50)
     title: Optional[str] = None
     cost_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
     pre_quote_cents: Optional[int] = Field(default=None, ge=0, le=100_000_000)
