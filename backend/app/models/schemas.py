@@ -1211,6 +1211,7 @@ class RepairJobFieldUpdate(SQLModel):
     clear_assigned_user: bool = False
     internal_notes: Optional[str] = None
     parts_eta: Optional[date] = None
+    job_number: Optional[str] = None
 
 class JobStatusHistoryRead(SQLModel):
     id: UUID

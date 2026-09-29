@@ -1176,6 +1176,7 @@ export function trackingSmsWarning(reason: RepairJob['tracking_sms_skipped_reaso
 export const createJob = (data: RepairJobCreatePayload) =>
   api.post<RepairJob>('/repair-jobs', data)
 export const updateJob = (id: string, data: {
+  job_number?: string
   customer_account_id?: string | null
   title?: string
   cost_cents?: number

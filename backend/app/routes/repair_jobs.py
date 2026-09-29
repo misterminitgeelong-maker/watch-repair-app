@@ -542,6 +542,20 @@ def update_repair_job_fields(
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
 
+    if payload.job_number is not None:
+        new_number = payload.job_number.strip()
+        if not new_number:
+            raise HTTPException(status_code=422, detail="Ticket number cannot be blank")
+        if new_number != job.job_number:
+            conflict = session.exec(
+                select(RepairJob)
+                .where(RepairJob.tenant_id == auth.tenant_id)
+                .where(RepairJob.job_number == new_number)
+                .where(RepairJob.id != job.id)
+            ).first()
+            if conflict:
+                raise HTTPException(status_code=409, detail=f"Ticket number '{new_number}' is already in use")
+            job.job_number = new_number
     if payload.title is not None:
         job.title = payload.title
     if payload.cost_cents is not None:

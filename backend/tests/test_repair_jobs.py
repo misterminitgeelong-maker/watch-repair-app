@@ -339,3 +339,41 @@ def test_send_job_message_appears_in_thread():
     assert thread.status_code == 200
     bodies = [m["body"] for m in thread.json() if m["direction"] == "outbound"]
     assert "Your watch is ready for collection" in bodies
+
+
+def _setup_two_jobs(prefix: str):
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"{prefix}-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    return headers, _create_repair_job(headers, watch_id, "A"), _create_repair_job(headers, watch_id, "B")
+
+
+def test_edit_job_number_renames_ticket():
+    headers, job_a, _ = _setup_two_jobs("rename")
+    res = client.patch(f"/v1/repair-jobs/{job_a['id']}", headers=headers, json={"job_number": "  W-1234 "})
+    assert res.status_code == 200
+    assert res.json()["job_number"] == "W-1234"
+    assert client.get(f"/v1/repair-jobs/{job_a['id']}", headers=headers).json()["job_number"] == "W-1234"
+
+
+def test_edit_job_number_rejects_blank():
+    headers, job_a, _ = _setup_two_jobs("blank")
+    res = client.patch(f"/v1/repair-jobs/{job_a['id']}", headers=headers, json={"job_number": "   "})
+    assert res.status_code == 422
+    assert client.get(f"/v1/repair-jobs/{job_a['id']}", headers=headers).json()["job_number"] == job_a["job_number"]
+
+
+def test_edit_job_number_rejects_duplicate_in_shop():
+    headers, job_a, job_b = _setup_two_jobs("dup")
+    res = client.patch(f"/v1/repair-jobs/{job_a['id']}", headers=headers, json={"job_number": job_b["job_number"]})
+    assert res.status_code == 409
+
+
+def test_edit_job_number_same_value_is_allowed_and_other_shop_may_reuse():
+    headers, job_a, _ = _setup_two_jobs("same")
+    res = client.patch(f"/v1/repair-jobs/{job_a['id']}", headers=headers, json={"job_number": job_a["job_number"]})
+    assert res.status_code == 200
+    headers2, job_c, _ = _setup_two_jobs("other")
+    res = client.patch(f"/v1/repair-jobs/{job_c['id']}", headers=headers2, json={"job_number": job_a["job_number"]})
+    assert res.status_code == 200
