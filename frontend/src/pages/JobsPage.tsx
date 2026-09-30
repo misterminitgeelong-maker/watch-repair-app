@@ -228,7 +228,24 @@ export default function JobsPage() {
     return matchSearch && inDirectory && matchStatus && matchAge && matchPastCollection
   })
 
-  const showBoardCapWarning = jobs.length >= WATCH_JOBS_LIST_MAX
+  const activeFilterLabels = [
+    search.trim() && `search “${search.trim()}”`,
+    statusFilter !== 'all' && `status: ${STATUS_LABELS[statusFilter] ?? statusFilter}`,
+    assignedUserId && `technician: ${assigneeName.get(assignedUserId) ?? 'selected'}`,
+    costOutlierOnly && 'cost outliers only',
+    olderThanDays > 0 && `older than ${olderThanDays} days`,
+    pastCollectionOnly && 'past collection date',
+  ].filter((l): l is string => !!l)
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('all')
+    setAssignedUserId('')
+    setCostOutlierOnly(false)
+    setOlderThanDays(0)
+    setPastCollectionOnly(false)
+  }
+
+  const showBoardCapWarning =jobs.length >= WATCH_JOBS_LIST_MAX
   const kanbanOrphans = useMemo(
     () => (view === 'board' && jobDirectoryView === 'active' ? findKanbanOrphanJobs(filtered, WATCH_KANBAN_COLUMNS) : []),
     [filtered, view, jobDirectoryView],
@@ -482,6 +499,20 @@ export default function JobsPage() {
             ? `Showing the first ${WATCH_JOBS_LIST_MAX.toLocaleString()} jobs — narrow filters if any are missing from the board.`
             : `All matching jobs are loaded for this filter (${jobs.length.toLocaleString()} row${jobs.length === 1 ? '' : 's'}).`}
         </p>
+      )}
+
+      {activeFilterLabels.length > 0 && (
+        <div
+          className="text-sm mb-3 px-4 py-3 rounded-xl flex flex-wrap items-center gap-x-3 gap-y-1"
+          style={{ backgroundColor: '#FFF6E5', border: '1px solid #EBCB8B', color: '#6B4A0F' }}
+        >
+          <span>
+            <strong>Filters active:</strong> {activeFilterLabels.join(', ')}. Some jobs may be hidden.
+          </span>
+          <button type="button" className="underline font-semibold" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </div>
       )}
 
       {kanbanOrphans.length > 0 && (
