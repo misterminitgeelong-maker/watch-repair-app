@@ -1170,6 +1170,8 @@ class RepairJobRead(SQLModel):
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
     customer_email: Optional[str] = None
+    watch_brand: Optional[str] = None
+    watch_model: Optional[str] = None
 
 class RepairJobCreateResponse(RepairJobRead):
     """POST /repair-jobs — includes whether tracking SMS was sent."""

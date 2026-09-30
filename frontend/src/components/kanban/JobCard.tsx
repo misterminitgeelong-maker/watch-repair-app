@@ -6,6 +6,8 @@ import { initialsOf, techColor } from './techAvatar'
 export interface JobCardProps {
   jobNumber: string
   title: string
+  /** Watch brand/model, shown in the card header next to the job number. */
+  watchLabel?: string | null
   description?: string | null
   customerName?: string | null
   customerPhone?: string | null
@@ -82,6 +84,7 @@ function AgingPill({ days }: { days: number }) {
 export default function JobCard({
   jobNumber,
   title,
+  watchLabel,
   description,
   customerName,
   customerPhone,
@@ -142,8 +145,16 @@ export default function JobCard({
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, letterSpacing: '0.03em' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, letterSpacing: '0.03em', minWidth: 0 }}>
           #{jobNumber}
+          {watchLabel && (
+            <span
+              title={watchLabel}
+              style={{ color: 'var(--ms-text)', marginLeft: 6, textTransform: 'uppercase' }}
+            >
+              {watchLabel}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           <PriorityPill priority={priority} />

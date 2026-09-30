@@ -99,6 +99,8 @@ def _repair_job_to_read(session: Session, job: RepairJob) -> RepairJobRead:
     data["customer_name"] = customer_name
     data["customer_phone"] = customer_phone
     data["customer_email"] = customer_email
+    data["watch_brand"] = watch.brand if watch else None
+    data["watch_model"] = watch.model if watch else None
     return RepairJobRead(**data)
 
 
@@ -324,6 +326,8 @@ def list_repair_jobs(
         data['customer_name'] = customer_names.get(cid) if cid else None
         data['customer_phone'] = customer_phones.get(cid) if cid else None
         data['customer_email'] = customer_emails.get(cid) if cid else None
+        data['watch_brand'] = w.brand if w else None
+        data['watch_model'] = w.model if w else None
         data['claimed_by_name'] = claimed_names.get(j.claimed_by_user_id) if j.claimed_by_user_id else None
         result.append(RepairJobRead(**data))
     return result

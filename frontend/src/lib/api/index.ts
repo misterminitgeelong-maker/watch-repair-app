@@ -1141,6 +1141,8 @@ export interface RepairJob {
   customer_name?: string | null
   customer_phone?: string | null
   customer_email?: string | null
+  watch_brand?: string | null
+  watch_model?: string | null
   claimed_by_user_id?: string | null
   claimed_by_name?: string | null
   tracking_sms_sent?: boolean

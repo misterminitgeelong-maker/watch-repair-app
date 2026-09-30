@@ -540,6 +540,7 @@ export default function JobsPage() {
               <JobCard
                 jobNumber={job.job_number}
                 title={job.title}
+                watchLabel={[job.watch_brand, job.watch_model].filter(Boolean).join(' ') || null}
                 description={job.description ?? undefined}
                 customerName={job.customer_name ?? undefined}
                 customerPhone={job.customer_phone ?? undefined}
