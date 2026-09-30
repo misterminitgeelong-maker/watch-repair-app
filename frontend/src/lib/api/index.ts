@@ -500,6 +500,44 @@ export const resendExpiredShopOwnerInvites = () =>
 export const getShopOwnerInvite = (tenantId: string) =>
   api.get<ShopOwnerInvite | null>(`/parent-accounts/me/sites/${tenantId}/invite`)
 
+export interface HqAccount {
+  user_id: string
+  email: string
+  full_name: string
+  role: string
+  mobile?: string | null
+  is_active: boolean
+  last_login_at?: string | null
+  /** A copy of an HQ login — hand it over with the shop invite instead. */
+  is_hq_login: boolean
+  latest_link_status?: string | null
+  latest_link_sent_at?: string | null
+}
+export interface HqResetLinkResult {
+  email_sent: boolean
+  sms_sent: boolean
+  sent_to_email?: string | null
+  expires_at: string
+}
+export interface HqMessageLog {
+  channel: 'sms' | 'email'
+  to: string
+  event: string
+  status: string
+  error?: string | null
+  created_at: string
+}
+
+export const listSiteAccounts = (tenantId: string) =>
+  api.get<HqAccount[]>(`/parent-accounts/me/sites/${tenantId}/accounts`)
+/** HQ never sees the link: the person gets it by email/SMS and picks their own password. */
+export const sendAccountResetLink = (tenantId: string, userId: string) =>
+  api.post<HqResetLinkResult>(`/parent-accounts/me/sites/${tenantId}/accounts/${userId}/reset-link`)
+export const changeAccountEmail = (tenantId: string, userId: string, email: string) =>
+  api.patch<HqAccount>(`/parent-accounts/me/sites/${tenantId}/accounts/${userId}/email`, { email })
+export const listSiteMessageLogs = (tenantId: string, limit = 50) =>
+  api.get<HqMessageLog[]>(`/parent-accounts/me/sites/${tenantId}/message-logs`, { params: { limit } })
+
 export interface ShopOwnerInvitePublic {
   tenant_name: string
   /** The Shop ID the owner signs in with next time, alongside their email. */

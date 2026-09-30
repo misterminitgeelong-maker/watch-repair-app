@@ -525,6 +525,50 @@ def send_shop_owner_invite_email(
     )
 
 
+def send_account_reset_email(
+    *,
+    to_email: str,
+    full_name: str,
+    tenant_name: str,
+    reset_url: str,
+    expiry_days: int,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+) -> tuple[bool, str | None]:
+    """Email a one-time link, sent by HQ, for choosing a new email and password."""
+    if not (to_email or "").strip():
+        return False, None
+    subject = f"Reset your {tenant_name.strip()} login"
+    body_plain = (
+        f"Hi {full_name.strip() or 'there'},\n\n"
+        f"Mister Minit HQ sent you a link to reset your {tenant_name.strip()} login.\n\n"
+        f"Reset your login: {reset_url}\n\n"
+        f"This link is one-time use and expires in {expiry_days} days. "
+        f"If you weren't expecting this, contact Mister Minit HQ.\n"
+    )
+    body_html = render_transactional_email(
+        title=subject,
+        preheader=f"One-time link, expires in {expiry_days} days",
+        greeting=f"Hi {full_name.strip() or 'there'},",
+        intro_html=(
+            f"Mister Minit HQ sent you a link to reset your <strong>{_html.escape(tenant_name.strip())}</strong> login."
+        ),
+        shop=ShopInfo(name="Mister Minit HQ"),
+        cta_label="Reset your login",
+        cta_url=reset_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name="Mister Minit HQ",
+        event="account_reset_link",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
 def send_shop_owner_invite_accepted_email(
     *,
     to_email: str,

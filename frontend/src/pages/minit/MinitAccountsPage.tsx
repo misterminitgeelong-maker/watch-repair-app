@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '@/lib/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Copy, Download, KeyRound, LogIn, Pencil } from 'lucide-react'
+import { Copy, Download, KeyRound, LifeBuoy, LogIn, Pencil } from 'lucide-react'
 import {
   createShopOwnerInvite,
   formatTenantLabel,
@@ -24,6 +24,7 @@ import { useHqEnterShop } from '@/lib/hqEnterShop'
 import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAccount'
 import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { HqStaffCard, REGIONS_QUERY_KEY, RegionsCard, useRegions } from '@/components/minit/MinitNetworkPanels'
+import { AccountSupportModal } from '@/components/minit/AccountSupportModal'
 import { MvMergeModal } from '@/components/minit/MvMergeModal'
 import { LoadError } from '@/components/minit/LoadError'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
@@ -316,6 +317,7 @@ export default function MinitAccountsPage() {
   const isLoading = summaryLoading && !summary
   // Only HQ admins restructure the network or walk into its shops.
   const canEdit = summary?.my_role === 'hq_admin'
+  const [supportTarget, setSupportTarget] = useState<ParentAccountSite | null>(null)
 
   const regionMut = useMutation({
     mutationFn: ({ tenantId, regionId }: { tenantId: string; regionId: string }) =>
@@ -332,18 +334,31 @@ export default function MinitAccountsPage() {
   function openShopButton(site: ParentAccountSite) {
     if (!canEdit) return null
     return (
-      <Button
-        variant="ghost"
-        className="text-xs px-3 py-1.5"
-        onClick={() => { setOpenReason(''); setOpenTarget(site) }}
-        disabled={entering === site.tenant_id}
-        title="Open a 30-minute support session inside this shop, as its owner"
-      >
-        <span className="inline-flex items-center gap-1">
-          <LogIn size={13} />
-          {entering === site.tenant_id ? 'Opening…' : 'Open shop'}
-        </span>
-      </Button>
+      <>
+        <Button
+          variant="ghost"
+          className="text-xs px-3 py-1.5"
+          onClick={() => setSupportTarget(site)}
+          title="See who can sign in, send a login reset link, fix an email, and view recent messages"
+        >
+          <span className="inline-flex items-center gap-1">
+            <LifeBuoy size={13} />
+            Accounts
+          </span>
+        </Button>
+        <Button
+          variant="ghost"
+          className="text-xs px-3 py-1.5"
+          onClick={() => { setOpenReason(''); setOpenTarget(site) }}
+          disabled={entering === site.tenant_id}
+          title="Open a 30-minute support session inside this shop, as its owner"
+        >
+          <span className="inline-flex items-center gap-1">
+            <LogIn size={13} />
+            {entering === site.tenant_id ? 'Opening…' : 'Open shop'}
+          </span>
+        </Button>
+      </>
     )
   }
 
@@ -917,6 +932,7 @@ export default function MinitAccountsPage() {
         </Modal>
       )}
 
+      {supportTarget && <AccountSupportModal site={supportTarget} onClose={() => setSupportTarget(null)} />}
       {inviteTarget && (
         <Modal title="Invite owner" onClose={() => setInviteTarget(null)}>
           <div className="space-y-4">
