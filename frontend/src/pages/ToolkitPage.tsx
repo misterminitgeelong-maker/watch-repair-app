@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader, Button, Card, Spinner, Select, Input } from '@/components/ui'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
@@ -27,12 +27,15 @@ export default function ToolkitPage() {
   const [recommend, setRecommend] = useState<ToolkitRecommendResponse | null>(null)
   const [recErr, setRecErr] = useState('')
   const [toolSearch, setToolSearch] = useState('')
+  const [recLoading, setRecLoading] = useState(false)
+  const requestVersion = useRef(0)
+  const selectionLoaded = useRef(false)
 
   const { data: catalog, isLoading: catLoading, isError: catErr, error: catErrObj } = useQuery({
     queryKey: ['toolkit', 'catalog'],
     queryFn: () => getToolkitCatalog().then((r) => r.data),
   })
-  const { data: saved, isLoading: selLoading } = useQuery({
+  const { data: saved, isLoading: selLoading, error: selectionError } = useQuery({
     queryKey: ['toolkit', 'my-selection'],
     queryFn: () => getToolkitMySelection().then((r) => r.data),
   })
@@ -80,7 +83,10 @@ export default function ToolkitPage() {
   }, [mobileNotif, dispatchDirty])
 
   useEffect(() => {
-    if (saved?.tool_keys) setLocalKeys(new Set(saved.tool_keys))
+    if (saved?.tool_keys && !selectionLoaded.current) {
+      setLocalKeys(new Set(saved.tool_keys))
+      selectionLoaded.current = true
+    }
   }, [saved?.tool_keys])
 
   const saveMut = useMutation({
@@ -117,6 +123,10 @@ export default function ToolkitPage() {
   }, [catalog?.groups, toolSearch])
 
   const toggle = (key: string) => {
+    requestVersion.current++
+    setRecommend(null)
+    setRecLoading(false)
+    setRecErr('')
     setLocalKeys((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
@@ -132,9 +142,12 @@ export default function ToolkitPage() {
       setRecErr('Choose a scenario first.')
       return
     }
-    postToolkitRecommend(scenarioId)
-      .then((r) => setRecommend(r.data))
-      .catch((e) => setRecErr(getApiErrorMessage(e, 'Could not load recommendation')))
+    const version = ++requestVersion.current
+    setRecLoading(true)
+    postToolkitRecommend(scenarioId, [...localKeys])
+      .then((r) => { if (version === requestVersion.current) setRecommend(r.data) })
+      .catch((e) => { if (version === requestVersion.current) setRecErr(getApiErrorMessage(e, 'Could not load recommendation')) })
+      .finally(() => { if (version === requestVersion.current) setRecLoading(false) })
   }
 
   if (catLoading) return <Spinner />
@@ -152,6 +165,167 @@ export default function ToolkitPage() {
     <div className="space-y-5">
       <MobileServicesSubNav />
 
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <PageHeader title="Mobile toolkit" />
+          <p className="text-sm mt-1 max-w-2xl" style={{ color: 'var(--ms-text-muted)' }}>
+            Tools are shared across this operation. Tick the equipment available, then check a scenario against the selection shown below.
+          </p>
+        </div>
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center lg:sticky lg:top-4 lg:z-10 lg:flex-col lg:items-end">
+          {dirty && (
+            <span className="text-xs font-medium text-center sm:text-right" style={{ color: 'var(--ms-accent)' }}>
+              Unsaved changes
+            </span>
+          )}
+          <Button type="button" onClick={() => saveMut.mutate()} disabled={selLoading || !!selectionError || !dirty || saveMut.isPending} className="min-h-11">
+            {saveMut.isPending ? 'Saving…' : 'Save my tools'}
+          </Button>
+        </div>
+      </div>
+
+      {selectionError && <p role="alert" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(selectionError, 'Could not load the saved kit. Reload before editing.')}</p>}
+      {saveMut.isError && <p role="alert" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(saveMut.error, 'Could not save your tools.')}</p>}
+      {saveMut.isSuccess && !dirty && <p role="status" className="text-sm">Tools saved.</p>}
+      <Card className="p-4 sm:p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+          Scenario check
+        </h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="min-w-[200px] flex-1">
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ms-text)' }}>
+              Scenario
+            </label>
+            <Select
+              value={scenarioId}
+              onChange={(e) => {
+                requestVersion.current++
+                setRecLoading(false)
+                setRecErr('')
+                setScenarioId(e.target.value)
+                setRecommend(null)
+              }}
+              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
+            >
+              <option value="">Select…</option>
+              {scenarios.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button type="button" variant="secondary" className="min-h-11 w-full sm:w-auto" onClick={runRecommend} disabled={!scenarioId || selLoading || !!selectionError || recLoading}>
+            {recLoading ? 'Checking…' : 'What do I need?'}
+          </Button>
+        </div>
+        <p className="text-xs mt-3" style={{ color: 'var(--ms-text-muted)' }}>{dirty ? 'Checking the unsaved selection shown below. Save it to keep these tools.' : 'Checking the saved selection.'} Equipment coverage does not verify training, licences or vehicle compatibility.</p>
+        {recErr && <p className="text-sm mt-3" style={{ color: 'var(--ms-error)' }}>{recErr}</p>}
+        {recommend && (
+          <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--ms-text)' }}>
+            <p className="font-medium">
+              {recommend.label}{' '}
+              <span
+                className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold"
+                style={{
+                  backgroundColor: recommend.ready_for_required ? '#E8F0E4' : '#FDE9E1',
+                  color: recommend.ready_for_required ? '#3B6B42' : '#A2502E',
+                }}
+              >
+                {recommend.ready_for_required ? 'Ready (required covered)' : 'Missing required items'}
+              </span>
+            </p>
+            {recommend.tips && <p style={{ color: 'var(--ms-text-muted)' }}>{recommend.tips}</p>}
+            {recommend.missing_required.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#A2502E' }}>
+                  Still need
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  {recommend.missing_required.map((r) => (
+                    <li key={r.key}>
+                      {r.name}
+                      {r.group_label ? ` · ${r.group_label}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {recommend.missing_nice_to_have.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>
+                  Nice to have
+                </p>
+                <ul className="list-disc pl-5 space-y-1" style={{ color: 'var(--ms-text-mid)' }}>
+                  {recommend.missing_nice_to_have.map((r) => (
+                    <li key={r.key}>{r.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {recommend.ready_for_required && recommend.required.filter((r) => r.via_alternative).length > 0 && (
+              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
+                Some required roles are covered by substitute tools you ticked.
+              </p>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <div className="max-w-md">
+        <Input label="Filter tools" value={toolSearch} onChange={(e) => setToolSearch(e.target.value)} placeholder="Name or notes…" />
+      </div>
+
+      {filteredGroups.length === 0 && toolSearch.trim() && (
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+          No tools match that filter.
+        </p>
+      )}
+
+      {filteredGroups.map((g, idx) => (
+        <details
+          key={g.id}
+          className="rounded-2xl border overflow-hidden"
+          style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
+          open={!!toolSearch.trim() || idx === 0}
+        >
+          <summary
+            className="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold uppercase tracking-wide flex items-center justify-between gap-2"
+            style={{ color: 'var(--ms-accent)', backgroundColor: 'var(--ms-bg)' }}
+          >
+            <span>{g.label}</span>
+            <span className="text-xs font-normal normal-case tracking-normal" style={{ color: 'var(--ms-text-muted)' }}>
+              {g.tools.length} tool{g.tools.length !== 1 ? 's' : ''}
+            </span>
+          </summary>
+          <ul className="px-4 pb-4 pt-2 space-y-2 border-t" style={{ borderColor: 'var(--ms-border)' }}>
+            {g.tools.map((t) => (
+              <li key={t.key}>
+                <label className="flex gap-3 cursor-pointer touch-manipulation min-h-11 items-start">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 shrink-0 rounded border"
+                    style={{ accentColor: 'var(--ms-accent)' }}
+                    disabled={selLoading || !!selectionError || saveMut.isPending}
+                    checked={localKeys.has(t.key)}
+                    onChange={() => toggle(t.key)}
+                  />
+                  <span>
+                    <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{t.name}</span>
+                    {t.notes && (
+                      <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{t.notes}</span>
+                    )}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
+      {dirty && <div className="sticky bottom-20 sm:bottom-4 z-10 rounded-lg border p-3 flex items-center justify-between gap-3" style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)' }}><span className="text-sm">Unsaved kit changes</span><Button disabled={selLoading || !!selectionError || saveMut.isPending} onClick={() => saveMut.mutate()}>{saveMut.isPending ? 'Saving…' : 'Save kit'}</Button></div>}
+      <details className="rounded-lg border p-4" style={{ borderColor: 'var(--ms-border)' }}>
+        <summary className="cursor-pointer min-h-11 font-medium">Mobile service settings</summary>
+        <div className="space-y-4 mt-3">
       <Card className="p-4">
         <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>
           Customer text messages (mobile jobs)
@@ -255,172 +429,9 @@ export default function ToolkitPage() {
         </div>
       </Card>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 flex-1">
-          <PageHeader title="Mobile toolkit" />
-          <p className="text-sm mt-1 max-w-2xl" style={{ color: 'var(--ms-text-muted)' }}>
-            Tick the tools you keep on the van. Pick a scenario to see what you are missing before you roll.
-          </p>
+          {(smsMut.error || dispatchMut.error) && <p role="alert" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(smsMut.error || dispatchMut.error)}</p>}
         </div>
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center lg:sticky lg:top-4 lg:z-10 lg:flex-col lg:items-end">
-          {dirty && (
-            <span className="text-xs font-medium text-center sm:text-right" style={{ color: 'var(--ms-accent)' }}>
-              Unsaved changes
-            </span>
-          )}
-          <Button type="button" onClick={() => saveMut.mutate()} disabled={selLoading || !dirty || saveMut.isPending} className="min-h-11">
-            {saveMut.isPending ? 'Saving…' : 'Save my tools'}
-          </Button>
-        </div>
-      </div>
-
-      <details className="rounded-xl border text-sm" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
-        <summary className="cursor-pointer px-4 py-3 font-medium" style={{ color: 'var(--ms-text-mid)' }}>
-          Where the catalog comes from
-        </summary>
-        <p className="px-4 pb-3 pl-6" style={{ color: 'var(--ms-text-muted)' }}>
-          Ship list:{' '}
-          <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--ms-surface)' }}>
-            backend/seed/mobile_services_tools.json
-          </code>
-          . Optional regen:{' '}
-          <code className="text-xs rounded px-1" style={{ backgroundColor: 'var(--ms-surface)' }}>
-            backend/scripts/generate_mobile_services_tools_from_xlsx.py
-          </code>
-          .
-        </p>
       </details>
-
-      <Card className="p-4 sm:p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>
-          Scenario check
-        </h2>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <div className="min-w-[200px] flex-1">
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ms-text)' }}>
-              Scenario
-            </label>
-            <Select
-              value={scenarioId}
-              onChange={(e) => {
-                setScenarioId(e.target.value)
-                setRecommend(null)
-              }}
-              style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
-            >
-              <option value="">Select…</option>
-              {scenarios.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Button type="button" variant="secondary" className="min-h-11 w-full sm:w-auto" onClick={runRecommend} disabled={!scenarioId}>
-            What do I need?
-          </Button>
-        </div>
-        {recErr && <p className="text-sm mt-3" style={{ color: 'var(--ms-error)' }}>{recErr}</p>}
-        {recommend && (
-          <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--ms-text)' }}>
-            <p className="font-medium">
-              {recommend.label}{' '}
-              <span
-                className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold"
-                style={{
-                  backgroundColor: recommend.ready_for_required ? '#E8F0E4' : '#FDE9E1',
-                  color: recommend.ready_for_required ? '#3B6B42' : '#A2502E',
-                }}
-              >
-                {recommend.ready_for_required ? 'Ready (required covered)' : 'Missing required items'}
-              </span>
-            </p>
-            {recommend.tips && <p style={{ color: 'var(--ms-text-muted)' }}>{recommend.tips}</p>}
-            {recommend.missing_required.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#A2502E' }}>
-                  Still need
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  {recommend.missing_required.map((r) => (
-                    <li key={r.key}>
-                      {r.name}
-                      {r.group_label ? ` · ${r.group_label}` : ''}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {recommend.missing_nice_to_have.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--ms-text-muted)' }}>
-                  Nice to have
-                </p>
-                <ul className="list-disc pl-5 space-y-1" style={{ color: 'var(--ms-text-mid)' }}>
-                  {recommend.missing_nice_to_have.map((r) => (
-                    <li key={r.key}>{r.name}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {recommend.ready_for_required && recommend.required.filter((r) => r.via_alternative).length > 0 && (
-              <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-                Some required roles are covered by substitute tools you ticked.
-              </p>
-            )}
-          </div>
-        )}
-      </Card>
-
-      <div className="max-w-md">
-        <Input label="Filter tools" value={toolSearch} onChange={(e) => setToolSearch(e.target.value)} placeholder="Name, note, or key…" />
-      </div>
-
-      {filteredGroups.length === 0 && toolSearch.trim() && (
-        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
-          No tools match that filter.
-        </p>
-      )}
-
-      {filteredGroups.map((g, idx) => (
-        <details
-          key={g.id}
-          className="rounded-2xl border overflow-hidden"
-          style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
-          open={idx === 0 && !toolSearch.trim()}
-        >
-          <summary
-            className="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold uppercase tracking-wide flex items-center justify-between gap-2"
-            style={{ color: 'var(--ms-accent)', backgroundColor: 'var(--ms-bg)' }}
-          >
-            <span>{g.label}</span>
-            <span className="text-xs font-normal normal-case tracking-normal" style={{ color: 'var(--ms-text-muted)' }}>
-              {g.tools.length} tool{g.tools.length !== 1 ? 's' : ''}
-            </span>
-          </summary>
-          <ul className="px-4 pb-4 pt-2 space-y-2 border-t" style={{ borderColor: 'var(--ms-border)' }}>
-            {g.tools.map((t) => (
-              <li key={t.key}>
-                <label className="flex gap-3 cursor-pointer touch-manipulation min-h-11 items-start">
-                  <input
-                    type="checkbox"
-                    className="mt-1 size-4 shrink-0 rounded border"
-                    style={{ accentColor: 'var(--ms-accent)' }}
-                    checked={localKeys.has(t.key)}
-                    onChange={() => toggle(t.key)}
-                  />
-                  <span>
-                    <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{t.name}</span>
-                    {t.notes && (
-                      <span className="block text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>{t.notes}</span>
-                    )}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ))}
     </div>
   )
 }

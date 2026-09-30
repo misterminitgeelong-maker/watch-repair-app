@@ -15,6 +15,7 @@ from ..models import CustomerAccount, ProspectBusiness, ProspectLead, Suburb
 router = APIRouter(prefix="/v1/prospects", tags=["prospects"])
 
 PLACES_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+PLACE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
 
 # Category base queries (no location) — we append state/suburb when searching
 CATEGORY_BASES = {
@@ -160,6 +161,53 @@ class ProspectSearchResponse(BaseModel):
     results: list[Prospect]
     total: int
     category: str
+    source: str = "stored"
+
+
+class ProspectContactDetails(BaseModel):
+    place_id: str
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    attributions: list[str] = []
+
+
+@router.get("/contact-details", response_model=ProspectContactDetails)
+async def contact_details(
+    place_id: str = Query(..., min_length=1, max_length=255),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(get_session),
+):
+    """Explicit, single-business lookup; stored searches never spend API calls."""
+    api_key = settings.google_places_api_key or settings.google_maps_web_services_key
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Contact lookup is unavailable. Ask your administrator to configure Google Places.")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(PLACE_DETAILS_URL, params={
+                "place_id": place_id, "fields": "formatted_phone_number,website", "key": api_key,
+            })
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Google contact lookup failed. Try again later.")
+        data = response.json()
+        if data.get("status") not in {"OK", "ZERO_RESULTS", "NOT_FOUND"}:
+            raise HTTPException(status_code=502, detail="Google contact lookup failed. Try again later.")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Contact lookup timed out. Try again.")
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Could not reach Google contact lookup.")
+    result = data.get("result") or {}
+    phone, website = result.get("formatted_phone_number"), result.get("website")
+    # Enrich existing records without erasing known contacts when Google omits them.
+    stored = session.exec(select(ProspectBusiness).where(ProspectBusiness.place_id == place_id)).first()
+    leads = session.exec(select(ProspectLead).where(ProspectLead.tenant_id == auth.tenant_id, ProspectLead.place_id == place_id)).all()
+    for row in [*([stored] if stored else []), *leads]:
+        if phone:
+            row.phone = phone
+        if website:
+            row.website = website
+        session.add(row)
+    session.commit()
+    return ProspectContactDetails(place_id=place_id, phone=phone, website=website, attributions=data.get("html_attributions") or [])
 
 def _state_name_for_query(code: str) -> str:
     return next((s["name"] for s in AU_STATES if s["code"] == code), code)
@@ -221,33 +269,26 @@ async def search_prospects(
 
     state_upper = state.upper()
     suburb_list = [s.strip() for s in (suburbs or "").split(",") if s.strip()] if suburbs else []
-    suburb_list = suburb_list[:20]  # allow more when using stored data
+    suburb_list = list(dict.fromkeys(suburb_list))
+    if live and len(suburb_list) > 5:
+        raise HTTPException(status_code=400, detail="Live searches support up to five suburbs. Narrow your selection or use stored data.")
 
     # Prefer stored ProspectBusiness data if available (and not forcing live)
     if not live:
-        try:
-            q = (
-                select(ProspectBusiness)
-                .where(ProspectBusiness.category == category)
-                .where(ProspectBusiness.state_code == state_upper)
-            )
-            if suburb_list:
-                q = q.where(ProspectBusiness.suburb_name.in_(suburb_list))
-            stored = list(session.exec(q).all())
-            if stored:
-                prospects = [_prospect_from_db_row(r) for r in stored]
-                return ProspectSearchResponse(results=prospects, total=len(prospects), category=category)
-        except Exception:
-            pass
+        q = select(ProspectBusiness).where(ProspectBusiness.category == category, ProspectBusiness.state_code == state_upper)
+        if suburb_list:
+            q = q.where(ProspectBusiness.suburb_name.in_(suburb_list))
+        prospects = [_prospect_from_db_row(r) for r in session.exec(q.order_by(ProspectBusiness.name)).all()]
+        return ProspectSearchResponse(results=prospects, total=len(prospects), category=category, source="stored")
 
-    # Fallback to live Google Places API
+    # Only explicitly requested live searches call Google.
     api_key = settings.google_places_api_key or settings.google_maps_web_services_key
     if not api_key:
-        raise HTTPException(status_code=500, detail="Google Places API key not configured")
+        raise HTTPException(status_code=503, detail="Google refresh is unavailable. Use stored data or contact your administrator.")
 
     base = CATEGORY_BASES[category]
     state_name = _state_name_for_query(state_upper)
-    suburb_list_api = suburb_list[:5]  # max 5 for API rate limits
+    suburb_list_api = suburb_list
 
     seen_place_ids: set[str] = set()
     all_prospects: list[Prospect] = []
@@ -295,10 +336,10 @@ async def search_prospects(
                         )
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Google Places API timed out. Try fewer suburbs or try again shortly.")
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail=f"Could not reach Google Places API: {exc}")
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Could not reach Google Places API. Try again shortly.")
 
-    return ProspectSearchResponse(results=all_prospects, total=len(all_prospects), category=category)
+    return ProspectSearchResponse(results=all_prospects, total=len(all_prospects), category=category, source="google")
 
 @router.get("/collector-status")
 async def collector_status(

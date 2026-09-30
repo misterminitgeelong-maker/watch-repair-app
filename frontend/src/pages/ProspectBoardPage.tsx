@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   listProspectLeads,
+  getApiErrorMessage,
   advanceProspectLead,
   deleteProspectLead,
   updateProspectLead,
   type ProspectLead,
   type ProspectLeadStatus,
 } from '@/lib/api'
-import { Button, PageHeader, Spinner } from '@/components/ui'
+import { Button, Input, Modal, PageHeader, Spinner } from '@/components/ui'
 import MobileServicesSubNav from '@/components/MobileServicesSubNav'
 
 const STATUS_COLUMNS: { key: ProspectLeadStatus; label: string; color: string }[] = [
@@ -17,9 +18,17 @@ const STATUS_COLUMNS: { key: ProspectLeadStatus; label: string; color: string }[
   { key: 'contacted', label: 'Business Contacted', color: '#f59e0b' },
   { key: 'visited', label: 'Business Visited', color: '#8b5cf6' },
   { key: 'onboarded', label: 'Business Onboarded', color: '#10b981' },
+  { key: 'quote_needed', label: 'Quote needed', color: '#B87030' },
+  { key: 'follow_up_due', label: 'Follow-up due', color: '#A2502E' },
+  { key: 'won', label: 'Won', color: '#4F7A4A' },
+  { key: 'lost', label: 'Archived', color: '#777777' },
 ]
 
 const NEXT_STATUS: Record<ProspectLeadStatus, ProspectLeadStatus | null> = {
+  quote_needed: 'contacted',
+  follow_up_due: 'contacted',
+  won: null,
+  lost: null,
   new: 'contacted',
   contacted: 'visited',
   visited: 'onboarded',
@@ -27,6 +36,10 @@ const NEXT_STATUS: Record<ProspectLeadStatus, ProspectLeadStatus | null> = {
 }
 
 const NEXT_LABEL: Record<ProspectLeadStatus, string> = {
+  quote_needed: 'Mark as Contacted',
+  follow_up_due: 'Mark as Contacted',
+  won: '',
+  lost: '',
   new: 'Mark as Contacted',
   contacted: 'Mark as Visited',
   visited: 'Mark as Onboarded',
@@ -48,9 +61,11 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
   const nextStatus = NEXT_STATUS[lead.status]
 
   const advance = useMutation({
-    mutationFn: () => advanceProspectLead(lead.id),
+    mutationFn: () => advanceProspectLead(lead.id, details()),
     onSuccess: (res) => {
+      setDirty(false)
       qc.invalidateQueries({ queryKey: ['prospect-leads'] })
+      qc.invalidateQueries({ queryKey: ['inbound-leads'] })
       if (res.data.status === 'onboarded' && res.data.customer_account_id) {
         navigate('/customer-accounts')
       }
@@ -62,67 +77,34 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['prospect-leads'] }); onClose() },
   })
 
+  const details = () => ({
+    contact_name: contactName.trim() || null,
+    contact_email: contactEmail.trim() || null,
+    notes: notes || null,
+    visit_scheduled_at: visitDate ? `${visitDate}T00:00:00Z` : null,
+  })
+
   const save = useMutation({
     mutationFn: () =>
-      updateProspectLead(lead.id, {
-        contact_name: contactName || undefined,
-        contact_email: contactEmail || undefined,
-        notes: notes || undefined,
-        visit_scheduled_at: visitDate ? new Date(visitDate).toISOString() : null,
-      }),
-    onSuccess: () => { setDirty(false); qc.invalidateQueries({ queryKey: ['prospect-leads'] }) },
+      updateProspectLead(lead.id, details()),
+    onSuccess: () => { setDirty(false); qc.invalidateQueries({ queryKey: ['prospect-leads'] }); qc.invalidateQueries({ queryKey: ['inbound-leads'] }) },
   })
 
   const mapsUrl = lead.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.address)}`
     : null
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div
-        className="w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col"
-        style={{ backgroundColor: 'var(--ms-surface)', maxHeight: '90vh' }}
-      >
-        {/* Header */}
-        <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid var(--ms-border)' }}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-lg leading-tight" style={{ color: 'var(--ms-text)' }}>
-                {lead.name}
-              </h2>
-              {lead.category && (
-                <p className="text-xs mt-0.5 capitalize" style={{ color: 'var(--ms-text-muted)' }}>
-                  {lead.category.replace(/_/g, ' ')}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {col && (
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full font-medium"
-                  style={{ backgroundColor: col.color + '22', color: col.color }}
-                >
-                  {col.label}
-                </span>
-              )}
-              <button
-                onClick={onClose}
-                className="rounded-full w-7 h-7 flex items-center justify-center text-lg leading-none"
-                style={{ backgroundColor: 'var(--ms-hover)', color: 'var(--ms-text-muted)' }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        </div>
+  const busy = save.isPending || advance.isPending || remove.isPending
+  const close = () => {
+    if (!busy && (!dirty || window.confirm('Discard unsaved prospect changes?'))) onClose()
+  }
+  const mutationError = save.error || advance.error || remove.error
 
+  return (
+    <Modal title={lead.name} onClose={close} closeDisabled={busy} mobileFullScreen>
+      <p className="mb-3 text-sm font-medium">{col?.label ?? lead.status}</p>
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+        <div className="overflow-y-auto flex-1 py-2 space-y-4">
 
           {/* Contact info from Google */}
           <div className="rounded-lg p-3 space-y-2" style={{ backgroundColor: 'var(--ms-hover)' }}>
@@ -183,14 +165,14 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
             <input
               className="w-full rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
-              placeholder="Contact name"
+              aria-label="Contact name" placeholder="Contact name" disabled={busy}
               value={contactName}
               onChange={e => { setContactName(e.target.value); setDirty(true) }}
             />
             <input
               className="w-full rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
-              placeholder="Contact email"
+              aria-label="Contact email" type="email" placeholder="Contact email" disabled={busy}
               value={contactEmail}
               onChange={e => { setContactEmail(e.target.value); setDirty(true) }}
             />
@@ -204,7 +186,7 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
             <textarea
               className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
               style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
-              placeholder="Add notes about this business…"
+              aria-label="Notes" placeholder="Add notes about this business…" disabled={busy}
               rows={3}
               value={notes}
               onChange={e => { setNotes(e.target.value); setDirty(true) }}
@@ -217,7 +199,7 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
               Schedule a visit
             </p>
             <input
-              type="date"
+              aria-label="Visit date" disabled={busy} type="date"
               className="rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}
               value={visitDate}
@@ -226,7 +208,7 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
             {visitDate && (
               <button
                 onClick={() => { setVisitDate(''); setDirty(true) }}
-                className="text-xs ml-2"
+                disabled={busy} className="text-xs ml-2 min-h-11 px-3"
                 style={{ color: 'var(--ms-text-muted)' }}
               >
                 Clear date
@@ -235,13 +217,15 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
           </div>
         </div>
 
+        {mutationError && <p role="alert" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(mutationError)}</p>}
+        {dirty && <p className="text-sm">Unsaved changes. Advancing also saves these details.</p>}
         {/* Footer actions */}
         <div
-          className="px-5 py-4 flex flex-wrap items-center gap-2"
-          style={{ borderTop: '1px solid var(--ms-border)' }}
+          className="sticky bottom-0 py-4 flex flex-wrap items-center gap-2"
+          style={{ borderTop: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}
         >
           {dirty && (
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            <Button onClick={() => save.mutate()} disabled={busy}>
               {save.isPending ? 'Saving…' : 'Save changes'}
             </Button>
           )}
@@ -249,7 +233,7 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
             <Button
               variant="secondary"
               onClick={() => advance.mutate()}
-              disabled={advance.isPending}
+              disabled={busy}
             >
               {advance.isPending ? '…' : NEXT_LABEL[lead.status]}
             </Button>
@@ -265,14 +249,13 @@ function LeadModal({ lead, onClose }: { lead: ProspectLead; onClose: () => void 
           <div className="flex-1" />
           <button
             onClick={() => { if (window.confirm(`Remove ${lead.name} from board?`)) remove.mutate() }}
-            className="text-xs px-3 py-1.5 rounded"
+            disabled={busy} className="text-xs px-3 min-h-11 rounded"
             style={{ color: 'var(--ms-badge-alert-text)' }}
           >
             Remove
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -310,7 +293,7 @@ function LeadCard({ lead, onClick }: { lead: ProspectLead; onClick: () => void }
         {lead.visit_scheduled_at && (
           <span className="text-xs font-medium" style={{ color: '#8b5cf6' }}>
             Visit{' '}
-            {new Date(lead.visit_scheduled_at).toLocaleDateString('en-AU', {
+            {new Date(`${lead.visit_scheduled_at.slice(0, 10)}T12:00:00`).toLocaleDateString('en-AU', {
               day: 'numeric',
               month: 'short',
             })}
@@ -332,17 +315,19 @@ function LeadCard({ lead, onClick }: { lead: ProspectLead; onClick: () => void }
 }
 
 export default function ProspectBoardPage() {
-  const [view, setView] = useState<'board' | 'visits'>('board')
+  const [view, setView] = useState<'board' | 'list' | 'visits'>('board')
   const [selectedLead, setSelectedLead] = useState<ProspectLead | null>(null)
 
-  const { data: leads = [], isLoading } = useQuery({
+  const [search, setSearch] = useState('')
+  const { data: leads = [], isLoading, error, refetch } = useQuery({
     queryKey: ['prospect-leads'],
     queryFn: () => listProspectLeads().then(r => r.data),
   })
 
-  const byStatus = (status: string) => leads.filter(l => l.status === status)
+  const filtered = leads.filter(l => `${l.name} ${l.address ?? ''} ${l.contact_name ?? ''}`.toLowerCase().includes(search.toLowerCase()))
+  const byStatus = (status: string) => filtered.filter(l => l.status === status)
 
-  const upcomingVisits = [...leads]
+  const upcomingVisits = [...filtered]
     .filter(l => l.visit_scheduled_at)
     .sort(
       (a, b) =>
@@ -355,41 +340,47 @@ export default function ProspectBoardPage() {
     : null
 
   return (
-    <div className="p-6">
+    <div className="p-2 sm:p-6">
       <MobileServicesSubNav className="mb-4" />
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <PageHeader title="Prospect Board" />
         <div
           className="flex gap-1 rounded-lg p-1"
           style={{ backgroundColor: 'var(--ms-hover)' }}
         >
-          {(['board', 'visits'] as const).map(v => (
+          {(['board', 'list', 'visits'] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className="px-3 py-1 rounded-md text-sm font-medium transition-colors"
+              className="min-h-11 px-3 py-1 rounded-md text-sm font-medium transition-colors"
               style={{
                 backgroundColor: view === v ? 'var(--ms-surface)' : 'transparent',
                 color: view === v ? 'var(--ms-text)' : 'var(--ms-text-muted)',
                 boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
               }}
             >
-              {v === 'board' ? 'Board' : 'Visit Calendar'}
+              {v === 'board' ? 'Board' : v === 'list' ? 'List' : 'Visits'}
             </button>
           ))}
         </div>
       </div>
 
+      <p className="mb-3 text-sm">{leads.length} prospects · {upcomingVisits.length} scheduled visits</p>
+      <Input label="Find a prospect" placeholder="Business, suburb or contact…" value={search} onChange={e => setSearch(e.target.value)} />
+      {!isLoading && !error && view !== 'visits' && (
+        <div className={view === 'board' ? 'md:hidden mt-4 space-y-3' : 'mt-4 space-y-3'}>
+          {filtered.length ? filtered.map(lead => <div key={lead.id}><p className="text-xs font-medium mb-1">{STATUS_COLUMNS.find(c => c.key === lead.status)?.label ?? lead.status}</p><LeadCard lead={lead} onClick={() => setSelectedLead(lead)} /></div>) : <p>No prospects match these filters.</p>}
+        </div>
+      )}
       {isLoading ? (
         <Spinner />
-      ) : view === 'board' ? (
-        <div className="overflow-x-auto pb-4">
+      ) : error ? (<div role="alert">{getApiErrorMessage(error, 'Could not load prospects.')}<Button onClick={() => void refetch()}>Retry</Button></div>) : view === 'list' ? null : view === 'board' ? (
+        <div className="hidden md:block pb-4 mt-4">
           <div
-            className="grid gap-4"
-            style={{ gridTemplateColumns: 'repeat(4, minmax(230px, 1fr))', minWidth: 960 }}
+            className="grid grid-cols-2 xl:grid-cols-4 gap-4"
           >
             {STATUS_COLUMNS.map(col => (
-              <div key={col.key}>
+              <div key={col.key} className="min-w-0">
                 <div className="flex items-center gap-2 mb-3">
                   <span
                     className="h-2.5 w-2.5 rounded-full flex-shrink-0"
@@ -442,8 +433,9 @@ export default function ProspectBoardPage() {
           ) : (
             <div className="space-y-3">
               {upcomingVisits.map(lead => {
-                const d = new Date(lead.visit_scheduled_at!)
-                const isPast = d < new Date()
+                const d = new Date(`${lead.visit_scheduled_at!.slice(0, 10)}T12:00:00`)
+                const today = new Date(); today.setHours(0, 0, 0, 0)
+                const isPast = d < today
                 const col = STATUS_COLUMNS.find(c => c.key === lead.status)
                 return (
                   <button
@@ -492,7 +484,7 @@ export default function ProspectBoardPage() {
                     {col && (
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                        style={{ backgroundColor: col.color + '22', color: col.color }}
+                        style={{ backgroundColor: 'var(--ms-hover)', color: col.color }}
                       >
                         {col.label}
                       </span>
@@ -506,7 +498,7 @@ export default function ProspectBoardPage() {
       )}
 
       {currentSelected && (
-        <LeadModal lead={currentSelected} onClose={() => setSelectedLead(null)} />
+        <LeadModal key={currentSelected.id} lead={currentSelected} onClose={() => setSelectedLead(null)} />
       )}
     </div>
   )

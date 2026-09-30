@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -13,6 +13,7 @@ from ..models import CustomerAccount, ProspectLead
 router = APIRouter(prefix="/v1/prospect-leads", tags=["prospect-leads"])
 
 STATUSES = ["new", "contacted", "visited", "onboarded"]
+ALLOWED_STATUSES = set(STATUSES) | {"quote_needed", "follow_up_due", "won", "lost"}
 
 
 class ProspectLeadOut(BaseModel):
@@ -55,6 +56,26 @@ class UpdateLeadBody(BaseModel):
     notes: Optional[str] = None
     status: Optional[str] = None
     visit_scheduled_at: Optional[datetime] = None
+
+
+def _apply_details(lead: ProspectLead, body: UpdateLeadBody) -> None:
+    # Explicit null clears a field; omitted fields remain unchanged.
+    for field in ("contact_name", "contact_email", "notes", "visit_scheduled_at"):
+        if field in body.model_fields_set:
+            setattr(lead, field, getattr(body, field))
+
+
+def _ensure_account(lead: ProspectLead, session: Session) -> None:
+    if lead.customer_account_id:
+        return
+    account = CustomerAccount(
+        tenant_id=lead.tenant_id, name=lead.name,
+        contact_name=lead.contact_name, contact_email=lead.contact_email,
+        contact_phone=lead.phone, billing_address=lead.address, notes=lead.notes,
+    )
+    session.add(account)
+    session.flush()
+    lead.customer_account_id = account.id
 
 
 def _out(lead: ProspectLead) -> ProspectLeadOut:
@@ -142,18 +163,13 @@ def update_lead(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    if body.contact_name is not None:
-        lead.contact_name = body.contact_name
-    if body.contact_email is not None:
-        lead.contact_email = body.contact_email
-    if body.notes is not None:
-        lead.notes = body.notes
+    _apply_details(lead, body)
     if body.status is not None:
-        if body.status not in STATUSES:
-            raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {', '.join(STATUSES)}")
+        if body.status not in ALLOWED_STATUSES:
+            raise HTTPException(status_code=400, detail="Invalid prospect status")
         lead.status = body.status
-    if body.visit_scheduled_at is not None:
-        lead.visit_scheduled_at = body.visit_scheduled_at
+    if lead.status in {"onboarded", "won"}:
+        _ensure_account(lead, session)
 
     lead.updated_at = datetime.now(timezone.utc)
     session.add(lead)
@@ -183,6 +199,7 @@ def delete_lead(
 @router.post("/{lead_id}/advance", response_model=ProspectLeadOut)
 def advance_lead(
     lead_id: str,
+    body: Optional[UpdateLeadBody] = Body(default=None),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
@@ -194,26 +211,17 @@ def advance_lead(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    current_idx = STATUSES.index(lead.status) if lead.status in STATUSES else 0
-    if current_idx < len(STATUSES) - 1:
-        lead.status = STATUSES[current_idx + 1]
-        lead.updated_at = datetime.now(timezone.utc)
-
-        if lead.status == "onboarded" and not lead.customer_account_id:
-            account = CustomerAccount(
-                tenant_id=lead.tenant_id,
-                name=lead.name,
-                contact_name=lead.contact_name,
-                contact_email=lead.contact_email,
-                contact_phone=lead.phone,
-                billing_address=lead.address,
-                notes=lead.notes,
-            )
-            session.add(account)
-            session.flush()
-            lead.customer_account_id = account.id
-
-        session.add(lead)
-        session.commit()
-        session.refresh(lead)
+    if body:
+        _apply_details(lead, body)
+    next_status = {"new": "contacted", "quote_needed": "contacted", "follow_up_due": "contacted", "contacted": "visited", "visited": "onboarded"}
+    if lead.status in next_status:
+        lead.status = next_status[lead.status]
+    elif lead.status not in {"onboarded", "won"}:
+        raise HTTPException(status_code=400, detail="This prospect cannot be advanced. Restore it to an active stage first.")
+    if lead.status in {"onboarded", "won"}:
+        _ensure_account(lead, session)
+    lead.updated_at = datetime.now(timezone.utc)
+    session.add(lead)
+    session.commit()
+    session.refresh(lead)
     return _out(lead)

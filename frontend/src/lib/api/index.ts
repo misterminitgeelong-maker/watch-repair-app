@@ -3670,7 +3670,10 @@ export interface ProspectSearchResponse {
   results: Prospect[]
   total: number
   category: string
+  source?: 'stored' | 'google'
 }
+export const getProspectContactDetails = (place_id: string) =>
+  api.get<{ place_id: string; phone: string | null; website: string | null; attributions: string[] }>('/prospects/contact-details', { params: { place_id } })
 export const getProspectCollectorStatus = () =>
   api.get<{ enabled: boolean; remaining: number; total: number }>('/prospects/collector-status')
 export const listProspectCategories = () =>
@@ -3683,7 +3686,7 @@ export const searchProspects = (category: string, state: string, suburbs?: strin
   })
 
 // ── Prospect Leads (CRM board) ────────────────────────────────────────────────
-export type ProspectLeadStatus = 'new' | 'contacted' | 'visited' | 'onboarded'
+export type ProspectLeadStatus = 'new' | 'quote_needed' | 'contacted' | 'follow_up_due' | 'visited' | 'onboarded' | 'won' | 'lost'
 export interface ProspectLead {
   id: string
   tenant_id: string
@@ -3712,12 +3715,13 @@ export const saveProspectLead = (data: {
   website?: string; rating?: number; review_count?: number
   category?: string; state_code?: string
 }) => api.post<ProspectLead>('/prospect-leads', data)
-export const updateProspectLead = (id: string, data: {
-  contact_name?: string; contact_email?: string; notes?: string
+export interface ProspectLeadUpdate {
+  contact_name?: string | null; contact_email?: string | null; notes?: string | null
   status?: ProspectLeadStatus; visit_scheduled_at?: string | null
-}) => api.patch<ProspectLead>(`/prospect-leads/${id}`, data)
-export const advanceProspectLead = (id: string) =>
-  api.post<ProspectLead>(`/prospect-leads/${id}/advance`)
+}
+export const updateProspectLead = (id: string, data: ProspectLeadUpdate) => api.patch<ProspectLead>(`/prospect-leads/${id}`, data)
+export const advanceProspectLead = (id: string, data?: ProspectLeadUpdate) =>
+  api.post<ProspectLead>(`/prospect-leads/${id}/advance`, data)
 export const deleteProspectLead = (id: string) =>
   api.delete(`/prospect-leads/${id}`)
 
@@ -3871,8 +3875,8 @@ export const patchToolkitMobileNotifications = (payload: {
     '/toolkit/mobile-notifications',
     payload,
   )
-export const recommendToolkit = (scenario_id: string) =>
-  api.post<ToolkitRecommendResponse>('/toolkit/recommend', { scenario_id })
+export const recommendToolkit = (scenario_id: string, tool_keys?: string[]) =>
+  api.post<ToolkitRecommendResponse>('/toolkit/recommend', { scenario_id, tool_keys })
 export const postToolkitRecommend = recommendToolkit
 
 // ── Watch movement quote ──────────────────────────────────────────────────────

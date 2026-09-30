@@ -224,6 +224,7 @@ def put_my_toolkit_selection(
 
 class ToolkitRecommendBody(BaseModel):
     scenario_id: str = Field(..., min_length=1, max_length=128)
+    tool_keys: list[str] | None = Field(default=None, max_length=500)
 
 
 @router.post("/recommend")
@@ -241,7 +242,9 @@ def recommend_tools_for_scenario(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    selected = set(_parse_selected(tenant.toolkit_selected_keys))
+    selected = set(body.tool_keys if body.tool_keys is not None else _parse_selected(tenant.toolkit_selected_keys))
+    if selected - _TOOL_INDEX.keys():
+        raise HTTPException(status_code=400, detail="Unknown tool keys")
     alts: dict[str, list[str]] = scenario.get("alternatives") or {}
     # normalise alternative values to str list
     alts_norm: dict[str, list[str]] = {}
