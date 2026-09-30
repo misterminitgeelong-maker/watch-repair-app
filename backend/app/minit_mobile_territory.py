@@ -433,3 +433,32 @@ def write_conflicts_csv(result: TerritoryGenerationResult, path: Path) -> None:
                     runner_up.get("distance_km"),
                 ]
             )
+
+
+_postcode_centroids: dict[str, tuple[float, float]] | None = None
+
+
+def postcode_centroid(postcode: str) -> tuple[float, float] | None:
+    """Centre of an AU postcode (mean of its localities' coordinates), from the public
+    postcodes CSV. Needs no Google key. Returns None if the postcode is unknown.
+    Raises httpx.HTTPError if the CSV can't be fetched.
+    """
+    global _postcode_centroids
+    if _postcode_centroids is None:
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.get(SUBURBS_CSV_URL)
+            resp.raise_for_status()
+            text = resp.text
+        sums: dict[str, list[float]] = {}
+        for row in csv.DictReader(io.StringIO(text)):
+            pc = (row.get("postcode") or "").strip().zfill(4)
+            lat = _parse_float(row.get("Lat_precise")) or _parse_float(row.get("lat"))
+            lng = _parse_float(row.get("Long_precise")) or _parse_float(row.get("long"))
+            if not pc or lat is None or lng is None:
+                continue
+            acc = sums.setdefault(pc, [0.0, 0.0, 0.0])
+            acc[0] += lat
+            acc[1] += lng
+            acc[2] += 1
+        _postcode_centroids = {pc: (a[0] / a[2], a[1] / a[2]) for pc, a in sums.items()}
+    return _postcode_centroids.get(postcode.strip().zfill(4))

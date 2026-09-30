@@ -35,7 +35,10 @@ from ..dependencies import (
     require_owner,
 )
 from ..minit_branding import MINIT_HQ_PLAN, is_minit_tenant, tenant_product
+from fastapi.concurrency import run_in_threadpool
+
 from ..dispatch_utils import geocode_address
+from ..minit_mobile_territory import postcode_centroid
 from ..models.tables import PARENT_ROLE_HQ_ADMIN
 from ..minit_mobile_routing import resolve_mobile_operator_route
 from ..minit_mobile_territory_import import import_mobile_suburb_routes, load_territory_routes_seed
@@ -1525,10 +1528,19 @@ async def set_site_base_location(
     query = address or (f"{postcode}, Australia" if postcode else "")
     if not query:
         raise HTTPException(status_code=400, detail="Provide an address or a postcode")
-    try:
-        lat, lng = await geocode_address(query)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+    coords: tuple[float, float] | None = None
+    if postcode and not address:
+        # A bare postcode needs no Google key: use the public postcode centroid.
+        try:
+            coords = await run_in_threadpool(postcode_centroid, postcode)
+        except Exception:
+            logging.getLogger(__name__).warning("postcode centroid lookup failed for %s", postcode, exc_info=True)
+    if coords is None:
+        try:
+            coords = await geocode_address(query)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+    lat, lng = coords
 
     tenant.base_lat = lat
     tenant.base_lng = lng

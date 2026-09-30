@@ -237,6 +237,7 @@ def test_hq_sets_operator_base_location_and_operator_cannot(monkeypatch):
         return (-33.87, 151.21)
 
     monkeypatch.setattr("app.routes.parent_accounts.geocode_address", _fake_geocode)
+    monkeypatch.setattr("app.routes.parent_accounts.postcode_centroid", lambda pc: (-33.87, 151.21))
     monkeypatch.setattr("app.routes.intake_dispatch.geocode_address", _fake_geocode)
 
     bad = client.put(f"/v1/parent-accounts/me/sites/{op1_id}/base-location", headers=hq_h, json={"postcode": "20"})
@@ -265,3 +266,28 @@ def test_hq_sets_operator_base_location_and_operator_cannot(monkeypatch):
         json={"address": "1 Somewhere St, Sydney NSW 2000", "ring_radius_km": 5},
     )
     assert blocked.status_code == 403, blocked.text
+
+
+def test_bare_postcode_works_without_google_key(monkeypatch):
+    _ingest_id, op1_id, _op2_id, _hq_id, hq_h = _setup_network()
+
+    async def _no_key(address: str):
+        raise ValueError("GOOGLE_MAPS_WEB_SERVICES_KEY is not configured.")
+
+    monkeypatch.setattr("app.routes.parent_accounts.geocode_address", _no_key)
+    monkeypatch.setattr("app.routes.parent_accounts.postcode_centroid", lambda pc: (-37.88, 145.08))
+    res = client.put(
+        f"/v1/parent-accounts/me/sites/{op1_id}/base-location",
+        headers=hq_h,
+        json={"postcode": "3148", "ring_radius_km": 20},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["base_lat"] == -37.88
+
+    full = client.put(
+        f"/v1/parent-accounts/me/sites/{op1_id}/base-location",
+        headers=hq_h,
+        json={"address": "1 Depot St, Chadstone VIC", "ring_radius_km": 20},
+    )
+    assert full.status_code == 422
+    assert "not configured" in full.text
