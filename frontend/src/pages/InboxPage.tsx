@@ -17,7 +17,7 @@ import { Card, PageHeader, Spinner, EmptyState } from '@/components/ui'
 // so nav bars can use it without statically pulling in this page.
 export { useInboxCount } from '@/hooks/useInboxCount'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 500
 
 function formatDate(s: string) {
   const d = new Date(s)
@@ -113,7 +113,7 @@ export default function InboxPage() {
   const qc = useQueryClient()
   const [page, setPage] = useState(0)
   const { data: alerts, isLoading } = useQuery({
-    queryKey: ['inbox', page],
+    queryKey: ['inbox', PAGE_SIZE, page],
     queryFn: () => getInbox(PAGE_SIZE, page * PAGE_SIZE).then(r => r.data),
   })
   const deleteMut = useMutation({
