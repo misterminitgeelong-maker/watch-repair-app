@@ -42,6 +42,8 @@ def _eligible_operators(session: Session) -> list[Tenant]:
         .where(col(Tenant.base_lat).is_not(None))
         .where(col(Tenant.base_lng).is_not(None))
         .where(Tenant.is_active == True)  # noqa: E712
+        .where(Tenant.mobile_dispatch_paused == False)  # noqa: E712
+        .where(col(Tenant.merged_into_tenant_id).is_(None))
     ).all()
     return list(rows)
 

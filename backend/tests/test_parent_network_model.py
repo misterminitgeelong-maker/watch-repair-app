@@ -1041,6 +1041,7 @@ def test_mv_merge_pairs_vans_and_folds_the_operator_into_the_mv_shop():
     with Session(engine) as db:
         for site, phone in ((op1, "0401001308"), (op2, "0451533456"), (op3, "0490447704"), (op4, "0421829661")):
             t = db.get(Tenant, UUID(site["tenant_id"]))
+            t.slug = f"minit-mobile-{t.shop_number}-{suffix}"
             t.mobile_dispatch_phone = phone
             db.add(t)
         parent_id = db.exec(
@@ -1069,8 +1070,8 @@ def test_mv_merge_pairs_vans_and_folds_the_operator_into_the_mv_shop():
         "/v1/parent-accounts/me/mv-merge",
         headers=hq_h,
         json={"pairs": [
-            {"mv_tenant_id": mv1["tenant_id"], "operator_tenant_id": op1["tenant_id"]},
-            {"mv_tenant_id": mv4["tenant_id"], "operator_tenant_id": op4["tenant_id"]},
+            {"mv_tenant_id": mv1["tenant_id"], "operator_tenant_id": op1["tenant_id"], "preview_token": c1["preview_token"]},
+            {"mv_tenant_id": mv4["tenant_id"], "operator_tenant_id": op4["tenant_id"], "preview_token": c4["preview_token"]},
         ]},
     )
     assert res.status_code == 200, res.text

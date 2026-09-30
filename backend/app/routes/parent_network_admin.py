@@ -185,6 +185,10 @@ def update_linked_site(
         if site.network_role == NETWORK_ROLE_HQ and role != NETWORK_ROLE_HQ:
             raise HTTPException(status_code=400, detail="The HQ site cannot change role")
         if role != site.network_role:
+            if role == "operator" and "(mv)" in tenant.name.lower():
+                tenant.mobile_dispatch_paused = True
+                tenant_changed = True
+                changes.append("new dispatch paused pending activation")
             changes.append(f"role {site.network_role} -> {role}")
             site.network_role = role
             site_changed = True

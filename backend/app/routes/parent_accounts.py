@@ -85,6 +85,7 @@ from ..models import (
     ParentLinkRequest,
     ParentLinkRequestRead,
     ParentMobileLeadDefaultTenantBody,
+    MvOperatorUpdateRequest,
     ParentMobileLeadDispatchSettingsBody,
     ParentMobileLeadEscalationTenantBody,
     ParentMobileLeadWebhookSecretBody,
@@ -2386,6 +2387,8 @@ def run_mv_merge(
 
     current_user, parent = _parent_for_write(session, auth)
     results: list[MvMergeResult] = []
+    if len({p.mv_tenant_id for p in payload.pairs}) != len(payload.pairs) or len({p.operator_tenant_id for p in payload.pairs}) != len(payload.pairs):
+        raise HTTPException(status_code=400, detail="Each shop can appear in only one pair per batch")
     for pair in payload.pairs:
         try:
             moved = merge_mv_into_operator(
@@ -2394,13 +2397,16 @@ def run_mv_merge(
                 mv_tenant_id=pair.mv_tenant_id,
                 operator_tenant_id=pair.operator_tenant_id,
                 actor=current_user,
+                expected_preview_token=pair.preview_token,
+                activate_dispatch=pair.activate_dispatch,
+                dispatch_phone=pair.dispatch_phone,
             )
             routes = sum(n for key, n in moved.items() if key.startswith("mobilesuburbroute."))
             results.append(MvMergeResult(
                 mv_tenant_id=pair.mv_tenant_id,
                 operator_tenant_id=pair.operator_tenant_id,
                 ok=True,
-                message=f"Merged; {routes} suburb route{'s' if routes != 1 else ''} moved",
+                message=f"Merged; {routes} suburb route{'s' if routes != 1 else ''} moved; dispatch {'enabled' if pair.activate_dispatch else 'paused pending activation'}",
             ))
         except MvMergeError as exc:
             session.rollback()
@@ -2419,6 +2425,33 @@ def run_mv_merge(
                 message="Something went wrong merging this pair; nothing was changed for it",
             ))
     if any(r.ok for r in results):
-        _sync_extra_location_billing(session, parent.id)
-        session.commit()
+        try:
+            _sync_extra_location_billing(session, parent.id)
+            session.commit()
+        except Exception:
+            session.rollback()
+            logging.getLogger(__name__).exception("MV merge committed; billing reconciliation failed parent=%s", parent.id)
+            for result in results:
+                if result.ok:
+                    result.message += "; billing reconciliation needs review"
     return MvMergeResponse(results=results)
+
+
+@router.post("/me/mv-operators/{tenant_id}")
+def update_mv_operator_status(
+    tenant_id: UUID,
+    payload: MvOperatorUpdateRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    from ..minit_mv_merge import MvMergeError, update_mv_operator
+
+    current_user, parent = _parent_for_write(session, auth)
+    try:
+        message = update_mv_operator(session, parent=parent, tenant_id=tenant_id, actor=current_user,
+                                     activate=payload.activate_dispatch, dispatch_phone=payload.dispatch_phone,
+                                     expected_preview_token=payload.preview_token)
+    except MvMergeError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"message": message}

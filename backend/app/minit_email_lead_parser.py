@@ -29,7 +29,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from .models import Tenant
-from .parent_network import operator_tenants_for_parent, tenant_is_live
+from .parent_network import operator_tenants_for_parent, tenant_is_live, tenant_dispatch_enabled
 
 # Order matters: matched top-to-bottom against each stripped line.
 _FIELD_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
@@ -173,7 +173,7 @@ def match_operator_for_lead(
 
     def _gate(tenant: Tenant, confidence: str) -> OperatorMatch:
         # Operators who haven't accepted their invite aren't live: never routed leads.
-        if not tenant_is_live(session, tenant.id):
+        if not tenant_is_live(session, tenant.id) or not tenant_dispatch_enabled(session, tenant.id, parent_id):
             return OperatorMatch(tenant=None, confidence="not_live")
         return OperatorMatch(tenant=tenant, confidence=confidence)
 

@@ -23,6 +23,12 @@ from ..models import AutoKeyJob, Customer, IntakeJob, Tenant, TenantEventLog
 
 router = APIRouter(tags=["intake-dispatch"])
 
+
+def _require_dispatch_enabled(session: Session, tenant_id: UUID) -> None:
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant or not tenant.is_active or tenant.mobile_dispatch_paused or tenant.merged_into_tenant_id:
+        raise HTTPException(status_code=409, detail="New dispatch is paused for this shop")
+
 # ---------------------------------------------------------------------------
 # Public intake endpoint (no auth — embedded on customer-facing website)
 # ---------------------------------------------------------------------------
@@ -86,6 +92,8 @@ def list_pool(
     """Return unclaimed IntakeJobs visible to the authenticated operator, sorted by ring then created_at."""
     _require_auto_key(auth)
 
+    _require_dispatch_enabled(session, auth.tenant_id)
+
     tenant = session.get(Tenant, auth.tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -137,6 +145,8 @@ def claim_pool_job(
 ):
     """Claim an unclaimed IntakeJob. Creates a Customer + AutoKeyJob in the operator's tenant."""
     _require_auto_key(auth)
+
+    _require_dispatch_enabled(session, auth.tenant_id)
 
     job = session.get(IntakeJob, job_id)
     if not job:

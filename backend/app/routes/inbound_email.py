@@ -430,6 +430,8 @@ def create_job_from_inbound_email(
             status_code=409,
             detail="That operator hasn't accepted their invite yet, so they can't be assigned jobs",
         )
+    if tenant.mobile_dispatch_paused or tenant.merged_into_tenant_id or not tenant.is_active:
+        raise HTTPException(status_code=409, detail="New dispatch is paused for this shop")
 
     plan_code = normalize_plan_code(tenant.plan_code)
     if "auto_key" in PLAN_FEATURES.get(plan_code, set()):

@@ -61,6 +61,10 @@ class Tenant(SQLModel, table=True):
     business_address: Optional[str] = Field(default=None, max_length=2000)
     #: SMS destination for new shop mobile booking alerts (operator dispatch).
     mobile_dispatch_phone: Optional[str] = Field(default=None, max_length=80)
+    #: Classification alone must not enable new dispatch. Existing operators keep their state.
+    mobile_dispatch_paused: bool = Field(default=False, sa_column_kwargs={"server_default": text("false")})
+    #: Durable retirement marker; imports must never recreate/relink this operator.
+    merged_into_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id")
     #: Minit shop or mobile-operator number (e.g. 3269 Chadstone, 3904 operator).
     shop_number: Optional[str] = Field(default=None, max_length=10, index=True)
     #: TSS export Area column (e.g. VIC SOUTH, QLD WEST).
@@ -398,6 +402,8 @@ class ParentAccountEventLog(SQLModel, table=True):
     actor_email: Optional[str] = None
     event_type: str = Field(index=True)
     event_summary: str
+    #: Structured before/after manifest for administrative changes (no credentials).
+    details_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class TenantEventLog(SQLModel, table=True):

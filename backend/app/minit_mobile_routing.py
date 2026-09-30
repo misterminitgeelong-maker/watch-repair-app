@@ -13,10 +13,11 @@ from sqlmodel import Session, select
 from .dispatch_utils import haversine_km
 from .models import MobileSuburbRoute, ParentAccount, Tenant
 from .parent_network import (
-    live_operator_tenants_for_parent,
+    dispatch_operators_for_parent,
+    accepted_invite_tenant_ids,
     site_for_tenant_in_parent,
     tenant_is_live,
-    tenant_is_operator,
+    tenant_dispatch_enabled,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ class MobileRoutingResolution:
 
 
 def _tenant_is_bookable_operator(session: Session, tenant: Tenant) -> bool:
-    return tenant_is_operator(session, tenant.id) and tenant_is_live(session, tenant.id)
+    return tenant_dispatch_enabled(session, tenant.id) and tenant_is_live(session, tenant.id)
 
 
 def lookup_mobile_suburb_route(
@@ -95,7 +96,7 @@ def _resolution_for_hq_manual(
     hq_tid = parent.mobile_lead_escalation_tenant_id if parent else None
     if hq_tid:
         tenant = session.get(Tenant, hq_tid)
-        if tenant:
+        if tenant and tenant.is_active and not tenant.mobile_dispatch_paused and not tenant.merged_into_tenant_id:
             return MobileRoutingResolution(
                 suburb=suburb.strip(),
                 state_code=state_code,
@@ -185,7 +186,7 @@ def resolve_mobile_operator_route(
     )
     if route:
         tenant = session.get(Tenant, route.target_tenant_id)
-        if tenant and _tenant_is_bookable_operator(session, tenant):
+        if tenant and tenant_dispatch_enabled(session, tenant.id, parent_id) and tenant_is_live(session, tenant.id):
             return MobileRoutingResolution(
                 suburb=suburb.strip(),
                 state_code=st,
@@ -211,7 +212,9 @@ def _tenant_linked_to_parent(session: Session, parent_id: UUID, tenant_id: UUID)
 
 
 def _bookable_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
-    return live_operator_tenants_for_parent(session, parent_id)
+    operators = dispatch_operators_for_parent(session, parent_id)
+    live = accepted_invite_tenant_ids(session, [t.id for t in operators])
+    return [t for t in operators if t.id in live]
 
 
 @lru_cache(maxsize=1)

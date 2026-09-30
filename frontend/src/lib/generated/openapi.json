@@ -6245,7 +6245,7 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 200,
+              "maximum": 500,
               "minimum": 1,
               "default": 50,
               "title": "Limit"
@@ -8566,7 +8566,7 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 200,
+              "maximum": 500,
               "minimum": 1,
               "default": 50,
               "title": "Limit"
@@ -15075,6 +15075,63 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/sites/{tenant_id}/base-location": {
+      "put": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Set Site Base Location",
+        "description": "HQ sets where a site's dispatch rings start (street address or AU postcode)\nand how wide each ring is. Operators can't change this themselves.",
+        "operationId": "set_site_base_location_v1_parent_accounts_me_sites__tenant_id__base_location_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteBaseLocationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/parent-accounts/me/sites/{tenant_id}/invite": {
       "post": {
         "tags": [
@@ -15774,6 +15831,308 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/mv-operators/{tenant_id}": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Update Mv Operator Status",
+        "operationId": "update_mv_operator_status_v1_parent_accounts_me_mv_operators__tenant_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MvOperatorUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/sites/{tenant_id}/accounts": {
+      "get": {
+        "tags": [
+          "hq-account-support"
+        ],
+        "summary": "List Site Accounts",
+        "description": "Everyone with a login at a site, with sign-in and reset-link status.",
+        "operationId": "list_site_accounts_v1_parent_accounts_me_sites__tenant_id__accounts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HqAccountRead"
+                  },
+                  "title": "Response List Site Accounts V1 Parent Accounts Me Sites  Tenant Id  Accounts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/sites/{tenant_id}/accounts/{user_id}/reset-link": {
+      "post": {
+        "tags": [
+          "hq-account-support"
+        ],
+        "summary": "Send Account Reset Link",
+        "description": "Email and/or text the person a one-time link to choose their own new\nemail and password. HQ is never shown the link.",
+        "operationId": "send_account_reset_link_v1_parent_accounts_me_sites__tenant_id__accounts__user_id__reset_link_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HqResetLinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/sites/{tenant_id}/accounts/{user_id}/email": {
+      "patch": {
+        "tags": [
+          "hq-account-support"
+        ],
+        "summary": "Change Account Email",
+        "description": "Correct someone's login email (a typo, or an address they can't reach).",
+        "operationId": "change_account_email_v1_parent_accounts_me_sites__tenant_id__accounts__user_id__email_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HqAccountEmailBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HqAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/sites/{tenant_id}/message-logs": {
+      "get": {
+        "tags": [
+          "hq-account-support"
+        ],
+        "summary": "List Site Message Logs",
+        "description": "Recent SMS and emails a site sent, newest first. Message text is left\nout: it often carries customer details.",
+        "operationId": "list_site_message_logs_v1_parent_accounts_me_sites__tenant_id__message_logs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HqMessageLogRead"
+                  },
+                  "title": "Response List Site Message Logs V1 Parent Accounts Me Sites  Tenant Id  Message Logs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/network-link-requests": {
       "get": {
         "tags": [
@@ -16356,6 +16715,33 @@
             }
           }
         }
+      }
+    },
+    "/v1/parent-accounts/me/operations/lead-volume": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Lead Volume Report",
+        "description": "Daily (30 days), weekly (12 weeks, Mon start) and monthly (12 months) lead counts.\n\nA lead is a website mobile-key enquiry (MobileLeadDispatch) or a captured\nenquiry email (InboundEmail). Days are bucketed in Melbourne time; periods\nwith no leads are returned as zeros so charts have no gaps.",
+        "operationId": "get_lead_volume_report_v1_parent_accounts_me_operations_lead_volume_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentLeadVolumeReport"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/parent-accounts/me/operations/mobile-weekly-report": {
@@ -26479,6 +26865,184 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HqAccountEmailBody": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "HqAccountEmailBody"
+      },
+      "HqAccountRead": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "is_hq_login": {
+            "type": "boolean",
+            "title": "Is Hq Login",
+            "default": false
+          },
+          "latest_link_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Link Status"
+          },
+          "latest_link_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Link Sent At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "email",
+          "full_name",
+          "role",
+          "is_active"
+        ],
+        "title": "HqAccountRead"
+      },
+      "HqMessageLogRead": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "title": "Channel"
+          },
+          "to": {
+            "type": "string",
+            "title": "To"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel",
+          "to",
+          "event",
+          "status",
+          "created_at"
+        ],
+        "title": "HqMessageLogRead"
+      },
+      "HqResetLinkResponse": {
+        "properties": {
+          "email_sent": {
+            "type": "boolean",
+            "title": "Email Sent"
+          },
+          "sms_sent": {
+            "type": "boolean",
+            "title": "Sms Sent"
+          },
+          "sent_to_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent To Email"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email_sent",
+          "sms_sent",
+          "expires_at"
+        ],
+        "title": "HqResetLinkResponse"
+      },
       "ImportSummaryResponse": {
         "properties": {
           "import_id": {
@@ -27882,6 +28446,34 @@
         ],
         "title": "LatLng"
       },
+      "LeadVolumeBucket": {
+        "properties": {
+          "period_start": {
+            "type": "string",
+            "title": "Period Start"
+          },
+          "website_leads": {
+            "type": "integer",
+            "title": "Website Leads",
+            "default": 0
+          },
+          "email_leads": {
+            "type": "integer",
+            "title": "Email Leads",
+            "default": 0
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_start"
+        ],
+        "title": "LeadVolumeBucket"
+      },
       "LoginRequest": {
         "properties": {
           "tenant_slug": {
@@ -29154,12 +29746,93 @@
             "type": "boolean",
             "title": "Blocked",
             "default": false
+          },
+          "network_role": {
+            "type": "string",
+            "title": "Network Role",
+            "default": "retail"
+          },
+          "dispatch_paused": {
+            "type": "boolean",
+            "title": "Dispatch Paused",
+            "default": true
+          },
+          "shop_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Phone"
+          },
+          "shop_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Email"
+          },
+          "dispatch_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatch Phone"
+          },
+          "dispatch_phone_source": {
+            "type": "string",
+            "title": "Dispatch Phone Source",
+            "default": "missing"
+          },
+          "dispatch_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatch Email"
+          },
+          "proposed_plan_code": {
+            "type": "string",
+            "title": "Proposed Plan Code",
+            "default": ""
+          },
+          "routes_to_move": {
+            "type": "integer",
+            "title": "Routes To Move",
+            "default": 0
+          },
+          "readiness_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Readiness Issues"
+          },
+          "preview_token": {
+            "type": "string",
+            "title": "Preview Token"
           }
         },
         "type": "object",
         "required": [
           "mv_tenant_id",
-          "mv_name"
+          "mv_name",
+          "preview_token"
         ],
         "title": "MvMergeCandidateRead"
       },
@@ -29204,12 +29877,36 @@
             "type": "string",
             "format": "uuid",
             "title": "Operator Tenant Id"
+          },
+          "preview_token": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Preview Token"
+          },
+          "activate_dispatch": {
+            "type": "boolean",
+            "title": "Activate Dispatch",
+            "default": false
+          },
+          "dispatch_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatch Phone"
           }
         },
         "type": "object",
         "required": [
           "mv_tenant_id",
-          "operator_tenant_id"
+          "operator_tenant_id",
+          "preview_token"
         ],
         "title": "MvMergePair"
       },
@@ -29240,10 +29937,15 @@
               "$ref": "#/components/schemas/MvMergePair"
             },
             "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
             "title": "Pairs"
           }
         },
         "type": "object",
+        "required": [
+          "pairs"
+        ],
         "title": "MvMergeRequest"
       },
       "MvMergeResponse": {
@@ -29288,6 +29990,38 @@
           "message"
         ],
         "title": "MvMergeResult"
+      },
+      "MvOperatorUpdateRequest": {
+        "properties": {
+          "preview_token": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Preview Token"
+          },
+          "activate_dispatch": {
+            "type": "boolean",
+            "title": "Activate Dispatch",
+            "default": false
+          },
+          "dispatch_phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatch Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preview_token"
+        ],
+        "title": "MvOperatorUpdateRequest"
       },
       "NotificationPrefsRead": {
         "properties": {
@@ -29982,6 +30716,39 @@
             "type": "string",
             "title": "Owner Stage",
             "default": "not_invited"
+          },
+          "base_lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Lat"
+          },
+          "base_lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Lng"
+          },
+          "ring_radius_km": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ring Radius Km"
           }
         },
         "type": "object",
@@ -30682,6 +31449,33 @@
           "parent_account_id"
         ],
         "title": "ParentLeadIngestConfigResponse"
+      },
+      "ParentLeadVolumeReport": {
+        "properties": {
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/LeadVolumeBucket"
+            },
+            "type": "array",
+            "title": "Daily"
+          },
+          "weekly": {
+            "items": {
+              "$ref": "#/components/schemas/LeadVolumeBucket"
+            },
+            "type": "array",
+            "title": "Weekly"
+          },
+          "monthly": {
+            "items": {
+              "$ref": "#/components/schemas/LeadVolumeBucket"
+            },
+            "type": "array",
+            "title": "Monthly"
+          }
+        },
+        "type": "object",
+        "title": "ParentLeadVolumeReport"
       },
       "ParentLinkRequestRead": {
         "properties": {
@@ -34504,6 +35298,28 @@
             ],
             "title": "Customer Email"
           },
+          "watch_brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Brand"
+          },
+          "watch_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Model"
+          },
           "tracking_sms_sent": {
             "type": "boolean",
             "title": "Tracking Sms Sent",
@@ -34687,6 +35503,17 @@
               }
             ],
             "title": "Parts Eta"
+          },
+          "job_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Number"
           }
         },
         "type": "object",
@@ -35021,6 +35848,28 @@
               }
             ],
             "title": "Customer Email"
+          },
+          "watch_brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Brand"
+          },
+          "watch_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Model"
           }
         },
         "type": "object",
@@ -37158,6 +38007,25 @@
               }
             ],
             "title": "Shop Number"
+          },
+          "region": {
+            "type": "string",
+            "enum": [
+              "AU",
+              "NZ"
+            ],
+            "title": "Region",
+            "default": "AU"
+          },
+          "default_currency": {
+            "type": "string",
+            "title": "Default Currency",
+            "default": "AUD"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Australia/Melbourne"
           }
         },
         "type": "object",
@@ -37251,6 +38119,21 @@
               }
             ],
             "title": "Shop Number"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AU",
+                  "NZ"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
           }
         },
         "type": "object",
@@ -38070,6 +38953,42 @@
           "created_at"
         ],
         "title": "ShopOwnerInviteRead"
+      },
+      "SiteBaseLocationRequest": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "postcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postcode"
+          },
+          "ring_radius_km": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Ring Radius Km",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "title": "SiteBaseLocationRequest",
+        "description": "HQ sets where an operator's rings start: a street address or an AU postcode."
       },
       "SmsLogRead": {
         "properties": {

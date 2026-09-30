@@ -128,6 +128,8 @@ def _nz_defaults_pending(tenant: Tenant, shop: MinitShopRow) -> bool:
 
 def sync_tenant_from_minit_shop(tenant: Tenant, shop: MinitShopRow) -> bool:
     """Apply TSS row metadata to an existing tenant. Returns True if anything changed."""
+    if tenant.merged_into_tenant_id:
+        return False
     shop_number = normalize_shop_number(shop.shop_number)
     if not shop_number or not _shop_metadata_changed(tenant, shop, shop_number):
         return False
@@ -168,6 +170,8 @@ def _operator_metadata_changed(
     shop: MinitShopRow,
     shop_number: str,
 ) -> bool:
+    if tenant.merged_into_tenant_id or "(mv)" in tenant.name.lower():
+        return False
     addr = shop.business_address[:2000] if shop.business_address else None
     return (
         tenant.name != operator.tenant_name
@@ -183,6 +187,8 @@ def _operator_metadata_changed(
 
 def sync_tenant_from_mobile_operator(tenant: Tenant, operator: ResolvedMobileOperator) -> bool:
     """Apply operator seed + TSS metadata to an existing tenant."""
+    if tenant.merged_into_tenant_id or "(mv)" in tenant.name.lower():
+        return False
     shop = to_minit_shop_row(operator)
     shop_number = normalize_shop_number(operator.shop_number)
     if not shop_number or not _operator_metadata_changed(tenant, operator, shop, shop_number):
@@ -322,6 +328,8 @@ def _create_child_tenant(
     else:
         existing = session.exec(select(Tenant).where(Tenant.slug == slug)).first()
     if existing:
+        if existing.merged_into_tenant_id:
+            return None
         if sync_tenant_from_minit_shop(existing, shop):
             session.add(existing)
             sync_site_region_from_tenant(session, parent_id=parent.id, tenant=existing, cache=region_cache)
@@ -730,6 +738,7 @@ def import_minit_mobile_operators(
     existing_numbers = existing_shop_numbers_in_parent(session, parent.id, site_kind="operator")
     existing_slugs = existing_slugs_in_parent(session, parent.id)
     tenants_by_number = tenants_by_shop_number_in_parent(session, parent.id, site_kind="operator")
+    retired_slugs = set(session.exec(select(Tenant.slug).where(col(Tenant.merged_into_tenant_id).is_not(None))).all())
 
     would_create: list[dict[str, str]] = []
     would_update: list[dict[str, str]] = []
@@ -739,7 +748,10 @@ def import_minit_mobile_operators(
         entry = _operator_entry(operator)
         slug = operator.tenant_slug
         shop = to_minit_shop_row(operator)
-        if operator.shop_number in existing_numbers:
+        if slug in retired_slugs:
+            entry["skip_reason"] = "merged_operator"
+            would_skip.append(entry)
+        elif operator.shop_number in existing_numbers:
             tenant = tenants_by_number.get(operator.shop_number)
             if tenant and _operator_metadata_changed(
                 tenant, operator, shop, operator.shop_number
@@ -816,6 +828,9 @@ def import_minit_mobile_operators(
     for index, operator in enumerate(operators, start=1):
         shop = to_minit_shop_row(operator)
         slug = operator.tenant_slug
+        if slug in retired_slugs:
+            skipped_apply += 1
+            continue
         if operator.shop_number in existing_numbers:
             tenant = tenants_by_number.get(operator.shop_number)
             if tenant and sync_tenant_from_mobile_operator(tenant, operator):

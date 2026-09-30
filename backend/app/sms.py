@@ -927,6 +927,31 @@ def notify_shop_owner_invite(
     return sid is not None
 
 
+def notify_account_reset(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    tenant_name: str,
+    reset_url: str,
+    expiry_days: int,
+) -> bool:
+    """Text a one-time link, sent by HQ, for choosing a new email and password."""
+    body = (
+        f"Mister Minit HQ: reset your {tenant_name.strip()} login — {reset_url} "
+        f"— link expires in {expiry_days} days."
+    )
+    sid, _status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="account_reset_link",
+    )
+    return sid is not None
+
+
 def send_portal_login_code(session: Session, *, tenant_id: UUID, to_phone: str, shop_name: str, code: str) -> str:
     """Text a customer the code that opens the mobile-key portal. Returns the send status."""
     body = f"{shop_name.strip() or 'Your shop'}: your sign-in code is {code}. It expires in 10 minutes."

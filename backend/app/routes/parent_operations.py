@@ -197,6 +197,13 @@ def _collect_troubleshooting_items(
     items: list[ParentTroubleshootingItem] = []
 
     for op in operators:
+        if op.mobile_dispatch_paused:
+            items.append(ParentTroubleshootingItem(
+                kind="operator_dispatch_paused", severity="warning",
+                title="Operator dispatch is paused",
+                detail=f"{format_tenant_label(op.name, op.shop_number)} — review and activate in Merge MV duplicates",
+                tenant_id=op.id, tenant_slug=op.slug,
+            ))
         if not (getattr(op, "mobile_dispatch_phone", None) or "").strip():
             items.append(
                 ParentTroubleshootingItem(
