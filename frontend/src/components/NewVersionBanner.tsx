@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { APP_BUILD_ID } from '@/lib/buildInfo'
+import { hardReload } from '@/lib/routePrefetch'
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000
 
@@ -49,7 +50,7 @@ export default function NewVersionBanner() {
   // Navigating is a safe moment to swap in the new build.
   useEffect(() => {
     const here = location.pathname + location.search
-    if (stale && here !== firstPath.current) window.location.reload()
+    if (stale && here !== firstPath.current) hardReload()
   }, [stale, location.pathname, location.search])
 
   if (!stale) return null
@@ -62,7 +63,7 @@ export default function NewVersionBanner() {
       <button
         type="button"
         className="rounded bg-white px-2 py-1 font-medium text-stone-900"
-        onClick={() => window.location.reload()}
+        onClick={() => hardReload()}
       >
         Reload
       </button>

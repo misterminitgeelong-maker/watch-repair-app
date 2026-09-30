@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 // Shared with the lazy-route loader, which catches this failure first. Two
 // separate keys meant one stale tab could reload twice.
-import { CHUNK_RELOAD_KEY } from '@/lib/routePrefetch'
+import { hardReload, recoverFromStaleBuild } from '@/lib/routePrefetch'
 
 function isChunkLoadError(error: Error): boolean {
   return error.message.includes('Failed to fetch dynamically imported module') ||
@@ -44,11 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught:', error, errorInfo)
 
     if (isChunkLoadError(error)) {
-      const alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY)
-      if (!alreadyReloaded) {
-        sessionStorage.setItem(CHUNK_RELOAD_KEY, '1')
-        window.location.reload()
-      }
+      recoverFromStaleBuild()
     }
   }
 
@@ -73,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => window.location.reload()}
+              onClick={hardReload}
               className="min-h-11 rounded-lg px-4 py-2 font-medium transition-colors"
               style={{ backgroundColor: 'var(--ms-accent)', color: '#FFF8EC' }}
             >
