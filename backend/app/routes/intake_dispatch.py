@@ -18,6 +18,7 @@ from ..dependencies import (
 )
 from ..dispatch_utils import geocode_address, operator_ring_for_job
 from ..limiter import limiter
+from ..parent_network import tenant_is_operator
 from ..models import AutoKeyJob, Customer, IntakeJob, Tenant, TenantEventLog
 
 router = APIRouter(tags=["intake-dispatch"])
@@ -212,6 +213,8 @@ async def set_base_location(
     _require_auto_key(auth)
     if auth.role not in ("owner", "manager", "platform_admin"):
         raise HTTPException(status_code=403, detail="Owner or manager required")
+    if tenant_is_operator(session, auth.tenant_id):
+        raise HTTPException(status_code=403, detail="Your base location and rings are set by HQ")
 
     try:
         lat, lng = await geocode_address(body.address)

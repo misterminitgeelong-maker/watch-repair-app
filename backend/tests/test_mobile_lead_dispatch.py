@@ -228,3 +228,40 @@ def test_force_hq_testing_mode_skips_operators():
     body = _ingest_lead(ingest_id, suburb="Sydney")
     assert body["tenant_id"] == hq_id
     assert body["tenant_id"] != op1_id
+
+
+def test_hq_sets_operator_base_location_and_operator_cannot(monkeypatch):
+    _ingest_id, op1_id, _op2_id, _hq_id, hq_h = _setup_network()
+
+    async def _fake_geocode(address: str):
+        return (-33.87, 151.21)
+
+    monkeypatch.setattr("app.routes.parent_accounts.geocode_address", _fake_geocode)
+    monkeypatch.setattr("app.routes.intake_dispatch.geocode_address", _fake_geocode)
+
+    bad = client.put(f"/v1/parent-accounts/me/sites/{op1_id}/base-location", headers=hq_h, json={"postcode": "20"})
+    assert bad.status_code == 400
+    res = client.put(
+        f"/v1/parent-accounts/me/sites/{op1_id}/base-location",
+        headers=hq_h,
+        json={"postcode": "2000", "ring_radius_km": 25},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["ring_radius_km"] == 25
+    with Session(engine) as session:
+        tenant = session.get(Tenant, UUID(op1_id))
+        assert tenant.base_lat == -33.87 and tenant.ring_radius_km == 25
+
+    sites = client.get("/v1/parent-accounts/me/sites?plan_kind=operator&limit=50", headers=hq_h).json()["sites"]
+    site = next(s for s in sites if s["tenant_id"] == op1_id)
+    assert site["base_lat"] == -33.87 and site["ring_radius_km"] == 25
+
+    with Session(engine) as session:
+        slug = session.get(Tenant, UUID(op1_id)).slug
+    op_token = _login(slug, next(e for e in [f"op1-{slug.split('-', 1)[1]}@test.local"]))
+    blocked = client.post(
+        "/v1/settings/dispatch-base-location",
+        headers=_headers(op_token),
+        json={"address": "1 Somewhere St, Sydney NSW 2000", "ring_radius_km": 5},
+    )
+    assert blocked.status_code == 403, blocked.text

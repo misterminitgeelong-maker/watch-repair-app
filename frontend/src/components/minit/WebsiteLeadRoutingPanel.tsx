@@ -23,6 +23,7 @@ import { PARENT_ACCOUNT_QUERY_KEY, useParentAccount } from '@/hooks/useParentAcc
 import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/useParentAccountSites'
 import { PARENT_LEAD_INGEST_QUERY_KEY, useParentLeadIngest } from '@/hooks/useParentLeadIngest'
 import { Button, Card, Input, Select } from '@/components/ui'
+import OperatorCoverageCard from './OperatorCoverageCard'
 
 const ROUTE_LIST_THRESHOLD = 100
 
@@ -405,6 +406,8 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
         <p className="text-sm mb-3 ml-8" style={{ color: 'var(--ms-text-mid)' }}>
           ~7,500 AU suburbs are mapped within 100km of operator hubs. Outside that range, leads go straight to HQ.
         </p>
+
+        <OperatorCoverageCard sites={operatorSites} />
 
         <div className="ml-8 mb-4 flex flex-col sm:flex-row sm:items-end gap-3 max-w-lg">
           <div className="flex-1 min-w-0">

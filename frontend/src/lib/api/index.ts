@@ -126,6 +126,10 @@ export type NetworkRole = 'hq' | 'retail' | 'operator'
 export type ParentRole = 'hq_admin' | 'hq_viewer'
 
 export interface ParentAccountSite {
+  /** Dispatch base and ring size, set by HQ (null until set). */
+  base_lat?: number | null
+  base_lng?: number | null
+  ring_radius_km?: number | null
   tenant_id: string
   tenant_slug: string
   tenant_name: string
@@ -4069,6 +4073,15 @@ export const listJobPool = (maxRing?: number) =>
 
 export const claimPoolJob = (jobId: string) =>
   api.post<{ message: string; auto_key_job_id: string; job_number: string; customer_id: string }>(`/pool/${jobId}/claim`)
+
+export const setSiteBaseLocation = (
+  tenantId: string,
+  payload: { address?: string; postcode?: string; ring_radius_km: number },
+) =>
+  api.put<{ tenant_id: string; base_lat: number; base_lng: number; ring_radius_km: number }>(
+    `/parent-accounts/me/sites/${tenantId}/base-location`,
+    payload,
+  )
 
 export const setDispatchBaseLocation = (address: string, ring_radius_km = 10) =>
   api.post<{ base_lat: number; base_lng: number; ring_radius_km: number }>('/settings/dispatch-base-location', { address, ring_radius_km })

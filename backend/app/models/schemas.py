@@ -249,6 +249,18 @@ class ParentAccountSiteRead(SQLModel):
     owner_last_sign_in_at: Optional[datetime] = None
     #: live | quiet (accepted, no sign-in for 14+ days) | waiting | expired | not_invited
     owner_stage: str = "not_invited"
+    #: Dispatch base location / ring size, set by HQ (None until HQ sets one).
+    base_lat: Optional[float] = None
+    base_lng: Optional[float] = None
+    ring_radius_km: Optional[int] = None
+
+
+class SiteBaseLocationRequest(SQLModel):
+    """HQ sets where an operator's rings start: a street address or an AU postcode."""
+
+    address: Optional[str] = None
+    postcode: Optional[str] = None
+    ring_radius_km: int = Field(default=10, ge=1, le=200)
 
 
 class ParentAccountSiteUpdateRequest(SQLModel):

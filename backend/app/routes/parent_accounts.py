@@ -35,6 +35,7 @@ from ..dependencies import (
     require_owner,
 )
 from ..minit_branding import MINIT_HQ_PLAN, is_minit_tenant, tenant_product
+from ..dispatch_utils import geocode_address
 from ..models.tables import PARENT_ROLE_HQ_ADMIN
 from ..minit_mobile_routing import resolve_mobile_operator_route
 from ..minit_mobile_territory_import import import_mobile_suburb_routes, load_territory_routes_seed
@@ -73,6 +74,7 @@ from ..models import (
     ParentAccountLinkTenantRequest,
     ParentAccountSite,
     ParentAccountSiteRead,
+    SiteBaseLocationRequest,
     ParentAccountSitesPageResponse,
     ParentAccountSummaryResponse,
     ParentAccountUser,
@@ -364,6 +366,9 @@ def _site_reads_for_sites(
                 owner_invite_completed_at=invite.completed_at if invite else None,
                 owner_last_sign_in_at=signed_in_at,
                 owner_stage=_owner_stage(invite_status, signed_in_at, invite.completed_at if invite else None),
+                base_lat=tenant.base_lat,
+                base_lng=tenant.base_lng,
+                ring_radius_km=tenant.ring_radius_km if tenant.base_lat is not None else None,
             )
         )
     return sorted(reads, key=lambda s: (s.tenant_name.lower(), s.tenant_slug.lower()))
@@ -1497,6 +1502,49 @@ def _owner_login_is_unclaimed(session: Session, parent: ParentAccount, owner: Us
         .limit(1)
     ).first()
     return logged_in is None
+
+
+@router.put("/me/sites/{tenant_id}/base-location")
+async def set_site_base_location(
+    tenant_id: UUID,
+    payload: SiteBaseLocationRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """HQ sets where a site's dispatch rings start (street address or AU postcode)
+    and how wide each ring is. Operators can't change this themselves."""
+    current_user, parent = _parent_for_write(session, auth)
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant or not _tenant_linked_to_parent(session, parent.id, tenant.id):
+        raise HTTPException(status_code=404, detail="Site is not linked to your account")
+
+    address = (payload.address or "").strip()
+    postcode = (payload.postcode or "").strip()
+    if postcode and not re.fullmatch(r"\d{4}", postcode):
+        raise HTTPException(status_code=400, detail="postcode must be a 4-digit Australian postcode")
+    query = address or (f"{postcode}, Australia" if postcode else "")
+    if not query:
+        raise HTTPException(status_code=400, detail="Provide an address or a postcode")
+    try:
+        lat, lng = await geocode_address(query)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    tenant.base_lat = lat
+    tenant.base_lng = lng
+    tenant.ring_radius_km = payload.ring_radius_km
+    session.add(tenant)
+    _record_event(
+        session,
+        parent_account_id=parent.id,
+        tenant_id=tenant.id,
+        actor_user_id=current_user.id,
+        actor_email=current_user.email,
+        event_type="site_base_location_set",
+        event_summary=f"Base location set for {tenant.name} ({query}, {payload.ring_radius_km}km rings)",
+    )
+    session.commit()
+    return {"tenant_id": str(tenant.id), "base_lat": lat, "base_lng": lng, "ring_radius_km": payload.ring_radius_km}
 
 
 @router.post("/me/sites/{tenant_id}/invite", response_model=ShopOwnerInviteRead)
