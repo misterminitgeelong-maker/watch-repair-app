@@ -36,7 +36,7 @@ from ..dependencies import (
     require_owner,
 )
 from ..limiter import limiter
-from ..minit_email_lead_parser import match_operator_for_lead, parse_powerfulform_body
+from ..minit_email_lead_parser import ParsedEmailLead, match_operator_for_lead, parse_powerfulform_body
 from ..models import (
     AutoKeyJob,
     Customer,
@@ -53,7 +53,8 @@ from ..models import (
     User,
 )
 from ..security import verify_password
-from ..services.mobile_lead_dispatch import _escalation_tenant_id, _next_auto_key_job_number
+from ..services.mobile_lead_dispatch import _escalation_tenant_id, _next_auto_key_job_number, deliver_website_lead
+from .. import sms as sms_service
 from .parent_accounts import _parent_for_read, _parent_for_write
 
 logger = logging.getLogger(__name__)
@@ -136,6 +137,92 @@ def _presented_inbound_secret(request: Request) -> str | None:
         if sep and password:
             return password
     return None
+
+
+_AU_STATE_NAMES = {
+    "australian capital territory": "ACT",
+    "new south wales": "NSW",
+    "northern territory": "NT",
+    "queensland": "QLD",
+    "south australia": "SA",
+    "tasmania": "TAS",
+    "victoria": "VIC",
+    "western australia": "WA",
+}
+
+
+def _state_code_from_form(raw: str | None) -> str:
+    """'Victoria' → 'VIC'; codes pass through; anything else (e.g. NZ regions) is kept short, as-is."""
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    return _AU_STATE_NAMES.get(value.lower(), value.upper())[:8]
+
+
+def _email_lead_payload(parsed: ParsedEmailLead, subject: str | None) -> dict:
+    notes: list[str] = []
+    if parsed.service_required:
+        notes.append(f"Service required: {parsed.service_required}")
+    if parsed.vehicle_year:
+        notes.append(f"Vehicle year: {parsed.vehicle_year}")
+    if parsed.details:
+        notes.append(parsed.details)
+    if parsed.contact_preference:
+        notes.append(f"Preferred contact method: {parsed.contact_preference}")
+    if subject:
+        notes.append(f"Email subject: {subject.strip()}")
+    return {
+        "customer_name": parsed.customer_name,
+        "phone": parsed.phone,
+        "email": parsed.email,
+        "vehicle_make": parsed.vehicle_make,
+        "vehicle_model": parsed.vehicle_model,
+        "website_notes": "\n".join(notes) or None,
+    }
+
+
+def _auto_route_inbound_email(session: Session, parent: ParentAccount, row: InboundEmail) -> Tenant | None:
+    """Send a captured form email straight to the matched operator's Lead Inbox, when it is safe to.
+
+    Returns the operator it was routed to, or None to leave it in HQ triage. Only a clean
+    match is routed: the form's "Nearest Provider" must name exactly one of this network's
+    operators, the customer must have left a phone or email, and the operator must have a
+    phone or email to be alerted on — otherwise nobody would know the lead had arrived.
+    """
+    if not parent.inbound_email_auto_route or parent.mobile_lead_force_hq_dispatch:
+        return None
+    parsed = parse_powerfulform_body(row.text_body)
+    if not parsed.fields_found or not (parsed.phone or parsed.email):
+        return None
+    match = match_operator_for_lead(session, parent_id=parent.id, parsed=parsed)
+    operator = match.tenant
+    if operator is None:
+        return None
+    if not (sms_service.operator_dispatch_phone(operator) or sms_service.operator_dispatch_email(session, operator)):
+        return None
+
+    try:
+        with session.begin_nested():
+            lead = deliver_website_lead(
+                session,
+                parent=parent,
+                tenant_id=operator.id,
+                payload=_email_lead_payload(parsed, row.subject),
+                suburb="",
+                state_code=_state_code_from_form(parsed.location_state_raw),
+                source_note="Submitted via the Mister Minit website form (routed from the BCC email).",
+                event_summary_prefix="Website form email routed to Lead Inbox",
+            )
+            row.prospect_lead_id = lead.id
+            row.routed_tenant_id = operator.id
+            row.status = "processed"
+            session.add(row)
+    except Exception:
+        # Capture must never fail because routing did: the email is already stored and
+        # falls back to HQ triage exactly as it would with auto-routing off.
+        logger.exception("inbound email %s auto-route to %s failed; left for HQ triage", row.id, operator.id)
+        return None
+    return operator
 
 
 @public_router.post("/inbound-email/{ingest_public_id}")
@@ -237,7 +324,15 @@ async def receive_inbound_email(
     session.add(row)
     session.flush()
 
+    routed_to = _auto_route_inbound_email(session, parent, row)
+
     if parent.mobile_lead_default_tenant_id:
+        if routed_to is not None:
+            event_type = "inbound_email_auto_routed"
+            summary = f"Email lead auto-routed to {routed_to.name} — {(subject or '(no subject)').strip()[:200]}"
+        else:
+            event_type = "inbound_email_received"
+            summary = f"New email lead — {(subject or '(no subject)').strip()[:200]} — from {(from_email or 'unknown sender').strip()[:200]}"
         session.add(
             TenantEventLog(
                 tenant_id=parent.mobile_lead_default_tenant_id,
@@ -245,11 +340,13 @@ async def receive_inbound_email(
                 actor_email="inbound-email@ingest",
                 entity_type="inbound_email",
                 entity_id=row.id,
-                event_type="inbound_email_received",
-                event_summary=f"New email lead — {(subject or '(no subject)').strip()[:200]} — from {(from_email or 'unknown sender').strip()[:200]}",
+                event_type=event_type,
+                event_summary=summary,
             )
         )
     session.commit()
+    if routed_to is not None:
+        return {"inbound_email_id": str(row.id), "status": "routed", "routed_tenant_id": str(routed_to.id)}
     return {"inbound_email_id": str(row.id), "status": "received"}
 
 
@@ -277,7 +374,15 @@ def list_inbound_emails(
             raise HTTPException(status_code=400, detail=f"Invalid status; use one of: {', '.join(sorted(INBOUND_EMAIL_STATUSES))}")
         query = query.where(InboundEmail.status == status)
     rows = session.exec(query.order_by(InboundEmail.created_at.desc()).offset(offset).limit(limit)).all()
-    return rows
+    routed_ids = {r.routed_tenant_id for r in rows if r.routed_tenant_id}
+    names: dict[UUID, str] = {}
+    if routed_ids:
+        for t in session.exec(select(Tenant).where(Tenant.id.in_(routed_ids))).all():
+            names[t.id] = t.name
+    return [
+        InboundEmailListItem.model_validate(r, update={"routed_tenant_name": names.get(r.routed_tenant_id)})
+        for r in rows
+    ]
 
 
 @hq_router.get("/me/inbound-emails/{inbound_email_id}", response_model=InboundEmailDetail)

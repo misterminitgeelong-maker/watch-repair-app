@@ -384,6 +384,7 @@ export interface ParentLeadIngestConfig {
   mobile_lead_offer_timeout_minutes?: number
   mobile_lead_max_operator_offers?: number
   mobile_lead_force_hq_dispatch?: boolean
+  inbound_email_auto_route?: boolean
 }
 
 export interface ParentAccountSitesPage {
@@ -3029,6 +3030,10 @@ export interface InboundEmailListItem {
   /** Backend declares this `str`; these are the values it validates against today. */
   status: 'new' | 'processed' | 'dismissed' | (string & {})
   auto_key_job_id?: string | null
+  /** Set when the email was auto-routed to an operator's Lead Inbox. */
+  prospect_lead_id?: string | null
+  routed_tenant_id?: string | null
+  routed_tenant_name?: string | null
   created_at: string
 }
 export interface InboundEmailDetail extends InboundEmailListItem {
@@ -3753,6 +3758,7 @@ export const setParentMobileLeadDispatchSettings = (data: {
   offer_timeout_minutes?: number
   max_operator_offers?: number
   force_hq_dispatch?: boolean
+  inbound_email_auto_route?: boolean
 }) => api.put<ParentLeadIngestConfig>('/parent-accounts/me/mobile-lead-ingest/dispatch-settings', data)
 export const setParentMobileLeadWebhookSecret = (secret: string) =>
   api.put('/parent-accounts/me/mobile-lead-ingest/secret', { webhook_secret: secret })

@@ -409,6 +409,7 @@ def _lead_ingest_config(parent: ParentAccount) -> ParentLeadIngestConfigResponse
         mobile_lead_offer_timeout_minutes=int(parent.mobile_lead_offer_timeout_minutes or 30),
         mobile_lead_max_operator_offers=int(parent.mobile_lead_max_operator_offers or 3),
         mobile_lead_force_hq_dispatch=bool(parent.mobile_lead_force_hq_dispatch),
+        inbound_email_auto_route=bool(parent.inbound_email_auto_route),
     )
 
 
@@ -783,6 +784,9 @@ def set_mobile_lead_dispatch_settings(
     if body.force_hq_dispatch is not None:
         parent.mobile_lead_force_hq_dispatch = body.force_hq_dispatch
         changes.append("force HQ dispatch ON" if body.force_hq_dispatch else "force HQ dispatch OFF")
+    if body.inbound_email_auto_route is not None:
+        parent.inbound_email_auto_route = body.inbound_email_auto_route
+        changes.append("email lead auto-routing ON" if body.inbound_email_auto_route else "email lead auto-routing OFF")
     if not changes:
         raise HTTPException(status_code=400, detail="No dispatch settings to update")
     _record_event(

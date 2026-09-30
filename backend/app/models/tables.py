@@ -125,6 +125,9 @@ class ParentAccount(SQLModel, table=True):
     mobile_lead_max_operator_offers: int = Field(default=3)
     #: When true, all website leads skip operators and go straight to HQ (testing).
     mobile_lead_force_hq_dispatch: bool = Field(default=False)
+    #: Parse BCC'd website-form emails and route clean operator matches straight to that
+    #: operator's Lead Inbox. Off by default; anything that doesn't match stays in HQ triage.
+    inbound_email_auto_route: bool = Field(default=False)
     #: Opt-in: weekly "mobile services network" scorecard email (per-operator jobs/
     #: sales/enquiry-backlog for the most recently completed week) to owner_email.
     mobile_weekly_report_opt_in: bool = Field(default=False)
@@ -196,6 +199,9 @@ class InboundEmail(SQLModel, table=True):
     #: new | processed | dismissed
     status: str = Field(default="new", index=True, max_length=20)
     auto_key_job_id: Optional[UUID] = Field(default=None, foreign_key="autokeyjob.id")
+    #: Set when the email was auto-routed to an operator's Lead Inbox.
+    prospect_lead_id: Optional[UUID] = Field(default=None)
+    routed_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", ondelete="SET NULL")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class IntakeJob(SQLModel, table=True):

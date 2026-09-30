@@ -65,6 +65,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
   const [offerTimeoutDraft, setOfferTimeoutDraft] = useState('30')
   const [maxOffersDraft, setMaxOffersDraft] = useState('3')
   const [forceHqDraft, setForceHqDraft] = useState(false)
+  const [emailAutoRouteDraft, setEmailAutoRouteDraft] = useState(false)
   const [routeSearch, setRouteSearch] = useState('')
   const [debouncedRouteSearch, setDebouncedRouteSearch] = useState('')
   const [testSuburb, setTestSuburb] = useState('')
@@ -121,11 +122,13 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
       setMaxOffersDraft(String(leadIngest.mobile_lead_max_operator_offers))
     }
     setForceHqDraft(leadIngest?.mobile_lead_force_hq_dispatch === true)
+    setEmailAutoRouteDraft(leadIngest?.inbound_email_auto_route === true)
   }, [
     leadIngest?.mobile_lead_escalation_tenant_id,
     leadIngest?.mobile_lead_offer_timeout_minutes,
     leadIngest?.mobile_lead_max_operator_offers,
     leadIngest?.mobile_lead_force_hq_dispatch,
+    leadIngest?.inbound_email_auto_route,
   ])
 
   function invalidateParentQueries() {
@@ -199,6 +202,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
         offer_timeout_minutes: Number(offerTimeoutDraft),
         max_operator_offers: Number(maxOffersDraft),
         force_hq_dispatch: forceHqDraft,
+        inbound_email_auto_route: emailAutoRouteDraft,
       }).then(r => r.data),
     onSuccess: () => invalidateParentQueries(),
     onError: err => reportError(err, 'Could not update dispatch settings.'),
@@ -248,6 +252,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
     offerTimeoutDraft !== String(leadIngest?.mobile_lead_offer_timeout_minutes ?? 30)
     || maxOffersDraft !== String(leadIngest?.mobile_lead_max_operator_offers ?? 3)
     || forceHqDraft !== (leadIngest?.mobile_lead_force_hq_dispatch === true)
+    || emailAutoRouteDraft !== (leadIngest?.inbound_email_auto_route === true)
 
   const retailSites = retailPage?.sites ?? []
   const operatorSites = operatorsPage?.sites ?? []
@@ -439,6 +444,20 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
           <span>
             <strong style={{ color: 'var(--ms-text)' }}>HQ testing mode</strong>
             {' — send all website leads to HQ (skip operator SMS cascade)'}
+          </span>
+        </label>
+
+        <label className="ml-8 mb-4 flex items-start gap-2 text-sm cursor-pointer max-w-2xl" style={{ color: 'var(--ms-text-mid)' }}>
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={emailAutoRouteDraft}
+            onChange={e => setEmailAutoRouteDraft(e.target.checked)}
+          />
+          <span>
+            <strong style={{ color: 'var(--ms-text)' }}>Auto-route website form emails</strong>
+            {' — send each BCC\'d enquiry straight to the operator named in the form\'s “Nearest Provider”, and alert them by SMS and email. '}
+            {'Emails that can\'t be matched to an operator, or have no customer phone or email, stay in the HQ inbox. HQ testing mode overrides this.'}
           </span>
         </label>
 

@@ -26597,6 +26597,41 @@
             ],
             "title": "Auto Key Job Id"
           },
+          "prospect_lead_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prospect Lead Id"
+          },
+          "routed_tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routed Tenant Id"
+          },
+          "routed_tenant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routed Tenant Name"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -26905,6 +26940,41 @@
               }
             ],
             "title": "Auto Key Job Id"
+          },
+          "prospect_lead_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prospect Lead Id"
+          },
+          "routed_tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routed Tenant Id"
+          },
+          "routed_tenant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routed Tenant Name"
           },
           "created_at": {
             "type": "string",
@@ -30675,6 +30745,11 @@
             "type": "boolean",
             "title": "Mobile Lead Force Hq Dispatch",
             "default": false
+          },
+          "inbound_email_auto_route": {
+            "type": "boolean",
+            "title": "Inbound Email Auto Route",
+            "default": false
           }
         },
         "type": "object",
@@ -31016,6 +31091,17 @@
               }
             ],
             "title": "Force Hq Dispatch"
+          },
+          "inbound_email_auto_route": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inbound Email Auto Route"
           }
         },
         "type": "object",
@@ -34504,6 +34590,28 @@
             ],
             "title": "Customer Email"
           },
+          "watch_brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Brand"
+          },
+          "watch_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Model"
+          },
           "tracking_sms_sent": {
             "type": "boolean",
             "title": "Tracking Sms Sent",
@@ -34687,6 +34795,17 @@
               }
             ],
             "title": "Parts Eta"
+          },
+          "job_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Number"
           }
         },
         "type": "object",
@@ -35021,6 +35140,28 @@
               }
             ],
             "title": "Customer Email"
+          },
+          "watch_brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Brand"
+          },
+          "watch_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Model"
           }
         },
         "type": "object",

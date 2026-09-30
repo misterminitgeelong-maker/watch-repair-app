@@ -170,7 +170,7 @@ function EmailLeadReviewForm({ id, onCreated }: { id: string; onCreated: (result
   )
 }
 
-function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJobId }: {
+function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJobId, routedTenantName }: {
   id: string
   subject?: string | null
   fromEmail?: string | null
@@ -179,6 +179,8 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJo
   status: 'new' | 'processed' | 'dismissed' | (string & {})
   createdAt: string
   autoKeyJobId?: string | null
+  /** Operator the email was auto-routed to (it is in their Lead Inbox, not waiting on HQ). */
+  routedTenantName?: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
   const [justCreated, setJustCreated] = useState<InboundEmailJobCreateResult | null>(null)
@@ -221,6 +223,11 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJo
             <p className="text-xs mt-1 truncate" style={{ color: 'var(--ms-text-muted)' }}>
               {fromEmail || 'Unknown sender'} · {formatDate(createdAt)}
             </p>
+            {routedTenantName && (
+              <p className="text-xs mt-1 font-medium" style={{ color: '#2F855A' }}>
+                Auto-routed to {routedTenantName}'s Lead Inbox
+              </p>
+            )}
           </button>
 
           {justCreated && (
@@ -468,6 +475,7 @@ export default function MinitInboxPage() {
                 status={em.status}
                 createdAt={em.created_at}
                 autoKeyJobId={em.auto_key_job_id}
+                routedTenantName={em.routed_tenant_name}
               />
             ))}
           </div>

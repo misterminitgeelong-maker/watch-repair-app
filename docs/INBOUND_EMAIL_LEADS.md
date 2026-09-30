@@ -4,11 +4,25 @@ Mister Minit BCCs their website auto-key enquiry-form emails to a Mainspring
 address. SendGrid Inbound Parse converts each email into an HTTP POST to the
 app, which stores it and raises an HQ inbox alert for triage.
 
-**Capture-and-triage v1:** no field parsing yet. Emails land in
-**Minit HQ → Inbox → Email leads**, a person reads the body and creates the
-AutoKey job manually. Once real form templates have been collected, a parser
-can promote these straight into routed jobs via the existing suburb-route
-logic (`mobile_lead_ingest.py`).
+Every email is stored and lands in **Minit HQ → Inbox → Email leads**.
+
+**Auto-routing (off by default).** Turn on *Auto-route website form emails*
+under HQ → Lead routing → Dispatch & territory. Each email is then parsed
+(`minit_email_lead_parser.py`) and, when the form's "Nearest Provider" names
+one of the network's operators, it becomes a lead in that operator's Lead
+Inbox and the operator gets the same SMS + email alert as the website lead
+feed. The HQ inbox still lists it, marked "Auto-routed to …".
+
+It stays in HQ triage, exactly as before, when:
+
+- the email has no field data (seen for some NZ regions),
+- the "Nearest Provider" doesn't match an operator's name,
+- the customer left neither a phone nor an email,
+- the operator has no dispatch phone and no shop/owner email to alert,
+- HQ testing mode is on, or anything fails while routing.
+
+Before turning it on, run `scripts/dry_run_email_lead_parse.py` against
+production to see how many captured emails would match.
 
 ## Endpoint
 

@@ -78,16 +78,40 @@ def route_website_lead_to_prospect(
     if not tenant_id:
         raise ValueError("no_operator_or_escalation_configured")
 
+    return deliver_website_lead(
+        session, parent=parent, tenant_id=tenant_id, payload=payload, suburb=suburb, state_code=st,
+    )
+
+
+def deliver_website_lead(
+    session: Session,
+    *,
+    parent: ParentAccount,
+    tenant_id: UUID,
+    payload: dict[str, Any],
+    suburb: str,
+    state_code: str,
+    source_note: str = "Submitted via website lead feed.",
+    event_summary_prefix: str = "Website lead routed to Lead Inbox",
+) -> ProspectLead:
+    """Create the Lead Inbox entry on ``tenant_id`` and send the operator its one-time SMS + email.
+
+    Shared by the website lead feed (routed by suburb) and BCC'd form emails (routed by
+    the form's own "Nearest Provider" field) — the routing differs, the delivery doesn't.
+    """
+    st = state_code.strip().upper()
     customer_name = str(payload.get("customer_name") or "Website lead").strip()[:300]
     vehicle_bits = [payload.get("vehicle_make"), payload.get("vehicle_model"), payload.get("registration_plate")]
     veh = " ".join(str(x).strip() for x in vehicle_bits if x and str(x).strip())
-    notes_parts = ["Submitted via website lead feed."]
+    notes_parts = [source_note]
     if veh:
         notes_parts.append(f"Vehicle: {veh}")
     if payload.get("key_service_result"):
         notes_parts.append(f"Key checker result: {str(payload['key_service_result']).strip()}")
     if payload.get("website_notes"):
         notes_parts.append(str(payload["website_notes"]).strip())
+
+    location = " ".join(p for p in (suburb.strip(), st) if p) or "location not given"
 
     lead = ProspectLead(
         tenant_id=tenant_id,
@@ -145,7 +169,7 @@ def route_website_lead_to_prospect(
             tenant_id=tenant_id,
             actor_email="website-lead@ingest",
             event_type="website_lead_routed",
-            event_summary=f"Website lead routed to Lead Inbox ({customer_name}, {suburb.strip()} {st})",
+            event_summary=f"{event_summary_prefix} ({customer_name}, {location})",
         )
     )
     return lead

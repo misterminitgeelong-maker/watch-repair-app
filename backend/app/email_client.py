@@ -419,7 +419,7 @@ def send_website_lead_alert_email(
     veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
     if registration_plate and registration_plate.strip():
         veh = f"{veh} {registration_plate.strip()}".strip() if veh else registration_plate.strip()
-    location = f"{suburb.strip()} {state_code.strip().upper()}"
+    location = " ".join(p for p in (suburb.strip(), state_code.strip().upper()) if p) or "location not given"
 
     subject = f"New lead in your Lead Inbox ({location})"
     body_plain = (

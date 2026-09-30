@@ -807,7 +807,9 @@ def notify_website_lead_alert(
     if customer_phone and customer_phone.strip():
         cust_line += f" · {customer_phone.strip()}"
     lines.append(f"Customer: {cust_line}")
-    lines.append(f"Location: {suburb.strip()} {state_code.strip().upper()}")
+    location = " ".join(p for p in (suburb.strip(), state_code.strip().upper()) if p)
+    if location:
+        lines.append(f"Location: {location}")
 
     veh = " ".join(x for x in (vehicle_make or "", vehicle_model or "") if x and str(x).strip()).strip()
     if registration_plate and registration_plate.strip():

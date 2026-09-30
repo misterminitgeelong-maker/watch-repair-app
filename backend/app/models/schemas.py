@@ -392,6 +392,7 @@ class ParentLeadIngestConfigResponse(SQLModel):
     mobile_lead_offer_timeout_minutes: int = 30
     mobile_lead_max_operator_offers: int = 3
     mobile_lead_force_hq_dispatch: bool = False
+    inbound_email_auto_route: bool = False
 
 
 class ParentAccountSitesPageResponse(SQLModel):
@@ -876,6 +877,7 @@ class ParentMobileLeadDispatchSettingsBody(SQLModel):
     offer_timeout_minutes: Optional[int] = Field(default=None, ge=5, le=240)
     max_operator_offers: Optional[int] = Field(default=None, ge=1, le=10)
     force_hq_dispatch: Optional[bool] = None
+    inbound_email_auto_route: Optional[bool] = None
 
 class MobileSuburbRouteRead(SQLModel):
     id: UUID
@@ -916,6 +918,9 @@ class InboundEmailListItem(SQLModel):
     subject: Optional[str] = None
     status: str
     auto_key_job_id: Optional[UUID] = None
+    prospect_lead_id: Optional[UUID] = None
+    routed_tenant_id: Optional[UUID] = None
+    routed_tenant_name: Optional[str] = None
     created_at: datetime
 
 class InboundEmailDetail(InboundEmailListItem):

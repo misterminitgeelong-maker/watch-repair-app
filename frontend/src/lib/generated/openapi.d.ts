@@ -8349,6 +8349,12 @@ export interface components {
             status: string;
             /** Auto Key Job Id */
             auto_key_job_id?: string | null;
+            /** Prospect Lead Id */
+            prospect_lead_id?: string | null;
+            /** Routed Tenant Id */
+            routed_tenant_id?: string | null;
+            /** Routed Tenant Name */
+            routed_tenant_name?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -8434,6 +8440,12 @@ export interface components {
             status: string;
             /** Auto Key Job Id */
             auto_key_job_id?: string | null;
+            /** Prospect Lead Id */
+            prospect_lead_id?: string | null;
+            /** Routed Tenant Id */
+            routed_tenant_id?: string | null;
+            /** Routed Tenant Name */
+            routed_tenant_name?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -9848,6 +9860,11 @@ export interface components {
              * @default false
              */
             mobile_lead_force_hq_dispatch: boolean;
+            /**
+             * Inbound Email Auto Route
+             * @default false
+             */
+            inbound_email_auto_route: boolean;
         };
         /** ParentLinkRequestRead */
         ParentLinkRequestRead: {
@@ -9959,6 +9976,8 @@ export interface components {
             max_operator_offers?: number | null;
             /** Force Hq Dispatch */
             force_hq_dispatch?: boolean | null;
+            /** Inbound Email Auto Route */
+            inbound_email_auto_route?: boolean | null;
         };
         /** ParentMobileLeadEscalationTenantBody */
         ParentMobileLeadEscalationTenantBody: {
@@ -11096,6 +11115,10 @@ export interface components {
             customer_phone?: string | null;
             /** Customer Email */
             customer_email?: string | null;
+            /** Watch Brand */
+            watch_brand?: string | null;
+            /** Watch Model */
+            watch_model?: string | null;
             /**
              * Tracking Sms Sent
              * @default false
@@ -11135,6 +11158,8 @@ export interface components {
             internal_notes?: string | null;
             /** Parts Eta */
             parts_eta?: string | null;
+            /** Job Number */
+            job_number?: string | null;
         };
         /** RepairJobIntakeUpdate */
         RepairJobIntakeUpdate: {
@@ -11253,6 +11278,10 @@ export interface components {
             customer_phone?: string | null;
             /** Customer Email */
             customer_email?: string | null;
+            /** Watch Brand */
+            watch_brand?: string | null;
+            /** Watch Model */
+            watch_model?: string | null;
         };
         /** RepairJobStatusUpdate */
         RepairJobStatusUpdate: {
