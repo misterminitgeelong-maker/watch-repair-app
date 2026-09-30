@@ -298,12 +298,12 @@ function InboundEmailCard({ id, subject, fromEmail, status, createdAt, autoKeyJo
 export default function MinitInboxPage() {
   const alertsQuery = useQuery({
     queryKey: ['inbox', 0],
-    queryFn: () => getInbox(50, 0).then(r => r.data),
+    queryFn: () => getInbox(500, 0).then(r => r.data),
   })
 
   const emailsQuery = useQuery({
     queryKey: ['inbound-emails'],
-    queryFn: () => listInboundEmails().then(r => r.data),
+    queryFn: () => listInboundEmails(undefined, 500).then(r => r.data),
   })
 
   const { data: alerts, isLoading: inboxLoading } = alertsQuery

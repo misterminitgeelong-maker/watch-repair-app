@@ -78,7 +78,7 @@ def get_inbox_count(
 
 @router.get("/inbox", response_model=list[TenantEventLogRead])
 def get_inbox(
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),

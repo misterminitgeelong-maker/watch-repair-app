@@ -264,7 +264,7 @@ def _get_owned_inbound_email(session: Session, auth: AuthContext, inbound_email_
 @hq_router.get("/me/inbound-emails", response_model=list[InboundEmailListItem])
 def list_inbound_emails(
     status: str | None = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
