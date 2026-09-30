@@ -21,7 +21,7 @@ from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import AutoKeyJob, InboundEmail, ParentAccount, Tenant
 from app.shop_number import linked_tenant_ids_for_parent
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, mark_owner_accepted
 
 create_db_and_tables()
 client = TestClient(app)
@@ -83,7 +83,7 @@ def _login(slug: str, email: str) -> str:
     return res.json()["access_token"]
 
 
-def _setup_hq_with_operator(operator_label: str = "Mobile Services Burwood") -> tuple[str, "uuid4", str]:
+def _setup_hq_with_operator(operator_label: str = "Mobile Services Burwood", *, live: bool = True) -> tuple[str, "uuid4", str]:
     suffix = uuid4().hex[:8]
     hq_slug, hq_email = f"hq-{suffix}", f"hq-{suffix}@test.local"
     op_slug, op_email = f"op-{suffix}", f"op-{suffix}@test.local"
@@ -105,6 +105,9 @@ def _setup_hq_with_operator(operator_label: str = "Mobile Services Burwood") -> 
         tenant.name = operator_label
         session.add(tenant)
         session.commit()
+        op_tenant_id = tenant.id
+    if live:
+        mark_owner_accepted(op_tenant_id)
 
     # HQ's own tenant is the escalation target for jobs created from this flow.
     hq_sites = client.get("/v1/parent-accounts/me/sites?limit=10", headers=headers).json()["sites"]
@@ -252,3 +255,22 @@ def test_create_job_can_explicitly_target_operator_tenant():
     result = res.json()
     assert result["tenant_id"] == operator_tenant_id
     assert result["tenant_id"] != str(hq_tenant_id)
+
+
+def test_create_job_rejects_operator_who_has_not_accepted_invite():
+    hq_token, _hq_tenant_id, hq_email = _setup_hq_with_operator(live=False)
+    headers = {"Authorization": f"Bearer {hq_token}"}
+    email_id, _ = _insert_inbound_email(BODY_WITH_FIELDS, hq_email)
+
+    preview = client.get(f"/v1/parent-accounts/me/inbound-emails/{email_id}/parsed", headers=headers).json()
+    assert preview["suggested_operator_tenant_id"] is None
+    assert preview["match_confidence"] == "not_live"
+
+    with Session(engine) as session:
+        op = session.exec(select(Tenant).where(Tenant.name == "Mobile Services Burwood").order_by(Tenant.created_at.desc())).first()
+    res = client.post(
+        f"/v1/parent-accounts/me/inbound-emails/{email_id}/create-job",
+        headers=headers,
+        json={"customer_name": "Jamie Example", "phone": "0400 000 001", "target_tenant_id": str(op.id)},
+    )
+    assert res.status_code == 409, res.text

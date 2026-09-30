@@ -29,7 +29,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from .models import Tenant
-from .parent_network import operator_tenants_for_parent
+from .parent_network import operator_tenants_for_parent, tenant_is_live
 
 # Order matters: matched top-to-bottom against each stripped line.
 _FIELD_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
@@ -144,7 +144,7 @@ def _loose_operator_key(name: str) -> str:
 @dataclass
 class OperatorMatch:
     tenant: Tenant | None
-    #: "matched" | "matched_loose" | "unmatched" | "no_provider_field"
+    #: "matched" | "matched_loose" | "unmatched" | "no_provider_field" | "not_live"
     confidence: str
 
 
@@ -171,15 +171,21 @@ def match_operator_for_lead(
 
     pool = operators if operators is not None else bookable_operators_for_parent(session, parent_id)
 
+    def _gate(tenant: Tenant, confidence: str) -> OperatorMatch:
+        # Operators who haven't accepted their invite aren't live: never routed leads.
+        if not tenant_is_live(session, tenant.id):
+            return OperatorMatch(tenant=None, confidence="not_live")
+        return OperatorMatch(tenant=tenant, confidence=confidence)
+
     target = _normalize_operator_name(parsed.nearest_provider_clean)
     for tenant in pool:
         if _normalize_operator_name(tenant.name) == target:
-            return OperatorMatch(tenant=tenant, confidence="matched")
+            return _gate(tenant, "matched")
 
     loose_target = _loose_operator_key(parsed.nearest_provider_clean)
     for tenant in pool:
         if _loose_operator_key(tenant.name) == loose_target:
-            return OperatorMatch(tenant=tenant, confidence="matched_loose")
+            return _gate(tenant, "matched_loose")
 
     return OperatorMatch(tenant=None, confidence="unmatched")
 

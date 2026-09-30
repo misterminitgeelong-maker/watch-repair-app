@@ -9,7 +9,9 @@ from sqlmodel import Session, select
 
 from app.database import engine
 from app.dependencies import AuthContext
-from app.models import ParentLinkRequest, Tenant, User
+from datetime import datetime, timedelta, timezone
+
+from app.models import ParentAccountSite, ParentLinkRequest, ShopOwnerInvite, Tenant, User
 from app.routes.parent_accounts import _decide_link_request
 from app.tenant_scope import scope_to_tenant
 
@@ -37,3 +39,25 @@ def link_and_accept(client, url, *, headers, json):
         return first
     accept_pending_link(json["tenant_slug"])
     return client.post(url, headers=headers, json=json)
+
+
+def mark_owner_accepted(tenant_id) -> None:
+    """Make a linked shop "live": its owner has been invited and accepted."""
+    with Session(engine) as session:
+        owner = session.exec(
+            select(User).where(User.tenant_id == tenant_id).where(User.role == "owner").order_by(User.created_at)
+        ).first()
+        site = session.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == tenant_id)).first()
+        now = datetime.now(timezone.utc)
+        session.add(
+            ShopOwnerInvite(
+                tenant_id=tenant_id,
+                parent_account_id=site.parent_account_id,
+                owner_user_id=owner.id,
+                created_by_user_id=owner.id,
+                status="completed",
+                expires_at=now + timedelta(days=7),
+                completed_at=now,
+            )
+        )
+        session.commit()

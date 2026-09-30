@@ -25,7 +25,7 @@ from app.minit_email_lead_parser import (
     parse_powerfulform_body,
 )
 from app.models import ParentAccount, Tenant
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, mark_owner_accepted
 
 create_db_and_tables()
 client = TestClient(app)
@@ -167,7 +167,7 @@ def _login(slug: str, email: str) -> str:
     return res.json()["access_token"]
 
 
-def _setup_parent_with_operator(operator_label: str) -> tuple[uuid4, uuid4]:
+def _setup_parent_with_operator(operator_label: str, *, live: bool = True) -> tuple[uuid4, uuid4]:
     """Bootstrap an HQ parent account with one linked operator tenant.
 
     Returns (parent_account_id, operator_tenant_id).
@@ -195,7 +195,10 @@ def _setup_parent_with_operator(operator_label: str) -> tuple[uuid4, uuid4]:
         session.commit()
         session.refresh(tenant)
         parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == hq_email)).one()
-        return parent.id, tenant.id
+        ids = (parent.id, tenant.id)
+    if live:
+        mark_owner_accepted(ids[1])
+    return ids
 
 
 def test_match_operator_exact_name():
@@ -233,3 +236,12 @@ def test_match_operator_no_provider_field():
         match = match_operator_for_lead(session, parent_id=parent_id, parsed=parsed)
     assert match.confidence == "no_provider_field"
     assert match.tenant is None
+
+
+def test_match_operator_not_live_is_not_routed():
+    parent_id, _ = _setup_parent_with_operator("Mobile Services Burwood", live=False)
+    parsed = parse_powerfulform_body(BODY_GARAGE_REMOTE)
+    with Session(engine) as session:
+        match = match_operator_for_lead(session, parent_id=parent_id, parsed=parsed)
+    assert match.tenant is None
+    assert match.confidence == "not_live"

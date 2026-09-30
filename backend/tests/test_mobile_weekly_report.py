@@ -28,7 +28,7 @@ from app.services.mobile_weekly_report import (
     build_mobile_weekly_report,
     send_due_mobile_weekly_reports,
 )
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, mark_owner_accepted
 
 create_db_and_tables()
 client = TestClient(app)
@@ -73,7 +73,9 @@ def _link_operator(headers: dict, operator_label: str) -> str:
         tenant.name = operator_label
         session.add(tenant)
         session.commit()
-        return str(tenant.id)
+        tenant_id = tenant.id
+    mark_owner_accepted(tenant_id)
+    return str(tenant_id)
 
 
 def _seed_job_and_paid_invoice(tenant_id_str: str, *, created_at: datetime, total_cents: int) -> None:

@@ -37,6 +37,7 @@ from ..dependencies import (
 )
 from ..limiter import limiter
 from ..minit_email_lead_parser import match_operator_for_lead, parse_powerfulform_body
+from ..parent_network import tenant_is_live, tenant_is_operator
 from ..models import (
     AutoKeyJob,
     Customer,
@@ -424,6 +425,11 @@ def create_job_from_inbound_email(
     tenant = session.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Target tenant not found")
+    if tenant_is_operator(session, tenant.id) and not tenant_is_live(session, tenant.id):
+        raise HTTPException(
+            status_code=409,
+            detail="That operator hasn't accepted their invite yet, so they can't be assigned jobs",
+        )
 
     plan_code = normalize_plan_code(tenant.plan_code)
     if "auto_key" in PLAN_FEATURES.get(plan_code, set()):

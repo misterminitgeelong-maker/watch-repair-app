@@ -21,7 +21,7 @@ from app.database import create_db_and_tables, engine
 from app.main import app
 from app.minit_provision import ensure_minit_pilot_account
 from app.models import InboundEmail, ParentAccount, Tenant
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, mark_owner_accepted
 
 create_db_and_tables()
 client = TestClient(app)
@@ -97,7 +97,9 @@ def _link_operator(headers: dict, operator_label: str) -> str:
         tenant.name = operator_label
         session.add(tenant)
         session.commit()
-        return str(tenant.id)
+        tenant_id = tenant.id
+    mark_owner_accepted(tenant_id)
+    return str(tenant_id)
 
 
 def _insert_email(text_body: str, status: str = "new") -> None:

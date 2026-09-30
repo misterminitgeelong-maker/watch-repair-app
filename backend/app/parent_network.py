@@ -29,6 +29,7 @@ from .models import (
     ParentAccountSite,
     ParentAccountUser,
     Region,
+    ShopOwnerInvite,
     Tenant,
     User,
 )
@@ -209,6 +210,31 @@ def linked_tenants_for_parent(
 
 def operator_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
     return linked_tenants_for_parent(session, parent_id, network_role=NETWORK_ROLE_OPERATOR)
+
+
+def accepted_invite_tenant_ids(session: Session, tenant_ids: list[UUID]) -> set[UUID]:
+    """Tenants whose owner has accepted a shop-owner invite (the account is live)."""
+    if not tenant_ids:
+        return set()
+    with without_scope(session):
+        rows = session.exec(
+            select(ShopOwnerInvite.tenant_id)
+            .where(col(ShopOwnerInvite.tenant_id).in_(tenant_ids))
+            .where(ShopOwnerInvite.status == "completed")
+        ).all()
+    return set(rows)
+
+
+def tenant_is_live(session: Session, tenant_id: UUID) -> bool:
+    """True once the tenant's owner has been invited and accepted. Only live
+    operators may be routed email/website leads or assigned jobs from them."""
+    return tenant_id in accepted_invite_tenant_ids(session, [tenant_id])
+
+
+def live_operator_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
+    operators = operator_tenants_for_parent(session, parent_id)
+    live = accepted_invite_tenant_ids(session, [t.id for t in operators])
+    return [t for t in operators if t.id in live]
 
 
 def retail_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:

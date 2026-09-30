@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import AutoKeyJob, ProspectLead, SmsLog, Tenant
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, mark_owner_accepted
 
 create_db_and_tables()
 client = TestClient(app)
@@ -57,7 +57,7 @@ def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _setup_network(*, force_hq: bool = False) -> tuple[str, str, str, str, dict[str, str]]:
+def _setup_network(*, force_hq: bool = False, live: bool = True) -> tuple[str, str, str, str, dict[str, str]]:
     suffix = uuid4().hex[:8]
     hq_slug = f"hq-{suffix}"
     op1_slug = f"op1-{suffix}"
@@ -97,6 +97,9 @@ def _setup_network(*, force_hq: bool = False) -> tuple[str, str, str, str, dict[
     op_sites = sites.json()["sites"]
     op1_id = next(s["tenant_id"] for s in op_sites if s["tenant_slug"] == op1_slug)
     op2_id = next(s["tenant_id"] for s in op_sites if s["tenant_slug"] == op2_slug)
+    if live:
+        for _op_id in (op1_id, op2_id):
+            mark_owner_accepted(UUID(_op_id))
     hq_site = client.get("/v1/parent-accounts/me/sites?limit=10", headers=hq_h).json()["sites"]
     hq_id = next(s["tenant_id"] for s in hq_site if s["tenant_slug"] == hq_slug)
 
@@ -199,6 +202,13 @@ def test_website_lead_routes_by_suburb_map():
         assert lead is not None
         assert str(lead.tenant_id) == op2_id
         assert lead.suburb_name == "Parramatta"
+
+
+def test_website_lead_skips_operator_who_has_not_accepted_invite():
+    ingest_id, op1_id, _op2_id, hq_id, _hq_h = _setup_network(live=False)
+    body = _ingest_lead(ingest_id, suburb="Sydney")
+    assert body["tenant_id"] == hq_id
+    assert body["tenant_id"] != op1_id
 
 
 def test_outside_territory_goes_straight_to_hq():

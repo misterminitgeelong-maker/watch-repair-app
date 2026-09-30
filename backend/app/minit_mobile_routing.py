@@ -13,8 +13,9 @@ from sqlmodel import Session, select
 from .dispatch_utils import haversine_km
 from .models import MobileSuburbRoute, ParentAccount, Tenant
 from .parent_network import (
-    operator_tenants_for_parent,
+    live_operator_tenants_for_parent,
     site_for_tenant_in_parent,
+    tenant_is_live,
     tenant_is_operator,
 )
 
@@ -41,7 +42,7 @@ class MobileRoutingResolution:
 
 
 def _tenant_is_bookable_operator(session: Session, tenant: Tenant) -> bool:
-    return tenant_is_operator(session, tenant.id)
+    return tenant_is_operator(session, tenant.id) and tenant_is_live(session, tenant.id)
 
 
 def lookup_mobile_suburb_route(
@@ -210,7 +211,7 @@ def _tenant_linked_to_parent(session: Session, parent_id: UUID, tenant_id: UUID)
 
 
 def _bookable_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
-    return operator_tenants_for_parent(session, parent_id)
+    return live_operator_tenants_for_parent(session, parent_id)
 
 
 @lru_cache(maxsize=1)
