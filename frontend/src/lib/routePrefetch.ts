@@ -20,9 +20,15 @@ function isMissingChunk(error: unknown): boolean {
   return /dynamically imported module|module script failed|Importing a module/i.test(message)
 }
 
-function readFlag(): boolean {
+/** A recovery reload only counts as "already tried" for this long. A permanent
+ * once-per-tab flag left a tab dead if the first reload did not fix it, until
+ * the user logged out. */
+const RECOVERY_WINDOW_MS = 60_000
+
+function recentlyTried(): boolean {
   try {
-    return sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1'
+    const at = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY))
+    return Number.isFinite(at) && at > 0 && Date.now() - at < RECOVERY_WINDOW_MS
   } catch {
     return false
   }
@@ -30,11 +36,41 @@ function readFlag(): boolean {
 
 function writeFlag(value: boolean): void {
   try {
-    if (value) sessionStorage.setItem(CHUNK_RELOAD_KEY, '1')
+    if (value) sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()))
     else sessionStorage.removeItem(CHUNK_RELOAD_KEY)
   } catch {
     /* private mode — worst case we simply do not recover */
   }
+}
+
+/** Reload to pick up a new deploy, first dropping the service worker and its
+ * caches so the reload cannot be answered with the stale shell or chunks.
+ * Returns false (and does nothing) if a recovery was already tried in the last
+ * minute, which is what stops a genuinely missing chunk from looping. */
+export function recoverFromStaleBuild(): boolean {
+  if (recentlyTried()) return false
+  writeFlag(true)
+  hardReload()
+  return true
+}
+
+/** Reload after dropping the service worker and its caches. */
+export function hardReload(): void {
+  const cleanup = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map(r => r.unregister()))
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        await Promise.all(keys.filter(k => k.startsWith('mainspring-')).map(k => caches.delete(k)))
+      }
+    } catch {
+      /* best effort — still reload */
+    }
+  }
+  void cleanup().finally(() => window.location.reload())
 }
 
 /** Load a route chunk, surviving the deploy that renamed it.
@@ -56,9 +92,7 @@ async function loadChunk<T>(factory: () => Promise<T>): Promise<T> {
     writeFlag(false)
     return loaded
   } catch (error) {
-    if (!isMissingChunk(error) || readFlag()) throw error
-    writeFlag(true)
-    window.location.reload()
+    if (!isMissingChunk(error) || !recoverFromStaleBuild()) throw error
     // The reload takes over; resolving would render against a dead module.
     return new Promise<T>(() => {})
   }

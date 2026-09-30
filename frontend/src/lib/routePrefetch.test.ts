@@ -120,8 +120,8 @@ describe('recovering from a deploy that renamed the chunks', () => {
     expect(settled).toBe(false)
   })
 
-  it('gives up after one reload instead of boot-looping', async () => {
-    sessionStorage.setItem('ms.chunkReload.v1', '1')
+  it('gives up after a recent reload instead of boot-looping', async () => {
+    sessionStorage.setItem('ms.chunkReload.v1', String(Date.now()))
     const factory = vi.fn(async () => {
       throw chunkError()
     })
@@ -129,6 +129,18 @@ describe('recovering from a deploy that renamed the chunks', () => {
 
     await expect(load()).rejects.toThrow(/dynamically imported module/)
     expect(reload).not.toHaveBeenCalled()
+  })
+
+  it('tries again once the earlier attempt is over a minute old', async () => {
+    sessionStorage.setItem('ms.chunkReload.v1', String(Date.now() - 120_000))
+    const load = loaderOf(
+      lazyPage(async () => {
+        throw chunkError()
+      }),
+    )
+    void load().catch(() => {})
+    await new Promise(r => setTimeout(r, 0))
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 
   it('leaves a genuine error from the module alone', async () => {

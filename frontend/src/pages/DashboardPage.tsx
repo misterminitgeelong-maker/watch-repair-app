@@ -263,7 +263,7 @@ export default function DashboardPage() {
     enabled: mainspringDashboard,
   })
   const inboxAlertsQ = useQuery({
-    queryKey: ['inbox', 0],
+    queryKey: ['inbox', 50, 0],
     queryFn: () => getInbox(50, 0).then((r) => r.data),
     enabled: mainspringDashboard,
   })
