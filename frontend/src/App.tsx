@@ -9,6 +9,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 // Eager on purpose: it renders on every screen outside any error boundary, so
 // a stale-deploy chunk miss here would blank the whole app, not just a banner.
 import ConnectivityBanner from '@/components/ConnectivityBanner'
+import NewVersionBanner from '@/components/NewVersionBanner'
 import { FeatureGate, RouteFallback } from '@/components/FeatureGate'
 import { defaultHomePathForMinit, isMinitHqUi } from '@/lib/minitProduct'
 import { lazyPage } from '@/lib/routePrefetch'
@@ -179,6 +180,7 @@ export default function App() {
         <ToastProvider>
         <AuthProvider>
           <ConnectivityBanner />
+          <NewVersionBanner />
           <LocationBoundary>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
