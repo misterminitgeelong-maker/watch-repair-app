@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
 import { APP_BUILD_ID } from '@/lib/buildInfo'
 import { hardReload } from '@/lib/routePrefetch'
 
@@ -20,13 +19,11 @@ async function fetchDeployedBuildId(): Promise<string | null> {
 /**
  * The SPA keeps running the JS it loaded until the page reloads, so a deploy
  * never reaches an open tab. Poll the (no-cache) index.html for the build id,
- * show a reload banner when it differs, and reload on the next navigation so
- * nobody loses a half-filled form mid-screen.
+ * show a reload banner when it differs. Never reloads by itself: an automatic
+ * reload on navigation looped forever right after login.
  */
 export default function NewVersionBanner() {
   const [stale, setStale] = useState(false)
-  const location = useLocation()
-  const firstPath = useRef(location.pathname + location.search)
 
   const check = useCallback(async () => {
     if (APP_BUILD_ID === 'dev') return
@@ -46,12 +43,6 @@ export default function NewVersionBanner() {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [check])
-
-  // Navigating is a safe moment to swap in the new build.
-  useEffect(() => {
-    const here = location.pathname + location.search
-    if (stale && here !== firstPath.current) hardReload()
-  }, [stale, location.pathname, location.search])
 
   if (!stale) return null
   return (
