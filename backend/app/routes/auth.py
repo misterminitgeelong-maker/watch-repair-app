@@ -73,6 +73,8 @@ from ..parent_network import (
 )
 from ..security import create_access_token, create_refresh_token, decode_access_token, decode_refresh_token, hash_password, verify_password
 
+from ..regions import stripe_country_for_tenant
+
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 _optional_bearer = HTTPBearer(auto_error=False)
 logger = logging.getLogger(__name__)
@@ -399,7 +401,7 @@ def signup(request: Request, response: Response, payload: TenantSignupRequest, s
         try:
             import stripe as _stripe  # type: ignore[import]
             _stripe.api_key = settings.stripe_secret_key
-            country = (settings.stripe_connect_default_country or "AU").strip().upper()[:2]
+            country = stripe_country_for_tenant(tenant, settings.stripe_connect_default_country)
             connect_acct = _stripe.Account.create(
                 type="express",
                 country=country,

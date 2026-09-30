@@ -33,6 +33,8 @@ from ..models import (
 from ..money import format_cents
 from ..parent_network import sites_for_parent, sites_for_tenant
 
+from ..regions import stripe_country_for_tenant
+
 router = APIRouter(prefix="/v1/billing", tags=["billing"])
 
 
@@ -376,7 +378,7 @@ def create_stripe_connect_account_link(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    country = (settings.stripe_connect_default_country or "AU").strip().upper()[:2]
+    country = stripe_country_for_tenant(tenant, settings.stripe_connect_default_country)
     if len(country) != 2:
         raise HTTPException(status_code=503, detail="Invalid STRIPE_CONNECT_DEFAULT_COUNTRY")
 

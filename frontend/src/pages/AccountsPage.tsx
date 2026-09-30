@@ -619,6 +619,7 @@ function ShopIdentityCard() {
 
   const [shopNumber, setShopNumber] = useState('')
   const [abn, setAbn] = useState('')
+  const [region, setRegion] = useState<'AU' | 'NZ'>('AU')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [paymentInstructions, setPaymentInstructions] = useState('')
@@ -631,6 +632,7 @@ function ShopIdentityCard() {
     if (data) {
       setShopNumber(data.shop_number ?? '')
       setAbn(data.abn ?? '')
+      setRegion(data.region ?? 'AU')
       setPhone(data.shop_phone ?? '')
       setEmail(data.shop_email ?? '')
       setPaymentInstructions(data.payment_instructions ?? '')
@@ -649,6 +651,7 @@ function ShopIdentityCard() {
     mutationFn: () => updateShopIdentity({
       shop_number: shopNumber.trim() || null,
       abn: abn.trim() || null,
+      region,
       shop_phone: phone.trim() || null,
       shop_email: email.trim() || null,
       payment_instructions: paymentInstructions.trim() || null,
@@ -689,17 +692,33 @@ function ShopIdentityCard() {
           </p>
         </div>
         )}
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Country
+          </label>
+          <select
+            value={region}
+            onChange={e => { setRegion(e.target.value as 'AU' | 'NZ'); setSaved(false) }}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+          >
+            <option value="AU">Australia (AUD, GST 10%)</option>
+            <option value="NZ">New Zealand (NZD, GST 15%)</option>
+          </select>
+          <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Sets currency, GST rate, timezone and Stripe payouts for this shop.
+          </p>
+        </div>
         <Input
-          label="ABN"
+          label={region === 'NZ' ? 'GST number' : 'ABN'}
           value={abn}
           onChange={e => { setAbn(e.target.value); setSaved(false) }}
-          placeholder="12 345 678 901"
+          placeholder={region === 'NZ' ? '123-456-789' : '12 345 678 901'}
         />
         <Input
           label="Shop phone"
           value={phone}
           onChange={e => { setPhone(e.target.value); setSaved(false) }}
-          placeholder="+61 3 9000 0000"
+          placeholder={region === 'NZ' ? '+64 9 300 0000' : '+61 3 9000 0000'}
         />
         <Input
           label="Shop email"

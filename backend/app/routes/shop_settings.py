@@ -1,7 +1,7 @@
 """Shop identity settings — payee name, ABN, phone, email, payment instructions, branding."""
 
 import re
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from ..database import get_session
 from ..dependencies import AuthContext, require_manager_or_above
 from ..models import Tenant
+from ..regions import REGION_DEFAULTS, region_for_currency
 from ..parent_network import parent_ids_for_tenant
 from ..shop_number import assert_shop_number_unique_in_parent, validate_shop_number_format
 
@@ -41,6 +42,10 @@ class ShopIdentityRead(BaseModel):
     #: Minit shop number (e.g. "3269") — links this shop to Minit HQ regional data
     #: (VSWT rankings, TSS territory data). Unique among the sites in your account.
     shop_number: Optional[str] = None
+    #: "AU" or "NZ" — drives currency, GST rate, timezone and Stripe country.
+    region: Literal["AU", "NZ"] = "AU"
+    default_currency: str = "AUD"
+    timezone: str = "Australia/Melbourne"
 
 
 class ShopIdentityUpdate(BaseModel):
@@ -51,6 +56,7 @@ class ShopIdentityUpdate(BaseModel):
     logo_url: Optional[str] = Field(default=None, max_length=1000)
     brand_color: Optional[str] = Field(default=None, max_length=9)
     shop_number: Optional[str] = Field(default=None, max_length=10)
+    region: Optional[Literal["AU", "NZ"]] = None
 
 
 def _read(tenant: Optional[Tenant]) -> ShopIdentityRead:
@@ -64,6 +70,9 @@ def _read(tenant: Optional[Tenant]) -> ShopIdentityRead:
         logo_url=tenant.logo_url if tenant else None,
         brand_color=tenant.brand_color if tenant else None,
         shop_number=tenant.shop_number if tenant else None,
+        region=region_for_currency(tenant.default_currency if tenant else None),
+        default_currency=(tenant.default_currency if tenant else None) or "AUD",
+        timezone=(tenant.timezone if tenant else None) or "Australia/Melbourne",
     )
 
 
@@ -100,6 +109,14 @@ def update_shop_identity(
     if payload.brand_color is not None:
         # Lenient: blank or invalid hex clears the brand colour rather than erroring.
         tenant.brand_color = normalize_brand_color(payload.brand_color)
+    if payload.region is not None:
+        defaults = REGION_DEFAULTS[payload.region]
+        tenant.default_currency = defaults["currency"]
+        # Only move the timezone when it belongs to the other country, so an AU shop
+        # in Perth or Brisbane keeps its own zone when re-saved as AU.
+        in_nz = (tenant.timezone or "").startswith("Pacific/Auckland") or tenant.timezone == "NZ"
+        if payload.region == "NZ" or in_nz:
+            tenant.timezone = defaults["timezone"]
     if payload.shop_number is not None:
         shop_number = validate_shop_number_format(payload.shop_number)  # raises 400 if malformed
         if shop_number:

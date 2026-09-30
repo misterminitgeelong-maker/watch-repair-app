@@ -232,10 +232,12 @@ def _create_suggested_quote_for_job(
         job.job_type, job.key_quantity or 1, "retail", additional_presets or []
     )
     subtotal = sum(line_total_cents(qty, unit) for _, qty, unit in lines)
-    tax = gst_tax_cents(subtotal)
+    currency = _tenant_currency(session, tenant_id)
+    tax = gst_tax_cents(subtotal, currency)
     quote = AutoKeyQuote(
         tenant_id=tenant_id,
         auto_key_job_id=job.id,
+        currency=currency,
         tax_cents=tax,
         gst_enabled=True,
         gst_inclusive=False,
@@ -586,7 +588,7 @@ def create_auto_key_job(
                 vehicle_model=job.vehicle_model,
                 scheduled_at=job.scheduled_at,
                 quote_total_cents=created_quote.total_cents if created_quote else job.cost_cents,
-                currency="AUD",
+                currency=(created_quote.currency if created_quote else _tenant_currency(session, auth.tenant_id)),
                 shop_name=shop_name,
                 confirm_url=confirm_url,
             )
@@ -812,12 +814,13 @@ def get_quote_suggestions(
     pricing_tier: str = Query(default="retail", pattern="^(retail|b2b|tier1|tier2|tier3)$"),
     additional_presets: str | None = Query(default=None, description="Comma-separated list of additional job type presets"),
     _auth=Depends(get_auth_context),
+    session: Session = Depends(get_session),
 ):
     """Return suggested line items and total for a given job type and pricing tier."""
     presets = [p.strip() for p in additional_presets.split(",") if p.strip()] if additional_presets else None
     items = suggest_line_items(job_type, key_quantity, pricing_tier, presets)
     subtotal = sum(line_total_cents(q, p) for _, q, p in items)
-    tax = gst_tax_cents(subtotal)
+    tax = gst_tax_cents(subtotal, _tenant_currency(session, _auth.tenant_id))
     return {
         "pricing_tier": pricing_tier,
         "total_cents": subtotal + tax,
@@ -1074,7 +1077,8 @@ def update_auto_key_job_status(
               )
           else:
               cost = max(0, int(job.cost_cents or 0))
-              tax = gst_in_inclusive(cost)
+              inv_currency = _tenant_currency(session, auth.tenant_id)
+              tax = gst_in_inclusive(cost, inv_currency)
               subtotal = cost - tax
               new_invoice = AutoKeyInvoice(
                   tenant_id=auth.tenant_id,
@@ -1085,7 +1089,7 @@ def update_auto_key_job_status(
                   gst_enabled=True,
                   gst_inclusive=True,
                   total_cents=max(0, int(job.cost_cents)),
-                  currency="AUD",
+                  currency=inv_currency,
                   customer_view_token=uuid4().hex,
               )
 
@@ -1297,6 +1301,11 @@ def list_auto_key_quotes(
     return [_to_quote_read(session, q) for q in quotes]
 
 
+def _tenant_currency(session: Session, tenant_id: UUID) -> str:
+    tenant = session.get(Tenant, tenant_id)
+    return ((tenant.default_currency if tenant else None) or "AUD").strip().upper()[:3] or "AUD"
+
+
 @router.post("/{job_id}/quotes", response_model=AutoKeyQuoteRead, status_code=201)
 def create_auto_key_quote(
     job_id: UUID,
@@ -1314,6 +1323,7 @@ def create_auto_key_quote(
     quote = AutoKeyQuote(
         tenant_id=auth.tenant_id,
         auto_key_job_id=job_id,
+        currency=_tenant_currency(session, auth.tenant_id),
         gst_enabled=payload.gst_enabled,
         gst_inclusive=payload.gst_inclusive,
     )

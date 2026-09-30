@@ -83,7 +83,8 @@ def test_l12_gst_rounds_half_up_like_xero():
 def test_l12_no_gst_for_non_aud_currency():
     from app.gst import compute_gst_amounts
 
-    assert compute_gst_amounts(10000, True, False, currency="NZD") == (10000, 0, 10000)
+    assert compute_gst_amounts(10000, True, False, currency="USD") == (10000, 0, 10000)
+    assert compute_gst_amounts(10000, True, False, currency="NZD") == (10000, 1500, 11500)
     assert compute_gst_amounts(10000, True, False, currency="aud") == (10000, 1000, 11000)
     assert compute_gst_amounts(10000, True, False) == (10000, 1000, 11000)
 

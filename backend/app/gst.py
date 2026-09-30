@@ -1,4 +1,4 @@
-"""Australian GST calculation shared by the watch-repair and Mobile Services (auto-key) quote/invoice flows.
+"""Australian / NZ GST calculation shared by the watch-repair and Mobile Services (auto-key) quote/invoice flows.
 
 Everything here is whole-cent integer arithmetic with round-half-up, which is
 what Xero does. The previous float version (``round(cents * 0.1)``) used
@@ -9,17 +9,26 @@ from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
 
-GST_RATE = 0.10  # informational; the maths below uses the exact fraction 1/10
+# GST/VAT-style sales tax by billing currency, as (numerator, denominator).
+# AUD = Australian GST 10%; NZD = New Zealand GST 15%. A currency not listed
+# here (e.g. USD) is not charged any tax whatever the gst_enabled flag says.
+GST_RATES: dict[str, tuple[int, int]] = {"AUD": (1, 10), "NZD": (3, 20)}
+GST_RATE = 0.10  # informational, AUD default
+GST_CURRENCIES = frozenset(GST_RATES)
 
-# GST is an Australian tax. A shop billing in another currency is not charging
-# Australian GST, so no tax is added whatever the gst_enabled flag says.
-GST_CURRENCIES = frozenset({"AUD"})
+
+def _code(currency: str | None) -> str:
+    return (currency or "AUD").strip().upper() or "AUD"
 
 
 def gst_applies(currency: str | None) -> bool:
     """True when GST should be charged for amounts in ``currency`` (None = AUD)."""
-    code = (currency or "AUD").strip().upper() or "AUD"
-    return code in GST_CURRENCIES
+    return _code(currency) in GST_RATES
+
+
+def gst_rate(currency: str | None) -> float:
+    num, den = GST_RATES.get(_code(currency), GST_RATES["AUD"])
+    return num / den
 
 
 def _div_half_up(numerator: int, denominator: int) -> int:
@@ -29,15 +38,17 @@ def _div_half_up(numerator: int, denominator: int) -> int:
     return (2 * numerator + denominator) // (2 * denominator)
 
 
-def gst_on_exclusive(cents: int) -> int:
-    """GST (10%) on a GST-exclusive amount, rounded half-up to the cent."""
-    return _div_half_up(int(cents), 10)
+def gst_on_exclusive(cents: int, currency: str | None = None) -> int:
+    """GST on a GST-exclusive amount (10% AUD, 15% NZD), rounded half-up to the cent."""
+    num, den = GST_RATES.get(_code(currency), GST_RATES["AUD"])
+    return _div_half_up(int(cents) * num, den)
 
 
-def gst_in_inclusive(cents: int) -> int:
-    """GST component (1/11) of a GST-inclusive amount, rounded half-up to the cent."""
+def gst_in_inclusive(cents: int, currency: str | None = None) -> int:
+    """GST component (1/11 AUD, 3/23 NZD) of a GST-inclusive amount, rounded half-up to the cent."""
+    num, den = GST_RATES.get(_code(currency), GST_RATES["AUD"])
     cents = int(cents)
-    return cents - _div_half_up(cents * 10, 11)
+    return _div_half_up(cents * num, den + num)
 
 
 def line_total_cents(quantity: float | int | Decimal, unit_price_cents: int | None) -> int:
@@ -66,8 +77,8 @@ def compute_gst_amounts(
         return entered_cents, 0, entered_cents
     if gst_inclusive:
         # entered_cents already includes GST; back it out.
-        tax_cents = gst_in_inclusive(entered_cents)
+        tax_cents = gst_in_inclusive(entered_cents, currency)
         return entered_cents - tax_cents, tax_cents, entered_cents
     # entered_cents is GST-exclusive; add GST on top.
-    tax_cents = gst_on_exclusive(entered_cents)
+    tax_cents = gst_on_exclusive(entered_cents, currency)
     return entered_cents, tax_cents, entered_cents + tax_cents

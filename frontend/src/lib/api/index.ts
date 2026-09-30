@@ -4097,6 +4097,10 @@ export interface ShopIdentity {
   brand_color?: string | null
   /** Minit shop number (e.g. "3269") — links this shop to Minit HQ regional data (VSWT rankings). */
   shop_number?: string | null
+  /** Country the shop trades in: drives currency, GST rate, timezone and Stripe country. */
+  region?: 'AU' | 'NZ'
+  default_currency?: string
+  timezone?: string
 }
 
 export const getShopIdentity = () =>

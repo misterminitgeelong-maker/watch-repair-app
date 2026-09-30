@@ -68,6 +68,6 @@ def suggested_subtotal_cents(
     return sum(line_total_cents(q, p) for _, q, p in suggest_line_items(job_type, key_quantity, pricing_tier))
 
 
-def gst_tax_cents(subtotal: int) -> int:
-    """Australian GST 10%, whole-cent half-up (matches Xero)."""
-    return gst_on_exclusive(subtotal)
+def gst_tax_cents(subtotal: int, currency: str | None = None) -> int:
+    """GST (AU 10% / NZ 15% by currency), whole-cent half-up (matches Xero)."""
+    return gst_on_exclusive(subtotal, currency)

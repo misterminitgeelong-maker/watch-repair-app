@@ -129,7 +129,7 @@ def test_invoice_and_payment_currency_follow_quote_and_invoice():
     headers = {"Authorization": f"Bearer {token}"}
     with Session(engine) as session:
         tenant = session.get(Tenant, UUID(tenant_id))
-        tenant.default_currency = "NZD"
+        tenant.default_currency = "USD"
         session.add(tenant)
         session.commit()
 
@@ -137,13 +137,13 @@ def test_invoice_and_payment_currency_follow_quote_and_invoice():
     quote_res = client.get("/v1/quotes", headers=headers)
     assert quote_res.status_code == 200
     created_quote = next(q for q in quote_res.json() if q["id"] == quote_id)
-    assert created_quote["currency"] == "NZD"
+    assert created_quote["currency"] == "USD"
 
     inv_res = client.post(f"/v1/invoices/from-quote/{quote_id}", headers=headers)
     assert inv_res.status_code == 201
     invoice = inv_res.json()["invoice"]
-    assert invoice["currency"] == "NZD"
-    # Australian GST is not added to a non-AUD invoice.
+    assert invoice["currency"] == "USD"
+    # No GST is added to an invoice in an unsupported currency.
     assert invoice["tax_cents"] == 0
     assert invoice["total_cents"] == invoice["subtotal_cents"]
 
@@ -153,4 +153,4 @@ def test_invoice_and_payment_currency_follow_quote_and_invoice():
         json={"amount_cents": invoice["total_cents"], "provider_reference": "tenant-currency-test"},
     )
     assert pay_res.status_code == 201
-    assert pay_res.json()["currency"] == "NZD"
+    assert pay_res.json()["currency"] == "USD"

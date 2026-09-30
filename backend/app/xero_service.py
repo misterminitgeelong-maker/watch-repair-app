@@ -290,10 +290,13 @@ def _default_account_code(tenant: Tenant) -> str:
     return (tenant.xero_default_sales_account_code or "200").strip() or "200"
 
 
-def _default_tax_type(tenant: Tenant, tax_cents: int) -> str:
+def _default_tax_type(tenant: Tenant, tax_cents: int, currency: str | None = None) -> str:
     if (tenant.xero_default_tax_type or "").strip():
         return tenant.xero_default_tax_type.strip()
-    return "OUTPUT" if tax_cents > 0 else "NONE"
+    if tax_cents <= 0:
+        return "NONE"
+    # Xero NZ charts use OUTPUT2 for "GST on Income" (15%); AU uses OUTPUT.
+    return "OUTPUT2" if (currency or tenant.default_currency or "").strip().upper() == "NZD" else "OUTPUT"
 
 
 def _contact_payload_for_job(session: Session, job: AutoKeyJob) -> dict[str, Any]:
@@ -363,7 +366,7 @@ def _line_items_for_invoice(
     invoice: AutoKeyInvoice,
 ) -> list[dict[str, Any]]:
     account_code = _default_account_code(tenant)
-    tax_type = _default_tax_type(tenant, invoice.tax_cents)
+    tax_type = _default_tax_type(tenant, invoice.tax_cents, invoice.currency)
     if invoice.auto_key_quote_id:
         rows = session.exec(
             select(AutoKeyQuoteLineItem)
@@ -700,7 +703,7 @@ def _repair_invoice_due_date(session: Session, job: RepairJob) -> date:
 
 def _line_items_for_repair_invoice(session: Session, tenant: Tenant, invoice: Invoice) -> list[dict[str, Any]]:
     account_code = _default_account_code(tenant)
-    tax_type = _default_tax_type(tenant, invoice.tax_cents)
+    tax_type = _default_tax_type(tenant, invoice.tax_cents, invoice.currency)
     if invoice.quote_id:
         rows = session.exec(
             select(QuoteLineItem)

@@ -8,6 +8,7 @@ This keeps the app fully functional in development without a Twilio account.
 import logging
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from uuid import UUID
 
 from sqlmodel import Session, select
@@ -531,7 +532,7 @@ def notify_auto_key_customer_scheduled(
         from datetime import datetime
 
         dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
-        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
+        when = format_in_timezone(dt, _shop_tz(session, tenant_id), "%a %d %b around %H:%M")
     except (ValueError, TypeError):
         when = scheduled_at[:16] if scheduled_at else ""
     body = (
@@ -569,7 +570,7 @@ def notify_auto_key_customer_day_before(
         from datetime import datetime
 
         dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
-        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
+        when = format_in_timezone(dt, _shop_tz(session, tenant_id), "%a %d %b around %H:%M")
     except (ValueError, TypeError):
         when = scheduled_at[:16] if scheduled_at else "tomorrow"
     body = f"Hi {customer_name}, just a reminder that your technician is scheduled for tomorrow, {when}."
@@ -610,7 +611,7 @@ def notify_auto_key_en_route(
                 if isinstance(scheduled_at, datetime)
                 else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
             )
-            body += f" Scheduled arrival: {format_in_timezone(dt, settings.schedule_calendar_timezone)}."
+            body += f" Scheduled arrival: {format_in_timezone(dt, _shop_tz(session, tenant_id))}."
         except (ValueError, TypeError):
             pass
     if job_address and job_address.strip():
@@ -755,6 +756,19 @@ def notify_auto_key_customer_intake(
         body=body,
         event="auto_key_customer_intake",
     )
+
+
+def _shop_tz(session: Session, tenant_id: UUID) -> str:
+    """IANA zone name for customer-facing SMS times: the shop's own, else the platform default."""
+    tenant = session.get(Tenant, tenant_id)
+    name = (getattr(tenant, "timezone", None) or "").strip()
+    if name:
+        try:
+            ZoneInfo(name)
+            return name
+        except Exception:
+            pass
+    return settings.schedule_calendar_timezone
 
 
 def operator_dispatch_phone(tenant: Tenant | None) -> str | None:
@@ -976,7 +990,7 @@ def notify_shop_mobile_booking_request(
                 if isinstance(preferred_scheduled_at, datetime)
                 else datetime.fromisoformat(str(preferred_scheduled_at).replace("Z", "+00:00"))
             )
-            when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b around %H:%M")
+            when = format_in_timezone(dt, _shop_tz(session, tenant_id), "%a %d %b around %H:%M")
             lines.append(f"When: {when}")
         except (ValueError, TypeError):
             lines.append(f"When: {str(preferred_scheduled_at)[:32]}")
@@ -1162,7 +1176,7 @@ def notify_auto_key_booking_request(
     veh_bit = f" ({veh})" if veh else ""
     try:
         dt = scheduled_at if isinstance(scheduled_at, datetime) else datetime.fromisoformat(str(scheduled_at).replace("Z", "+00:00"))
-        when = format_in_timezone(dt, settings.schedule_calendar_timezone, "%a %d %b at %I:%M%p").replace(" 0", " ")
+        when = format_in_timezone(dt, _shop_tz(session, tenant_id), "%a %d %b at %I:%M%p").replace(" 0", " ")
     except (ValueError, TypeError):
         when = str(scheduled_at)[:16] if scheduled_at else ""
     body = (
@@ -1310,7 +1324,7 @@ def notify_auto_key_schedule_changed(
 
         try:
             dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
-            parts.append(f" {format_in_timezone(dt, settings.schedule_calendar_timezone, '%a %d %b at %H:%M')}")
+            parts.append(f" {format_in_timezone(dt, _shop_tz(session, tenant_id), '%a %d %b at %H:%M')}")
         except (ValueError, TypeError):
             parts.append(f" {scheduled_at[:16]}")
     if job_type:

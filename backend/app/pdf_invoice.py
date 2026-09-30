@@ -289,7 +289,7 @@ def _build_document_pdf(
         # The logo replaced the name heading; keep the name in the identity block.
         shop_lines.append(f"<b>{shop_name}</b>")
     if shop_abn:
-        shop_lines.append(f"ABN {shop_abn}")
+        shop_lines.append(f"{'GST No.' if (currency or '').upper() == 'NZD' else 'ABN'} {shop_abn}")
     if shop_address:
         shop_lines.append(shop_address.replace("\n", "<br/>"))
     if shop_phone:

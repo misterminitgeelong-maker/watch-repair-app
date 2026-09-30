@@ -44,7 +44,7 @@ function AutocompleteInner({ label, value, onChange, onPlaceResolved, placeholde
   useEffect(() => {
     if (!places || !inputRef.current || autocompleteRef.current) return
     autocompleteRef.current = new places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: 'au' },
+      componentRestrictions: { country: ['au', 'nz'] },
       fields: ['formatted_address', 'address_components'],
       types: ['address'],
     })

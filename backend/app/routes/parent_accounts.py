@@ -1524,12 +1524,14 @@ async def set_site_base_location(
     address = (payload.address or "").strip()
     postcode = (payload.postcode or "").strip()
     if postcode and not re.fullmatch(r"\d{4}", postcode):
-        raise HTTPException(status_code=400, detail="postcode must be a 4-digit Australian postcode")
-    query = address or (f"{postcode}, Australia" if postcode else "")
+        raise HTTPException(status_code=400, detail="postcode must be a 4-digit postcode")
+    # NZ and AU postcodes are both 4 digits, so an NZ site must not hit the AU centroid table.
+    nz_site = (tenant.default_currency or "").strip().upper() == "NZD"
+    query = address or (f"{postcode}, {'New Zealand' if nz_site else 'Australia'}" if postcode else "")
     if not query:
         raise HTTPException(status_code=400, detail="Provide an address or a postcode")
     coords: tuple[float, float] | None = None
-    if postcode and not address:
+    if postcode and not address and not nz_site:
         # A bare postcode needs no Google key: use the public postcode centroid.
         try:
             coords = await run_in_threadpool(postcode_centroid, postcode)

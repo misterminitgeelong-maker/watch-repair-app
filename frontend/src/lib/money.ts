@@ -43,8 +43,11 @@ export function totalWithTaxCents(subtotalCents: number, taxCents: number): numb
   return subtotalCents + Math.max(0, Math.round(taxCents))
 }
 
-/** Australian GST rate. Mirrors backend/app/routes/quotes.py GST_RATE. */
+/** Australian GST rate (AUD). Mirrors backend/app/gst.py; NZD uses 15%, see GST_RATES. */
 export const GST_RATE = 0.10
+
+/** Sales-tax rate as [numerator, denominator] by currency. Mirrors backend GST_RATES. */
+const GST_RATES: Record<string, [number, number]> = { AUD: [1, 10], NZD: [3, 20] }
 
 export interface GstAmounts {
   subtotalCents: number
@@ -68,7 +71,7 @@ function divHalfUp(numerator: number, denominator: number): number {
 
 /**
  * Whole-cent GST, half-up (what Xero does). Mirrors backend `compute_gst_amounts`:
- * Australian GST only applies to AUD amounts.
+ * GST applies to AUD (10%) and NZD (15%) amounts.
  */
 export function computeGstAmounts(
   enteredCents: number,
@@ -77,13 +80,14 @@ export function computeGstAmounts(
   currency: string = 'AUD',
 ): GstAmounts {
   const entered = Math.round(enteredCents)
-  const isAud = (currency || 'AUD').trim().toUpperCase() === 'AUD'
-  if (!gstEnabled || !isAud) return { subtotalCents: entered, taxCents: 0, totalCents: entered }
+  const rate = GST_RATES[(currency || 'AUD').trim().toUpperCase()]
+  if (!gstEnabled || !rate) return { subtotalCents: entered, taxCents: 0, totalCents: entered }
+  const [num, den] = rate
   if (gstInclusive) {
-    const subtotalCents = divHalfUp(entered * 10, 11)
-    return { subtotalCents, taxCents: entered - subtotalCents, totalCents: entered }
+    const taxCents = divHalfUp(entered * num, den + num)
+    return { subtotalCents: entered - taxCents, taxCents, totalCents: entered }
   }
-  const taxCents = divHalfUp(entered, 10)
+  const taxCents = divHalfUp(entered * num, den)
   return { subtotalCents: entered, taxCents, totalCents: entered + taxCents }
 }
 
@@ -91,7 +95,7 @@ export function computeGstAmounts(
 export function formatMoney(cents: number, currency = 'AUD'): string {
   const code = (currency || 'AUD').toUpperCase().slice(0, 3) || 'AUD'
   try {
-    return new Intl.NumberFormat('en-AU', { style: 'currency', currency: code }).format(cents / 100)
+    return new Intl.NumberFormat(code === 'NZD' ? 'en-NZ' : 'en-AU', { style: 'currency', currency: code }).format(cents / 100)
   } catch {
     return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(cents / 100)
   }

@@ -100,8 +100,8 @@ describe('computeGstAmounts', () => {
     expect(computeGstAmounts(165, true, true)).toEqual({ subtotalCents: 150, taxCents: 15, totalCents: 165 })
   })
 
-  it('adds no GST for non-AUD currencies', () => {
-    expect(computeGstAmounts(10000, true, false, 'NZD')).toEqual({ subtotalCents: 10000, taxCents: 0, totalCents: 10000 })
+  it('adds no GST for unsupported currencies', () => {
+    expect(computeGstAmounts(10000, true, false, 'USD')).toEqual({ subtotalCents: 10000, taxCents: 0, totalCents: 10000 })
   })
 })
 
@@ -113,5 +113,17 @@ describe('formatCents / formatMoney', () => {
 
   it('honours an explicit currency code', () => {
     expect(formatMoney(1000, 'USD')).toMatch(/10\.00/)
+  })
+})
+
+describe('computeGstAmounts NZD', () => {
+  it('adds 15% GST on exclusive amounts', () => {
+    expect(computeGstAmounts(10000, true, false, 'NZD')).toEqual({ subtotalCents: 10000, taxCents: 1500, totalCents: 11500 })
+  })
+  it('backs 3/23 out of inclusive amounts', () => {
+    expect(computeGstAmounts(11500, true, true, 'NZD')).toEqual({ subtotalCents: 10000, taxCents: 1500, totalCents: 11500 })
+  })
+  it('charges no tax in unsupported currencies', () => {
+    expect(computeGstAmounts(10000, true, false, 'USD').taxCents).toBe(0)
   })
 })
