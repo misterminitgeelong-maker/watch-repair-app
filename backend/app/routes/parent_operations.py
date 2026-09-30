@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -46,6 +47,9 @@ from ..models import (
     ParentAccountSite,
     ParentDashboardBookingSnippet,
     ParentEmailLeadsByShopReport,
+    ParentLeadVolumeReport,
+    LeadVolumeBucket,
+    MobileLeadDispatch,
     ParentMobileJobNetworkRead,
     ParentMobileJobsReport,
     ParentMobileWeeklyReportPreview,
@@ -914,6 +918,61 @@ def get_email_leads_by_shop_report(
             )
             for b in buckets
         ],
+    )
+
+
+@router.get("/me/operations/lead-volume", response_model=ParentLeadVolumeReport)
+def get_lead_volume_report(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    """Daily (30 days), weekly (12 weeks, Mon start) and monthly (12 months) lead counts.
+
+    A lead is a website mobile-key enquiry (MobileLeadDispatch) or a captured
+    enquiry email (InboundEmail). Days are bucketed in Melbourne time; periods
+    with no leads are returned as zeros so charts have no gaps.
+    """
+    _require_minit_hq(auth, session)
+    _, parent, _ = _parent_for_read(session, auth)
+    tz = ZoneInfo("Australia/Melbourne")
+    today = datetime.now(tz).date()
+    day_start = today - timedelta(days=29)
+    week_start = today - timedelta(days=today.weekday()) - timedelta(weeks=11)
+    month_start = date(today.year - 1 if today.month < 12 else today.year, (today.month % 12) + 1, 1)
+    since = datetime.combine(min(day_start, week_start, month_start), time.min, tzinfo=tz)
+
+    def created_dates(model) -> list[date]:
+        rows = session.exec(
+            select(model.created_at)
+            .where(model.parent_account_id == parent.id)
+            .where(col(model.created_at) >= since.astimezone(timezone.utc))
+        ).all()
+        return [
+            (r if r.tzinfo else r.replace(tzinfo=timezone.utc)).astimezone(tz).date() for r in rows
+        ]
+
+    sources = {"website_leads": created_dates(MobileLeadDispatch), "email_leads": created_dates(InboundEmail)}
+
+    def build(starts: list[date], key) -> list[LeadVolumeBucket]:
+        buckets = {d: LeadVolumeBucket(period_start=d.isoformat()) for d in starts}
+        for field, dates in sources.items():
+            for d in dates:
+                b = buckets.get(key(d))
+                if b is not None:
+                    setattr(b, field, getattr(b, field) + 1)
+                    b.total += 1
+        return [buckets[d] for d in starts]
+
+    days = [day_start + timedelta(days=i) for i in range(30)]
+    weeks = [week_start + timedelta(weeks=i) for i in range(12)]
+    months = [month_start]
+    while len(months) < 12:
+        m = months[-1]
+        months.append(date(m.year + (m.month == 12), (m.month % 12) + 1, 1))
+    return ParentLeadVolumeReport(
+        daily=build(days, lambda d: d),
+        weekly=build(weeks, lambda d: d - timedelta(days=d.weekday())),
+        monthly=build(months, lambda d: d.replace(day=1)),
     )
 
 

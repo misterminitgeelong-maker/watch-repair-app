@@ -92,6 +92,7 @@ const MinitTroubleshootingPage = lazyPage(() => import('@/pages/minit/MinitTroub
 const MinitInboxPage = lazyPage(() => import('@/pages/minit/MinitInboxPage'))
 const MinitLeadRoutingPage = lazyPage(() => import('@/pages/minit/MinitLeadRoutingPage'))
 const MinitAccountsPage = lazyPage(() => import('@/pages/minit/MinitAccountsPage'))
+const MinitLeadVolumePage = lazyPage(() => import('@/pages/minit/MinitLeadVolumePage'))
 const MinitReportsHubPage = lazyPage(() => import('@/pages/minit/MinitReportsHubPage'))
 const MinitRegionCockpitPage = lazyPage(() => import('@/pages/minit/MinitRegionCockpitPage'))
 
@@ -255,6 +256,7 @@ export default function App() {
               <Route path="minit/accounts" element={<MinitHqGate><MinitAccountsPage /></MinitHqGate>} />
               <Route path="minit/reports" element={<MinitHqGate><MinitReportsHubPage /></MinitHqGate>} />
               <Route path="minit/regions/:regionId" element={<MinitHqGate><MinitRegionCockpitPage /></MinitHqGate>} />
+              <Route path="minit/reports/leads" element={<MinitHqGate><MinitLeadVolumePage /></MinitHqGate>} />
               <Route path="minit/reports/shops" element={<MinitHqGate><MinitShopReportsPage /></MinitHqGate>} />
               <Route path="minit/reports/mobile" element={<Navigate to="/minit/mobile-services" replace />} />
               <Route path="minit/troubleshooting" element={<MinitHqGate><MinitTroubleshootingPage /></MinitHqGate>} />

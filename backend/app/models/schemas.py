@@ -718,6 +718,18 @@ class ParentEmailLeadsByShopReport(SQLModel):
     total_emails: int
     shops: list[ShopEmailLeadBucket] = Field(default_factory=list)
 
+class LeadVolumeBucket(SQLModel):
+    #: First day of the period (day, Monday of the week, or 1st of the month).
+    period_start: str
+    website_leads: int = 0
+    email_leads: int = 0
+    total: int = 0
+
+class ParentLeadVolumeReport(SQLModel):
+    daily: list[LeadVolumeBucket] = Field(default_factory=list)
+    weekly: list[LeadVolumeBucket] = Field(default_factory=list)
+    monthly: list[LeadVolumeBucket] = Field(default_factory=list)
+
 class OperatorWeeklyStatsRead(SQLModel):
     operator_tenant_id: UUID
     operator_name: str

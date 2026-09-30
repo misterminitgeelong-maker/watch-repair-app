@@ -798,6 +798,19 @@ export interface ParentEmailLeadsByShopReport {
   total_emails: number
   shops?: ShopEmailLeadBucket[]
 }
+export interface LeadVolumeBucket {
+  period_start: string
+  website_leads: number
+  email_leads: number
+  total: number
+}
+export interface ParentLeadVolumeReport {
+  daily: LeadVolumeBucket[]
+  weekly: LeadVolumeBucket[]
+  monthly: LeadVolumeBucket[]
+}
+export const getParentLeadVolumeReport = () =>
+  api.get<ParentLeadVolumeReport>('/parent-accounts/me/operations/lead-volume')
 export const getParentEmailLeadsByShopReport = (params?: { from_date?: string; to_date?: string }) =>
   api.get<ParentEmailLeadsByShopReport>('/parent-accounts/me/operations/email-leads-by-shop', { params })
 

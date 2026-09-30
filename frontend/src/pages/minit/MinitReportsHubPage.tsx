@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { BarChart3, KeyRound, Store, Wrench } from 'lucide-react'
+import { BarChart3, Inbox, KeyRound, Store, Wrench } from 'lucide-react'
 import { Card, PageHeader } from '@/components/ui'
 
 function ReportLink({
@@ -51,6 +51,12 @@ export default function MinitReportsHubPage() {
           icon={BarChart3}
           title="Shop reports"
           description="Booking requests, accept/decline rates, and quiet shops across the retail network."
+        />
+        <ReportLink
+          to="/minit/reports/leads"
+          icon={Inbox}
+          title="Lead volume"
+          description="Website and email leads per day, week and month."
         />
         <ReportLink
           to="/minit/mobile-services"
