@@ -143,6 +143,23 @@ def tenant_is_operator(session: Session, tenant_id: UUID) -> bool:
     return tenant_network_role(session, tenant_id) == NETWORK_ROLE_OPERATOR
 
 
+def tenant_dispatch_enabled(session: Session, tenant_id: UUID, parent_id: UUID | None = None) -> bool:
+    """New-work eligibility. Reporting continues to use the network role alone."""
+    with without_scope(session):
+        tenant = session.get(Tenant, tenant_id)
+    if not tenant or not tenant.is_active or tenant.mobile_dispatch_paused or tenant.merged_into_tenant_id:
+        return False
+    if parent_id is not None:
+        site = site_for_tenant_in_parent(session, parent_id, tenant_id)
+        return site is not None and site.network_role == NETWORK_ROLE_OPERATOR
+    return tenant_is_operator(session, tenant_id)
+
+
+def dispatch_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
+    return [t for t in operator_tenants_for_parent(session, parent_id)
+            if t.is_active and not t.mobile_dispatch_paused and not t.merged_into_tenant_id]
+
+
 def _parents_with_hq_site(session: Session, parent_ids: list[UUID]) -> set[UUID]:
     if not parent_ids:
         return set()
@@ -257,6 +274,8 @@ def link_site(
     raw TSS region string. ``known_tenant_ids`` / ``region_cache`` let bulk
     importers skip a query per row.
     """
+    if tenant.merged_into_tenant_id:
+        return None
     if known_tenant_ids is not None:
         if tenant.id in known_tenant_ids:
             return None

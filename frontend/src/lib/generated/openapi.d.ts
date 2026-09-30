@@ -4684,6 +4684,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/sites/{tenant_id}/base-location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Site Base Location
+         * @description HQ sets where a site's dispatch rings start (street address or AU postcode)
+         *     and how wide each ring is. Operators can't change this themselves.
+         */
+        put: operations["set_site_base_location_v1_parent_accounts_me_sites__tenant_id__base_location_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/sites/{tenant_id}/invite": {
         parameters: {
             query?: never;
@@ -4946,6 +4967,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/mv-operators/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Mv Operator Status */
+        post: operations["update_mv_operator_status_v1_parent_accounts_me_mv_operators__tenant_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/sites/{tenant_id}/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Site Accounts
+         * @description Everyone with a login at a site, with sign-in and reset-link status.
+         */
+        get: operations["list_site_accounts_v1_parent_accounts_me_sites__tenant_id__accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/sites/{tenant_id}/accounts/{user_id}/reset-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Account Reset Link
+         * @description Email and/or text the person a one-time link to choose their own new
+         *     email and password. HQ is never shown the link.
+         */
+        post: operations["send_account_reset_link_v1_parent_accounts_me_sites__tenant_id__accounts__user_id__reset_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/sites/{tenant_id}/accounts/{user_id}/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change Account Email
+         * @description Correct someone's login email (a typo, or an address they can't reach).
+         */
+        patch: operations["change_account_email_v1_parent_accounts_me_sites__tenant_id__accounts__user_id__email_patch"];
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/sites/{tenant_id}/message-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Site Message Logs
+         * @description Recent SMS and emails a site sent, newest first. Message text is left
+         *     out: it often carries customer details.
+         */
+        get: operations["list_site_message_logs_v1_parent_accounts_me_sites__tenant_id__message_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/network-link-requests": {
         parameters: {
             query?: never;
@@ -5103,6 +5223,30 @@ export interface paths {
          *     inbox grows into the thousands.
          */
         get: operations["get_email_leads_by_shop_report_v1_parent_accounts_me_operations_email_leads_by_shop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/lead-volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lead Volume Report
+         * @description Daily (30 days), weekly (12 weeks, Mon start) and monthly (12 months) lead counts.
+         *
+         *     A lead is a website mobile-key enquiry (MobileLeadDispatch) or a captured
+         *     enquiry email (InboundEmail). Days are bucketed in Melbourne time; periods
+         *     with no leads are returned as zeros so charts have no gaps.
+         */
+        get: operations["get_lead_volume_report_v1_parent_accounts_me_operations_lead_volume_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8300,6 +8444,72 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HqAccountEmailBody */
+        HqAccountEmailBody: {
+            /** Email */
+            email: string;
+        };
+        /** HqAccountRead */
+        HqAccountRead: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /** Role */
+            role: string;
+            /** Mobile */
+            mobile?: string | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Last Login At */
+            last_login_at?: string | null;
+            /**
+             * Is Hq Login
+             * @default false
+             */
+            is_hq_login: boolean;
+            /** Latest Link Status */
+            latest_link_status?: string | null;
+            /** Latest Link Sent At */
+            latest_link_sent_at?: string | null;
+        };
+        /** HqMessageLogRead */
+        HqMessageLogRead: {
+            /** Channel */
+            channel: string;
+            /** To */
+            to: string;
+            /** Event */
+            event: string;
+            /** Status */
+            status: string;
+            /** Error */
+            error?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** HqResetLinkResponse */
+        HqResetLinkResponse: {
+            /** Email Sent */
+            email_sent: boolean;
+            /** Sms Sent */
+            sms_sent: boolean;
+            /** Sent To Email */
+            sent_to_email?: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
         /** ImportSummaryResponse */
         ImportSummaryResponse: {
             /**
@@ -8750,6 +8960,26 @@ export interface components {
             lat: number;
             /** Lng */
             lng: number;
+        };
+        /** LeadVolumeBucket */
+        LeadVolumeBucket: {
+            /** Period Start */
+            period_start: string;
+            /**
+             * Website Leads
+             * @default 0
+             */
+            website_leads: number;
+            /**
+             * Email Leads
+             * @default 0
+             */
+            email_leads: number;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -9257,6 +9487,43 @@ export interface components {
              * @default false
              */
             blocked: boolean;
+            /**
+             * Network Role
+             * @default retail
+             */
+            network_role: string;
+            /**
+             * Dispatch Paused
+             * @default true
+             */
+            dispatch_paused: boolean;
+            /** Shop Phone */
+            shop_phone?: string | null;
+            /** Shop Email */
+            shop_email?: string | null;
+            /** Dispatch Phone */
+            dispatch_phone?: string | null;
+            /**
+             * Dispatch Phone Source
+             * @default missing
+             */
+            dispatch_phone_source: string;
+            /** Dispatch Email */
+            dispatch_email?: string | null;
+            /**
+             * Proposed Plan Code
+             * @default
+             */
+            proposed_plan_code: string;
+            /**
+             * Routes To Move
+             * @default 0
+             */
+            routes_to_move: number;
+            /** Readiness Issues */
+            readiness_issues?: string[];
+            /** Preview Token */
+            preview_token: string;
         };
         /** MvMergeOperatorRead */
         MvMergeOperatorRead: {
@@ -9282,6 +9549,15 @@ export interface components {
              * Format: uuid
              */
             operator_tenant_id: string;
+            /** Preview Token */
+            preview_token: string;
+            /**
+             * Activate Dispatch
+             * @default false
+             */
+            activate_dispatch: boolean;
+            /** Dispatch Phone */
+            dispatch_phone?: string | null;
         };
         /** MvMergePreviewResponse */
         MvMergePreviewResponse: {
@@ -9293,7 +9569,7 @@ export interface components {
         /** MvMergeRequest */
         MvMergeRequest: {
             /** Pairs */
-            pairs?: components["schemas"]["MvMergePair"][];
+            pairs: components["schemas"]["MvMergePair"][];
         };
         /** MvMergeResponse */
         MvMergeResponse: {
@@ -9316,6 +9592,18 @@ export interface components {
             ok: boolean;
             /** Message */
             message: string;
+        };
+        /** MvOperatorUpdateRequest */
+        MvOperatorUpdateRequest: {
+            /** Preview Token */
+            preview_token: string;
+            /**
+             * Activate Dispatch
+             * @default false
+             */
+            activate_dispatch: boolean;
+            /** Dispatch Phone */
+            dispatch_phone?: string | null;
         };
         /** NotificationPrefsRead */
         NotificationPrefsRead: {
@@ -9532,6 +9820,12 @@ export interface components {
              * @default not_invited
              */
             owner_stage: string;
+            /** Base Lat */
+            base_lat?: number | null;
+            /** Base Lng */
+            base_lng?: number | null;
+            /** Ring Radius Km */
+            ring_radius_km?: number | null;
         };
         /** ParentAccountSiteUpdateRequest */
         ParentAccountSiteUpdateRequest: {
@@ -9848,6 +10142,15 @@ export interface components {
              * @default false
              */
             mobile_lead_force_hq_dispatch: boolean;
+        };
+        /** ParentLeadVolumeReport */
+        ParentLeadVolumeReport: {
+            /** Daily */
+            daily?: components["schemas"]["LeadVolumeBucket"][];
+            /** Weekly */
+            weekly?: components["schemas"]["LeadVolumeBucket"][];
+            /** Monthly */
+            monthly?: components["schemas"]["LeadVolumeBucket"][];
         };
         /** ParentLinkRequestRead */
         ParentLinkRequestRead: {
@@ -11096,6 +11399,10 @@ export interface components {
             customer_phone?: string | null;
             /** Customer Email */
             customer_email?: string | null;
+            /** Watch Brand */
+            watch_brand?: string | null;
+            /** Watch Model */
+            watch_model?: string | null;
             /**
              * Tracking Sms Sent
              * @default false
@@ -11135,6 +11442,8 @@ export interface components {
             internal_notes?: string | null;
             /** Parts Eta */
             parts_eta?: string | null;
+            /** Job Number */
+            job_number?: string | null;
         };
         /** RepairJobIntakeUpdate */
         RepairJobIntakeUpdate: {
@@ -11253,6 +11562,10 @@ export interface components {
             customer_phone?: string | null;
             /** Customer Email */
             customer_email?: string | null;
+            /** Watch Brand */
+            watch_brand?: string | null;
+            /** Watch Model */
+            watch_model?: string | null;
         };
         /** RepairJobStatusUpdate */
         RepairJobStatusUpdate: {
@@ -11984,6 +12297,22 @@ export interface components {
             brand_color?: string | null;
             /** Shop Number */
             shop_number?: string | null;
+            /**
+             * Region
+             * @default AU
+             * @enum {string}
+             */
+            region: "AU" | "NZ";
+            /**
+             * Default Currency
+             * @default AUD
+             */
+            default_currency: string;
+            /**
+             * Timezone
+             * @default Australia/Melbourne
+             */
+            timezone: string;
         };
         /** ShopIdentityUpdate */
         ShopIdentityUpdate: {
@@ -12001,6 +12330,8 @@ export interface components {
             brand_color?: string | null;
             /** Shop Number */
             shop_number?: string | null;
+            /** Region */
+            region?: ("AU" | "NZ") | null;
         };
         /** ShopMobileBookingCreate */
         ShopMobileBookingCreate: {
@@ -12277,6 +12608,21 @@ export interface components {
              * @default false
              */
             sms_sent: boolean;
+        };
+        /**
+         * SiteBaseLocationRequest
+         * @description HQ sets where an operator's rings start: a street address or an AU postcode.
+         */
+        SiteBaseLocationRequest: {
+            /** Address */
+            address?: string | null;
+            /** Postcode */
+            postcode?: string | null;
+            /**
+             * Ring Radius Km
+             * @default 10
+             */
+            ring_radius_km: number;
         };
         /** SmsLogRead */
         SmsLogRead: {
@@ -22007,6 +22353,41 @@ export interface operations {
             };
         };
     };
+    set_site_base_location_v1_parent_accounts_me_sites__tenant_id__base_location_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteBaseLocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_shop_owner_invite_v1_parent_accounts_me_sites__tenant_id__invite_get: {
         parameters: {
             query?: never;
@@ -22452,6 +22833,173 @@ export interface operations {
             };
         };
     };
+    update_mv_operator_status_v1_parent_accounts_me_mv_operators__tenant_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MvOperatorUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_site_accounts_v1_parent_accounts_me_sites__tenant_id__accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HqAccountRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_account_reset_link_v1_parent_accounts_me_sites__tenant_id__accounts__user_id__reset_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HqResetLinkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_account_email_v1_parent_accounts_me_sites__tenant_id__accounts__user_id__email_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HqAccountEmailBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HqAccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_site_message_logs_v1_parent_accounts_me_sites__tenant_id__message_logs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HqMessageLogRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_my_network_link_requests_v1_network_link_requests_get: {
         parameters: {
             query?: never;
@@ -22722,6 +23270,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lead_volume_report_v1_parent_accounts_me_operations_lead_volume_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentLeadVolumeReport"];
                 };
             };
         };

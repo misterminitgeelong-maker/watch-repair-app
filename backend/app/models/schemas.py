@@ -2124,6 +2124,17 @@ class MvMergeCandidateRead(SQLModel):
     preselected: bool = False
     note: Optional[str] = None
     blocked: bool = False
+    network_role: str = "retail"
+    dispatch_paused: bool = True
+    shop_phone: Optional[str] = None
+    shop_email: Optional[str] = None
+    dispatch_phone: Optional[str] = None
+    dispatch_phone_source: str = "missing"
+    dispatch_email: Optional[str] = None
+    proposed_plan_code: str = ""
+    routes_to_move: int = 0
+    readiness_issues: list[str] = Field(default_factory=list)
+    preview_token: str
 
 
 class MvMergeOperatorRead(SQLModel):
@@ -2141,10 +2152,19 @@ class MvMergePreviewResponse(SQLModel):
 class MvMergePair(SQLModel):
     mv_tenant_id: UUID
     operator_tenant_id: UUID
+    preview_token: str = Field(min_length=64, max_length=64)
+    activate_dispatch: bool = False
+    dispatch_phone: Optional[str] = Field(default=None, max_length=80)
 
 
 class MvMergeRequest(SQLModel):
-    pairs: list[MvMergePair] = Field(default_factory=list)
+    pairs: list[MvMergePair] = Field(min_length=1, max_length=5)
+
+
+class MvOperatorUpdateRequest(SQLModel):
+    preview_token: str = Field(min_length=64, max_length=64)
+    activate_dispatch: bool = False
+    dispatch_phone: Optional[str] = Field(default=None, max_length=80)
 
 
 class MvMergeResult(SQLModel):

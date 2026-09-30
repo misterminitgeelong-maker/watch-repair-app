@@ -4693,6 +4693,17 @@ export interface MvMergeCandidate {
   preselected: boolean
   note?: string | null
   blocked: boolean
+  network_role: string
+  dispatch_paused: boolean
+  shop_phone?: string | null
+  shop_email?: string | null
+  dispatch_phone?: string | null
+  dispatch_phone_source: string
+  dispatch_email?: string | null
+  proposed_plan_code: string
+  routes_to_move: number
+  readiness_issues: string[]
+  preview_token: string
 }
 export interface MvMergePreview {
   candidates: MvMergeCandidate[]
@@ -4705,5 +4716,15 @@ export interface MvMergeResult {
   message: string
 }
 export const getMvMergePreview = () => api.get<MvMergePreview>('/parent-accounts/me/mv-merge/preview')
-export const runMvMerge = (pairs: { mv_tenant_id: string; operator_tenant_id: string }[]) =>
+export interface MvMergePair {
+  mv_tenant_id: string
+  operator_tenant_id: string
+  preview_token: string
+  activate_dispatch: boolean
+  dispatch_phone?: string
+}
+export const runMvMerge = (pairs: MvMergePair[]) =>
   api.post<{ results: MvMergeResult[] }>('/parent-accounts/me/mv-merge', { pairs })
+export const updateMvOperator = (tenantId: string, data: {
+  preview_token: string; activate_dispatch: boolean; dispatch_phone?: string
+}) => api.post<{ message: string }>(`/parent-accounts/me/mv-operators/${tenantId}`, data)

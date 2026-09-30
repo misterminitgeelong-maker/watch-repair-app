@@ -9,10 +9,10 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..parent_network import (
-    operator_tenants_for_parent,
+    dispatch_operators_for_parent,
     parent_ids_for_tenant,
     resolve_common_parent_id,
-    tenant_is_operator,
+    tenant_dispatch_enabled,
 )
 from ..database import get_session, unscoped_session
 from ..dispatch_utils import geocode_address
@@ -220,7 +220,7 @@ def _tenant_has_auto_key(session: Session, tenant_id: UUID) -> bool:
 
 def _tenant_is_bookable_operator(session: Session, tenant_id: UUID) -> bool:
     """An operator is whatever its network says it is, not whatever it is billed for."""
-    return tenant_is_operator(session, tenant_id)
+    return tenant_dispatch_enabled(session, tenant_id)
 
 
 def _next_auto_key_job_number(session: Session, tenant_id: UUID) -> str:
@@ -424,7 +424,7 @@ def list_operators(
     options: list[ShopMobileOperatorOption] = []
     seen: set[UUID] = set()
     for parent_id in parent_ids:
-        for tenant in operator_tenants_for_parent(session, parent_id):
+        for tenant in dispatch_operators_for_parent(session, parent_id):
             if tenant.id == auth.tenant_id or tenant.id in seen:
                 continue
             seen.add(tenant.id)

@@ -37,12 +37,14 @@ def _next_auto_key_job_number(session: Session, tenant_id: UUID) -> str:
 
 def _escalation_tenant_id(session: Session, parent: ParentAccount) -> UUID | None:
     if parent.mobile_lead_escalation_tenant_id:
-        return parent.mobile_lead_escalation_tenant_id
+        tenant = session.get(Tenant, parent.mobile_lead_escalation_tenant_id)
+        if tenant and tenant.is_active and not tenant.mobile_dispatch_paused and not tenant.merged_into_tenant_id:
+            return tenant.id
     fallback = parent.mobile_lead_default_tenant_id
     if not fallback:
         return None
     tenant = session.get(Tenant, fallback)
-    if tenant and not tenant_is_operator(session, tenant.id):
+    if tenant and tenant.is_active and not tenant.mobile_dispatch_paused and not tenant.merged_into_tenant_id and not tenant_is_operator(session, tenant.id):
         return fallback
     return None
 
