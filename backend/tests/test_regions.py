@@ -18,3 +18,19 @@ def test_stripe_country_follows_tenant_currency():
 def test_nz_gst_is_15_percent():
     assert compute_gst_amounts(11500, True, True, "NZD") == (10000, 1500, 11500)
     assert compute_gst_amounts(10000, True, False, "NZD") == (10000, 1500, 11500)
+
+
+def test_nz_placement_presets_defaults_once():
+    from app.regions import apply_nz_defaults_from_placement, is_nz_minit_placement
+
+    assert is_nz_minit_placement("NZ", None)
+    assert is_nz_minit_placement(None, "NZ NORTH")
+    assert not is_nz_minit_placement("VIC", "VIC SOUTH")
+
+    t = SimpleNamespace(minit_region="NZ", minit_area="NZ NORTH", default_currency="AUD", timezone="Australia/Melbourne")
+    assert apply_nz_defaults_from_placement(t)
+    assert (t.default_currency, t.timezone) == ("NZD", "Pacific/Auckland")
+    assert not apply_nz_defaults_from_placement(t)
+
+    au = SimpleNamespace(minit_region="VIC", minit_area="VIC SOUTH", default_currency="AUD", timezone="Australia/Melbourne")
+    assert not apply_nz_defaults_from_placement(au)

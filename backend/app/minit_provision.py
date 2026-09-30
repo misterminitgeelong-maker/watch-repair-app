@@ -46,6 +46,9 @@ _SITE_KIND_TO_ROLE: dict[str, str | None] = {
 }
 
 
+from .regions import apply_nz_defaults_from_placement, is_nz_minit_placement
+
+
 def _is_operator_plan(plan_code: str) -> bool:
     """Plan-based *default* only, for when a site is first created. After that
     ParentAccountSite.network_role says whether a tenant is an operator (see
@@ -115,7 +118,12 @@ def _shop_metadata_changed(tenant: Tenant, shop: MinitShopRow, shop_number: str)
         or tenant.minit_area != shop.area
         or tenant.minit_region != shop.region
         or tenant.business_address != addr
+        or _nz_defaults_pending(tenant, shop)
     )
+
+
+def _nz_defaults_pending(tenant: Tenant, shop: MinitShopRow) -> bool:
+    return is_nz_minit_placement(shop.region, shop.area) and (tenant.default_currency or "AUD").upper() == "AUD"
 
 
 def sync_tenant_from_minit_shop(tenant: Tenant, shop: MinitShopRow) -> bool:
@@ -128,6 +136,7 @@ def sync_tenant_from_minit_shop(tenant: Tenant, shop: MinitShopRow) -> bool:
     tenant.minit_area = shop.area
     tenant.minit_region = shop.region
     tenant.business_address = shop.business_address[:2000] if shop.business_address else None
+    apply_nz_defaults_from_placement(tenant)
     return True
 
 
@@ -168,6 +177,7 @@ def _operator_metadata_changed(
         or tenant.business_address != addr
         or tenant.mobile_dispatch_phone != operator.dispatch_phone
         or _operator_contact_gaps(tenant, operator)
+        or _nz_defaults_pending(tenant, shop)
     )
 
 
@@ -184,6 +194,7 @@ def sync_tenant_from_mobile_operator(tenant: Tenant, operator: ResolvedMobileOpe
     tenant.business_address = shop.business_address[:2000] if shop.business_address else None
     tenant.mobile_dispatch_phone = operator.dispatch_phone
     _apply_operator_contact(tenant, operator)
+    apply_nz_defaults_from_placement(tenant)
     return True
 
 
@@ -339,6 +350,7 @@ def _create_child_tenant(
             shop_phone=shop_phone[:40] if shop_phone else None,
             shop_email=shop_email[:200] if shop_email else None,
         )
+        apply_nz_defaults_from_placement(tenant)
         session.add(tenant)
         if existing_by_slug is not None:
             existing_by_slug[slug] = tenant

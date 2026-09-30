@@ -133,6 +133,23 @@ _sweep_stop = threading.Event()
 def _run_optional_startup_tasks() -> None:
     """Run demo/bootstrap maintenance without blocking container health checks."""
     startup_logger = logging.getLogger("mainspring.startup")
+    try:
+        from sqlmodel import select as _select
+        from .models import Tenant as _Tenant
+        from .regions import apply_nz_defaults_from_placement
+
+        # Existing shops HQ placed in an NZ region get NZD / Pacific/Auckland (idempotent).
+        with Session(engine) as session:
+            changed = 0
+            for tenant in session.exec(_select(_Tenant).where(_Tenant.is_minit == True)):  # noqa: E712
+                if apply_nz_defaults_from_placement(tenant):
+                    session.add(tenant)
+                    changed += 1
+            session.commit()
+            if changed:
+                startup_logger.info("Preset NZ defaults on %d shops", changed)
+    except Exception:
+        startup_logger.exception("NZ default backfill failed.")
     if not settings.startup_seed_enabled and not settings.minit_seed_enabled:
         return
     try:
