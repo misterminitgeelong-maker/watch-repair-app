@@ -232,6 +232,7 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
     expected = {
         "auth",                  # resolves a user before a tenant is known
         "billing",               # Stripe webhooks carry a tenant id, not a token
+        "hq_account_support",     # HQ admin helps accounts on sites linked to its own network (checked per request)
         "inbound_email",         # routes mail to whichever shop in the network owns it
         "parent_accounts",       # parent-account membership across its shops
         "parent_network_admin",  # HQ support sessions into sibling shops; network org chart, roles, regions
