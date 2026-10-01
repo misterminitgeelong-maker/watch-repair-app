@@ -1086,6 +1086,8 @@ export interface ShopMobileBookingCreate {
 
 export const listShopMobileOperators = () =>
   api.get<ShopMobileOperatorOption[]>('/shop-mobile-bookings/operators')
+export const listParentMobileDispatchOperators = () =>
+  api.get<ShopMobileOperatorOption[]>('/parent-accounts/me/mobile-dispatch-operators')
 export const suggestShopMobileOperator = (suburb: string, state_code: string) =>
   api.get<ShopMobileOperatorOption | null>('/shop-mobile-bookings/suggest-operator', {
     params: { suburb, state_code },

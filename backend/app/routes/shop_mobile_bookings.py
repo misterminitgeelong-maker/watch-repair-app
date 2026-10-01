@@ -11,6 +11,7 @@ from ..config import settings
 from ..parent_network import (
     dispatch_operators_for_parent,
     parent_ids_for_tenant,
+    mobile_dispatch_parent_ids_for_tenant,
     resolve_common_parent_id,
     tenant_dispatch_enabled,
 )
@@ -68,7 +69,7 @@ def _digits_phone(p: str | None) -> str | None:
 
 
 def _parent_account_ids_for_tenant(session: Session, tenant_id: UUID) -> list[UUID]:
-    return parent_ids_for_tenant(session, tenant_id)
+    return list(dict.fromkeys(parent_ids_for_tenant(session, tenant_id) + mobile_dispatch_parent_ids_for_tenant(session, tenant_id)))
 
 
 def _assert_parent_account_link(session: Session, shop_tid: UUID, operator_tid: UUID) -> UUID:

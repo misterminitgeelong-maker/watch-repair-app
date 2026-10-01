@@ -29,7 +29,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from .models import Tenant
-from .parent_network import operator_tenants_for_parent, tenant_is_live, tenant_dispatch_enabled
+from .parent_network import dispatch_operators_for_parent, tenant_is_live, tenant_dispatch_enabled
 
 # Order matters: matched top-to-bottom against each stripped line.
 _FIELD_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
@@ -149,8 +149,8 @@ class OperatorMatch:
 
 
 def bookable_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
-    """Operator-plan tenants linked to the parent — the same pool website leads dispatch to."""
-    return operator_tenants_for_parent(session, parent_id)
+    """Dispatch-eligible tenants — the same pool website leads dispatch to."""
+    return dispatch_operators_for_parent(session, parent_id)
 
 
 def match_operator_for_lead(

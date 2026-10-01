@@ -10,6 +10,7 @@ import {
   getApiErrorMessage,
   getMobileSuburbRoutesSummary,
   listMobileSuburbRoutes,
+  listParentMobileDispatchOperators,
   setParentMobileLeadDefaultTenant,
   setParentMobileLeadDispatchSettings,
   setParentMobileLeadEscalationTenant,
@@ -54,6 +55,11 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
   // The pickers below must offer every shop and van, not just the first page.
   const { data: retailPage } = useParentAccountSites({ plan_kind: 'retail', limit: 500 })
   const { data: operatorsPage } = useParentAccountSites({ plan_kind: 'operator', limit: 500 })
+  const { data: dispatchSites = [] } = useQuery({
+    queryKey: ['parent-mobile-dispatch-operators'],
+    queryFn: () => listParentMobileDispatchOperators().then(r => r.data),
+    enabled: !!data,
+  })
 
   const [webhookSecret, setWebhookSecret] = useState('')
   const [inboundSecret, setInboundSecret] = useState('')
@@ -256,7 +262,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
   function siteLabel(tenantId: string) {
     const s =
       retailSites.find(x => x.tenant_id === tenantId)
-      ?? operatorSites.find(x => x.tenant_id === tenantId)
+      ?? dispatchSites.find(x => x.tenant_id === tenantId)
     return s ? formatTenantLabel(s.tenant_name, s.shop_number ?? undefined) : tenantId
   }
 
@@ -417,7 +423,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
               onChange={e => setEscalationTenantDraft(e.target.value)}
             >
               <option value="">No HQ escalation</option>
-              {[...(retailSites.length ? retailSites : data?.sites ?? []), ...operatorSites].map(s => (
+              {Array.from(new Map([...(retailSites.length ? retailSites : data?.sites ?? []), ...dispatchSites].map(s => [s.tenant_id, s])).values()).map(s => (
                 <option key={s.tenant_id} value={s.tenant_id}>
                   {s.tenant_name} (#{s.tenant_slug})
                 </option>
@@ -556,7 +562,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
           />
           <Select label="Mobile operator" value={routeTargetTenantId} onChange={e => setRouteTargetTenantId(e.target.value)}>
             <option value="">Select operator</option>
-            {operatorSites.map(s => (
+            {dispatchSites.map(s => (
               <option key={s.tenant_id} value={s.tenant_id}>{s.tenant_name}</option>
             ))}
           </Select>
@@ -615,7 +621,7 @@ export default function WebsiteLeadRoutingPanel({ hqMode = false, onError }: Web
                 onChange={e => setDefaultTenantDraft(e.target.value)}
               >
                 <option value="">No fallback</option>
-                {operatorSites.map(s => (
+                {dispatchSites.map(s => (
                   <option key={s.tenant_id} value={s.tenant_id}>
                     {s.tenant_name} (#{s.tenant_slug})
                   </option>

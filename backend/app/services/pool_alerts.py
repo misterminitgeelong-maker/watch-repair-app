@@ -18,7 +18,8 @@ from .. import email_client
 from .. import sms as sms_service
 from ..config import settings
 from ..dispatch_utils import operator_ring_for_job
-from ..models import NETWORK_ROLE_OPERATOR, IntakeJob, ParentAccountSite, Tenant
+from ..models import NETWORK_ROLE_OPERATOR, IntakeJob, ParentAccountSite, ParentMobileReportingSource, Tenant
+from ..parent_network import tenant_is_live
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,11 @@ def _eligible_operators(session: Session) -> list[Tenant]:
             select(ParentAccountSite.tenant_id).where(ParentAccountSite.network_role == NETWORK_ROLE_OPERATOR)
         ).all()
     )
+    sources = session.exec(select(ParentMobileReportingSource.tenant_id).where(
+        ParentMobileReportingSource.enabled == True,  # noqa: E712
+        ParentMobileReportingSource.dispatch_enabled == True,  # noqa: E712
+    )).all()
+    operator_ids.update(tid for tid in sources if tenant_is_live(session, tid))
     if not operator_ids:
         return []
     rows = session.exec(

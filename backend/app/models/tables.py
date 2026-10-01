@@ -295,7 +295,7 @@ class ParentAccountSite(SQLModel, table=True):
 
 
 class ParentMobileReportingSource(SQLModel, table=True):
-    """Mobile reporting consent without shop membership or account access."""
+    """Mobile reporting/dispatch consent without full shop account access."""
 
     __table_args__ = (
         UniqueConstraint("parent_account_id", "tenant_id", name="uq_parent_mobile_source"),
@@ -305,6 +305,7 @@ class ParentMobileReportingSource(SQLModel, table=True):
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     enabled: bool = Field(default=True)
+    dispatch_enabled: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

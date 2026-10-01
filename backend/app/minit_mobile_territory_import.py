@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from .minit_mobile_routing import normalize_suburb_name
 from .models import MobileSuburbRoute, Tenant
-from .parent_network import operator_tenants_for_parent
+from .parent_network import operator_tenants_for_parent, dispatch_operators_for_parent
 
 DEFAULT_TERRITORY_ROUTES_SEED = (
     Path(__file__).resolve().parents[1] / "seed" / "minit_mobile_territory_routes_au_2026.json"
@@ -38,7 +38,7 @@ def _apply_operator_hub_coords(
 ) -> int:
     """Set tenant.base_lat/lng from territory hub coordinates (improves distance ranking)."""
     by_shop: dict[str, Tenant] = {}
-    for tenant in operator_tenants_for_parent(session, parent_id):
+    for tenant in [*operator_tenants_for_parent(session, parent_id), *dispatch_operators_for_parent(session, parent_id)]:
         if tenant.shop_number:
             by_shop[tenant.shop_number] = tenant
 
@@ -77,7 +77,7 @@ def import_mobile_suburb_routes(
     update_operator_coords: bool = True,
 ) -> dict[str, object]:
     operators_by_shop: dict[str, Tenant] = {}
-    for tenant in operator_tenants_for_parent(session, parent_id):
+    for tenant in [*operator_tenants_for_parent(session, parent_id), *dispatch_operators_for_parent(session, parent_id)]:
         if tenant.shop_number:
             operators_by_shop[tenant.shop_number] = tenant
 

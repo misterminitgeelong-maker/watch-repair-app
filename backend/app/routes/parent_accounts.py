@@ -56,6 +56,7 @@ from ..models import (
     NETWORK_ROLE_OPERATOR,
     NETWORK_ROLE_RETAIL,
     MobileSuburbRoute,
+    ShopMobileOperatorOption,
     MobileSuburbRouteCreateRequest,
     MobileSuburbRouteOperatorSummary,
     MobileSuburbRouteRead,
@@ -105,6 +106,8 @@ from ..models import (
 from ..config import settings
 from ..tenant_scope import without_scope
 from ..parent_network import (
+    dispatch_operators_for_parent,
+    tenant_dispatch_enabled,
     grant_hq_owner_clone_access,
     link_site,
     normalize_region_code,
@@ -727,7 +730,7 @@ def set_mobile_lead_default_tenant(
         parent.mobile_lead_default_tenant_id = None
         summary = "Cleared default site for unmatched suburbs"
     else:
-        if not _tenant_linked_to_parent(session, parent.id, body.tenant_id):
+        if not (_tenant_linked_to_parent(session, parent.id, body.tenant_id) or tenant_dispatch_enabled(session, body.tenant_id, parent.id)):
             raise HTTPException(status_code=400, detail="That site is not linked to this parent account")
         parent.mobile_lead_default_tenant_id = body.tenant_id
         summary = "Set default site for website leads when suburb is not mapped"
@@ -757,7 +760,7 @@ def set_mobile_lead_escalation_tenant(
         parent.mobile_lead_escalation_tenant_id = None
         summary = "Cleared HQ escalation site for website leads"
     else:
-        if not _tenant_linked_to_parent(session, parent.id, body.tenant_id):
+        if not (_tenant_linked_to_parent(session, parent.id, body.tenant_id) or tenant_dispatch_enabled(session, body.tenant_id, parent.id)):
             raise HTTPException(status_code=400, detail="That site is not linked to this parent account")
         parent.mobile_lead_escalation_tenant_id = body.tenant_id
         summary = "Set HQ escalation site when operators do not quote in time"
@@ -893,7 +896,7 @@ def create_mobile_suburb_route(
     sub_norm = _normalize_suburb(payload.suburb)
     if not sub_norm:
         raise HTTPException(status_code=400, detail="suburb is required")
-    if not _tenant_linked_to_parent(session, parent.id, payload.target_tenant_id):
+    if not (_tenant_linked_to_parent(session, parent.id, payload.target_tenant_id) or tenant_dispatch_enabled(session, payload.target_tenant_id, parent.id)):
         raise HTTPException(status_code=400, detail="Target site is not linked to this parent account")
     row = MobileSuburbRoute(
         parent_account_id=parent.id,
@@ -1080,6 +1083,18 @@ def get_parent_lead_ingest_config(
 ):
     user, parent, my_role = _parent_for_read(session, auth)
     return _lead_ingest_config(parent)
+
+
+@router.get("/me/mobile-dispatch-operators", response_model=list[ShopMobileOperatorOption])
+def list_mobile_dispatch_operators(
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    _, parent, _ = _parent_for_read(session, auth)
+    return [ShopMobileOperatorOption(
+        tenant_id=tenant.id, tenant_slug=tenant.slug, tenant_name=tenant.name,
+        shop_number=tenant.shop_number, plan_code=normalize_plan_code(tenant.plan_code),
+    ) for tenant in dispatch_operators_for_parent(session, parent.id)]
 
 
 @router.get("/me/sites", response_model=ParentAccountSitesPageResponse)

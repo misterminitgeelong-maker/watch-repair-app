@@ -14,8 +14,6 @@ from .dispatch_utils import haversine_km
 from .models import MobileSuburbRoute, ParentAccount, Tenant
 from .parent_network import (
     dispatch_operators_for_parent,
-    accepted_invite_tenant_ids,
-    site_for_tenant_in_parent,
     tenant_is_live,
     tenant_dispatch_enabled,
 )
@@ -208,13 +206,12 @@ def resolve_mobile_operator_route(
 
 
 def _tenant_linked_to_parent(session: Session, parent_id: UUID, tenant_id: UUID) -> bool:
-    return site_for_tenant_in_parent(session, parent_id, tenant_id) is not None
+    return tenant_dispatch_enabled(session, tenant_id, parent_id)
 
 
 def _bookable_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
     operators = dispatch_operators_for_parent(session, parent_id)
-    live = accepted_invite_tenant_ids(session, [t.id for t in operators])
-    return [t for t in operators if t.id in live]
+    return [t for t in operators if tenant_is_live(session, t.id)]
 
 
 @lru_cache(maxsize=1)

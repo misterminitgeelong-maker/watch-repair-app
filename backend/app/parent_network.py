@@ -145,19 +145,53 @@ def tenant_is_operator(session: Session, tenant_id: UUID) -> bool:
 
 
 def tenant_dispatch_enabled(session: Session, tenant_id: UUID, parent_id: UUID | None = None) -> bool:
-    """New-work eligibility. Reporting continues to use the network role alone."""
+    """New-work eligibility, including explicit mobile-only retail consent."""
     with without_scope(session):
         tenant = session.get(Tenant, tenant_id)
     if not tenant or not tenant.is_active or tenant.mobile_dispatch_paused or tenant.merged_into_tenant_id:
         return False
     if parent_id is not None:
         site = site_for_tenant_in_parent(session, parent_id, tenant_id)
-        return site is not None and site.network_role == NETWORK_ROLE_OPERATOR
-    return tenant_is_operator(session, tenant_id)
+        return (site is not None and site.network_role == NETWORK_ROLE_OPERATOR) or (
+            bool(mobile_dispatch_parent_ids_for_tenant(session, tenant_id, parent_id=parent_id))
+            and tenant_is_live(session, tenant_id)
+        )
+    return tenant_is_operator(session, tenant_id) or (
+        bool(mobile_dispatch_parent_ids_for_tenant(session, tenant_id)) and tenant_is_live(session, tenant_id)
+    )
+
+
+def mobile_dispatch_parent_ids_for_tenant(session: Session, tenant_id: UUID, *, parent_id: UUID | None = None) -> list[UUID]:
+    """Only mobile dispatch consent; never used by account-access checks."""
+    stmt = select(ParentMobileReportingSource.parent_account_id).where(
+        ParentMobileReportingSource.tenant_id == tenant_id,
+        ParentMobileReportingSource.enabled == True,  # noqa: E712
+        ParentMobileReportingSource.dispatch_enabled == True,  # noqa: E712
+    )
+    if parent_id is not None:
+        stmt = stmt.where(ParentMobileReportingSource.parent_account_id == parent_id)
+    with without_scope(session):
+        return list(session.exec(stmt).all())
 
 
 def dispatch_operators_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
-    return [t for t in operator_tenants_for_parent(session, parent_id)
+    operators = {t.id: t for t in operator_tenants_for_parent(session, parent_id)}
+    with without_scope(session):
+        sources = session.exec(select(ParentMobileReportingSource).where(
+            ParentMobileReportingSource.parent_account_id == parent_id,
+            ParentMobileReportingSource.enabled == True,  # noqa: E712
+            ParentMobileReportingSource.dispatch_enabled == True,  # noqa: E712
+        )).all()
+        for source in sources:
+            tenant = session.get(Tenant, source.tenant_id)
+            if tenant and tenant_is_live(session, tenant.id):
+                # A retail login may coexist with an imported directory shell
+                # carrying the same shop number. Dispatch to the opted-in login.
+                if tenant.shop_number:
+                    operators = {tid: op for tid, op in operators.items()
+                                 if op.shop_number != tenant.shop_number or tid == tenant.id}
+                operators[tenant.id] = tenant
+    return [t for t in operators.values()
             if t.is_active and not t.mobile_dispatch_paused and not t.merged_into_tenant_id]
 
 
@@ -186,7 +220,7 @@ def resolve_common_parent_id(session: Session, *tenant_ids: UUID) -> UUID | None
     common: set[UUID] | None = None
     first_order: list[UUID] = []
     for tid in tenant_ids:
-        ids = parent_ids_for_tenant(session, tid)
+        ids = list(dict.fromkeys(parent_ids_for_tenant(session, tid) + mobile_dispatch_parent_ids_for_tenant(session, tid)))
         if not first_order:
             first_order = ids
         common = set(ids) if common is None else (common & set(ids))
@@ -261,9 +295,17 @@ def accepted_invite_tenant_ids(session: Session, tenant_ids: list[UUID]) -> set[
 
 
 def tenant_is_live(session: Session, tenant_id: UUID) -> bool:
-    """True once the tenant's owner has been invited and accepted. Only live
-    operators may be routed email/website leads or assigned jobs from them."""
-    return tenant_id in accepted_invite_tenant_ids(session, [tenant_id])
+    """Accepted operators or explicitly enabled retail accounts with an active owner."""
+    if tenant_id in accepted_invite_tenant_ids(session, [tenant_id]):
+        return True
+    # Existing retail accounts are already live; dispatch consent must still
+    # be explicit, and an active owner must be available to receive the work.
+    if not mobile_dispatch_parent_ids_for_tenant(session, tenant_id):
+        return False
+    with without_scope(session):
+        return session.exec(select(User.id).where(
+            User.tenant_id == tenant_id, User.role == "owner", User.is_active == True,  # noqa: E712
+        )).first() is not None
 
 
 def live_operator_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:

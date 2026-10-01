@@ -22,6 +22,92 @@ client = TestClient(app)
 WEBHOOK_SECRET = "test-webhook-secret-16chars"
 
 
+def test_independent_retail_dispatch_routes_and_books_without_shop_access(monkeypatch):
+    from app.models import ParentMobileReportingSource, User
+    from app.parent_network import tenant_is_operator, tenant_is_live, tenant_dispatch_enabled
+    from app.minit_mobile_routing import rank_mobile_operator_candidates
+
+    ingest_id, directory_id, _, _, hq_headers = _setup_network()
+    suffix = uuid4().hex[:8]
+    slug, email = f'retail-dispatch-{suffix}', f'retail-dispatch-{suffix}@test.local'
+    boot = _bootstrap(slug, email, 'pro')
+    tenant_id = UUID(boot['tenant_id'])
+    parent_id = UUID(client.get('/v1/parent-accounts/me', headers=hq_headers).json()['parent_account_id'])
+    with Session(engine) as session:
+        source = ParentMobileReportingSource(parent_account_id=parent_id, tenant_id=tenant_id)
+        session.add(source)
+        session.commit()
+        source_id = source.id
+        assert not tenant_dispatch_enabled(session, tenant_id, parent_id)
+        retail = session.get(Tenant, tenant_id)
+        directory = session.get(Tenant, UUID(directory_id))
+        retail.shop_number = directory.shop_number = '3269'
+        session.add(retail); session.add(directory)
+        source.dispatch_enabled = True
+        session.add(source)
+        session.commit()
+        assert not tenant_is_operator(session, tenant_id)
+        assert tenant_is_live(session, tenant_id)
+        assert tenant_dispatch_enabled(session, tenant_id, parent_id)
+        assert not tenant_dispatch_enabled(session, tenant_id, uuid4())
+    options = client.get('/v1/parent-accounts/me/mobile-dispatch-operators', headers=hq_headers)
+    assert options.status_code == 200, options.text
+    assert str(tenant_id) in {row['tenant_id'] for row in options.json()}
+    assert directory_id not in {row['tenant_id'] for row in options.json()}
+    assert client.post(f'/v1/parent-accounts/me/sites/{tenant_id}/enter', headers=hq_headers).status_code == 404
+    route = client.post('/v1/parent-accounts/me/mobile-lead-routes', headers=hq_headers,
+                        json={'suburb': 'Retail Dispatch', 'state_code': 'NSW', 'target_tenant_id': str(tenant_id)})
+    assert route.status_code == 200, route.text
+    assert _ingest_lead(ingest_id, suburb='Retail Dispatch')['tenant_id'] == str(tenant_id)
+    with Session(engine) as session:
+        assert rank_mobile_operator_candidates(session, parent_id=parent_id, suburb='Retail Dispatch', state_code='NSW')[0] == tenant_id
+        from app.minit_mobile_territory_import import import_mobile_suburb_routes
+        from app.models import MobileSuburbRoute
+        imported = import_mobile_suburb_routes(session, parent_id=parent_id, apply=True,
+            routes=[{'suburb': 'Imported Retail', 'state_code': 'NSW', 'shop_number': '3269'}])
+        assert imported['missing_operator_shop_numbers'] == []
+        assert session.exec(select(MobileSuburbRoute).where(MobileSuburbRoute.parent_account_id == parent_id,
+            MobileSuburbRoute.suburb_normalized == 'imported retail')).one().target_tenant_id == tenant_id
+
+    shop_slug, shop_email = f'booking-{suffix}', f'booking-{suffix}@test.local'
+    _bootstrap(shop_slug, shop_email, 'pro')
+    linked = link_and_accept(client, '/v1/parent-accounts/me/link-tenant', headers=hq_headers,
+                             json={'tenant_slug': shop_slug, 'owner_email': shop_email})
+    assert linked.status_code == 200, linked.text
+    shop_headers = _headers(_login(shop_slug, shop_email))
+    async def fake_geocode(_address):
+        return (-37.88, 145.08)
+    monkeypatch.setattr('app.routes.shop_mobile_bookings.geocode_address', fake_geocode)
+    booking = client.post('/v1/shop-mobile-bookings', headers=shop_headers, json={
+        'customer_name': 'Dispatch test', 'suburb': 'Retail Dispatch', 'state_code': 'NSW',
+        'job_address': '1 Test St', 'job_type': 'All Keys Lost', 'visit_location_type': 'customer_site',
+    })
+    assert booking.status_code == 201, booking.text
+    assert booking.json()['target_operator_tenant_id'] == str(tenant_id)
+    retail_headers = _headers(_login(slug, email))
+    accepted = client.post(f"/v1/shop-mobile-bookings/{booking.json()['id']}/accept", headers=retail_headers)
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()['resulting_auto_key_job_id']
+
+    with Session(engine) as session:
+        tenant = session.get(Tenant, tenant_id)
+        assert tenant.plan_code == 'pro'
+        tenant.mobile_dispatch_paused = True
+        session.add(tenant)
+        session.commit()
+        assert not tenant_dispatch_enabled(session, tenant_id, parent_id)
+        tenant.mobile_dispatch_paused = False
+        owner = session.exec(select(User).where(User.tenant_id == tenant_id, User.role == 'owner')).first()
+        owner.is_active = False
+        session.add(owner); session.add(tenant); session.commit()
+        assert not tenant_is_live(session, tenant_id)
+        assert not tenant_dispatch_enabled(session, tenant_id, parent_id)
+        source = session.get(ParentMobileReportingSource, source_id)
+        source.dispatch_enabled = False
+        session.add(source); session.commit()
+        assert not tenant_dispatch_enabled(session, tenant_id, parent_id)
+
+
 def _bootstrap(slug: str, email: str, plan_code: str, *, dispatch_phone: str | None = None) -> dict:
     res = client.post(
         "/v1/auth/bootstrap",
