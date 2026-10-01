@@ -3,7 +3,7 @@
  * Submits to POST /v1/public/key-enquiry/:ingestId, which routes into the operator Lead Inbox.
  * Built mobile-first with big tap targets so it works from a phone beside a locked car.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { submitKeyEnquiry, getApiErrorMessage } from '@/lib/api'
 
@@ -89,6 +89,17 @@ export default function KeyEnquiryPage() {
   const text = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setF(s => ({ ...s, [k]: e.target.value }))
   const pick = (k: keyof typeof f) => (v: string) => setF(s => ({ ...s, [k]: v }))
+
+  // When embedded in another site, tell the parent page how tall we are so its iframe can fit exactly.
+  useEffect(() => {
+    if (window.parent === window) return
+    const send = () =>
+      window.parent.postMessage({ type: 'mainspring-key-enquiry-height', height: document.documentElement.scrollHeight }, '*')
+    send()
+    const ro = new ResizeObserver(send)
+    ro.observe(document.body)
+    return () => ro.disconnect()
+  }, [done])
 
   const ready = f.service && f.vehicle_make.trim() && f.suburb.trim() && f.customer_name.trim() && f.phone.trim().length >= 6
 

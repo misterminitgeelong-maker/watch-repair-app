@@ -353,7 +353,14 @@ _SECURITY_HEADERS: dict[str, str] = {
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
+    ancestors = settings.key_enquiry_frame_ancestors.strip()
+    embeddable = bool(ancestors) and request.url.path.startswith("/key-enquiry/")
     for name, value in _SECURITY_HEADERS.items():
+        if embeddable and name == "X-Frame-Options":
+            continue  # superseded by the CSP frame-ancestors list below
+        if embeddable and name == "Content-Security-Policy":
+            # The public enquiry form is the one page that may be embedded, and only by the listed sites.
+            value = f"frame-ancestors {ancestors}"
         response.headers.setdefault(name, value)
     if settings.app_env == "production":
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

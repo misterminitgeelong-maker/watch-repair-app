@@ -930,3 +930,14 @@ def test_responses_carry_security_headers():
     assert res.headers["x-frame-options"] == "DENY"
     assert res.headers["x-content-type-options"] == "nosniff"
     assert "frame-ancestors 'none'" in res.headers["content-security-policy"]
+
+
+def test_key_enquiry_page_is_embeddable_only_when_configured(monkeypatch):
+    from app.config import settings
+
+    assert client.get("/key-enquiry/abc").headers["x-frame-options"] == "DENY"
+    monkeypatch.setattr(settings, "key_enquiry_frame_ancestors", "https://minit.example")
+    res = client.get("/key-enquiry/abc")
+    assert res.headers["content-security-policy"] == "frame-ancestors https://minit.example"
+    assert "x-frame-options" not in res.headers
+    assert client.get("/v1/health").headers["x-frame-options"] == "DENY"
