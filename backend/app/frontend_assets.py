@@ -52,11 +52,23 @@ def save_asset(bucket, name: str, content: bytes) -> None:
         bucket.upload(PREFIX + name, content, file_options={
             "content-type": "application/octet-stream", "upsert": "false",
         })
-    except Exception:
+    except Exception as upload_error:
         # A hash is immutable: an existing name must have identical content.
         # Never overwrite a different build accidentally.
-        if bucket.download(PREFIX + name) != content:
-            raise
+        try:
+            existing = bucket.download(PREFIX + name)
+        except Exception:
+            # Preserve the upload failure; a subsequent missing-key response
+            # must not hide the reason the pre-deploy archive failed.
+            cause = upload_error
+            while cause is not None:
+                response = getattr(cause, "response", None)
+                if response is not None:
+                    raise RuntimeError(f"Frontend archive upload failed: HTTP {response.status_code}: {response.text[:300]}") from upload_error
+                cause = cause.__context__
+            raise upload_error
+        if existing != content:
+            raise ValueError("Existing immutable frontend asset differs") from upload_error
 
 
 def cached_asset(name: str) -> Path | None:
