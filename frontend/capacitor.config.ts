@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
     // Route fetch/XHR through the native HTTP stack: the app's https://localhost origin
     // is not in the production CORS allow-list, and native requests need no CORS.
     CapacitorHttp: { enabled: true },
-    SplashScreen: { launchShowDuration: 800, backgroundColor: '#1E1410' },
+    SplashScreen: { launchShowDuration: 800, backgroundColor: '#1B2B3E' },
     PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
   },
 }
