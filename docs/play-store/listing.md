@@ -38,3 +38,14 @@ Mainspring works for a single shop or a network of shops. You need a Mainspring 
 - icon-512.png (store icon)
 - feature-graphic-1024x500.png
 - screenshots/ (phone screenshots, 1080x2160)
+
+## Play Console app content: suggested answers
+- Privacy policy: https://mainspring.au/privacy (already saved in the console).
+- Sign-in details / app access: the app needs a login. Reviewer instructions: "On the sign-in screen tap LAUNCH INTERACTIVE DEMO. It opens a demo shop with sample data, no credentials needed."
+- Ads: No, the app contains no ads.
+- Target audience: 18 and over (business software). Not designed for children.
+- Content rating: category Utility / Productivity; no violence, sexual content, gambling, drugs or user-generated public content.
+- Data safety: see the table above. Data is encrypted in transit; deletion request supported via https://mainspring.au/delete-account.
+- Government apps: No. Financial features: none (it records repair invoices for shops; it is not a bank, lender or investment app). Health: No.
+- Store settings: category Business, contact email admin@mainspring.au, website https://mainspring.au.
+- Tablet screenshots: screenshots-tablet/ (1600x2560).
