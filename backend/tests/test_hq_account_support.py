@@ -75,7 +75,7 @@ def test_reset_link_is_sent_and_lets_owner_choose_new_password_and_is_audited():
 def test_change_email_revokes_sessions_blocks_duplicates_and_is_audited():
     ctx = _claimed_shop(uuid4().hex[:8])
     _login(ctx["shop_slug"], ctx["owner_email"], "brandnewpass1!")
-    after_login = datetime.now(timezone.utc).replace(tzinfo=None)
+    after_login = datetime.now(timezone.utc)
     new_email = f"fixed-{uuid4().hex[:6]}@test.local"
     res = client.patch(f"{_base(ctx)}/{ctx['owner_id']}/email", headers=ctx["hq"], json={"email": new_email})
     assert res.status_code == 200, res.text
@@ -84,7 +84,9 @@ def test_change_email_revokes_sessions_blocks_duplicates_and_is_audited():
 
     with Session(engine) as session:
         sessions = session.exec(select(RefreshSession).where(RefreshSession.user_id == UUID(ctx["owner_id"]))).all()
-        assert sessions and all(r.revoked_at is not None for r in sessions if r.created_at < after_login)
+        # SQLite returns naive UTC while Postgres returns timezone-aware UTC.
+        assert sessions and all(r.revoked_at is not None for r in sessions
+                                if r.created_at.replace(tzinfo=timezone.utc) < after_login)
         events = session.exec(
             select(ParentAccountEventLog).where(ParentAccountEventLog.event_type == "account_email_changed")
         ).all()
