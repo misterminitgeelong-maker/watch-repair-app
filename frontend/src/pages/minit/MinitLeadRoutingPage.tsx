@@ -54,7 +54,7 @@ export default function MinitLeadRoutingPage() {
                   </p>
                 </div>
                 <p className="text-xs whitespace-nowrap" style={{ color: 'var(--ms-text-muted)' }}>
-                  {new Date(event.created_at).toLocaleString()}
+                  {new Date(event.created_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             ))}

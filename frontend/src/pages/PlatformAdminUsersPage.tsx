@@ -91,7 +91,7 @@ function OverviewTab() {
       </section>
       <section className="console-panel"><h2>Latest additions</h2><p className="console-subtitle">The most recently created shop accounts.</p>
         {recent.length === 0 && <EmptyState message="No shops yet." />}
-        {recent.map(t => <div className="console-list-row" key={t.id}><div className="console-shop"><span className="console-avatar" aria-hidden="true">{t.name.slice(0, 2).toUpperCase()}</span><div><strong>{t.name}</strong><small>{formatLabel(t.plan_code)} · {new Date(t.created_at).toLocaleDateString()}</small></div></div><Link to={`/platform-admin/shops?q=${encodeURIComponent(t.slug)}`}>View</Link></div>)}
+        {recent.map(t => <div className="console-list-row" key={t.id}><div className="console-shop"><span className="console-avatar" aria-hidden="true">{t.name.slice(0, 2).toUpperCase()}</span><div><strong>{t.name}</strong><small>{formatLabel(t.plan_code)} · {new Date(t.created_at).toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</small></div></div><Link to={`/platform-admin/shops?q=${encodeURIComponent(t.slug)}`}>View</Link></div>)}
       </section>
       <section className="console-panel"><h2>Your plan mix</h2><p className="console-subtitle">Account distribution across the platform.</p>
         {plans.length === 0 && <EmptyState message="Plan distribution appears when shops are added." />}
@@ -182,7 +182,7 @@ function BillingTab({ search, setSearch }: { search: string; setSearch: (v: stri
                   <td className="px-4 py-3">
                     {t.billing_exempt ? 'Exempt' : t.subscription_status ? formatLabel(t.subscription_status) : t.has_stripe_subscription ? 'Unknown' : 'None'}
                   </td>
-                  <td className="px-4 py-3">{t.trial_end ? new Date(t.trial_end).toLocaleDateString() : '—'}</td>
+                  <td className="px-4 py-3">{t.trial_end ? new Date(t.trial_end).toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}</td>
                   <td className="px-4 py-3" style={{ color: attention ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>{attention ?? 'OK'}</td>
                 </tr>
               ))}
@@ -393,7 +393,7 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
               <td className="px-5 py-4"><div className="console-shop"><span className="console-avatar" aria-hidden="true">{t.name.slice(0, 2).toUpperCase()}</span><div className="font-medium">{t.name}<p className="text-xs text-[var(--ms-text-muted)] mt-1">#{t.slug}</p></div></div></td>
               <td className="px-5 py-4 text-xs">{formatLabel(t.plan_code)}</td><td className="px-5 py-4">{t.user_count}</td>
               <td className="px-5 py-4"><span className={`console-badge ${!t.is_active ? 'warning' : ''}`}>{t.is_active ? 'Active' : 'Suspended'}</span>{billingAttention(t) && <p className="mt-2 text-xs text-[var(--ms-error)]">{billingAttention(t)}</p>}{t.billing_exempt && <p className="mt-1 text-xs text-[var(--ms-text-muted)]">Billing exempt</p>}</td>
-              <td className="px-5 py-4 text-xs text-[var(--ms-text-muted)]">{new Date(t.created_at).toLocaleDateString()}</td>
+              <td className="px-5 py-4 text-xs text-[var(--ms-text-muted)]">{new Date(t.created_at).toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
               <td className="px-5 py-4"><div className="console-actions"><button className="console-button" disabled={!!entering} onClick={() => void enterShop(t.id)}>{entering === t.id ? 'Entering…' : 'Enter Shop'}<ArrowUpRight size={13} /></button><button className="console-button" aria-label={`Manage ${t.name}`} onClick={() => { setManagedId(t.id); setAdminActionError('') }}>Manage</button></div></td>
             </tr>)}</tbody></table>
           </>}
@@ -971,7 +971,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                       </button>
                     </div>
                     <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-                      {new Date(e.created_at).toLocaleString()} · {e.actor_email ?? 'System'} · {tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}
+                      {new Date(e.created_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · {e.actor_email ?? 'System'} · {tenantNameById.get(e.tenant_id ?? '') ?? 'Platform'}
                     </p>
                     {showTechnical && (
                       <p className="text-[11px]" style={{ color: 'var(--ms-text-muted)' }}>
@@ -997,7 +997,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
                       <td className="px-5 py-3.5 whitespace-nowrap" style={{ color: 'var(--ms-text-muted)' }}>
                         <span className="inline-flex items-center gap-1.5">
                           <Clock size={12} />
-                          {new Date(e.created_at).toLocaleString()}
+                          {new Date(e.created_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </td>
                       <td className="px-5 py-3.5" style={{ color: 'var(--ms-text-mid)' }}>{e.actor_email ?? 'System'}</td>
@@ -1083,7 +1083,7 @@ function ActivityTab({ search, setSearch }: { search: string; setSearch: (v: str
               </div>
               <div className="grid gap-1 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
                 <p><strong>Summary:</strong> {selectedEvent.event_summary}</p>
-                <p><strong>When:</strong> {new Date(selectedEvent.created_at).toLocaleString()}</p>
+                <p><strong>When:</strong> {new Date(selectedEvent.created_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                 <p><strong>Shop:</strong> {tenantNameById.get(selectedEvent.tenant_id ?? '') ?? 'Platform'} ({selectedEvent.tenant_id ?? 'n/a'})</p>
                 <p><strong>Actor:</strong> {selectedEvent.actor_email ?? 'System'} ({selectedEvent.actor_user_id ?? 'n/a'})</p>
                 <p><strong>Entity:</strong> {formatLabel(selectedEvent.entity_type)} ({selectedEvent.entity_id ?? 'n/a'})</p>
@@ -1126,7 +1126,7 @@ function ReportsTab() {
       <div className="mb-4 rounded-lg px-4 py-3 flex items-center gap-2" style={{ backgroundColor: 'var(--ms-surface)', border: '1px solid var(--ms-border-strong)' }}>
         <BarChart3 size={16} />
         <span className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-          Network snapshot generated {new Date(data.generated_at).toLocaleString()}
+          Network snapshot generated {new Date(data.generated_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
       {error && (
@@ -1206,7 +1206,7 @@ function ReportsTab() {
                 <td className="px-4 py-3" style={{ color: t.health_status === 'healthy' ? '#497A59' : t.health_status === 'suspended' ? '#A06757' : '#9A7220' }}>
                   {t.health_status} · {t.logins_last_7_days} logins
                 </td>
-                <td className="px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>{t.last_activity_at ? new Date(t.last_activity_at).toLocaleString() : '—'}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--ms-text-muted)' }}>{t.last_activity_at ? new Date(t.last_activity_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => void enterShop(t.tenant_id)}

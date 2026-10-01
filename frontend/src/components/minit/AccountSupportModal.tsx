@@ -16,7 +16,7 @@ import { Button, Input, Modal, Spinner } from '@/components/ui'
 const muted = { color: 'var(--ms-text-muted)' }
 
 function when(value?: string | null) {
-  return value ? new Date(value).toLocaleString() : 'never'
+  return value ? new Date(value).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'never'
 }
 
 function AccountRow({ tenantId, account }: { tenantId: string; account: HqAccount }) {
@@ -137,7 +137,7 @@ export function AccountSupportModal({ site, onClose }: { site: ParentAccountSite
                   <span className="font-medium">{l.channel === 'sms' ? 'Text' : 'Email'}</span> to {l.to} · {l.event} ·{' '}
                   <span className={l.status === 'failed' ? 'text-red-600' : ''}>{l.status}</span>
                   {l.error ? ` (${l.error})` : ''}
-                  <span style={muted}> · {new Date(l.created_at).toLocaleString()}</span>
+                  <span style={muted}> · {new Date(l.created_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               ))}
             </div>

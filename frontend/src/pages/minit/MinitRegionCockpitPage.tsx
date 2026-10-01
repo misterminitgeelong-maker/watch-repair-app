@@ -394,7 +394,7 @@ export default function MinitRegionCockpitPage() {
             <span className="text-xs font-medium" style={{ color: 'var(--ms-text)' }}>Send every week</span>
             <input type="checkbox" checked={data.region.weekly_report_opt_in} disabled={!canEdit || !data.region.manager_email} onChange={e => optInMut.mutate(e.target.checked)} />
           </label>
-          {data.region.last_weekly_report_sent_at && <p className="text-[10px] mt-2" style={{ color: 'var(--ms-text-muted)' }}>Last generated {new Date(data.region.last_weekly_report_sent_at).toLocaleString()}</p>}
+          {data.region.last_weekly_report_sent_at && <p className="text-[10px] mt-2" style={{ color: 'var(--ms-text-muted)' }}>Last generated {new Date(data.region.last_weekly_report_sent_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
           {canAnnotate && data.region.manager_email && (
             <Button variant="secondary" className="w-full mt-3" onClick={() => sendNowMut.mutate()} disabled={sendNowMut.isPending}>Send now</Button>
           )}

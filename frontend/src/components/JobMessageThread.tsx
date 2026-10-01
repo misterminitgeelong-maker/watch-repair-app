@@ -36,7 +36,7 @@ function formatTime(s: string) {
   if (d.toDateString() === yesterday.toDateString())
     return `Yesterday ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
   return (
-    d.toLocaleDateString([], { day: 'numeric', month: 'short' }) +
+    d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) +
     ' ' +
     d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   )

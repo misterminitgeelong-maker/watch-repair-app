@@ -12,7 +12,11 @@ export function formatDate(iso: string | null | undefined) {
   // Several API fields are nullable (a booking's created_at among them). Passing
   // null through produced the string "Invalid Date" in the UI.
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  // Date-only values are calendar dates, not UTC instants. Parse locally so
+  // they do not move to the previous day in time zones west of UTC.
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(`${iso}T00:00:00`) : new Date(iso)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 export function formatTime(iso: string) {

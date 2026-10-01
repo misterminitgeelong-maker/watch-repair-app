@@ -161,7 +161,7 @@ export function POSView({
         job = await createAutoKeyJob({
           customer_id: cid,
           customer_account_id: accountId || undefined,
-          title: `${quoteMode ? 'Quote' : 'POS sale'} ${new Date().toLocaleDateString()}`,
+          title: `${quoteMode ? 'Quote' : 'POS sale'} ${new Date().toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
           key_quantity: 1,
           programming_status: 'not_required',
           priority: 'normal',

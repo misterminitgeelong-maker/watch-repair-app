@@ -52,7 +52,7 @@ export function PlannerJobDetailModal({
               {row('Job type', j.job_type ?? '—')}
               {row('Vehicle', [j.vehicle_make, j.vehicle_model, j.vehicle_year, j.registration_plate].filter(Boolean).join(' · ') || '—')}
               {row('Address', j.job_address ?? '—')}
-              {row('Scheduled', j.scheduled_at ? new Date(j.scheduled_at).toLocaleString() : '—')}
+              {row('Scheduled', j.scheduled_at ? new Date(j.scheduled_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')}
               {row('Priority', j.priority)}
               {row('Deposit', formatCents(j.deposit_cents))}
               {row('Cost / quote', formatCents(j.cost_cents))}

@@ -668,7 +668,7 @@ export default function MinitMobileReportsPage() {
                       : { backgroundColor: 'var(--ms-hover)', color: 'var(--ms-text-mid)' }
                   }
                 >
-                  {week.week_start_ymd} → {week.week_end_ymd}
+                  {formatDate(week.week_start_ymd)} → {formatDate(week.week_end_ymd)}
                 </button>
               ))}
             </div>

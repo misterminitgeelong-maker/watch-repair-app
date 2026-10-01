@@ -113,7 +113,7 @@ export default function TenantQolSettings() {
             {label}
             {prefs?.[lastSentKey] && (
               <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-                — last sent {new Date(prefs[lastSentKey] as string).toLocaleDateString()}
+                — last sent {new Date(prefs[lastSentKey] as string).toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
               </span>
             )}
           </label>

@@ -116,7 +116,7 @@ function OwnerContact({ site, onEdit }: { site: ParentAccountSite; onEdit?: () =
 
 function shortDate(value?: string | null) {
   if (!value) return ''
-  return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return new Date(value).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
 }
 
 /** Where the owner invite stands, in words HQ can act on. */
@@ -1046,7 +1046,7 @@ export default function MinitAccountsPage() {
               {inviteResult.shop_number ? ` (#${inviteResult.shop_number})` : ''} — account level{' '}
               <strong>{MINIT_INVITE_PLAN_OPTIONS.find(o => o.code === inviteResult.plan_code)?.label ?? inviteResult.plan_code}</strong>.
               It lets <strong>{inviteResult.owner_email}</strong> set their own email &amp; password — it expires{' '}
-              {new Date(inviteResult.expires_at).toLocaleDateString()}.
+              {new Date(inviteResult.expires_at).toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}.
             </p>
             {inviteResult.email_sent || inviteResult.sms_sent ? (
               <p className="text-sm rounded-lg px-3 py-2" style={{ color: '#1A6A3A', backgroundColor: '#EBF8EF' }}>

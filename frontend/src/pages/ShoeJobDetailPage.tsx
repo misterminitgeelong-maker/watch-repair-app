@@ -556,7 +556,7 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
                   </span>
                 </div>
                 <p style={{ color: 'var(--ms-text-mid)' }}>{log.body}</p>
-                <p className="mt-1" style={{ color: 'var(--ms-text-muted)' }}>{new Date(log.created_at).toLocaleString()}</p>
+                <p className="mt-1" style={{ color: 'var(--ms-text-muted)' }}>{new Date(log.created_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
               </div>
             ))}
           </div>

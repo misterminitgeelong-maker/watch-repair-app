@@ -26,7 +26,7 @@ function formatDate(s: string) {
   if (diff < 60_000) return 'Just now'
   if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`
   if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`
-  return d.toLocaleDateString()
+  return d.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function eventStyle(eventType: string): { iconBg: string; iconColor: string } {

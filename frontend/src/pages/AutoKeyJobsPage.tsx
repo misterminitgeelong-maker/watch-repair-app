@@ -952,7 +952,7 @@ export default function AutoKeyJobsPage() {
               {focusFilter && <span>{COCKPIT_FOCUS_LABELS[focusFilter]}</span>}
               {categoryFilter && <span>{MOBILE_STATUS_CATEGORY_LABELS[categoryFilter]}</span>}
               {techFilter && <span>Technician: {users.find(u => u.id === techFilter)?.full_name ?? 'selected'}</span>}
-              {dateDrill && <span>{FINANCE_DATE_FIELD_LABELS[dateDrill.date_field]} {dateDrill.date_from} → {dateDrill.date_to}</span>}
+              {dateDrill && <span>{FINANCE_DATE_FIELD_LABELS[dateDrill.date_field]} {formatDate(dateDrill.date_from)} → {formatDate(dateDrill.date_to)}</span>}
               <span style={{ color: 'var(--ms-text-muted)' }}>· {jobsPage?.total ?? 0} job{jobsPage?.total === 1 ? '' : 's'}, same filter as the report figure</span>
               <button type="button" className="ml-auto font-semibold" style={{ color: 'var(--ms-accent)' }} onClick={() => { setFocusFilter(null); setCategoryFilter(null); setTechFilter(null); setDateDrill(null) }}>Clear</button>
             </div>

@@ -29,7 +29,7 @@ import { jobIcon, jobTypeLabel, portalAccentStyle } from '@/components/portal/po
 import { clsx } from 'clsx'
 
 function formatDateShort(s: string) {
-  return new Date(s).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(s).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function StatusPill({ stage, label }: { stage: PortalStage; label: string }) {

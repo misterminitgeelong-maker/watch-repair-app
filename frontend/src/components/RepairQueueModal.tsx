@@ -974,7 +974,7 @@ export default function RepairQueueModal({ mode, onClose }: Props) {
                           )}
                         </div>
                         <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-                          {new Date(log.created_at ?? 0).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          {new Date(log.created_at ?? 0).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
                         </p>
                       </div>
                     ))

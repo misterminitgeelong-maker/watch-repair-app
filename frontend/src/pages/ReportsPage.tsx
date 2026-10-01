@@ -852,7 +852,7 @@ export default function ReportsPage() {
                 </span>
                 <span className="flex-1" style={{ color: 'var(--ms-text-mid)' }}>{ev.event_summary}</span>
                 <span className="shrink-0" style={{ color: 'var(--ms-text-muted)' }}>
-                  {new Date(ev.created_at).toLocaleString()}
+                  {new Date(ev.created_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             ))}

@@ -247,7 +247,7 @@ function InsightsPanel({ summary, weeks, onExport }: { summary: VswtSummary; wee
     <div className="flex justify-between items-baseline gap-3 mb-3"><p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Performance signals</p><div className="flex flex-wrap gap-2 justify-end"><Button onClick={() => workbook.mutate()} disabled={workbook.isPending} className="text-xs">{workbook.isPending ? 'Building workbook…' : 'All weeks (Excel)'}</Button><Button onClick={onExport} variant="secondary" className="text-xs">Export CSV</Button></div></div>
     {workbook.isError && <p className="text-xs mb-2" style={{ color: '#A33838' }}>{getApiErrorMessage(workbook.error, "Couldn't build the workbook.")}</p>}
     <div className="space-y-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>{insights.map(i => <p key={i}>• {i}</p>)}</div>
-    <p className="text-[11px] mt-3" style={{ color: 'var(--ms-text-muted)' }}>{latestUpload ? `Latest data uploaded ${new Date(latestUpload).toLocaleDateString()}.` : 'Upload timestamp unavailable.'} {weeks.length} weekly upload{weeks.length === 1 ? '' : 's'} on file.</p>
+    <p className="text-[11px] mt-3" style={{ color: 'var(--ms-text-muted)' }}>{latestUpload ? `Latest data uploaded ${new Date(latestUpload).toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}.` : 'Upload timestamp unavailable.'} {weeks.length} weekly upload{weeks.length === 1 ? '' : 's'} on file.</p>
   </Card>
 }
 async function downloadRegionalCsv() {

@@ -312,7 +312,7 @@ export function VswtComparisonCockpit({
               <span className="text-xs font-medium" style={{ color: 'var(--ms-text)' }}>Email me each week</span>
               <input type="checkbox" checked={data.email_weekly_report} onChange={event => emailMutation.mutate(event.target.checked)} />
             </label>
-            {data.last_weekly_report_sent_at && <p className="text-[10px] mt-2" style={{ color: 'var(--ms-text-muted)' }}>Last generated {new Date(data.last_weekly_report_sent_at).toLocaleString()}</p>}
+            {data.last_weekly_report_sent_at && <p className="text-[10px] mt-2" style={{ color: 'var(--ms-text-muted)' }}>Last generated {new Date(data.last_weekly_report_sent_at).toLocaleString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
             <Button variant="secondary" className="w-full mt-3" onClick={() => sendNowMutation.mutate()} disabled={sendNowMutation.isPending}>Send a report now</Button>
             {sendNowMutation.isSuccess && <p className="text-[11px] mt-2" style={{ color: sendNowMutation.data.data.sent ? '#1A6A3A' : 'var(--ms-text-muted)' }}>{sendNowMutation.data.data.sent ? 'Report sent.' : 'Report generated; email delivery is not configured.'}</p>}
           </Card>
