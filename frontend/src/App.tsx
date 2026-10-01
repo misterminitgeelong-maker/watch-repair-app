@@ -57,6 +57,8 @@ const MobileJobIntakePage = lazyPage(() => import('@/pages/MobileJobIntakePage')
 import { isNativeApp } from '@/lib/native'
 const LandingPage = lazyPage(() => import('@/pages/LandingPage'))
 const PricingPage = lazyPage(() => import('@/pages/PricingPage'))
+const PrivacyPolicyPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.PrivacyPolicyPage })))
+const AccountDeletionPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.AccountDeletionPage })))
 const AccountsPage = lazyPage(() => import('@/pages/AccountsPage'))
 const PlatformAdminUsersPage = lazyPage(() => import('@/pages/PlatformAdminUsersPage'))
 const ShoeRepairsPage = lazyPage(() => import('@/pages/ShoeRepairsPage'))
@@ -189,6 +191,8 @@ export default function App() {
             {/* Public — no auth required */}
             <Route path="/" element={isNativeApp ? <Navigate to="/login" replace /> : <LandingPage />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/delete-account" element={<AccountDeletionPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
             <Route path="/status/:token" element={<StatusPage />} />
             <Route path="/shoe-status/:token" element={<ShoeStatusPage />} />
