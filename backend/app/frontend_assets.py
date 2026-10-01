@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
+import logging
 import mimetypes
+import os
 import re
 import tempfile
 import time
@@ -32,6 +35,57 @@ EXTENSIONS = r"(?:js|css|woff2?|ttf|otf|png|jpe?g|svg|webp|gif|ico)"
 NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,180}-[A-Za-z0-9_-]{8}\." + EXTENSIONS)
 REFERENCES = re.compile(r"(?:/assets/|assets/|\./)(" + NAME.pattern + r")(?![A-Za-z0-9_.-])")
 CACHE_DIR = Path(tempfile.gettempdir()) / "mainspring-frontend-assets-v1"
+logger = logging.getLogger(__name__)
+RETRYABLE = {408, 429, 500, 502, 503, 504}
+
+
+def storage_error(exc) -> tuple[int | None, str]:
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", None)
+    code = type(exc).__name__
+    if response is not None:
+        try:
+            body = response.json()
+            if isinstance(body, dict):
+                code = str(body.get("code") or body.get("error") or code)
+                if body.get("statusCode") is not None:
+                    status = int(body["statusCode"])
+        except (ValueError, TypeError):
+            pass
+    # Log only an identifier, never a provider message, credential or URL.
+    return status, re.sub(r"[^A-Za-z0-9_]", "", code)[:64]
+
+
+def missing_object(exc) -> bool:
+    status, code = storage_error(exc)
+    return (isinstance(exc, FileNotFoundError) or status == 404
+            or code.lower() in {"nosuchkey", "notfound", "objectnotfound", "not_found"}
+            or (not isinstance(exc, httpx.HTTPError) and "not found" in str(exc).lower()))
+
+
+def get_with_retry(client, url: str):
+    for attempt in range(3):
+        try:
+            response = client.get(url)
+            response.raise_for_status()
+            return response
+        except (httpx.TransportError, httpx.HTTPStatusError) as exc:
+            status, _ = storage_error(exc)
+            if attempt == 2 or (isinstance(exc, httpx.HTTPStatusError) and status not in RETRYABLE):
+                raise
+            time.sleep(0.5 * (2 ** attempt))
+
+
+def save_manifest(bucket, path: str, body: bytes, content_type: str):
+    # Metadata is content addressed and safe to retry after a lost response.
+    for attempt in range(3):
+        try:
+            bucket.upload(path, body, file_options={"content-type": content_type, "upsert": "true"})
+            return
+        except Exception:
+            if attempt == 2:
+                raise
+            time.sleep(0.5 * (2 ** attempt))
 
 
 class ArchiveBucket:
@@ -45,8 +99,7 @@ class ArchiveBucket:
         return self.bucket.upload(*args, **kwargs)
 
     def download(self, path: str) -> bytes:
-        response = self.reader.get(self.base_url + quote(path, safe="/"))
-        response.raise_for_status()
+        response = get_with_retry(self.reader, self.base_url + quote(path, safe="/"))
         return response.content
 
 
@@ -74,8 +127,14 @@ def save_asset(bucket, name: str, content: bytes) -> None:
     for attempt in range(4):
         try:
             existing = bucket.download(PREFIX + name)
-        except Exception:
-            pass
+        except Exception as exc:
+            # An unavailable archive is not evidence that the object is absent.
+            if not missing_object(exc):
+                last_error = exc
+                if attempt < 3:
+                    time.sleep(0.5 * (2 ** attempt))
+                    continue
+                break
         else:
             if existing != content:
                 raise RuntimeError("Existing immutable frontend asset differs")
@@ -89,7 +148,14 @@ def save_asset(bucket, name: str, content: bytes) -> None:
             last_error = exc
         if attempt < 3:
             time.sleep(0.5 * (2 ** attempt))
-    raise RuntimeError(f"Frontend archive upload failed for {name}") from last_error
+    # A concurrent publisher may have completed our final duplicate upload.
+    try:
+        if bucket.download(PREFIX + name) == content:
+            return
+    except Exception:
+        pass
+    status, code = storage_error(last_error)
+    raise RuntimeError(f"Frontend archive failed for {name}: status={status} code={code}") from last_error
 
 
 def cached_asset(name: str) -> Path | None:
@@ -104,12 +170,11 @@ def cached_asset(name: str) -> Path | None:
     try:
         content = bucket.download(PREFIX + name)
     except Exception as exc:
-        if (str(getattr(exc, "status", "")) == "404" or str(getattr(exc, "status_code", "")) == "404"
-                or getattr(getattr(exc, "response", None), "status_code", None) == 404):
+        if missing_object(exc):
             return None
-        # Unknown missing keys are also reported as 400 by some Storage versions.
-        if "not found" in str(exc).lower():
-            return None
+        status, code = storage_error(exc)
+        logger.warning("Archived frontend asset unavailable: name=%s status=%s code=%s release=%s",
+                       name, status, code, os.environ.get("APP_BUILD_ID", "unknown"))
         raise HTTPException(503, "Frontend asset temporarily unavailable") from exc
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(503, "Frontend asset exceeds size limit")
@@ -148,8 +213,7 @@ def bootstrap_live_assets(bucket, base_url: str, extra_entries: tuple[str, ...] 
     external URLs or arbitrary paths found in scripts.
     """
     with httpx.Client(timeout=20, follow_redirects=False) as client:
-        index = client.get(urljoin(base_url, "/index.html"))
-        index.raise_for_status()
+        index = get_with_retry(client, urljoin(base_url, "/index.html"))
         if any(not NAME.fullmatch(name) for name in extra_entries):
             raise ValueError("Invalid bootstrap frontend entry")
         marker = PREFIX + "manifests/" + hashlib.sha256(index.content + repr(extra_entries).encode()).hexdigest() + ".txt"
@@ -164,10 +228,17 @@ def bootstrap_live_assets(bucket, base_url: str, extra_entries: tuple[str, ...] 
             raise RuntimeError("Live frontend has no hashed bundles; refusing incomplete archive")
         seen = set()
         def archive_one(name):
-            response = client.get(urljoin(base_url, "/assets/" + name))
-            response.raise_for_status()
-            save_asset(bucket, name, response.content)
-            return set(REFERENCES.findall(response.text)) if name.endswith((".js", ".css")) else set()
+            try:
+                content = bucket.download(PREFIX + name)
+            except Exception as exc:
+                if not missing_object(exc):
+                    raise RuntimeError(f"Cannot read legacy archive asset {name}") from exc
+                try:
+                    content = get_with_retry(client, urljoin(base_url, "/assets/" + name)).content
+                except httpx.HTTPError as exc:
+                    raise RuntimeError(f"Cannot backfill legacy asset {name}: {type(exc).__name__}") from exc
+                save_asset(bucket, name, content)
+            return set(REFERENCES.findall(content.decode("utf-8"))) if name.endswith((".js", ".css")) else set()
         with ThreadPoolExecutor(max_workers=4) as workers:
             while pending:
                 batch = pending - seen
@@ -177,7 +248,7 @@ def bootstrap_live_assets(bucket, base_url: str, extra_entries: tuple[str, ...] 
                     raise RuntimeError("Live frontend archive exceeds asset limit")
                 for references in workers.map(archive_one, batch):
                     pending.update(references - seen)
-        bucket.upload(marker, b"complete", file_options={"content-type": "text/plain", "upsert": "true"})
+        save_manifest(bucket, marker, b"complete", "text/plain")
         return len(seen)
 
 
@@ -195,6 +266,17 @@ def publish_build(*, bootstrap_url: str | None = None, extra_entries: tuple[str,
         raise RuntimeError("No built frontend assets found")
     with ThreadPoolExecutor(max_workers=4) as workers:
         list(workers.map(lambda asset: save_asset(bucket, asset.name, asset.read_bytes()), files))
+    # Verify read access and exact bytes before marking this release complete.
+    def verify(asset):
+        content = asset.read_bytes()
+        if bucket.download(PREFIX + asset.name) != content:
+            raise RuntimeError(f"Frontend archive verification failed for {asset.name}")
+        return asset.name, hashlib.sha256(content).hexdigest()
+    with ThreadPoolExecutor(max_workers=4) as workers:
+        manifest = dict(workers.map(verify, files))
+    body = json.dumps(manifest, sort_keys=True).encode()
+    release = hashlib.sha256(body).hexdigest()
+    save_manifest(bucket, PREFIX + "releases/" + release + ".json", body, "application/json")
     if bootstrap_url:
         bootstrap_live_assets(bucket, bootstrap_url, extra_entries)
     return len(files)

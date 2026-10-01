@@ -108,6 +108,60 @@ def test_storage_outage_returns_recoverable_503(retained, monkeypatch):
     assert client.get("/assets/OldPage-12345678.js").status_code == 503
 
 
+@pytest.mark.parametrize("body", [
+    {"statusCode": "404", "error": "not_found", "message": "Object not found"},
+    {"code": "NoSuchKey", "message": "The resource does not exist"},
+])
+def test_legacy_storage_400_missing_object_is_404(retained, monkeypatch, body):
+    client, bucket = retained
+    def fail(_):
+        response = httpx.Response(400, json=body, request=httpx.Request("GET", "https://storage.test/private"))
+        response.raise_for_status()
+    monkeypatch.setattr(bucket, "download", fail)
+    assert client.get("/assets/OldPage-12345678.js").status_code == 404
+
+
+def test_archive_read_retries_transient_failure_without_logging_credentials(monkeypatch):
+    requests = []
+    def respond(request):
+        requests.append(request)
+        if len(requests) == 1:
+            raise httpx.ReadTimeout("temporary outage", request=request)
+        return httpx.Response(200, content=b"old bundle")
+    monkeypatch.setattr(assets.time, "sleep", lambda _: None)
+    bucket = assets.ArchiveBucket(Bucket(), "https://storage.test", "private-key", "attachments")
+    bucket.reader.close()
+    with httpx.Client(transport=httpx.MockTransport(respond)) as reader:
+        bucket.reader = reader
+        assert bucket.download(assets.PREFIX + "Page-abcdefgh.js") == b"old bundle"
+    assert len(requests) == 2
+
+
+def test_duplicate_final_upload_verifies_concurrent_publisher(monkeypatch):
+    bucket = Bucket()
+    uploads = []
+    def race(name, content, file_options):
+        uploads.append(name)
+        if len(uploads) == 4:
+            bucket.objects[name] = content
+        raise RuntimeError("already exists")
+    monkeypatch.setattr(bucket, "upload", race)
+    monkeypatch.setattr(assets.time, "sleep", lambda _: None)
+    assets.save_asset(bucket, "Page-abcdefgh.js", b"same content")
+    assert len(uploads) == 4
+
+
+def test_archive_outage_does_not_attempt_duplicate_upload(monkeypatch):
+    bucket = Bucket()
+    def unavailable(_):
+        raise RuntimeError("temporary storage outage")
+    monkeypatch.setattr(bucket, "download", unavailable)
+    monkeypatch.setattr(assets.time, "sleep", lambda _: None)
+    with pytest.raises(RuntimeError, match="Page-abcdefgh.js"):
+        assets.save_asset(bucket, "Page-abcdefgh.js", b"new content")
+    assert not bucket.objects
+
+
 def test_first_deployment_archives_lazy_graph_and_only_marks_complete_after_success(monkeypatch):
     bucket = Bucket()
     original_client = httpx.Client
@@ -136,6 +190,72 @@ def test_incomplete_archive_aborts_rollout(monkeypatch):
             return httpx.Response(200, text='<script src="/assets/index-abcdefgh.js"></script>')
         return httpx.Response(503)
     monkeypatch.setattr(assets.httpx, "Client", lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs))
-    with pytest.raises(httpx.HTTPStatusError):
+    monkeypatch.setattr(assets.time, "sleep", lambda _: None)
+    with pytest.raises(RuntimeError, match="index-abcdefgh.js"):
         assets.bootstrap_live_assets(bucket, "https://app.test")
     assert not any("manifests/" in key for key in bucket.objects)
+
+
+def test_legacy_live_fetch_retries_timeout_then_uses_archived_dependencies(monkeypatch):
+    bucket = Bucket()
+    bucket.objects[assets.PREFIX + "LazyPage-12345678.js"] = b"export default 'retained'"
+    original_client = httpx.Client
+    requests = []
+    def handle(request):
+        requests.append(request.url.path)
+        if request.url.path == "/index.html":
+            return httpx.Response(200, text='<script src="/assets/index-abcdefgh.js"></script>')
+        assert request.url.path == "/assets/index-abcdefgh.js"
+        if requests.count(request.url.path) == 1:
+            raise httpx.ReadTimeout("network timeout", request=request)
+        return httpx.Response(200, text='import("./LazyPage-12345678.js")')
+    monkeypatch.setattr(assets.httpx, "Client", lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs))
+    monkeypatch.setattr(assets.time, "sleep", lambda _: None)
+    assert assets.bootstrap_live_assets(bucket, "https://app.test") == 2
+    assert requests == ["/index.html", "/assets/index-abcdefgh.js", "/assets/index-abcdefgh.js"]
+
+
+def test_legacy_missing_asset_fails_once_without_complete_marker(monkeypatch):
+    bucket = Bucket()
+    original_client = httpx.Client
+    requests = []
+    def handle(request):
+        requests.append(request.url.path)
+        if request.url.path == "/index.html":
+            return httpx.Response(200, text='<script src="/assets/index-abcdefgh.js"></script>')
+        return httpx.Response(404)
+    monkeypatch.setattr(assets.httpx, "Client", lambda **kwargs: original_client(transport=httpx.MockTransport(handle), **kwargs))
+    with pytest.raises(RuntimeError, match="index-abcdefgh.js"):
+        assets.bootstrap_live_assets(bucket, "https://app.test")
+    assert len(requests) == 2
+    assert not any("manifests/" in key for key in bucket.objects)
+
+
+def test_publish_build_verifies_bytes_without_contacting_live_site(tmp_path, monkeypatch):
+    bucket = Bucket()
+    root = tmp_path / "assets"
+    root.mkdir()
+    (root / "Page-abcdefgh.js").write_bytes(b"export default 1")
+    monkeypatch.setattr(assets.settings, "static_dir", str(tmp_path))
+    monkeypatch.setattr(assets, "archive_bucket", lambda: bucket)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Routine publishing must not crawl the live site")
+    monkeypatch.setattr(assets.httpx, "Client", forbidden)
+    assert assets.publish_build() == 1
+    manifests = [value for key, value in bucket.objects.items() if "releases/" in key]
+    assert len(manifests) == 1
+    assert b"Page-abcdefgh.js" in manifests[0]
+
+
+def test_publish_build_does_not_mark_unreadable_archive_complete(tmp_path, monkeypatch):
+    bucket = Bucket()
+    root = tmp_path / "assets"
+    root.mkdir()
+    (root / "Page-abcdefgh.js").write_bytes(b"export default 1")
+    monkeypatch.setattr(assets.settings, "static_dir", str(tmp_path))
+    monkeypatch.setattr(assets, "archive_bucket", lambda: bucket)
+    # Reads remain missing even after the uploader reports success.
+    monkeypatch.setattr(bucket, "upload", lambda *args, **kwargs: None)
+    with pytest.raises(RuntimeError, match="not found"):
+        assets.publish_build()
+    assert not any("releases/" in key for key in bucket.objects)

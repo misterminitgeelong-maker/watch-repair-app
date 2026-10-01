@@ -28,12 +28,16 @@ forcing a reload; and the new image no longer contained the old hashed route fil
 ## Build and rollout
 
 1. Build the complete image while the old deployment continues serving.
-2. Run additive migrations, then `python -m app.frontend_assets --bootstrap-live`.
+2. Run `python -m app.predeploy`: take a PostgreSQL session advisory lock, run
+   additive migrations, then publish the current image's assets. The lock has a
+   bounded wait and is released on failure or process termination.
    Publish every current hashed asset to the existing private Supabase bucket under
    `_frontend-builds/v1/`. A filename cannot overwrite different content.
-3. On the first rollout, traverse the live index and same-origin hashed JS/CSS
-   dependencies to preserve its lazy pages too. Mark the archive complete only after
-   every file succeeds. Subsequent rollouts skip a complete unchanged live archive.
+3. Read back every current asset and verify its bytes before writing a content-addressed
+   release manifest. Routine deployment never crawls the live website. The existing
+   live graph was backfilled on 01/10/2026. For explicit legacy recovery only, use
+   `python -m app.frontend_assets --bootstrap-live`; it reads existing archived files
+   first and retries transient live downloads. A partial graph cannot be marked complete.
    Four workers limit pre-deploy latency. Failure aborts rollout before traffic switches.
 4. Wait for `/v1/ready` (actual DB connectivity), with a 300-second startup allowance.
 5. Railway overlaps the old deployment for 60 seconds and drains it for 120 seconds;
@@ -51,6 +55,26 @@ Build files are deliberately retained across releases. Monitor `_frontend-builds
 storage growth; do not delete old files without first defining a supported tab lifetime
 and an explicit update policy. Renaming this prefix or changing the asset hash format
 also needs a compatibility migration.
+
+Railway's **Wait for CI** is enabled for production. The CI workflow cancels superseded
+runs on the same branch; release containers serialize migrations and publishing with
+the database lock. Keep schema changes compatible with the previous application even
+if migration succeeds and archive publishing subsequently fails.
+
+For a release continuity check, run from `backend/` before and after promotion:
+
+```sh
+python scripts/check_frontend_continuity.py snapshot https://mainspring.au old-build.json
+# Promote only after CI passes; then verify the previous browser build.
+python scripts/check_frontend_continuity.py verify https://mainspring.au old-build.json
+```
+
+This checks the entire previous lazy JS/CSS graph, its MIME types and exact bytes.
+Database readiness remains independent of storage availability; continuity checks
+must accompany it. Missing archive objects return 404; storage outages return 503
+after bounded retries. Log diagnostics include basename/status/error code/release,
+never storage credentials. Files predating retention may require exact historical
+artifacts to recover; a missing immutable asset must never be replaced with new code.
 
 ## Rules for future changes
 
