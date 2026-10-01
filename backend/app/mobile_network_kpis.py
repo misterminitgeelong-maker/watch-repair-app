@@ -29,7 +29,8 @@ from sqlalchemy import distinct, func as sa_func
 from sqlmodel import Session, col, func, select
 
 from .auto_key_status import AUTO_KEY_ACTIVE_STATUSES
-from .minit_email_lead_parser import bookable_operators_for_parent, bucket_email_leads_by_operator
+from .minit_email_lead_parser import bucket_email_leads_by_operator
+from .parent_network import mobile_reporting_tenants_for_parent
 from .models import AutoKeyInvoice, AutoKeyJob, InboundEmail, ParentAccount, Tenant
 
 NETWORK_TIMEZONE_NAME = "Australia/Sydney"
@@ -576,7 +577,7 @@ def build_network_kpis(
     include_queues: bool = True,
     include_enquiries: bool | None = None,
 ) -> NetworkKpiReport:
-    operators = bookable_operators_for_parent(session, parent.id)
+    operators = mobile_reporting_tenants_for_parent(session, parent.id)
     load_enquiries = include_queues if include_enquiries is None else include_enquiries
     backlog = _enquiry_backlog_by_tenant(session, parent.id, operators) if operators and load_enquiries else {}
     current = _operator_kpis_for_tenants(

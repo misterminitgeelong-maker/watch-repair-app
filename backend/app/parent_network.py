@@ -229,6 +229,14 @@ def operator_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenan
     return linked_tenants_for_parent(session, parent_id, network_role=NETWORK_ROLE_OPERATOR)
 
 
+def mobile_reporting_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
+    """Mobile jobs/invoices only: operators and explicitly opted-in retail sites."""
+    ids = {site.tenant_id for site in sites_for_parent(session, parent_id)
+           if site.network_role == NETWORK_ROLE_OPERATOR
+           or (site.network_role == NETWORK_ROLE_RETAIL and site.mobile_reporting_enabled)}
+    return [tenant for tenant in linked_tenants_for_parent(session, parent_id) if tenant.id in ids]
+
+
 def accepted_invite_tenant_ids(session: Session, tenant_ids: list[UUID]) -> set[UUID]:
     """Tenants whose owner has accepted a shop-owner invite (the account is live)."""
     if not tenant_ids:

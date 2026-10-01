@@ -141,6 +141,7 @@ export interface ParentAccountSite {
   region_code?: string | null
   plan_code: string
   /** The site's place in the network — independent of what it is billed for. */
+  mobile_reporting_enabled?: boolean
   network_role: NetworkRole
   owner_user_id: string
   owner_email: string
@@ -441,6 +442,7 @@ export const enterLinkedShop = (tenantId: string, reason?: string) =>
 export const updateLinkedSite = (
   tenantId: string,
   payload: {
+    mobile_reporting_enabled?: boolean
     network_role?: NetworkRole
     region_id?: string | null
     clear_region?: boolean

@@ -457,3 +457,68 @@ def test_jobs_report_total_count_is_not_the_page_size():
     assert body["jobs"][0]["job_type"] == "Diagnostic"
     assert "commission_lead_source" in body["jobs"][0]
 
+
+def test_retail_pro_mobile_sharing_is_opt_in_and_does_not_change_dispatch():
+    from app.models import ParentAccountSite, RepairJob, ShoeRepairJob, Shoe, Watch, Invoice
+    from app.parent_network import operator_tenants_for_parent, mobile_reporting_tenants_for_parent
+    from app.mobile_network_kpis import build_network_kpis
+
+    headers = {'Authorization': f'Bearer {_ensure_hq()}'}
+    suffix = uuid4().hex[:8]
+    slug, email = f'retail-{suffix}', f'retail-{suffix}@test.local'
+    boot = client.post('/v1/auth/bootstrap', json={
+        'tenant_name': 'Retail Pro 3269 QA', 'tenant_slug': slug, 'owner_email': email,
+        'owner_full_name': 'Retail Owner', 'owner_password': 'pass123456', 'plan_code': 'pro',
+    })
+    assert boot.status_code == 200, boot.text
+    tenant_id = boot.json()['tenant_id']
+    parent_id = UUID(client.get('/v1/parent-accounts/me', headers=headers).json()['parent_account_id'])
+    linked = link_and_accept(client, '/v1/parent-accounts/me/link-tenant', headers=headers,
+                             json={'tenant_slug': slug, 'owner_email': email})
+    assert linked.status_code == 200, linked.text
+    now = datetime.now(timezone.utc)
+    _seed_job(tenant_id, created_at=now, total_cents=18500, job_type='All Keys Lost', work_completed_at=now)
+    with Session(engine) as session:
+        site = session.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == UUID(tenant_id), ParentAccountSite.parent_account_id == parent_id)).one()
+        parent = session.get(ParentAccount, site.parent_account_id)
+        assert site.network_role == 'retail' and not site.mobile_reporting_enabled
+        assert UUID(tenant_id) not in {t.id for t in mobile_reporting_tenants_for_parent(session, parent.id)}
+        customer = session.exec(select(Customer).where(Customer.tenant_id == UUID(tenant_id))).first()
+        watch = Watch(tenant_id=UUID(tenant_id), customer_id=customer.id, brand='QA Watch')
+        session.add(watch); session.flush()
+        repair = RepairJob(tenant_id=UUID(tenant_id), watch_id=watch.id, job_number=f'WATCH-{suffix}', title='Private watch repair')
+        shoe_item = Shoe(tenant_id=UUID(tenant_id), customer_id=customer.id, brand='QA Shoe')
+        session.add(shoe_item); session.flush()
+        shoe = ShoeRepairJob(tenant_id=UUID(tenant_id), shoe_id=shoe_item.id, job_number=f'SHOE-{suffix}', title='Private shoe repair')
+        session.add(repair); session.add(shoe); session.flush()
+        session.add(Invoice(tenant_id=UUID(tenant_id), repair_job_id=repair.id, invoice_number=f'WATCH-I-{suffix}', status='paid', total_cents=999999))
+        session.commit()
+    before = client.get('/v1/parent-accounts/me/operations/mobile-jobs', headers=headers,
+                        params={'operator_tenant_id': tenant_id})
+    assert before.json()['jobs'] == []
+    enabled = client.patch(f'/v1/parent-accounts/me/sites/{tenant_id}', headers=headers,
+                           json={'mobile_reporting_enabled': True})
+    assert enabled.status_code == 200, enabled.text
+    assert enabled.json()['mobile_reporting_enabled'] is True
+    assert enabled.json()['network_role'] == 'retail' and enabled.json()['plan_code'] == 'pro'
+    with Session(engine) as session:
+        site = session.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == UUID(tenant_id), ParentAccountSite.parent_account_id == parent_id)).one()
+        parent = session.get(ParentAccount, site.parent_account_id)
+        assert UUID(tenant_id) not in {t.id for t in operator_tenants_for_parent(session, parent.id)}
+        other_sites = session.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == UUID(tenant_id), ParentAccountSite.parent_account_id != parent_id)).all()
+        assert all(not other.mobile_reporting_enabled for other in other_sites)
+        for other in other_sites:
+            assert UUID(tenant_id) not in {t.id for t in mobile_reporting_tenants_for_parent(session, other.parent_account_id)}
+        report = build_network_kpis(session, parent, now-timedelta(hours=1), now+timedelta(hours=1))
+        row = next(r for r in report.operators if r.operator_tenant_id == UUID(tenant_id))
+        assert row.jobs_created == 1 and row.sales_cents == 18500
+        snaps = compile_daily_snapshot(session, parent, now.astimezone(SYDNEY).date(), now=now, force=True)
+        assert UUID(tenant_id) in {r.operator_tenant_id for r in snaps}
+    jobs = client.get('/v1/parent-accounts/me/operations/mobile-jobs', headers=headers,
+                      params={'operator_tenant_id': tenant_id}).json()['jobs']
+    assert len(jobs) == 1 and jobs[0]['job_number'].startswith('AK-') and jobs[0]['paid_cents'] == 18500
+    disabled = client.patch(f'/v1/parent-accounts/me/sites/{tenant_id}', headers=headers,
+                            json={'mobile_reporting_enabled': False})
+    assert disabled.status_code == 200, disabled.text
+    assert client.get('/v1/parent-accounts/me/operations/mobile-jobs', headers=headers,
+                      params={'operator_tenant_id': tenant_id}).json()['jobs'] == []

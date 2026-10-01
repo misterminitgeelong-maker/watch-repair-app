@@ -72,6 +72,7 @@ from ..models import (
 from .. import sms as sms_service
 from ..parent_network import (
     linked_tenants_for_parent,
+    mobile_reporting_tenants_for_parent,
     regions_for_parent,
     sites_for_parent,
 )
@@ -788,7 +789,7 @@ def get_operations_mobile_jobs_report(
 
     _require_minit_hq(auth, session)
     user, parent, _ = _parent_for_read(session, auth)
-    _retail, operators = _retail_and_operator_tenants(session, parent.id)
+    operators = mobile_reporting_tenants_for_parent(session, parent.id)
     operator_ids = [t.id for t in operators]
     if not operator_ids:
         return ParentMobileJobsReport(

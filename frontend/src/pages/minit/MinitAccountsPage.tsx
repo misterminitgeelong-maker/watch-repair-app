@@ -319,6 +319,18 @@ export default function MinitAccountsPage() {
   const canEdit = summary?.my_role === 'hq_admin'
   const [supportTarget, setSupportTarget] = useState<ParentAccountSite | null>(null)
 
+  const mobileReportingMut = useMutation({
+    mutationFn: ({ tenantId, enabled }: { tenantId: string; enabled: boolean }) =>
+      updateLinkedSite(tenantId, { mobile_reporting_enabled: enabled }),
+    onSuccess: () => {
+      setError('')
+      void qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY })
+      void qc.invalidateQueries({ queryKey: ['minit-mobile-kpis-live'] })
+      void qc.invalidateQueries({ queryKey: ['minit-mobile-jobs-report'] })
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Could not change Mobile Services sharing.')),
+  })
+
   const regionMut = useMutation({
     mutationFn: ({ tenantId, regionId }: { tenantId: string; regionId: string }) =>
       updateLinkedSite(tenantId, regionId ? { region_id: regionId } : { clear_region: true }).then(r => r.data),
@@ -673,6 +685,13 @@ export default function MinitAccountsPage() {
                 </p>
                 <OwnerContact site={site} onEdit={canEdit ? () => openContact(site) : undefined} />
                 <InviteStatus site={site} />
+                {canEdit && <label className="mt-2 flex min-h-11 items-center gap-2 text-xs">
+                  <input type="checkbox" checked={!!site.mobile_reporting_enabled}
+                    disabled={mobileReportingMut.isPending}
+                    onChange={e => mobileReportingMut.mutate({ tenantId: site.tenant_id, enabled: e.target.checked })} />
+                  Share Mobile Services jobs and invoices with HQ
+                </label>}
+
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {canEdit && regions.length > 0 && (

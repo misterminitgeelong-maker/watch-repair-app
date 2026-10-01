@@ -193,6 +193,14 @@ def update_linked_site(
             site.network_role = role
             site_changed = True
 
+    if payload.mobile_reporting_enabled is not None:
+        if site.network_role == NETWORK_ROLE_HQ:
+            raise HTTPException(status_code=400, detail="HQ cannot opt into shop mobile reporting")
+        if payload.mobile_reporting_enabled != site.mobile_reporting_enabled:
+            site.mobile_reporting_enabled = payload.mobile_reporting_enabled
+            site_changed = True
+            changes.append("Mobile Services reporting " + ("enabled" if payload.mobile_reporting_enabled else "disabled"))
+
     if payload.clear_region:
         if site.region_id is not None:
             changes.append("region cleared")

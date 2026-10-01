@@ -223,6 +223,7 @@ class ParentAccountSiteRead(SQLModel):
     plan_code: str
     #: hq | retail | operator — the site's place in the network, not its plan.
     network_role: str = "retail"
+    mobile_reporting_enabled: bool = False
     owner_user_id: UUID
     owner_email: str
     owner_full_name: str
@@ -264,6 +265,7 @@ class SiteBaseLocationRequest(SQLModel):
 
 
 class ParentAccountSiteUpdateRequest(SQLModel):
+    mobile_reporting_enabled: Optional[bool] = None
     network_role: Optional[str] = None
     #: Set to a Region id to assign; explicit null clears. Omit to leave unchanged.
     region_id: Optional[UUID] = None

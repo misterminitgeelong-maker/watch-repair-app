@@ -355,6 +355,7 @@ def _site_reads_for_sites(
                 region_code=region.code if region else None,
                 plan_code=normalize_plan_code(tenant.plan_code),
                 network_role=site.network_role,
+                mobile_reporting_enabled=site.mobile_reporting_enabled,
                 owner_user_id=user.id,
                 owner_email=user.email,
                 owner_full_name=user.full_name,

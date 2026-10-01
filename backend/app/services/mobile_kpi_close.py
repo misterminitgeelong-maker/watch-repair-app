@@ -19,7 +19,7 @@ from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 
 from .. import email_client
-from ..minit_email_lead_parser import bookable_operators_for_parent
+from ..parent_network import mobile_reporting_tenants_for_parent
 from ..mobile_network_kpis import (
     NETWORK_TIMEZONE_NAME,
     build_network_kpis,
@@ -66,7 +66,7 @@ def compile_daily_snapshot(
     force: bool = False,
 ) -> list[MobileKpiDailySnapshot]:
     """Idempotent: skip operators that already have a row unless ``force``."""
-    operators = bookable_operators_for_parent(session, parent.id)
+    operators = mobile_reporting_tenants_for_parent(session, parent.id)
     if not operators:
         return []
     existing_rows = {

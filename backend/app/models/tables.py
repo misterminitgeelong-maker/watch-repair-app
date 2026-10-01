@@ -288,6 +288,8 @@ class ParentAccountSite(SQLModel, table=True):
     parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     network_role: str = Field(default=NETWORK_ROLE_RETAIL, max_length=16, index=True)
+    # Reporting opt-in only; never changes operator/dispatch eligibility.
+    mobile_reporting_enabled: bool = Field(default=False)
     region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
