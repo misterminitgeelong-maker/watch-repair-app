@@ -73,15 +73,20 @@ Push to main only after 18:00 Australia/Sydney, as requested by the platform own
 - Full frontend suite: 382 tests passing, including refresh rejection, single operation,
   temporary outage recovery, late logout/login responses, non-replayed writes and worker
   cache migration. Backend auth and build-retention suite: 43 tests passing on SQLite.
-  A concurrent PostgreSQL-only regression test is included; it is skipped locally and
-  still requires verification in the Postgres CI environment.
+  The PostgreSQL CI suite passed its tests, including concurrent refresh rotation.
+  Local SQLite skips that concurrency test because it needs PostgreSQL row locks.
 - Read-only traversal of the current live build: 196 assets, approximately 2.4 MB. The
   existing Supabase `attachments` bucket is private with no MIME or file-size restriction.
 - Live local browser: one-minute JWTs, server stopped with an unsaved POS description
   and price, server restarted; refresh returned 200, session returned 200 and the same
   POS fields remained. No logout or page reload was used.
-- Production overlap, archived-file downloads and an already-open live tab must be
-  verified during the first permitted rollout after 18:00. An already hung old tab
+- Production rollout completed after 18:00 Sydney. Monitoring recorded 240 healthy
+  samples with no failures, and the new server served archived index-YceVngC9.js
+  with HTTP 200, JavaScript MIME type and immutable cache headers. Private Storage
+  reads use the documented /object/authenticated endpoint; the publisher checks
+  existing hashes and retries temporary failures before failing the deployment.
+  The local cold-start outage screen reconnected automatically after server recovery.
+  An already hung old tab
   cannot receive new JavaScript recovery code until that tab reloads once. The compiled
   POS test also retained its unsaved $123 entry through nearly an hour of one-minute
   token refreshes after restart.

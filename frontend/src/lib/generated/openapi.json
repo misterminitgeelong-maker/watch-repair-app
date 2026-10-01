@@ -14834,6 +14834,36 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/mobile-dispatch-operators": {
+      "get": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "List Mobile Dispatch Operators",
+        "operationId": "list_mobile_dispatch_operators_v1_parent_accounts_me_mobile_dispatch_operators_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShopMobileOperatorOption"
+                  },
+                  "type": "array",
+                  "title": "Response List Mobile Dispatch Operators V1 Parent Accounts Me Mobile Dispatch Operators Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/sites": {
       "get": {
         "tags": [
@@ -16354,6 +16384,210 @@
         }
       }
     },
+    "/v1/platform-admin/hq-owners": {
+      "get": {
+        "tags": [
+          "hq-owner-invites"
+        ],
+        "summary": "List Hq Owners",
+        "operationId": "list_hq_owners_v1_platform_admin_hq_owners_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "hq-owner-invites"
+        ],
+        "summary": "Create Hq Invite",
+        "operationId": "create_hq_invite_v1_platform_admin_hq_owners_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/platform-admin/hq-owners/{invite_id}": {
+      "delete": {
+        "tags": [
+          "hq-owner-invites"
+        ],
+        "summary": "Revoke Hq Invite",
+        "operationId": "revoke_hq_invite_v1_platform_admin_hq_owners__invite_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invite_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invite Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/hq-invite/{token}": {
+      "get": {
+        "tags": [
+          "hq-owner-invites"
+        ],
+        "summary": "Public Hq Invite",
+        "operationId": "public_hq_invite_v1_public_hq_invite__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/hq-invite/{token}/complete": {
+      "post": {
+        "tags": [
+          "hq-owner-invites"
+        ],
+        "summary": "Accept Hq Invite",
+        "operationId": "accept_hq_invite_v1_public_hq_invite__token__complete_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/parent-accounts/me/operations/overview": {
       "get": {
         "tags": [
@@ -17032,6 +17266,154 @@
               "type": "string",
               "default": "week",
               "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/period": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpi Period",
+        "operationId": "get_mobile_kpi_period_v1_parent_accounts_me_operations_mobile_kpis_period_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "month",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          },
+          {
+            "name": "year_start_month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 4,
+              "title": "Year Start Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileKpiPeriodRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/operations/mobile-kpis/period/csv": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Mobile Kpi Period Csv",
+        "operationId": "get_mobile_kpi_period_csv_v1_parent_accounts_me_operations_mobile_kpis_period_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "month",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          },
+          {
+            "name": "year_start_month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 4,
+              "title": "Year Start Month"
             }
           }
         ],
@@ -19251,6 +19633,56 @@
         }
       }
     },
+    "/v1/prospects/contact-details": {
+      "get": {
+        "tags": [
+          "prospects"
+        ],
+        "summary": "Contact Details",
+        "description": "Explicit, single-business lookup; stored searches never spend API calls.",
+        "operationId": "contact_details_v1_prospects_contact_details_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "title": "Place Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectContactDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/prospects/search": {
       "get": {
         "tags": [
@@ -19832,6 +20264,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/UpdateLeadBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -21377,6 +21826,21 @@
   },
   "components": {
     "schemas": {
+      "AcceptRequest": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "title": "AcceptRequest"
+      },
       "ActiveSiteSwitchRequest": {
         "properties": {
           "tenant_id": {
@@ -27927,6 +28391,45 @@
         ],
         "title": "IntegrationHealthRead"
       },
+      "InviteRequest": {
+        "properties": {
+          "parent_account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Parent Account Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "send_email": {
+            "type": "boolean",
+            "title": "Send Email",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "parent_account_id",
+          "tenant_id",
+          "email",
+          "full_name"
+        ],
+        "title": "InviteRequest"
+      },
       "InvoiceCreateFromQuoteResponse": {
         "properties": {
           "invoice": {
@@ -30602,6 +31105,11 @@
             "title": "Network Role",
             "default": "retail"
           },
+          "mobile_reporting_enabled": {
+            "type": "boolean",
+            "title": "Mobile Reporting Enabled",
+            "default": false
+          },
           "owner_user_id": {
             "type": "string",
             "format": "uuid",
@@ -30765,6 +31273,17 @@
       },
       "ParentAccountSiteUpdateRequest": {
         "properties": {
+          "mobile_reporting_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile Reporting Enabled"
+          },
           "network_role": {
             "anyOf": [
               {
@@ -33183,6 +33702,49 @@
         ],
         "title": "Prospect"
       },
+      "ProspectContactDetails": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "attributions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Attributions",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id"
+        ],
+        "title": "ProspectContactDetails"
+      },
       "ProspectLeadConvert": {
         "properties": {
           "account_name": {
@@ -33898,6 +34460,11 @@
           "category": {
             "type": "string",
             "title": "Category"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "stored"
           }
         },
         "type": "object",
@@ -40250,6 +40817,21 @@
             "maxLength": 128,
             "minLength": 1,
             "title": "Scenario Id"
+          },
+          "tool_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Keys"
           }
         },
         "type": "object",
