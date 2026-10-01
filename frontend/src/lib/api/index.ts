@@ -4111,6 +4111,29 @@ export interface SubmitIntakeBody {
   description?: string
 }
 
+export type KeyEnquiryBody = {
+  customer_name: string
+  phone: string
+  email?: string
+  suburb: string
+  state_code: string
+  street_address?: string
+  location_type?: string
+  service: string
+  key_type?: string
+  vehicle_make: string
+  vehicle_model?: string
+  vehicle_year?: string
+  registration_plate?: string
+  has_working_key?: boolean
+  urgency?: string
+  notes?: string
+  website?: string
+}
+
+export const submitKeyEnquiry = (ingestId: string, body: KeyEnquiryBody) =>
+  axios.post<{ message: string }>(withApiOrigin(`/v1/public/key-enquiry/${ingestId}`), body)
+
 export const submitPublicIntake = (body: SubmitIntakeBody) =>
   axios.post<{ id: string; message: string }>(withApiOrigin('/v1/public/intake'), body)
 
