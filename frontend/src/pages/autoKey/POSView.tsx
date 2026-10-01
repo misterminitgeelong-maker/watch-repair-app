@@ -24,12 +24,14 @@ import PricingSelector from '@/components/PricingSelector'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
 import { DEFAULT_POS_CATEGORIES, quickItemsForCategories, filterQuickItems } from './posQuickItems'
 import { isPosQuoteMode, type PosCheckoutMode } from './posMode'
+import { discountedQuoteLine, NO_POS_DISCOUNT, priceWithDiscount, type PosDiscount, type PosDiscountType } from './posDiscount'
 
 interface CartLine {
   id: string
   description: string
   quantity: number
   unit_price_cents: number
+  discount: PosDiscount
 }
 
 export function POSView({
@@ -94,22 +96,32 @@ export function POSView({
   }, [initialMode, initialJobId])
   const [customDesc, setCustomDesc] = useState('')
   const [customPrice, setCustomPrice] = useState('')
+  const [nextDiscount, setNextDiscount] = useState<PosDiscount>(NO_POS_DISCOUNT)
   const [error, setError] = useState('')
   const [successJobId, setSuccessJobId] = useState<string | null>(null)
   const [gstEnabled, setGstEnabled] = useState(true)
   const [gstInclusive, setGstInclusive] = useState(true)
 
   const cartCount = cart.reduce((n, l) => n + l.quantity, 0)
-  const enteredCents = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
+  const originalCents = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
+  const enteredCents = cart.reduce((s, l) => s + l.quantity * priceWithDiscount(l.unit_price_cents, l.discount).unitPriceCents, 0)
+  const discountCents = originalCents - enteredCents
+  const hasInvalidDiscount = cart.some(l => !!priceWithDiscount(l.unit_price_cents, l.discount).error)
   const { subtotalCents: subtotal, taxCents: tax, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
 
   const addToCart = (description: string, unit_price_cents: number, quantity = 1) => {
-    const existing = cart.find(l => l.description === description && l.unit_price_cents === unit_price_cents)
+    const price = priceWithDiscount(unit_price_cents, nextDiscount)
+    if (price.error) { setError(price.error); return false }
+    const discount = price.discountCents > 0 ? { ...nextDiscount, value: String(Number(nextDiscount.value)) } : NO_POS_DISCOUNT
+    const existing = cart.find(l => l.description === description && l.unit_price_cents === unit_price_cents && l.discount.type === discount.type && l.discount.value === discount.value)
     if (existing) {
       setCart(cart.map(l => l.id === existing.id ? { ...l, quantity: l.quantity + quantity } : l))
     } else {
-      setCart([...cart, { id: crypto.randomUUID(), description, quantity, unit_price_cents }])
+      setCart([...cart, { id: crypto.randomUUID(), description, quantity, unit_price_cents, discount }])
     }
+    setNextDiscount(NO_POS_DISCOUNT)
+    setError('')
+    return true
   }
 
   const removeFromCart = (id: string) => setCart(cart.filter(l => l.id !== id))
@@ -121,6 +133,8 @@ export function POSView({
   const completeMut = useMutation({
     mutationFn: async () => {
       setError('')
+      if (cart.length === 0) throw new Error('Add at least one item.')
+      const lineItems = cart.map(discountedQuoteLine)
       let cid = customerId
       if (customerMode === 'new') {
         if (!newCustomer.full_name.trim()) throw new Error('Customer name is required.')
@@ -129,14 +143,13 @@ export function POSView({
         qc.invalidateQueries({ queryKey: ['customers'] })
       } else if (!cid) throw new Error('Select a customer.')
 
-      if (cart.length === 0) throw new Error('Add at least one item.')
 
       const accountId = customerAccountId && customerAccounts.some((a: CustomerAccount) => a.id === customerAccountId && (a.customer_ids ?? []).includes(cid))
         ? customerAccountId
         : undefined
 
       const quotePayload = {
-        line_items: cart.map(l => ({ description: l.description, quantity: l.quantity, unit_price_cents: l.unit_price_cents })),
+        line_items: lineItems,
         gst_enabled: gstEnabled,
         gst_inclusive: gstInclusive,
       }
@@ -334,6 +347,16 @@ export function POSView({
               Price by manufacturer
             </Button>
           </div>
+          <div className="mb-4 rounded-lg border p-3 space-y-2" style={{ borderColor: 'var(--ms-border)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>Discount on next item</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Select aria-label="Next item discount type" value={nextDiscount.type} onChange={e => setNextDiscount({ type: e.target.value as PosDiscountType, value: '' })}>
+                <option value="none">No discount</option><option value="percent">Percentage (%)</option><option value="amount">Dollars ($) per item</option>
+              </Select>
+              {nextDiscount.type !== 'none' && <Input type="number" inputMode="decimal" min="0" max={nextDiscount.type === 'percent' ? 100 : undefined} step="0.01" aria-label="Next item discount value" placeholder={nextDiscount.type === 'percent' ? 'Discount %' : 'Discount $ per item'} value={nextDiscount.value} onChange={e => setNextDiscount({ ...nextDiscount, value: e.target.value })} />}
+            </div>
+            <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Applies to the next quick, custom or manufacturer item you add, then resets. You can also edit discounts in the cart.</p>
+          </div>
           <div className="relative mb-3">
             <Search
               size={16}
@@ -357,7 +380,7 @@ export function POSView({
               <button
                 key={label}
                 type="button"
-                onClick={() => addToCart(desc, price)}
+                onClick={() => addToCart(`${label} — ${desc}`, price)}
                 className="flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-left transition-colors"
                 style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
               >
@@ -400,8 +423,7 @@ export function POSView({
               className="w-full sm:w-auto"
               onClick={() => {
                 const cents = dollarsToCents(customPrice)
-                if (customDesc.trim() && cents > 0) {
-                  addToCart(customDesc.trim(), cents)
+                if (customDesc.trim() && cents > 0 && addToCart(customDesc.trim(), cents)) {
                   setCustomDesc('')
                   setCustomPrice('')
                 }
@@ -421,19 +443,30 @@ export function POSView({
           <p className="text-sm py-6 text-center" style={{ color: 'var(--ms-text-muted)' }}>Cart empty. Add items above.</p>
         ) : (
           <div className="space-y-3 mb-4">
-            {cart.map(line => (
+            {cart.map(line => {
+              const price = priceWithDiscount(line.unit_price_cents, line.discount)
+              return (
               <div key={line.id} className="border-b py-2" style={{ borderColor: 'var(--ms-border)' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>{line.description}</p>
                     <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-                      ${(line.unit_price_cents / 100).toFixed(2)} × {line.quantity}
+                      {price.discountCents > 0 && <span className="line-through mr-1">${(line.unit_price_cents / 100).toFixed(2)}</span>}
+                      ${(price.unitPriceCents / 100).toFixed(2)} × {line.quantity}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold tabular-nums" style={{ color: 'var(--ms-text)' }}>
-                    ${((line.unit_price_cents * line.quantity) / 100).toFixed(2)}
+                    ${((price.unitPriceCents * line.quantity) / 100).toFixed(2)}
                   </p>
                 </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Select aria-label={`Discount type for ${line.description}`} value={line.discount.type} onChange={e => setCart(cart.map(l => l.id === line.id ? { ...l, discount: { type: e.target.value as PosDiscountType, value: '' } } : l))}>
+                    <option value="none">No discount</option><option value="percent">Percentage (%)</option><option value="amount">Dollars ($) per item</option>
+                  </Select>
+                  {line.discount.type !== 'none' && <Input type="number" min="0" max={line.discount.type === 'percent' ? 100 : line.unit_price_cents / 100} step="0.01" inputMode="decimal" aria-label={`Discount value for ${line.description}`} placeholder={line.discount.type === 'percent' ? 'Discount %' : 'Discount $ per item'} value={line.discount.value} onChange={e => setCart(cart.map(l => l.id === line.id ? { ...l, discount: { ...l.discount, value: e.target.value } } : l))} />}
+                </div>
+                {price.error && <p role="alert" className="mt-2 text-xs" style={{ color: 'var(--ms-error)' }}>{price.error}</p>}
+                {price.discountCents > 0 && <p className="mt-2 text-xs" style={{ color: 'var(--ms-text-muted)' }}>{price.label} · Save ${((price.discountCents * line.quantity) / 100).toFixed(2)}</p>}
                 <div className="mt-2 flex items-center justify-between gap-2">
                   {/* Quantity controls grouped on the left; remove is pushed to
                       the far edge so a mis-tap does not delete the line. */}
@@ -476,7 +509,7 @@ export function POSView({
                   </button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
         <div className="border-t pt-4" style={{ borderColor: 'var(--ms-border)' }}>
@@ -496,6 +529,7 @@ export function POSView({
               </label>
             </div>
           )}
+          {discountCents > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Item discounts</span><span style={{ color: 'var(--ms-text)' }}>−${(discountCents / 100).toFixed(2)}</span></div>}
           <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--ms-text)' }}>${(subtotal / 100).toFixed(2)}</span></div>
           {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>GST</span><span style={{ color: 'var(--ms-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
           <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
@@ -506,7 +540,7 @@ export function POSView({
         <Button
           className="mt-4 hidden w-full md:inline-flex"
           onClick={() => completeMut.mutate()}
-          disabled={completeMut.isPending || cart.length === 0}
+          disabled={completeMut.isPending || cart.length === 0 || hasInvalidDiscount}
         >
           {submitIcon}
           {completeMut.isPending ? 'Processing…' : submitLabel}
@@ -542,7 +576,7 @@ export function POSView({
           <Button
             className="shrink-0"
             onClick={() => completeMut.mutate()}
-            disabled={completeMut.isPending || cart.length === 0}
+            disabled={completeMut.isPending || cart.length === 0 || hasInvalidDiscount}
           >
             {submitIcon}
             {completeMut.isPending ? 'Processing…' : submitLabel}
@@ -554,8 +588,7 @@ export function POSView({
         open={showPricingSelector}
         onClose={() => setShowPricingSelector(false)}
         onConfirm={(selection: MobileServicesPricingSelection) => {
-          addToCart(selection.label || 'Vehicle key pricing', Math.round(selection.quoted_price * 100))
-          setShowPricingSelector(false)
+          if (addToCart(selection.label || 'Vehicle key pricing', Math.round(selection.quoted_price * 100))) setShowPricingSelector(false)
         }}
       />
     </div>
