@@ -11,6 +11,7 @@ import hashlib
 import mimetypes
 import re
 import tempfile
+import time
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -48,27 +49,29 @@ def save_asset(bucket, name: str, content: bytes) -> None:
         raise ValueError("Not an immutable frontend asset")
     if len(content) > 10 * 1024 * 1024:
         raise ValueError("Frontend asset exceeds size limit")
-    try:
-        bucket.upload(PREFIX + name, content, file_options={
-            "content-type": "application/octet-stream", "upsert": "false",
-        })
-    except Exception as upload_error:
-        # A hash is immutable: an existing name must have identical content.
-        # Never overwrite a different build accidentally.
+    # Check first: most bundles are unchanged between builds. Avoid duplicate
+    # uploads and tolerate brief Storage/proxy failures without publishing an
+    # incomplete archive. Names are never overwritten.
+    last_error = None
+    for attempt in range(4):
         try:
             existing = bucket.download(PREFIX + name)
         except Exception:
-            # Preserve the upload failure; a subsequent missing-key response
-            # must not hide the reason the pre-deploy archive failed.
-            cause = upload_error
-            while cause is not None:
-                response = getattr(cause, "response", None)
-                if response is not None:
-                    raise RuntimeError(f"Frontend archive upload failed: HTTP {response.status_code}: {response.text[:300]}") from upload_error
-                cause = cause.__context__
-            raise upload_error
-        if existing != content:
-            raise ValueError("Existing immutable frontend asset differs") from upload_error
+            pass
+        else:
+            if existing != content:
+                raise RuntimeError("Existing immutable frontend asset differs")
+            return
+        try:
+            bucket.upload(PREFIX + name, content, file_options={
+                "content-type": "application/octet-stream", "upsert": "false",
+            })
+            return
+        except Exception as exc:
+            last_error = exc
+        if attempt < 3:
+            time.sleep(0.5 * (2 ** attempt))
+    raise RuntimeError(f"Frontend archive upload failed for {name}") from last_error
 
 
 def cached_asset(name: str) -> Path | None:
