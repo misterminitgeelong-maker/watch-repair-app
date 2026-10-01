@@ -38,6 +38,20 @@ def test_archive_recovers_from_temporary_storage_failure(monkeypatch):
     assert bucket.download(assets.PREFIX + "Page-abcdefgh.js") == b"export default 1"
 
 
+def test_private_archive_uses_authenticated_download_endpoint():
+    bucket = assets.ArchiveBucket(Bucket(), "https://storage.example", "test-key", "attachments")
+    requests = []
+    def respond(request):
+        requests.append(request)
+        return httpx.Response(200, content=b"export default 1")
+    bucket.reader.close()
+    with httpx.Client(transport=httpx.MockTransport(respond), headers={"Authorization": "Bearer test-key"}) as reader:
+        bucket.reader = reader
+        assert bucket.download(assets.PREFIX + "Page-abcdefgh.js") == b"export default 1"
+    assert requests[0].url.path == "/storage/v1/object/authenticated/attachments/_frontend-builds/v1/Page-abcdefgh.js"
+    assert requests[0].headers["authorization"] == "Bearer test-key"
+
+
 @pytest.fixture
 def retained(tmp_path, monkeypatch):
     bucket = Bucket()
