@@ -8,12 +8,16 @@ import { APP_BUILD_ID, stampBuildMetaTag } from '@/lib/buildInfo'
 import { installDomMutationGuard } from '@/lib/domMutationGuard'
 import { isNativeApp } from '@/lib/native'
 import { registerForPush } from '@/lib/pushNotifications'
+import { installNativeCameraBridge } from '@/lib/nativeCamera'
+import { installNativeUi } from '@/lib/nativeUi'
 
 installDomMutationGuard()
 applyTheme(readStoredTheme())
 stampBuildMetaTag()
 if (isNativeApp) {
   document.documentElement.classList.add('native-app')
+  installNativeCameraBridge()
+  installNativeUi()
   registerForPush().catch((e) => console.warn('Push setup failed', e))
 }
 

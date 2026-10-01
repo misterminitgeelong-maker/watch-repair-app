@@ -38,6 +38,22 @@ PUSH_EVENT_TYPES = frozenset({
 })
 
 _QUEUE_KEY = "push_queue"
+
+
+def push_path(event_type: str, entity_type: str | None, entity_id: UUID | None) -> str:
+    """App route a tapped notification should open (mirrors the links on the inbox page)."""
+    if entity_id is not None:
+        tab = "?tab=messages" if event_type == "customer_sms_reply" else ""
+        if entity_type == "repair_job":
+            return f"/jobs/{entity_id}{tab}"
+        if entity_type == "shoe_repair_job":
+            return f"/shoe-repairs/{entity_id}{tab}"
+        if entity_type == "auto_key_job":
+            return f"/auto-key/{entity_id}{tab}"
+    if event_type == "invoice_paid":
+        return "/invoices"
+    return "/inbox"
+
 _SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
 _access: dict[str, float | str] = {"token": "", "expires_at": 0.0}
 _access_lock = threading.Lock()
@@ -85,7 +101,7 @@ def _access_token(info: dict) -> str:
         return str(_access["token"])
 
 
-def send_to_tokens(tokens: list[str], title: str, body: str) -> list[str]:
+def send_to_tokens(tokens: list[str], title: str, body: str, path: str | None = None) -> list[str]:
     """Send one notification to each token; returns tokens FCM says are no longer valid."""
     info = _service_account()
     if not info or not tokens:
@@ -94,7 +110,10 @@ def send_to_tokens(tokens: list[str], title: str, body: str) -> list[str]:
     headers = {"Authorization": f"Bearer {_access_token(info)}"}
     dead: list[str] = []
     for token in tokens:
-        payload = {"message": {"token": token, "notification": {"title": title, "body": body}}}
+        message: dict = {"token": token, "notification": {"title": title, "body": body}}
+        if path:
+            message["data"] = {"path": path}
+        payload = {"message": message}
         try:
             res = httpx.post(url, json=payload, headers=headers, timeout=10)
         except httpx.HTTPError:
@@ -107,7 +126,7 @@ def send_to_tokens(tokens: list[str], title: str, body: str) -> list[str]:
     return dead
 
 
-def notify_tenant(tenant_id: UUID, title: str, body: str) -> None:
+def notify_tenant(tenant_id: UUID, title: str, body: str, path: str | None = None) -> None:
     """Push to every registered device in a shop, pruning tokens FCM reports as dead."""
     if not fcm_enabled():
         return
@@ -115,18 +134,18 @@ def notify_tenant(tenant_id: UUID, title: str, body: str) -> None:
         tokens = list(db.exec(select(DeviceToken.token).where(DeviceToken.tenant_id == tenant_id)).all())
         if not tokens:
             return
-        dead = send_to_tokens(tokens, title, body)
+        dead = send_to_tokens(tokens, title, body, path)
         if dead:
             for row in db.exec(select(DeviceToken).where(DeviceToken.token.in_(dead))).all():
                 db.delete(row)
             db.commit()
 
 
-def _dispatch(items: list[tuple[UUID, str, str]]) -> None:
+def _dispatch(items: list[tuple[UUID, str, str, str]]) -> None:
     def run() -> None:
-        for tenant_id, title, body in items:
+        for tenant_id, title, body, path in items:
             try:
-                notify_tenant(tenant_id, title, body)
+                notify_tenant(tenant_id, title, body, path)
             except Exception:
                 logger.exception("Push notification failed")
 
@@ -149,7 +168,8 @@ def install_push_hooks() -> None:
             return
         session = object_session(target)
         if session is not None:
-            session.info.setdefault(_QUEUE_KEY, []).append((target.tenant_id, "Mainspring", target.event_summary))
+            path = push_path(target.event_type, target.entity_type, target.entity_id)
+            session.info.setdefault(_QUEUE_KEY, []).append((target.tenant_id, "Mainspring", target.event_summary, path))
 
     @event.listens_for(OrmSession, "after_commit")
     def _send(session):

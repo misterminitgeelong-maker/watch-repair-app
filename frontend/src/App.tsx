@@ -190,7 +190,7 @@ export default function App() {
               <Routes>
             {/* Public — no auth required */}
             <Route path="/" element={isNativeApp ? <Navigate to="/login" replace /> : <LandingPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/pricing" element={isNativeApp ? <Navigate to="/login" replace /> : <PricingPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/delete-account" element={<AccountDeletionPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
@@ -209,8 +209,8 @@ export default function App() {
             <Route path="/hq-invite/:token" element={<HqOwnerInvitePage />} />
             <Route path="/intake" element={<PublicIntakePage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/signup/checkout" element={<SignupCheckoutPage />} />
+            <Route path="/signup" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupPage />} />
+            <Route path="/signup/checkout" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupCheckoutPage />} />
             {/* Protected app shell */}
             <Route element={<AppShell />}>
               <Route path="dashboard" element={<DashboardRoute />} />

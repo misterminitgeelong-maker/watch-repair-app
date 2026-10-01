@@ -35,6 +35,13 @@ export async function registerForPush(): Promise<void> {
     deviceToken = t.value
     void syncDeviceToken()
   })
+  // Tapping a notification opens the job, quote or invoice it is about.
+  await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+    const path = action.notification.data?.path
+    if (typeof path !== 'string' || !path.startsWith('/')) return
+    window.history.pushState({}, '', path)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
   await PushNotifications.addListener('registrationError', (e) => console.warn('Push registration failed', e))
   window.addEventListener(AUTH_ACCESS_TOKEN_UPDATED, () => void syncDeviceToken())
   window.addEventListener(AUTH_TOKENS_STORED, () => {

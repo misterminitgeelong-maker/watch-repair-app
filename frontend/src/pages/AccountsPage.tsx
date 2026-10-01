@@ -1,3 +1,4 @@
+import { isNativeApp } from '@/lib/native'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, Trash2 } from 'lucide-react'
@@ -360,7 +361,7 @@ export default function AccountsPage() {
       )}
 
 
-      {planCode !== 'minit_hq' && (
+      {planCode !== 'minit_hq' && !isNativeApp && (
       <Card className="mb-5 p-4 sm:p-5">
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
           Pricing and plan access
@@ -1217,7 +1218,7 @@ function BillingCard() {
         <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
           Plan usage — {plan_code}
         </p>
-        {stripe_configured && stripe_subscription_id && (
+        {stripe_configured && stripe_subscription_id && !isNativeApp && (
           <button
             onClick={openPortal}
             disabled={portalLoading}

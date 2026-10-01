@@ -1,3 +1,4 @@
+import { isNativeApp } from '@/lib/native'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Navigate, Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -270,12 +271,14 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p style={{ fontSize: 13, textAlign: 'center', marginTop: 20, color: MKT.textBody }}>
-            New here?{' '}
-            <Link to="/signup" style={{ color: MKT.vermilionDeep, fontWeight: 600 }}>
-              Create your shop account
-            </Link>
-          </p>
+          {!isNativeApp && (
+            <p style={{ fontSize: 13, textAlign: 'center', marginTop: 20, color: MKT.textBody }}>
+              New here?{' '}
+              <Link to="/signup" style={{ color: MKT.vermilionDeep, fontWeight: 600 }}>
+                Create your shop account
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>

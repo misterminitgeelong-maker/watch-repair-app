@@ -34,14 +34,15 @@ def test_inbox_alert_pushes_after_commit(client, auth_headers, bootstrap_and_log
     sent: list[tuple] = []
     monkeypatch.setattr(push, "fcm_enabled", lambda: True)
     monkeypatch.setattr(push, "_service_account", lambda: {"project_id": "p", "client_email": "e", "private_key": "k"})
-    monkeypatch.setattr(push, "send_to_tokens", lambda tokens, title, body: sent.append((tuple(tokens), title, body)) or [])
+    monkeypatch.setattr(push, "send_to_tokens", lambda tokens, title, body, path=None: sent.append((tuple(tokens), title, body, path)) or [])
     monkeypatch.setattr(push, "_dispatch", lambda items: [push.notify_tenant(*i) for i in items])
 
+    job_id = uuid4()
     with Session(engine) as db:
-        db.add(TenantEventLog(tenant_id=tenant_id, entity_type="quote", entity_id=uuid4(), event_type="quote_approved", event_summary="Quote approved"))
+        db.add(TenantEventLog(tenant_id=tenant_id, entity_type="repair_job", entity_id=job_id, event_type="quote_approved", event_summary="Quote approved"))
         db.add(TenantEventLog(tenant_id=tenant_id, entity_type="session", event_type="login", event_summary="Signed in"))
         db.commit()
-    assert sent == [((TOKEN,), "Mainspring", "Quote approved")]
+    assert sent == [((TOKEN,), "Mainspring", "Quote approved", f"/jobs/{job_id}")]
 
     sent.clear()
     with Session(engine) as db:
@@ -55,7 +56,16 @@ def test_dead_tokens_are_pruned(client, auth_headers, bootstrap_and_login, monke
     with Session(engine) as db:
         tenant_id = db.exec(select(DeviceToken).where(DeviceToken.token == TOKEN)).one().tenant_id
     monkeypatch.setattr(push, "fcm_enabled", lambda: True)
-    monkeypatch.setattr(push, "send_to_tokens", lambda tokens, title, body: list(tokens))
+    monkeypatch.setattr(push, "send_to_tokens", lambda tokens, title, body, path=None: list(tokens))
     push.notify_tenant(tenant_id, "Mainspring", "x")
     with Session(engine) as db:
         assert db.exec(select(DeviceToken).where(DeviceToken.token == TOKEN)).first() is None
+
+
+def test_push_path_matches_inbox_links():
+    job = uuid4()
+    assert push.push_path("quote_approved", "repair_job", job) == f"/jobs/{job}"
+    assert push.push_path("customer_sms_reply", "shoe_repair_job", job) == f"/shoe-repairs/{job}?tab=messages"
+    assert push.push_path("portal_customer_message", "auto_key_job", job) == f"/auto-key/{job}"
+    assert push.push_path("invoice_paid", "invoice", job) == "/invoices"
+    assert push.push_path("inbound_email_received", None, None) == "/inbox"

@@ -1,3 +1,4 @@
+import { isNativeApp } from '@/lib/native'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { createBillingCheckoutForPlan, type PlanCode } from '@/lib/api'
@@ -56,8 +57,9 @@ export default function SubscriptionRequiredPage() {
         Complete subscription to continue
       </h1>
       <p className="mt-3 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
-        Your workspace was created, but payment was not completed. Finish checkout with Stripe to access the app. If you
-        closed the payment page by mistake, you can open it again below.
+        {isNativeApp
+          ? 'This shop’s subscription needs attention before you can continue. The shop owner can sort it out from their account on mainspring.au.'
+          : 'Your workspace was created, but payment was not completed. Finish checkout with Stripe to access the app. If you closed the payment page by mistake, you can open it again below.'}
       </p>
 
       {error && (
@@ -67,11 +69,13 @@ export default function SubscriptionRequiredPage() {
       )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button onClick={() => void continueToCheckout()} disabled={loading} className="sm:flex-1">
-          {loading ? 'Opening…' : 'Continue to secure payment'}
-        </Button>
+        {!isNativeApp && (
+          <Button onClick={() => void continueToCheckout()} disabled={loading} className="sm:flex-1">
+            {loading ? 'Opening…' : 'Continue to secure payment'}
+          </Button>
+        )}
         <Button variant="secondary" type="button" onClick={() => void refreshSession()} disabled={loading}>
-          I already paid — refresh
+          {isNativeApp ? 'Check again' : 'I already paid — refresh'}
         </Button>
       </div>
 

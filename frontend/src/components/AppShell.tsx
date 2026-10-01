@@ -1,3 +1,4 @@
+import { isNativeApp } from '@/lib/native'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -78,13 +79,15 @@ function SubscriptionBanner({
           </span>{' '}
           Add a payment method to keep access after the trial ends.
         </span>
-        <button
-          onClick={onManage}
-          className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
-          style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-sidebar-act-text)' }}
-        >
-          Add card
-        </button>
+        {!isNativeApp && (
+          <button
+            onClick={onManage}
+            className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+            style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-sidebar-act-text)' }}
+          >
+            Add card
+          </button>
+        )}
       </div>
     )
   }
@@ -99,13 +102,15 @@ function SubscriptionBanner({
           <span className="font-semibold" style={{ color: '#f87171' }}>Payment failed.</span>{' '}
           Update your billing details to avoid losing access.
         </span>
-        <button
-          onClick={onManage}
-          className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
-          style={{ backgroundColor: '#ef4444', color: '#fff' }}
-        >
-          Fix billing
-        </button>
+        {!isNativeApp && (
+          <button
+            onClick={onManage}
+            className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+            style={{ backgroundColor: '#ef4444', color: '#fff' }}
+          >
+            Fix billing
+          </button>
+        )}
       </div>
     )
   }
@@ -1093,7 +1098,13 @@ export default function AppShell() {
               </div>
             </div>
           )}>
-            <Outlet />
+            {isNativeApp ? (
+              <div key={location.pathname} className="native-page">
+                <Outlet />
+              </div>
+            ) : (
+              <Outlet />
+            )}
           </Suspense>
           </ErrorBoundary>
         </main>
