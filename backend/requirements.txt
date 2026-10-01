@@ -3,8 +3,9 @@ uvicorn[standard]==0.30.6
 sqlmodel==0.0.37
 alembic==1.13.2
 # PyJWT replaces python-jose, whose ecdsa dependency has an unfixed advisory
-# (Minerva timing attack). Tokens are HS256, so no crypto extra is needed.
-PyJWT>=2.10,<3
+# (Minerva timing attack). Access tokens are HS256; the crypto extra is for signing
+# the RS256 Firebase service-account assertion used by phone push notifications.
+PyJWT[crypto]>=2.10,<3
 bcrypt>=4.0.0
 pydantic-settings==2.5.2
 psycopg[binary]>=3.3,<3.4

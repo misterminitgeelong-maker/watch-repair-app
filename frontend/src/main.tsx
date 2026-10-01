@@ -14,8 +14,7 @@ applyTheme(readStoredTheme())
 stampBuildMetaTag()
 if (isNativeApp) {
   document.documentElement.classList.add('native-app')
-  // Token is only logged until the backend can store device tokens.
-  registerForPush((token) => console.info('Push token', token)).catch((e) => console.warn('Push setup failed', e))
+  registerForPush().catch((e) => console.warn('Push setup failed', e))
 }
 
 if ('serviceWorker' in navigator && import.meta.env.PROD && !isNativeApp) {

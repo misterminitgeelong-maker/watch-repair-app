@@ -232,6 +232,7 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
     expected = {
         "auth",                  # resolves a user before a tenant is known
         "billing",               # Stripe webhooks carry a tenant id, not a token
+        "devices",               # a phone's push token can move between shops when someone signs in to a different one
         "hq_account_support",     # HQ admin helps accounts on sites linked to its own network (checked per request)
         "hq_owner_invites",       # platform admin invites owners into an HQ tenant; public acceptance resolves the invitation token
         "inbound_email",         # routes mail to whichever shop in the network owns it

@@ -448,6 +448,16 @@ class TenantEventLog(SQLModel, table=True):
     event_summary: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class DeviceToken(SQLModel, table=True):
+    """A phone-app push (FCM) registration token for one signed-in user."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    user_id: UUID = Field(index=True, foreign_key="user.id", ondelete="CASCADE")
+    token: str = Field(max_length=512, unique=True, index=True)
+    platform: str = Field(default="android", max_length=20)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_seen_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class CardPaymentIssue(SQLModel, table=True):
     """A customer's card was charged but the payment couldn't be applied.
 

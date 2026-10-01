@@ -26,6 +26,8 @@ from .limiter import limiter
 from .routes.auth import router as auth_router
 from .routes.card_payment_issues import router as card_payment_issues_router
 from .routes.me import router as me_router
+from .routes.devices import router as devices_router
+from .push import install_push_hooks
 from .routes.customers import router as customer_router
 from .routes.repair_jobs import router as repair_job_router
 from .routes.quotes import router as quote_router
@@ -532,6 +534,8 @@ def seed_status():
 
 app.include_router(auth_router)
 app.include_router(me_router)
+app.include_router(devices_router)
+install_push_hooks()
 app.include_router(customer_router)
 app.include_router(repair_job_router)
 app.include_router(quote_router)
