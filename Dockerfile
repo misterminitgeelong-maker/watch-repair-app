@@ -69,4 +69,4 @@ ENV FORWARDED_ALLOW_IPS="*"
 # instead of producing an unbootable service. Elsewhere run
 # `alembic upgrade head` before starting the container; the app refuses to
 # boot against a database with no alembic_version table.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-graceful-shutdown 120 --proxy-headers --forwarded-allow-ips \"${FORWARDED_ALLOW_IPS}\""]

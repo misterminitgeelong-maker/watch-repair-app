@@ -6,6 +6,7 @@ import {
   AUTH_ACCESS_TOKEN_UPDATED,
   clearStoredTokens,
   getAuthSession,
+  isInvalidSessionError,
   getStoredAccessToken,
   getStoredRefreshToken,
   refreshAuth,
@@ -61,6 +62,8 @@ interface AuthCtx {
   scheduleCalendarTimezone: string
   /** True after /auth/session succeeds for the current token (tenant, plan, features loaded). */
   sessionReady: boolean
+  /** Transient failure loading the workspace; credentials are retained while retrying. */
+  sessionRecovering: boolean
   /** True once enabledFeatures reflects real data (snapshot or completed session fetch). Gates must not redirect before this. */
   featuresKnown: boolean
   /** Canonical auth lifecycle state. Prefer this over the individual booleans in new code. */
@@ -175,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   })
   const [role, setRole] = useState<string | null>(() => parseRoleFromToken(getStoredAccessToken()))
+  const validatedSubject = useRef<string | null>(null)
   const proactiveRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [tenantSlug, setTenantSlug] = useState<string | null>(initialAuth.tenantSlug)
@@ -198,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!getStoredAccessToken()) return true
     return hasOptimisticSessionHint()
   })
+  const [sessionRecovering, setSessionRecovering] = useState(false)
   const [platformConsole, setPlatformConsole] = useState(false)
   const [minitHqUi, setMinitHqUi] = useState<boolean | null>(() => {
     const snap = readSessionSnapshot()
@@ -225,6 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token, featuresKnown])
 
   const resetAuthState = useCallback(() => {
+    setSessionRecovering(false)
+    validatedSubject.current = null
     setToken(null)
     setRole(null)
     setTenantId(null)
@@ -256,15 +263,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!rt) return
       refreshAuth(rt)
         .then((res) => {
-          setStoredTokens(res.data.access_token, res.data.refresh_token ?? null)
           setToken(res.data.access_token)
           setRole(parseRoleFromToken(res.data.access_token))
           const next = res.data.expires_in_seconds ?? 480 * 60
           scheduleProactiveRefresh(next)
         })
-        .catch(() => {
-          clearStoredTokens()
-          window.dispatchEvent(new Event('auth:token-cleared'))
+        .catch((error: unknown) => {
+          if (!isInvalidSessionError(error) && !axios.isCancel(error) && getStoredAccessToken()) {
+            // Temporary outages do not revoke a persistent login. Retry later.
+            scheduleProactiveRefresh(60)
+          }
         })
     }, ms)
   }, [])
@@ -277,6 +285,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     const { data } = await getAuthSession()
+    const current = getStoredAccessToken()
+    if (!current || decodeJwtPayload(current)?.sub !== decodeJwtPayload(stored)?.sub) return
+    setSessionRecovering(false)
+    validatedSubject.current = String(decodeJwtPayload(current)?.sub ?? current)
     const sessionProduct: TenantProduct =
       data.product === 'minit' || data.product === 'mainspring'
         ? data.product
@@ -317,6 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(nextToken)
       setRole(parseRoleFromToken(nextToken))
       if (!nextToken) {
+        if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
         resetAuthState()
       }
     }
@@ -339,6 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('storage', syncTokenFromStorage)
       window.removeEventListener('auth:token-cleared', syncTokenFromStorage)
       window.removeEventListener(AUTH_ACCESS_TOKEN_UPDATED, onAccessTokenUpdated)
+      if (proactiveRefreshTimer.current) clearTimeout(proactiveRefreshTimer.current)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- scheduleProactiveRefresh uses refs
 
@@ -347,7 +361,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let canceled = false
       let timedOut = false
 
-      const optimistic = hasOptimisticSessionHint()
+      const subject = String(decodeJwtPayload(token)?.sub ?? token)
+      const optimistic = hasOptimisticSessionHint() || validatedSubject.current === subject
+      scheduleProactiveRefresh(secondsUntilJwtExpiry(token) || 480 * 60)
+      let retryId: ReturnType<typeof setTimeout> | undefined
+      let failures = 0
       if (!optimistic) {
         setSessionReady(false)
       } else {
@@ -363,6 +381,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // featuresKnown must unblock too, or every FeatureGate-wrapped route
         // (e.g. the post-login /parent-account landing page) spins forever.
         if (!canceled) {
+          setSessionRecovering(true)
           setSessionReady(true)
           setFeaturesKnown(true)
         }
@@ -380,11 +399,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // should not wipe the token; just unblock the UI so the user can
             // continue. The existing 401 interceptor in api.ts will handle
             // token expiry on the next real request.
-            if (axios.isAxiosError(err) && err.response?.status === 401) {
+            if (isInvalidSessionError(err)) {
               loggedOut = true
               clearStoredTokens()
               resetAuthState()
             }
+          }
+          if (!canceled && !isInvalidSessionError(err) && !axios.isCancel(err)) {
+            setSessionRecovering(true)
+            failures += 1
+            retryId = setTimeout(() => { void loadSession() }, Math.min(30_000, 1000 * 2 ** Math.min(failures, 5)))
           }
         } finally {
           clearTimeout(timeoutId)
@@ -399,9 +423,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      loadSession()
+      const retryNow = () => {
+        if (retryId) { clearTimeout(retryId); retryId = undefined; void loadSession() }
+      }
+      window.addEventListener('online', retryNow)
+      window.addEventListener('focus', retryNow)
+      void loadSession()
       return () => {
         canceled = true
+        clearTimeout(retryId)
+        window.removeEventListener('online', retryNow)
+        window.removeEventListener('focus', retryNow)
         clearTimeout(timeoutId)
       }
     }
@@ -456,7 +488,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeoutId)
     }
     // refreshSession / resetAuthState are stable useCallbacks, so this still only re-runs on token changes.
-  }, [token, refreshSession, resetAuthState])
+  }, [token, refreshSession, resetAuthState, scheduleProactiveRefresh])
 
   const login = useCallback(
     (accessToken: string, refreshToken?: string | null, expiresInSeconds?: number) => {
@@ -532,6 +564,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       shopCalendarTodayYmd,
       scheduleCalendarTimezone,
       sessionReady,
+      sessionRecovering,
       featuresKnown,
       authStatus,
       minitHqUi,
@@ -561,6 +594,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       shopCalendarTodayYmd,
       scheduleCalendarTimezone,
       sessionReady,
+      sessionRecovering,
       featuresKnown,
       authStatus,
       minitHqUi,

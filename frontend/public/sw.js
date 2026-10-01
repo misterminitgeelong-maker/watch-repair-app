@@ -3,7 +3,9 @@
  * Static assets: cache-first. API /v1/*: network-first (no JSON cache). Navigation: network, then shell, then offline page.
  */
 // Bump when shell assets (index, offline, icons, manifest) change so deploys replace old caches.
-const CACHE_VERSION = 'mainspring-app-v11-pwa-install'
+const CACHE_VERSION = 'mainspring-app-v12-deploy-continuity'
+// Hashed files are immutable and must outlive individual shell versions.
+const ASSET_CACHE = 'mainspring-assets-v1'
 const STATIC_CACHE = `mainspring-static-${CACHE_VERSION}`
 
 const PRECACHE_URLS = [
@@ -36,9 +38,19 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => k.startsWith('mainspring-') && k !== STATIC_CACHE).map((k) => caches.delete(k)))
-      )
+      .then(async (keys) => {
+        const assets = await caches.open(ASSET_CACHE)
+        for (const key of keys.filter(k => k.startsWith('mainspring-static-'))) {
+          const old = await caches.open(key)
+          for (const request of await old.keys()) {
+            if (new URL(request.url).pathname.startsWith('/assets/')) {
+              const response = await old.match(request)
+              if (response) await assets.put(request, response)
+            }
+          }
+        }
+        return Promise.all(keys.filter((k) => k.startsWith('mainspring-') && k !== STATIC_CACHE && k !== ASSET_CACHE).map((k) => caches.delete(k)))
+      })
       .then(() => self.clients.claim())
   )
 })
@@ -103,26 +115,21 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Hashed Vite bundles: network-first so deploys replace stale JS without waiting for SW version bump.
+  // Immutable hashed bundles survive a deploy. Never replace a cached hash
+  // with a 404 from a server that only knows the new build.
   if (url.pathname.startsWith('/assets/')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone()
-            caches.open(STATIC_CACHE).then((cache) => cache.put(event.request, copy))
-          }
-          return res
-        })
-        // respondWith rejects on undefined, so always resolve to a Response.
-        .catch(async () => {
-          const cached = await caches.match(event.request)
-          return (
-            cached ||
-            new Response('', { status: 504, statusText: 'Offline', headers: { 'Content-Type': 'text/plain' } })
-          )
-        })
-    )
+    event.respondWith((async () => {
+      const cache = await caches.open(ASSET_CACHE)
+      const cached = await cache.match(event.request)
+      if (cached) return cached
+      try {
+        const response = await fetch(event.request)
+        if (response.ok) await cache.put(event.request, response.clone())
+        return response
+      } catch {
+        return new Response('', { status: 503, statusText: 'Temporarily unavailable' })
+      }
+    })())
     return
   }
 

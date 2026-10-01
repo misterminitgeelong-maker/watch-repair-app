@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useNavigate } from 'react-router-dom'
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, delay } from 'msw'
 import api, { getStoredAccessToken, setStoredTokens, type AuthSession } from '@/lib/api'
 import { testServer } from '@/test/msw/server'
 import { AuthProvider, useAuth } from './AuthContext'
@@ -30,10 +30,11 @@ function sessionResponse(): AuthSession {
 }
 
 function Consumer() {
-  const { token, role, authStatus, login, logout } = useAuth()
+  const { token, role, authStatus, tenantId, login, logout } = useAuth()
   return (
     <div>
       <div data-testid="token">{token ?? 'none'}</div>
+      <div data-testid="tenant">{tenantId ?? 'none'}</div>
       <div data-testid="role">{role ?? 'none'}</div>
       <div data-testid="auth-status">{authStatus}</div>
       <button onClick={() => login(TEST_JWT, 'refresh-1', 3600)}>do-login</button>
@@ -66,7 +67,7 @@ describe('AuthContext', () => {
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
-    testServer.use(http.get('*/v1/auth/session', () => HttpResponse.json(sessionResponse())))
+    testServer.use(http.get('*/v1/auth/session', () => HttpResponse.json(sessionResponse())), http.post('*/v1/auth/logout', () => HttpResponse.json({ ok: true })))
   })
 
   afterEach(() => {
@@ -138,6 +139,33 @@ describe('AuthContext', () => {
     await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
     // Token must not be wiped on a non-401 failure - only a genuine 401 logs out.
     expect(getStoredAccessToken()).toBe(TEST_JWT)
+  })
+
+  it('automatically reloads session identity after a transient deployment outage', async () => {
+    let healthy = false
+    testServer.use(http.get('*/v1/auth/session', () => healthy
+      ? HttpResponse.json(sessionResponse()) : new HttpResponse(null, { status: 503 })))
+    setStoredTokens(TEST_JWT, 'refresh-1')
+    renderAuth()
+    await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
+    expect(screen.getByTestId('tenant').textContent).toBe('none')
+    healthy = true
+    window.dispatchEvent(new Event('online'))
+    await waitFor(() => expect(screen.getByTestId('tenant').textContent).toBe('t1'))
+    expect(getStoredAccessToken()).toBe(TEST_JWT)
+  })
+
+  it('does not restore identity from a session response arriving after logout', async () => {
+    testServer.use(http.get('*/v1/auth/session', async () => {
+      await delay(150)
+      return HttpResponse.json(sessionResponse())
+    }))
+    setStoredTokens(TEST_JWT, 'refresh-1')
+    renderAuth()
+    await userEvent.click(screen.getByText('do-logout'))
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(screen.getByTestId('tenant').textContent).toBe('none')
+    expect(screen.getByTestId('token').textContent).toBe('none')
   })
 
   it('keeps the same context value across a navigation once the session is settled', async () => {

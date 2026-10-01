@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from .frontend_assets import RetainedFrontendAssets
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
@@ -589,7 +589,7 @@ app.include_router(shop_settings_router)
 _static = Path(settings.static_dir) if settings.static_dir else None
 if _static and _static.is_dir():
     # Serve JS/CSS/assets at /assets
-    app.mount("/assets", StaticFiles(directory=str(_static / "assets")), name="frontend-assets")
+    app.mount("/assets", RetainedFrontendAssets(directory=str(_static / "assets")), name="frontend-assets")
 
     # Universal Links / App Links verification (Step 7) — must be application/json
     @app.get("/.well-known/assetlinks.json", include_in_schema=False)

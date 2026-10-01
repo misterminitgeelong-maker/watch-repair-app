@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 import { enqueueOffline } from '@/lib/offlineQueue'
 
 /**
@@ -61,6 +61,7 @@ export function refreshCookieHeaders(): Record<string, string> {
 
 // Attach JWT on every request
 api.interceptors.request.use((config) => {
+  Object.assign(config, { _authSessionEpoch: authSessionEpoch })
   const token = getStoredAccessToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   for (const [k, v] of Object.entries(refreshCookieHeaders())) config.headers[k] = v
@@ -98,6 +99,7 @@ const PUBLIC_PATH_PREFIXES = [
   '/mobile-quote',
   '/mobile-job-intake',
   '/shop-invite',
+  '/hq-invite',
   '/intake',
 ]
 
@@ -108,40 +110,35 @@ function isPublicPath(pathname: string): boolean {
   )
 }
 
-// On 401: try refresh once, retry request; otherwise clear tokens
-let refreshPromise: Promise<string | null> | null = null
-function doRefresh(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise
+// Refresh uses plain axios: the refresh endpoint must never enter its own
+// 401 interceptor. Proactive and reactive callers share this same operation.
+let authRevision = 0
+let authSessionEpoch = 0
+let refreshing: { revision: number; promise: Promise<AxiosResponse<TokenResponse>> } | null = null
+
+export function isInvalidSessionError(error: unknown): boolean {
+  return axios.isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)
+}
+
+function expireSession(): void {
+  clearStoredTokens()
+  window.dispatchEvent(new Event('auth:token-cleared'))
+  try {
+    if (localStorage.getItem('mainspring_demo_mode_enabled') === '1' && !isPublicPath(window.location.pathname)) {
+      window.location.assign('/login?demo=1')
+    }
+  } catch { /* ignore storage restrictions */ }
+}
+
+async function doRefresh(): Promise<string | null> {
   const rt = getStoredRefreshToken()
   if (!rt) {
-    clearStoredTokens()
-    window.dispatchEvent(new Event('auth:token-cleared'))
-    return Promise.resolve(null)
+    expireSession()
+    return null
   }
-  refreshPromise = refreshAuth(rt)
-    .then((res) => {
-      const access = res.data.access_token
-      const refresh = res.data.refresh_token ?? null
-      setStoredTokens(access, refresh)
-      emitAccessTokenUpdated(res.data.expires_in_seconds)
-      return access
-    })
-    .catch(() => {
-      clearStoredTokens()
-      window.dispatchEvent(new Event('auth:token-cleared'))
-      try {
-        if (localStorage.getItem('mainspring_demo_mode_enabled') === '1' && !isPublicPath(window.location.pathname)) {
-          window.location.assign('/login?demo=1')
-        }
-      } catch {
-        /* ignore */
-      }
-      return null
-    })
-    .finally(() => {
-      refreshPromise = null
-    })
-  return refreshPromise
+  // Let transient refresh errors reject with their actual status (503/network),
+  // rather than converting them to the original 401 and logging the user out.
+  return (await refreshAuth(rt)).data.access_token
 }
 
 api.interceptors.response.use(
@@ -149,17 +146,24 @@ api.interceptors.response.use(
   async (err) => {
     const status = err.response?.status
     const config = err.config
-    if (status === 401 && config && !config._retried) {
+    const authenticatedRequest = Boolean(config?.headers?.Authorization)
+    const credentialEndpoint = /\/auth\/(login|multi-site-login|refresh|logout)(?:[/?]|$)/.test(config?.url ?? '')
+    if (status === 401 && authenticatedRequest && config?._authSessionEpoch !== authSessionEpoch) {
+      return Promise.reject(new axios.CanceledError('Session changed while request was in flight'))
+    }
+    if (status === 401 && authenticatedRequest && !credentialEndpoint && config && !config._retried) {
       config._retried = true
-      const newToken = await doRefresh()
+      const current = getStoredAccessToken()
+      // Another request may already have refreshed while this 401 was in flight.
+      const newerToken = current && config.headers.Authorization !== `Bearer ${current}` ? current : null
+      const newToken = newerToken ?? await doRefresh()
       if (newToken) {
         config.headers.Authorization = `Bearer ${newToken}`
         return api.request(config)
       }
-    } else if (status === 401) {
-      clearStoredTokens()
-      window.dispatchEvent(new Event('auth:token-cleared'))
     }
+    // A retried endpoint's 401 is not proof the refresh session is invalid.
+    // Only the dedicated refresh endpoint can make that decision.
     if (!err.response && err.config && typeof navigator !== 'undefined' && !navigator.onLine) {
       const method = (err.config.method ?? 'get').toUpperCase()
       if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
@@ -238,6 +242,12 @@ export function getStoredRefreshToken(): string | null {
 }
 
 export function setStoredTokens(accessToken: string, refreshToken: string | null) {
+  authSessionEpoch += 1
+  writeStoredTokens(accessToken, refreshToken)
+}
+
+function writeStoredTokens(accessToken: string, refreshToken: string | null) {
+  authRevision += 1
   const storage = getTokenStorage()
   storage.setItem('token', accessToken)
   if (refreshToken != null) storage.setItem(REFRESH_TOKEN_KEY, refreshToken)
@@ -252,6 +262,8 @@ export function setStoredTokens(accessToken: string, refreshToken: string | null
 }
 
 export function clearStoredTokens() {
+  authSessionEpoch += 1
+  authRevision += 1
   localStorage.removeItem('token')
   localStorage.removeItem(REFRESH_TOKEN_KEY)
   sessionStorage.removeItem('token')
@@ -268,5 +280,29 @@ export interface TokenResponse {
 }
 export const login = (tenant_slug: string, email: string, password: string) =>
   api.post<TokenResponse>('/auth/login', { tenant_slug, email, password })
-export const refreshAuth = (refresh_token: string) =>
-  api.post<TokenResponse>('/auth/refresh', refresh_token === REFRESH_VIA_COOKIE ? {} : { refresh_token })
+export function refreshAuth(refresh_token: string): Promise<AxiosResponse<TokenResponse>> {
+  if (refreshing?.revision === authRevision) return refreshing.promise
+  const revision = authRevision
+  const expectedAccess = getStoredAccessToken()
+  const expectedRefresh = getStoredRefreshToken()
+  const sessionStillCurrent = () => revision === authRevision && expectedAccess === getStoredAccessToken() && expectedRefresh === getStoredRefreshToken()
+  const promise = axios.post<TokenResponse>(
+    `${api.defaults.baseURL}/auth/refresh`,
+    refresh_token === REFRESH_VIA_COOKIE ? {} : { refresh_token },
+    { timeout: 20000, withCredentials: true, headers: refreshCookieHeaders() },
+  ).then((res) => {
+    // Logout / login / site switching while a refresh was in flight must win.
+    if (!sessionStillCurrent()) throw new axios.CanceledError('Session changed during refresh')
+    if (res.data.refresh_in_cookie && !res.data.refresh_token) res.data.refresh_token = REFRESH_VIA_COOKIE
+    writeStoredTokens(res.data.access_token, res.data.refresh_token ?? null)
+    emitAccessTokenUpdated(res.data.expires_in_seconds)
+    return res
+  }).catch((error: unknown) => {
+    if (sessionStillCurrent() && isInvalidSessionError(error)) expireSession()
+    throw error
+  }).finally(() => {
+    if (refreshing?.promise === promise) refreshing = null
+  })
+  refreshing = { revision, promise }
+  return promise
+}

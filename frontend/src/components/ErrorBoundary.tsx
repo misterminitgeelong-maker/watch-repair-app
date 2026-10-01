@@ -1,9 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-// Shared with the lazy-route loader, which catches this failure first. Two
-// separate keys meant one stale tab could reload twice.
-import { hardReload, recoverFromStaleBuild } from '@/lib/routePrefetch'
+// Reload is explicit so a deployment cannot discard in-progress work.
+import { hardReload } from '@/lib/routePrefetch'
 
 function isChunkLoadError(error: Error): boolean {
   return error.message.includes('Failed to fetch dynamically imported module') ||
@@ -43,9 +42,6 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo)
 
-    if (isChunkLoadError(error)) {
-      recoverFromStaleBuild()
-    }
   }
 
   render() {

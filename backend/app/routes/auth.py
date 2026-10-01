@@ -906,13 +906,15 @@ def _refresh_tokens_impl(request: Request, response: Response, payload: RefreshR
     # The session id (sid) stays stable so the "current device" is identifiable.
     if claims.jti:
         now = datetime.now(timezone.utc)
+        # Old and new deployment processes share this row. Serialize rotation
+        # across processes/tabs, then accept the prior jti inside the grace window.
         rs = session.exec(
-            select(RefreshSession).where(RefreshSession.jti == claims.jti)
+            select(RefreshSession).where(RefreshSession.jti == claims.jti).with_for_update()
         ).first()
         reused = False
         if rs is None:
             rs = session.exec(
-                select(RefreshSession).where(RefreshSession.previous_jti == claims.jti)
+                select(RefreshSession).where(RefreshSession.previous_jti == claims.jti).with_for_update()
             ).first()
             reused = rs is not None
         if rs is None:

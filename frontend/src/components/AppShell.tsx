@@ -465,6 +465,9 @@ export default function AppShell() {
     switchSite,
     hasFeature,
     sessionReady,
+    sessionRecovering,
+    tenantId,
+    refreshSession,
     signupPaymentPending,
     subscriptionStatus,
     trialEnd,
@@ -938,6 +941,19 @@ export default function AppShell() {
   function exitGuidedTour() {
     setDemoTourMode(null)
     setTourMode(null)
+  }
+
+  if (token && sessionRecovering && !tenantId) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>
+        <h1 className="text-xl font-semibold">Reconnecting to your workspace</h1>
+        <p role="status" className="max-w-md text-sm">The connection was interrupted. Your login is saved and we are retrying automatically.</p>
+        <div className="flex gap-3">
+          <Button className="min-h-11" onClick={() => { void refreshSession().catch(() => {}) }}>Retry connection</Button>
+          <Button variant="secondary" className="min-h-11" onClick={logout}>Sign out</Button>
+        </div>
+      </div>
+    )
   }
 
   if (initializing) {

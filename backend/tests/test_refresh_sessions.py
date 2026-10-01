@@ -293,3 +293,27 @@ def test_remember_me_off_sets_a_browser_session_cookie(client):
         assert "max-age" not in cookie and "expires" not in cookie
     finally:
         client.cookies.clear()
+
+
+def test_parallel_refresh_rotation_across_processes(client):
+    """The old/new deployments and separate tabs must not invalidate each other."""
+    from concurrent.futures import ThreadPoolExecutor
+    import pytest
+    from app.database import engine
+    from app.security import decode_refresh_token
+
+    if engine.dialect.name != "postgresql":
+        pytest.skip("Concurrent refresh rotation requires PostgreSQL row locks")
+    slug, email, password = _bootstrap_creds(client)
+    tokens = _login(client, slug, email, password)
+    original = tokens["refresh_token"]
+    def refresh(_):
+        return client.post("/v1/auth/refresh", json={"refresh_token": original})
+    with ThreadPoolExecutor(max_workers=4) as workers:
+        responses = list(workers.map(refresh, range(4)))
+    assert all(response.status_code == 200 for response in responses), [response.text for response in responses]
+    # One rotation, then reuse of that same current token inside the grace window.
+    jtis = {decode_refresh_token(response.json()["refresh_token"]).jti for response in responses}
+    assert len(jtis) == 1
+    follow_up = client.post("/v1/auth/refresh", json={"refresh_token": responses[0].json()["refresh_token"]})
+    assert follow_up.status_code == 200, follow_up.text

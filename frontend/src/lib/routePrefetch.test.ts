@@ -101,46 +101,10 @@ describe('recovering from a deploy that renamed the chunks', () => {
     return (component as { _payload: { _result: () => Promise<unknown> } })._payload._result
   }
 
-  it('reloads once so the tab picks up the current chunk names', async () => {
-    const factory = vi.fn(async () => {
-      throw chunkError()
-    })
-    const load = loaderOf(lazyPage(factory as never))
-
-    // Never settles: the reload is what resolves this for the user.
-    let settled = false
-    void load().then(
-      () => { settled = true },
-      () => { settled = true },
-    )
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(reload).toHaveBeenCalledTimes(1)
-    expect(settled).toBe(false)
-  })
-
-  it('gives up after a recent reload instead of boot-looping', async () => {
-    sessionStorage.setItem('ms.chunkReload.v1', String(Date.now()))
-    const factory = vi.fn(async () => {
-      throw chunkError()
-    })
-    const load = loaderOf(lazyPage(factory as never))
-
+  it('settles a failed import without reloading or hanging the route', async () => {
+    const load = loaderOf(lazyPage(async () => { throw chunkError() }))
     await expect(load()).rejects.toThrow(/dynamically imported module/)
     expect(reload).not.toHaveBeenCalled()
-  })
-
-  it('tries again once the earlier attempt is over a minute old', async () => {
-    sessionStorage.setItem('ms.chunkReload.v1', String(Date.now() - 120_000))
-    const load = loaderOf(
-      lazyPage(async () => {
-        throw chunkError()
-      }),
-    )
-    void load().catch(() => {})
-    await new Promise(r => setTimeout(r, 0))
-    expect(reload).toHaveBeenCalledTimes(1)
   })
 
   it('leaves a genuine error from the module alone', async () => {
@@ -153,11 +117,9 @@ describe('recovering from a deploy that renamed the chunks', () => {
     expect(reload).not.toHaveBeenCalled()
   })
 
-  it('clears the flag on a good load, so a later deploy can recover too', async () => {
-    sessionStorage.setItem('ms.chunkReload.v1', '1')
+  it('keeps a healthy route usable without an automatic reload', async () => {
     const load = loaderOf(lazyPage(async () => ({ default: () => null })))
-
-    await load()
-    expect(sessionStorage.getItem('ms.chunkReload.v1')).toBeNull()
+    await expect(load()).resolves.toHaveProperty('default')
+    expect(reload).not.toHaveBeenCalled()
   })
 })
