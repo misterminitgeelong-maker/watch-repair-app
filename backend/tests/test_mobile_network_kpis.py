@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -132,6 +132,70 @@ def _seed_job(
                 )
             )
         session.commit()
+
+
+def test_minit_calendar_period_boundaries_and_comparisons():
+    from app.mobile_network_kpis import calendar_reporting_windows
+    at = datetime(2026, 10, 1, 14, 30, tzinfo=SYDNEY)
+    expectations = {
+        'month': ('2026-09-01', '2026-09-30', '2026-08-01', '2026-08-31'),
+        'quarter': ('2026-07-01', '2026-09-30', '2026-04-01', '2026-06-30'),
+        'half_year': ('2026-04-01', '2026-09-30', '2025-10-01', '2026-03-31'),
+    }
+    for period, expected in expectations.items():
+        windows = calendar_reporting_windows(date(2026, 9, 15), period, at=at)
+        assert tuple(dt.astimezone(SYDNEY).date().isoformat() for dt in windows) == expected
+        assert windows[1].astimezone(SYDNEY).time().isoformat() == '23:59:59.999999'
+    start, end, prior_start, prior_end = calendar_reporting_windows(date(2026, 10, 1), 'year', at=at)
+    assert start.astimezone(SYDNEY).date() == date(2026, 4, 1)
+    assert end == at.astimezone(timezone.utc)
+    assert prior_start.astimezone(SYDNEY).date() == date(2025, 4, 1)
+    assert prior_end.astimezone(SYDNEY).date() == date(2025, 10, 1)
+    # March is in the Minit year starting the previous April; quarters cross January correctly.
+    march = calendar_reporting_windows(date(2026, 3, 31), 'year', at=at)
+    assert march[0].astimezone(SYDNEY).date() == date(2025, 4, 1)
+    assert march[1].astimezone(SYDNEY).date() == date(2026, 3, 31)
+    quarter = calendar_reporting_windows(date(2026, 1, 1), 'quarter', at=at)
+    assert quarter[0].astimezone(SYDNEY).date() == date(2026, 1, 1)
+    leap = calendar_reporting_windows(date(2024, 2, 1), 'month', at=at)
+    assert leap[1].astimezone(SYDNEY).date() == date(2024, 2, 29)
+    # October contains a DST transition: the UTC duration is one hour shorter.
+    october = calendar_reporting_windows(date(2025, 10, 1), 'month', at=at)
+    assert october[1] - october[0] + timedelta(microseconds=1) == timedelta(days=31, hours=-1)
+
+
+def test_period_reports_match_date_boundaries_csv_and_prior_sales():
+    headers = {'Authorization': f'Bearer {_ensure_hq()}'}
+    operator_id = _link_operator(headers, 'Minit Period Van')
+    inside = datetime(2025, 4, 1, tzinfo=SYDNEY)
+    before = inside - timedelta(microseconds=1)
+    after = datetime(2025, 5, 1, tzinfo=SYDNEY)
+    for timestamp, amount in [(before, 2000), (inside, 3000), (after, 5000)]:
+        utc = timestamp.astimezone(timezone.utc)
+        _seed_job(operator_id, created_at=utc, total_cents=amount, work_completed_at=utc)
+    url = '/v1/parent-accounts/me/operations/mobile-kpis/period'
+    monthly = client.get(url, headers=headers, params={'period': 'month', 'anchor': '2025-04-15'})
+    assert monthly.status_code == 200, monthly.text
+    payload = monthly.json()
+    row = next(r for r in payload['operators'] if r['operator_tenant_id'] == operator_id)
+    assert payload['start_ymd'] == '2025-04-01' and payload['end_ymd'] == '2025-04-30'
+    assert row['sales_cents'] == 3000 and row['jobs_created'] == 1 and row['jobs_completed'] == 1
+    assert row['prior_sales_cents'] == 2000 and row['sales_pct_change'] == 50.0
+    for period in ['quarter', 'half_year', 'year']:
+        result = client.get(url, headers=headers, params={'period': period, 'anchor': '2025-04-15'})
+        assert result.status_code == 200, result.text
+        r = next(r for r in result.json()['operators'] if r['operator_tenant_id'] == operator_id)
+        assert r['sales_cents'] == 8000 and r['jobs_created'] == 2
+    yearly = client.get(url, headers=headers, params={'period': 'year', 'anchor': '2025-04-15'}).json()
+    assert yearly['start_ymd'] == '2025-04-01' and yearly['end_ymd'] == '2026-03-31'
+    csv_result = client.get(url + '/csv', headers=headers, params={'period': 'month', 'anchor': '2025-04-15'})
+    assert csv_result.status_code == 200, csv_result.text
+    assert 'Period start' in csv_result.text and 'Monthly' in csv_result.text
+    assert 'Minit Period Van' in csv_result.text and '30.00' in csv_result.text
+    assert client.get(url, headers=headers, params={'period': 'bad'}).status_code == 400
+    assert client.get(url, headers=headers, params={'anchor': '2099-01-01'}).status_code == 400
+    assert client.get(url, headers=headers, params={'anchor': 'bad'}).status_code == 422
+    assert client.get(url).status_code in {401, 403}
 
 
 def test_classify_job_type_and_lead_source():

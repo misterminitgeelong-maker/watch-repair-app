@@ -14,12 +14,15 @@ import {
   getParentMobileKpiWeeks,
   getParentMobileKpisLive,
   getParentMobileKpisLiveCsv,
+  getParentMobileKpiPeriod,
+  getParentMobileKpiPeriodCsv,
   rebuildParentMobileKpiDay,
   sendParentMobileWeeklyReportNow,
   updateParentMobileKpiRecipient,
   updateParentMobileWeeklyReportSettings,
   type MobileKpiOperatorRow,
   type MobileKpiPeriod,
+  type MobileKpiCalendarPeriod,
 } from '@/lib/api'
 import { formatCents, formatDate } from '@/lib/utils'
 import { Button, Card, Input, PageHeader, Spinner } from '@/components/ui'
@@ -27,14 +30,29 @@ import { useParentAccount } from '@/hooks/useParentAccount'
 import { defaultReportFromDate, defaultReportToDate, toIsoEnd, toIsoStart } from './dateRange'
 import { LoadError } from '@/components/minit/LoadError'
 
-type TabKey = 'live' | 'daily' | 'weekly' | 'recipients' | 'jobs'
+type TabKey = 'live' | 'daily' | 'weekly' | 'periods' | 'recipients' | 'jobs'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'live', label: 'Live' },
   { key: 'daily', label: 'Daily' },
   { key: 'weekly', label: 'Weekly' },
+  { key: 'periods', label: 'Monthly / yearly' },
   { key: 'recipients', label: 'Recipients' },
   { key: 'jobs', label: 'Jobs' },
 ]
+
+const REPORT_PERIODS: { key: MobileKpiCalendarPeriod; label: string }[] = [
+  { key: 'month', label: 'Monthly' },
+  { key: 'quarter', label: 'Quarterly' },
+  { key: 'half_year', label: '6 months' },
+  { key: 'year', label: 'Yearly' },
+]
+
+function currentSydneyMonth() {
+  const parts = new Intl.DateTimeFormat('en-AU', {
+    timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit',
+  }).formatToParts(new Date())
+  return `${parts.find(p => p.type === 'year')!.value}-${parts.find(p => p.type === 'month')!.value}`
+}
 
 const CATEGORY_ORDER = [
   ['lockout', 'Lockout'],
@@ -116,10 +134,12 @@ function HeadlineTiles({
 function OperatorTable({
   period,
   showQueues = false,
+  showEnquiries = true,
   onDrill,
 }: {
   period: MobileKpiPeriod
   showQueues?: boolean
+  showEnquiries?: boolean
   onDrill?: (opts: { operatorId: string; category?: string; lead?: string }) => void
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('sales_cents')
@@ -178,7 +198,7 @@ function OperatorTable({
                 {CATEGORY_ORDER.map(([key, label]) => (
                   <th key={key} className="text-right px-4 py-2 font-medium">{label} $</th>
                 ))}
-                <Header label="Open enquiries" k="enquiries_not_actioned" />
+                {showEnquiries && <Header label="Open enquiries" k="enquiries_not_actioned" />}
               </tr>
             </thead>
             <tbody>
@@ -222,9 +242,9 @@ function OperatorTable({
                       </button>
                     </td>
                   ))}
-                  <td className="px-4 py-2 text-right tabular-nums" style={{ color: row.enquiries_not_actioned > 0 ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>
+                  {showEnquiries && <td className="px-4 py-2 text-right tabular-nums" style={{ color: row.enquiries_not_actioned > 0 ? 'var(--ms-error)' : 'var(--ms-text-muted)' }}>
                     {row.enquiries_not_actioned}
-                  </td>
+                  </td>}
                 </tr>
               ))}
             </tbody>
@@ -300,8 +320,11 @@ function EnquiriesByShopSection({ fromYmd, toYmd }: { fromYmd: string; toYmd: st
 export default function MinitMobileReportsPage() {
   const [tab, setTab] = useState<TabKey>('live')
   const [liveScope, setLiveScope] = useState<'day' | 'week'>('week')
+  const [calendarPeriod, setCalendarPeriod] = useState<MobileKpiCalendarPeriod>('month')
+  const [calendarMonth, setCalendarMonth] = useState(currentSydneyMonth)
   const [fromYmd, setFromYmd] = useState(defaultReportFromDate)
   const [toYmd, setToYmd] = useState(defaultReportToDate)
+  const [jobsExactWindow, setJobsExactWindow] = useState<{ start: string; end: string } | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
   const [jobsOperatorId, setJobsOperatorId] = useState<string>('')
@@ -311,6 +334,14 @@ export default function MinitMobileReportsPage() {
   const queryClient = useQueryClient()
   const { data: summary } = useParentAccount()
   const canEdit = summary?.my_role === 'hq_admin'
+  const periodParams = { period: calendarPeriod, anchor: `${calendarMonth}-01`, year_start_month: 4 as const }
+  const periodQuery = useQuery({
+    queryKey: ['minit-mobile-kpis-period', calendarPeriod, calendarMonth, 4],
+    queryFn: () => getParentMobileKpiPeriod(periodParams).then(r => r.data),
+    enabled: tab === 'periods' && /^\d{4}-\d{2}$/.test(calendarMonth),
+    staleTime: 20_000,
+    refetchInterval: 60_000,
+  })
 
   const liveQuery = useQuery({
     queryKey: ['minit-mobile-kpis-live', liveScope],
@@ -341,11 +372,11 @@ export default function MinitMobileReportsPage() {
     enabled: tab === 'recipients',
   })
   const jobsQuery = useQuery({
-    queryKey: ['minit-mobile-jobs-report', fromYmd, toYmd, jobsOperatorId, jobsCategory, jobsLead],
+    queryKey: ['minit-mobile-jobs-report', fromYmd, toYmd, jobsOperatorId, jobsCategory, jobsLead, jobsExactWindow],
     queryFn: () =>
       getParentMobileJobsReport({
-        from_date: toIsoStart(fromYmd),
-        to_date: toIsoEnd(toYmd),
+        from_date: jobsExactWindow?.start ?? toIsoStart(fromYmd),
+        to_date: jobsExactWindow?.end ?? toIsoEnd(toYmd),
         limit: 200,
         operator_tenant_id: jobsOperatorId || undefined,
         category: jobsCategory || undefined,
@@ -426,6 +457,7 @@ export default function MinitMobileReportsPage() {
   })
 
   function drillToJobs(opts: { operatorId: string; category?: string; lead?: string }, period?: MobileKpiPeriod | null) {
+    setJobsExactWindow(period ? { start: period.start, end: period.end } : null)
     setJobsOperatorId(opts.operatorId)
     setJobsCategory(opts.category ?? '')
     setJobsLead(opts.lead ?? '')
@@ -502,6 +534,55 @@ export default function MinitMobileReportsPage() {
             <>
               <HeadlineTiles network={shownLivePeriod.network} comparisonLabel={liveScope === 'day' ? 'same day last week' : 'prior week'} showQueues={!liveIsPreview} />
               <OperatorTable period={shownLivePeriod} showQueues={!liveIsPreview} onDrill={opts => drillToJobs(opts, shownLivePeriod)} />
+            </>
+          )}
+        </>
+      )}
+
+      {tab === 'periods' && (
+        <>
+          <Card className="p-4 mb-5">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="flex flex-wrap gap-2" aria-label="Reporting period">
+                {REPORT_PERIODS.map(item => (
+                  <Button key={item.key} size="sm"
+                    variant={calendarPeriod === item.key ? 'primary' : 'secondary'}
+                    onClick={() => setCalendarPeriod(item.key)}>
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+              <Input type="month" label="Month within reporting period" aria-label="Month within reporting period" value={calendarMonth}
+                max={currentSydneyMonth()} onChange={e => setCalendarMonth(e.target.value)} />
+              <Button size="sm" variant="secondary" disabled={!periodQuery.data || periodQuery.isFetching}
+                onClick={() => getParentMobileKpiPeriodCsv(periodParams)
+                  .then(r => downloadBlob(r.data, `minit-mobile-${calendarPeriod}-${calendarMonth}.csv`))
+                  .catch(err => setError(getApiErrorMessage(err, 'Could not download this report.')))}>
+                Download CSV
+              </Button>
+            </div>
+            <p className="text-xs mt-3" style={{ color: 'var(--ms-text-muted)' }}>
+              Minit year: 1 April–31 March. Quarters start April, July, October and January.
+              Six-month periods are April–September and October–March. All dates use Sydney time.
+            </p>
+          </Card>
+          {periodQuery.isError ? (
+            <LoadError error={periodQuery.error} message="Could not load the period report." onRetry={() => void periodQuery.refetch()} />
+          ) : !periodQuery.data ? (
+            calendarMonth ? <Spinner /> : <Card className="p-5">Select a month within the reporting period.</Card>
+          ) : (
+            <>
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--ms-text)' }}>
+                  {formatDate(periodQuery.data.start_ymd)} → {formatDate(periodQuery.data.end_ymd)}
+                </h2>
+                <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+                  Past periods include the full period. Current periods run to now and compare the same elapsed time in the prior period.
+                  Sales use payment dates, or invoice dates when payment dates are unrecorded. Job counts use creation and completion dates.
+                </p>
+              </div>
+              <HeadlineTiles network={periodQuery.data.network} comparisonLabel="prior period" />
+              <OperatorTable period={periodQuery.data} showEnquiries={false} onDrill={opts => drillToJobs(opts, periodQuery.data)} />
             </>
           )}
         </>
@@ -686,8 +767,8 @@ export default function MinitMobileReportsPage() {
         <>
           <Card className="p-5 mb-6">
             <div className="flex flex-wrap gap-4 items-end">
-              <Input label="From" type="date" value={fromYmd} onChange={e => setFromYmd(e.target.value)} className="w-40" />
-              <Input label="To" type="date" value={toYmd} onChange={e => setToYmd(e.target.value)} className="w-40" />
+              <Input label="From" type="date" value={fromYmd} onChange={e => { setFromYmd(e.target.value); setJobsExactWindow(null) }} className="w-40" />
+              <Input label="To" type="date" value={toYmd} onChange={e => { setToYmd(e.target.value); setJobsExactWindow(null) }} className="w-40" />
               {jobsOperatorId && (
                 <Button size="sm" variant="secondary" onClick={() => { setJobsOperatorId(''); setJobsCategory(''); setJobsLead('') }}>
                   Clear operator filter

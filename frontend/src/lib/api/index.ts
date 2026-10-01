@@ -973,6 +973,17 @@ export const getParentMobileKpisLive = (scope: 'day' | 'week' | 'all' = 'week') 
 export const getParentMobileKpisLiveCsv = (scope: 'day' | 'week' = 'week') =>
   api.get<Blob>('/parent-accounts/me/operations/mobile-kpis/live/csv', { params: { scope }, responseType: 'blob' })
 
+export type MobileKpiCalendarPeriod = 'month' | 'quarter' | 'half_year' | 'year'
+export interface MobileKpiPeriodParams {
+  period: MobileKpiCalendarPeriod
+  anchor: string
+  year_start_month: 1 | 4 | 7
+}
+export const getParentMobileKpiPeriod = (params: MobileKpiPeriodParams) =>
+  api.get<MobileKpiPeriod>('/parent-accounts/me/operations/mobile-kpis/period', { params })
+export const getParentMobileKpiPeriodCsv = (params: MobileKpiPeriodParams) =>
+  api.get<Blob>('/parent-accounts/me/operations/mobile-kpis/period/csv', { params, responseType: 'blob' })
+
 export const getParentMobileKpiDays = () =>
   api.get<MobileKpiDailyList>('/parent-accounts/me/operations/mobile-kpis/days')
 

@@ -1231,6 +1231,46 @@ def get_mobile_kpis_live_csv(
     return _csv_response(csv_bytes_for_report(report), filename)
 
 
+def _calendar_kpi_report(session: Session, parent: ParentAccount, period: str, anchor: date | None, year_start_month: int):
+    from ..mobile_network_kpis import NETWORK_TZ, calendar_reporting_windows, build_network_kpis
+    now = datetime.now(timezone.utc)
+    try:
+        start, end, prior_start, prior_end = calendar_reporting_windows(
+            anchor or now.astimezone(NETWORK_TZ).date(), period,
+            at=now, year_start_month=year_start_month,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return build_network_kpis(session, parent, start, end, prior_start=prior_start,
+        prior_end=prior_end, generated_at=now, include_queues=False, include_enquiries=False)
+
+
+@router.get("/me/operations/mobile-kpis/period", response_model=MobileKpiPeriodRead)
+def get_mobile_kpi_period(
+    period: str = Query(default="month"), anchor: date | None = Query(default=None),
+    year_start_month: int = Query(default=4),
+    auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session),
+):
+    _require_minit_hq(auth, session)
+    _, parent, _ = _parent_for_read(session, auth)
+    return _period_read(_calendar_kpi_report(session, parent, period, anchor, year_start_month))
+
+
+@router.get("/me/operations/mobile-kpis/period/csv")
+def get_mobile_kpi_period_csv(
+    period: str = Query(default="month"), anchor: date | None = Query(default=None),
+    year_start_month: int = Query(default=4),
+    auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session),
+):
+    from ..mobile_network_kpis import csv_bytes_for_report
+    _require_minit_hq(auth, session)
+    _, parent, _ = _parent_for_read(session, auth)
+    report = _calendar_kpi_report(session, parent, period, anchor, year_start_month)
+    label = {"month": "Monthly", "quarter": "Quarterly", "half_year": "6 months", "year": "Yearly"}[period]
+    return _csv_response(csv_bytes_for_report(report, period_label=label),
+        f"minit-mobile-{period}-{report.start_ymd}_{report.end_ymd}.csv")
+
+
 @router.get("/me/operations/mobile-kpis/days", response_model=MobileKpiDailyListRead)
 def list_mobile_kpi_days(
     auth: AuthContext = Depends(get_auth_context),

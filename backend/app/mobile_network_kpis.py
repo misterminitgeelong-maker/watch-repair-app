@@ -238,6 +238,39 @@ def _local(at: datetime, tz: ZoneInfo = NETWORK_TZ) -> datetime:
     return as_utc(at).astimezone(tz)
 
 
+def calendar_reporting_windows(
+    anchor: date, period: str, *, at: datetime, year_start_month: int = 4,
+) -> tuple[datetime, datetime, datetime, datetime]:
+    """Sydney calendar periods, with an elapsed-time comparison for current periods."""
+    lengths = {"month": 1, "quarter": 3, "half_year": 6, "year": 12}
+    if period not in lengths or year_start_month not in {1, 4, 7}:
+        raise ValueError("period must be month, quarter, half_year, or year; year_start_month must be 1, 4, or 7")
+    months = lengths[period]
+    anchor_month = anchor.year * 12 + anchor.month - 1
+    origin = year_start_month - 1
+    start_month = ((anchor_month - origin) // months) * months + origin
+
+    def month_start(index: int) -> datetime:
+        year, month = divmod(index, 12)
+        return datetime(year, month + 1, 1, tzinfo=NETWORK_TZ)
+
+    local_start = month_start(start_month)
+    local_next = month_start(start_month + months)
+    local_prior = month_start(start_month - months)
+    now = as_utc(at)
+    start = as_utc(local_start)
+    if start > now:
+        raise ValueError("Choose a reporting period that has already started")
+    full_end = as_utc(local_next) - timedelta(microseconds=1)
+    end = min(now, full_end)
+    prior_end = start - timedelta(microseconds=1)
+    if now < as_utc(local_next):
+        # Compare the same elapsed local days/hours; never spill into this period.
+        elapsed = now.astimezone(NETWORK_TZ) - local_start
+        prior_end = min(prior_end, as_utc(local_prior + elapsed))
+    return start, end, as_utc(local_prior), prior_end
+
+
 def trade_day_snapshot_window(trade_date: date, tz: ZoneInfo = NETWORK_TZ) -> tuple[datetime, datetime]:
     """[local 00:00, local 21:00] converted to UTC."""
     start_local = datetime(trade_date.year, trade_date.month, trade_date.day, 0, 0, 0, tzinfo=tz)
@@ -645,8 +678,8 @@ def csv_bytes_for_report(report: NetworkKpiReport, *, period_label: str | None =
     headers = [
         "Operator",
         "Shop number",
-        "Week start",
-        "Week end",
+        "Period start" if period_label in {"Monthly", "Quarterly", "6 months", "Yearly"} else "Week start",
+        "Period end" if period_label in {"Monthly", "Quarterly", "6 months", "Yearly"} else "Week end",
         "Period",
         "Customers",
         "Jobs created",
