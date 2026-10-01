@@ -247,9 +247,13 @@ export function getStoredRefreshToken(): string | null {
   return getTokenStorage().getItem(REFRESH_TOKEN_KEY) ?? localStorage.getItem(REFRESH_TOKEN_KEY) ?? sessionStorage.getItem(REFRESH_TOKEN_KEY)
 }
 
+/** Fired when a sign-in stores fresh tokens (unlike the event above, not on silent refreshes). */
+export const AUTH_TOKENS_STORED = 'auth:tokens-stored'
+
 export function setStoredTokens(accessToken: string, refreshToken: string | null) {
   authSessionEpoch += 1
   writeStoredTokens(accessToken, refreshToken)
+  window.dispatchEvent(new Event(AUTH_TOKENS_STORED))
 }
 
 function writeStoredTokens(accessToken: string, refreshToken: string | null) {

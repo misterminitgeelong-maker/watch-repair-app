@@ -76,6 +76,8 @@ class Settings(BaseSettings):
     platform_admin_tenant_name: str = "Platform"
 
     # Twilio SMS — leave blank to disable SMS (dry-run / log-only mode)
+    # Firebase service-account JSON (whole file contents) for phone push notifications; empty disables sending.
+    fcm_service_account_json: str = ""
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_from_number: str = ""  # E.164 format, e.g. +61400000000
