@@ -27,6 +27,7 @@ from .models import (
     PARENT_ROLES,
     ParentAccount,
     ParentAccountSite,
+    ParentMobileReportingSource,
     ParentAccountUser,
     Region,
     ShopOwnerInvite,
@@ -230,11 +231,20 @@ def operator_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenan
 
 
 def mobile_reporting_tenants_for_parent(session: Session, parent_id: UUID) -> list[Tenant]:
-    """Mobile jobs/invoices only: operators and explicitly opted-in retail sites."""
+    """Mobile reporting sources; does not grant membership or shop access."""
     ids = {site.tenant_id for site in sites_for_parent(session, parent_id)
            if site.network_role == NETWORK_ROLE_OPERATOR
            or (site.network_role == NETWORK_ROLE_RETAIL and site.mobile_reporting_enabled)}
-    return [tenant for tenant in linked_tenants_for_parent(session, parent_id) if tenant.id in ids]
+    with without_scope(session):
+        ids.update(session.exec(
+            select(ParentMobileReportingSource.tenant_id).where(
+                ParentMobileReportingSource.parent_account_id == parent_id,
+                ParentMobileReportingSource.enabled == True,  # noqa: E712
+            )
+        ).all())
+        if not ids:
+            return []
+        return list(session.exec(select(Tenant).where(col(Tenant.id).in_(ids))).all())
 
 
 def accepted_invite_tenant_ids(session: Session, tenant_ids: list[UUID]) -> set[UUID]:

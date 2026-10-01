@@ -294,6 +294,20 @@ class ParentAccountSite(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class ParentMobileReportingSource(SQLModel, table=True):
+    """Mobile reporting consent without shop membership or account access."""
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "tenant_id", name="uq_parent_mobile_source"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    enabled: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class ParentAccountUser(SQLModel, table=True):
     """The access list: which users can act on this network, and how far.
 

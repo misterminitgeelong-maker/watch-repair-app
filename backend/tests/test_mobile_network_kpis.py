@@ -458,6 +458,42 @@ def test_jobs_report_total_count_is_not_the_page_size():
     assert "commission_lead_source" in body["jobs"][0]
 
 
+def test_independent_retail_mobile_source_does_not_grant_shop_access():
+    from app.models import ParentMobileReportingSource
+    from app.parent_network import linked_tenants_for_parent, operator_tenants_for_parent
+
+    headers = {'Authorization': f'Bearer {_ensure_hq()}'}
+    suffix = uuid4().hex[:8]
+    boot = client.post('/v1/auth/bootstrap', json={
+        'tenant_name': 'Independent retail', 'tenant_slug': f'independent-{suffix}',
+        'owner_email': f'independent-{suffix}@test.local', 'owner_full_name': 'Retail Owner',
+        'owner_password': 'pass123456', 'plan_code': 'pro',
+    })
+    assert boot.status_code == 200, boot.text
+    tenant_id = UUID(boot.json()['tenant_id'])
+    parent_id = UUID(client.get('/v1/parent-accounts/me', headers=headers).json()['parent_account_id'])
+    _seed_job(str(tenant_id), created_at=datetime.now(timezone.utc), total_cents=18500, job_type='All Keys Lost')
+    with Session(engine) as session:
+        source = ParentMobileReportingSource(parent_account_id=parent_id, tenant_id=tenant_id)
+        session.add(source)
+        session.commit()
+        source_id = source.id
+        assert tenant_id not in {t.id for t in linked_tenants_for_parent(session, parent_id)}
+        assert tenant_id not in {t.id for t in operator_tenants_for_parent(session, parent_id)}
+    report = client.get('/v1/parent-accounts/me/operations/mobile-jobs', headers=headers,
+                        params={'operator_tenant_id': str(tenant_id)})
+    assert report.status_code == 200, report.text
+    assert len(report.json()['jobs']) == 1
+    assert client.post(f'/v1/parent-accounts/me/sites/{tenant_id}/enter', headers=headers).status_code == 404
+    with Session(engine) as session:
+        source = session.get(ParentMobileReportingSource, source_id)
+        source.enabled = False
+        session.add(source)
+        session.commit()
+    assert client.get('/v1/parent-accounts/me/operations/mobile-jobs', headers=headers,
+                      params={'operator_tenant_id': str(tenant_id)}).json()['jobs'] == []
+
+
 def test_retail_pro_mobile_sharing_is_opt_in_and_does_not_change_dispatch():
     from app.models import ParentAccountSite, RepairJob, ShoeRepairJob, Shoe, Watch, Invoice
     from app.parent_network import operator_tenants_for_parent, mobile_reporting_tenants_for_parent
