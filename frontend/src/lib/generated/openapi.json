@@ -734,6 +734,84 @@
         }
       }
     },
+    "/v1/me/devices": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Register Device",
+        "description": "Idempotent: a token moves to whoever registered it last (shared phones, re-logins).\n\nUnscoped on purpose: the same phone can sign in to a different shop, and the\ntoken's existing row may belong to the previous shop's tenant.",
+        "operationId": "register_device_v1_me_devices_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegister"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Unregister Device",
+        "operationId": "unregister_device_v1_me_devices_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/customers": {
       "post": {
         "tags": [
@@ -27126,6 +27204,27 @@
         },
         "type": "object",
         "title": "CustomerUpdate"
+      },
+      "DeviceRegister": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 20,
+            "title": "Token"
+          },
+          "platform": {
+            "type": "string",
+            "pattern": "^(android|ios)$",
+            "title": "Platform",
+            "default": "android"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "DeviceRegister"
       },
       "FollowUpUpdate": {
         "properties": {
