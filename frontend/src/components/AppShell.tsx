@@ -458,6 +458,7 @@ export default function AppShell() {
   const qc = useQueryClient()
   const {
     token,
+    logout,
     initializing,
     activeSiteTenantId,
     availableSites,
@@ -941,8 +942,9 @@ export default function AppShell() {
 
   if (initializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)' }}>
-        Loading...
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text-muted)' }}>
+        <p role="status">Loading...</p>
+        {token && <Button variant="secondary" className="min-h-11" onClick={logout}>Sign out</Button>}
       </div>
     )
   }

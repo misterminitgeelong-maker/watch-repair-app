@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { MoreHorizontal } from 'lucide-react'
+import { LogOut, MoreHorizontal } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
 import { MINIT_HQ_NAV } from './MinitHqSidebar'
 import { cn } from '@/lib/utils'
 
 /** Mobile bottom nav for Minit HQ — mirrors the six-item desktop sidebar. */
 export default function MinitHqBottomTabBar() {
+  const { logout } = useAuth()
   const inboxCount = useInboxCount()
   const navigate = useNavigate()
   const [showMore, setShowMore] = useState(false)
@@ -39,6 +41,15 @@ export default function MinitHqBottomTabBar() {
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => { logout(); setShowMore(false) }}
+            className="flex w-full min-h-11 items-center gap-3 border-t px-4 py-3 text-sm font-medium"
+            style={{ borderColor: 'var(--ms-border)', color: 'var(--ms-danger)' }}
+          >
+            <LogOut size={18} />
+            Sign out
+          </button>
         </HqMoreSheet>
       )}
 
