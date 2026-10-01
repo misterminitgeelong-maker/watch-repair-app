@@ -50,6 +50,7 @@ from .routes.parent_accounts import link_requests_router as network_link_request
 from .routes.parent_accounts import router as parent_accounts_router
 from .routes.hq_account_support import router as hq_account_support_router
 from .routes.shop_owner_invites import router as shop_owner_invites_router
+from .routes.hq_owner_invites import router as hq_owner_invites_router
 from .routes.parent_operations import router as parent_operations_router
 from .routes.parent_network_admin import router as parent_network_admin_router
 from .routes.parent_regions import router as parent_regions_router
@@ -563,6 +564,7 @@ app.include_router(parent_accounts_router)
 app.include_router(hq_account_support_router)
 app.include_router(network_link_requests_router)
 app.include_router(shop_owner_invites_router)
+app.include_router(hq_owner_invites_router)
 app.include_router(parent_operations_router)
 app.include_router(parent_network_admin_router)
 app.include_router(parent_regions_router)

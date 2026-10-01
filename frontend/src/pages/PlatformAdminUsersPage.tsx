@@ -8,10 +8,11 @@ import { useAdminEnterShop } from '@/lib/adminImpersonation'
 import { formatCents } from '@/lib/money'
 import { isMinitHqTenantSlug } from '@/lib/minitProduct'
 import './platformAdmin.css'
+import PlatformHqOwnersPanel from './PlatformHqOwnersPanel'
 
-type Tab = 'overview' | 'shops' | 'billing' | 'audit' | 'users' | 'reports'
-const TABS: Tab[] = ['overview', 'shops', 'billing', 'audit', 'users', 'reports']
-const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', shops: 'Shops', billing: 'Billing', audit: 'Audit log', users: 'Users', reports: 'Reports' }
+type Tab = 'overview' | 'shops' | 'billing' | 'audit' | 'users' | 'hq-owners' | 'reports'
+const TABS: Tab[] = ['overview', 'shops', 'billing', 'audit', 'users', 'hq-owners', 'reports']
+const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', shops: 'Shops', billing: 'Billing', audit: 'Audit log', users: 'Users', 'hq-owners': 'HQ owners', reports: 'Reports' }
 
 const ACTIVITY_PAGE_SIZE = 100
 const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -22,6 +23,7 @@ const TAB_DESCRIPTIONS: Record<Tab, string> = {
   shops: 'Every shop in your network. Find an account, check its status, and step inside.',
   billing: 'Keep subscriptions, trials, and payment follow-ups in view.',
   users: 'The people behind your network, with a direct route to their shop.',
+  'hq-owners': 'Invite owners to manage HQ accounts and track their invitations.',
   audit: 'A clear record of who did what, and when.',
   reports: 'Understand shop activity, adoption, and invoicing across your network.',
 }
@@ -50,6 +52,7 @@ export default function PlatformAdminPage() {
       {tab === 'shops' && <ShopsTab key="shops" search={search} setSearch={setSearch} />}
       {tab === 'billing' && <BillingTab search={search} setSearch={setSearch} />}
       {tab === 'users' && <UsersTab search={search} setSearch={setSearch} />}
+      {tab === 'hq-owners' && <PlatformHqOwnersPanel />}
       {tab === 'audit' && <ActivityTab search={search} setSearch={setSearch} />}
       {tab === 'reports' && <ReportsTab />}
     </div>

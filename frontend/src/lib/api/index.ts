@@ -411,6 +411,18 @@ export interface ParentAccountActivityEvent {
   created_at: string
 }
 
+export interface HqOwnerInvite {
+  id: string; parent_account_id: string; tenant_id: string; email: string; full_name: string
+  status: 'pending' | 'completed' | 'expired' | 'revoked'; created_at: string; expires_at: string
+}
+export interface HqOwnerAccount { parent_account_id: string; tenant_id: string; name: string; tenant_name: string; tenant_slug: string }
+export const listPlatformHqOwners = () => api.get<{ accounts: HqOwnerAccount[]; invites: HqOwnerInvite[] }>('/platform-admin/hq-owners')
+export const createPlatformHqInvite = (payload: { parent_account_id: string; tenant_id: string; email: string; full_name: string; send_email: boolean }) =>
+  api.post<HqOwnerInvite & { invite_url: string; email_sent: boolean }>('/platform-admin/hq-owners', payload)
+export const revokePlatformHqInvite = (id: string) => api.delete(`/platform-admin/hq-owners/${id}`)
+export const getHqOwnerInvite = (token: string) => api.get<{ name: string; email: string; full_name: string; tenant_slug: string; existing_account: boolean; expires_at: string }>(`/public/hq-invite/${token}`)
+export const acceptHqOwnerInvite = (token: string, password: string) => api.post<{ access_token: string; refresh_token: string; expires_in_seconds: number }>(`/public/hq-invite/${token}/complete`, { password })
+
 export const getMyParentAccount = (params?: { include_sites?: boolean }) =>
   api.get<ParentAccountSummary>('/parent-accounts/me', {
     params: { include_sites: params?.include_sites ?? false },

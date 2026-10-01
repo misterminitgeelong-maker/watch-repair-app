@@ -16,6 +16,7 @@ export const PLATFORM_ADMIN_NAV = [
   { to: '/platform-admin/billing', label: 'Billing', icon: CreditCard },
   { to: '/platform-admin/audit', label: 'Audit log', icon: ScrollText },
   { to: '/platform-admin/users', label: 'Users', icon: Users },
+  { to: '/platform-admin/hq-owners', label: 'HQ owners', icon: Users },
   { to: '/platform-admin/reports', label: 'Reports', icon: BarChart3 },
 ] as const
 

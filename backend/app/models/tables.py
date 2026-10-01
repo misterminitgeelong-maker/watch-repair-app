@@ -332,6 +332,19 @@ class ParentAccountUser(SQLModel, table=True):
     email_mobile_kpi_report: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class HqOwnerInvite(SQLModel, table=True):
+    """Platform-issued access to one HQ network, bound to a recipient email."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id", ondelete="CASCADE")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    email: str
+    full_name: str
+    token_hash: str = Field(index=True, unique=True)
+    status: str = Field(default="pending", index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+    completed_at: Optional[datetime] = None
+
 class ShopOwnerInvite(SQLModel, table=True):
     """One-time, expiring invite letting a shop owner set their own email/password.
 

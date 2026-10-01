@@ -85,6 +85,7 @@ const PublicIntakePage = lazyPage(() => import('@/pages/PublicIntakePage'))
 const CustomerOrdersPage = lazyPage(() => import('@/pages/CustomerOrdersPage'))
 const ShopMobileBookingsPage = lazyPage(() => import('@/pages/ShopMobileBookingsPage'))
 const ShopOwnerInvitePage = lazyPage(() => import('@/pages/ShopOwnerInvitePage'))
+const HqOwnerInvitePage = lazyPage(() => import('@/pages/HqOwnerInvitePage'))
 const MinitOperationsPage = lazyPage(() => import('@/pages/minit/MinitOperationsPage'))
 const MinitShopsPage = lazyPage(() => import('@/pages/minit/MinitShopsPage'))
 const MinitShopReportsPage = lazyPage(() => import('@/pages/minit/MinitShopReportsPage'))
@@ -200,6 +201,7 @@ export default function App() {
             <Route path="/mobile-quote/:token" element={<MobileQuotePage />} />
             <Route path="/mobile-job-intake/:token" element={<MobileJobIntakePage />} />
             <Route path="/shop-invite/:token" element={<ShopOwnerInvitePage />} />
+            <Route path="/hq-invite/:token" element={<HqOwnerInvitePage />} />
             <Route path="/intake" element={<PublicIntakePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
