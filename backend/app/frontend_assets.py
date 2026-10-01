@@ -16,7 +16,7 @@ from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 
 import httpx
 from starlette.exceptions import HTTPException
@@ -34,6 +34,22 @@ REFERENCES = re.compile(r"(?:/assets/|assets/|\./)(" + NAME.pattern + r")(?![A-Z
 CACHE_DIR = Path(tempfile.gettempdir()) / "mainspring-frontend-assets-v1"
 
 
+class ArchiveBucket:
+    """Use the documented authenticated endpoint for private object reads."""
+    def __init__(self, bucket, url: str, key: str, bucket_name: str):
+        self.bucket = bucket
+        self.base_url = url.rstrip("/") + "/storage/v1/object/authenticated/" + quote(bucket_name, safe="") + "/"
+        self.reader = httpx.Client(timeout=20, headers={"apikey": key, "Authorization": "Bearer " + key})
+
+    def upload(self, *args, **kwargs):
+        return self.bucket.upload(*args, **kwargs)
+
+    def download(self, path: str) -> bytes:
+        response = self.reader.get(self.base_url + quote(path, safe="/"))
+        response.raise_for_status()
+        return response.content
+
+
 @lru_cache(maxsize=1)
 def archive_bucket():
     if not settings.supabase_url or not settings.supabase_service_role_key:
@@ -41,7 +57,9 @@ def archive_bucket():
     from supabase import create_client, ClientOptions
     client = create_client(settings.supabase_url, settings.supabase_service_role_key,
                            options=ClientOptions(storage_client_timeout=10))
-    return client.storage.from_(settings.supabase_storage_bucket)
+    return ArchiveBucket(client.storage.from_(settings.supabase_storage_bucket),
+                         settings.supabase_url, settings.supabase_service_role_key,
+                         settings.supabase_storage_bucket)
 
 
 def save_asset(bucket, name: str, content: bytes) -> None:
@@ -86,7 +104,8 @@ def cached_asset(name: str) -> Path | None:
     try:
         content = bucket.download(PREFIX + name)
     except Exception as exc:
-        if str(getattr(exc, "status", "")) == "404" or str(getattr(exc, "status_code", "")) == "404":
+        if (str(getattr(exc, "status", "")) == "404" or str(getattr(exc, "status_code", "")) == "404"
+                or getattr(getattr(exc, "response", None), "status_code", None) == 404):
             return None
         # Unknown missing keys are also reported as 400 by some Storage versions.
         if "not found" in str(exc).lower():
