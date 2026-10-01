@@ -7,11 +7,16 @@ import { applyTheme, readStoredTheme } from '@/context/ThemeContext'
 import { APP_BUILD_ID, stampBuildMetaTag } from '@/lib/buildInfo'
 import { installDomMutationGuard } from '@/lib/domMutationGuard'
 import { isNativeApp } from '@/lib/native'
+import { registerForPush } from '@/lib/pushNotifications'
 
 installDomMutationGuard()
 applyTheme(readStoredTheme())
 stampBuildMetaTag()
-if (isNativeApp) document.documentElement.classList.add('native-app')
+if (isNativeApp) {
+  document.documentElement.classList.add('native-app')
+  // Token is only logged until the backend can store device tokens.
+  registerForPush((token) => console.info('Push token', token)).catch((e) => console.warn('Push setup failed', e))
+}
 
 if ('serviceWorker' in navigator && import.meta.env.PROD && !isNativeApp) {
   window.addEventListener('load', () => {
