@@ -22,6 +22,22 @@ class Bucket:
         return self.objects[name]
 
 
+def test_archive_recovers_from_temporary_storage_failure(monkeypatch):
+    bucket = Bucket()
+    upload = bucket.upload
+    attempts = []
+    def unstable_upload(*args, **kwargs):
+        attempts.append(True)
+        if len(attempts) == 1:
+            raise RuntimeError("temporary storage outage")
+        return upload(*args, **kwargs)
+    monkeypatch.setattr(bucket, "upload", unstable_upload)
+    monkeypatch.setattr(assets.time, "sleep", lambda _: None)
+    assets.save_asset(bucket, "Page-abcdefgh.js", b"export default 1")
+    assert len(attempts) == 2
+    assert bucket.download(assets.PREFIX + "Page-abcdefgh.js") == b"export default 1"
+
+
 @pytest.fixture
 def retained(tmp_path, monkeypatch):
     bucket = Bucket()
