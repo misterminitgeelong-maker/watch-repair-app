@@ -1,5 +1,6 @@
 import axios, { type AxiosResponse } from 'axios'
 import { enqueueOffline } from '@/lib/offlineQueue'
+import { isNativeApp, NATIVE_API_ORIGIN } from '@/lib/native'
 
 /**
  * Optional API origin when the UI is served from a different host than the API (scheme + host, no path).
@@ -16,7 +17,7 @@ function normalizeConfiguredApiOrigin(raw: string): string {
 }
 
 export const API_ORIGIN: string = (() => {
-  const raw = import.meta.env.VITE_API_BASE_URL as string | undefined
+  const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined) || (isNativeApp ? NATIVE_API_ORIGIN : undefined)
   if (!raw?.trim()) return ''
   return normalizeConfiguredApiOrigin(raw)
 })()
@@ -52,6 +53,9 @@ export const REFRESH_VIA_COOKIE = '__cookie__'
 
 /** Headers asking the API to deliver refresh tokens as an httpOnly cookie. */
 export function refreshCookieHeaders(): Record<string, string> {
+  // The native shell runs on a different site than the API, so the SameSite=Strict
+  // refresh cookie would never be sent back; use body tokens held in local storage.
+  if (isNativeApp) return {}
   return {
     'X-Auth-Refresh-Mode': 'cookie',
     // "Remember me" off → the server sets a browser-session cookie.
@@ -213,6 +217,8 @@ const REFRESH_TOKEN_KEY = 'refresh_token'
 const REMEMBER_ME_KEY = 'remember_me'
 
 export function getRememberMe(): boolean {
+  // A phone app keeps you signed in; there is no browser session to end.
+  if (isNativeApp) return true
   try {
     return localStorage.getItem(REMEMBER_ME_KEY) === 'true'
   } catch {

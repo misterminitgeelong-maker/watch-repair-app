@@ -6,12 +6,14 @@ import App from './App.tsx'
 import { applyTheme, readStoredTheme } from '@/context/ThemeContext'
 import { APP_BUILD_ID, stampBuildMetaTag } from '@/lib/buildInfo'
 import { installDomMutationGuard } from '@/lib/domMutationGuard'
+import { isNativeApp } from '@/lib/native'
 
 installDomMutationGuard()
 applyTheme(readStoredTheme())
 stampBuildMetaTag()
+if (isNativeApp) document.documentElement.classList.add('native-app')
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && !isNativeApp) {
   window.addEventListener('load', () => {
     // Railway's edge may cache /sw.js for several hours. A build-specific URL
     // forces each deployment to fetch its worker immediately instead of
