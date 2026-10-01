@@ -107,7 +107,7 @@ class RetainedFrontendAssets(StaticFiles):
         return response
 
 
-def bootstrap_live_assets(bucket, base_url: str) -> int:
+def bootstrap_live_assets(bucket, base_url: str, extra_entries: tuple[str, ...] = ()) -> int:
     """Archive the live build before its first replacement, including lazy chunks.
 
     Follow only flat hashed filenames at this app's /assets/ endpoint, never
@@ -116,13 +116,16 @@ def bootstrap_live_assets(bucket, base_url: str) -> int:
     with httpx.Client(timeout=20, follow_redirects=False) as client:
         index = client.get(urljoin(base_url, "/index.html"))
         index.raise_for_status()
-        marker = PREFIX + "manifests/" + hashlib.sha256(index.content).hexdigest() + ".txt"
+        if any(not NAME.fullmatch(name) for name in extra_entries):
+            raise ValueError("Invalid bootstrap frontend entry")
+        marker = PREFIX + "manifests/" + hashlib.sha256(index.content + repr(extra_entries).encode()).hexdigest() + ".txt"
         try:
             if bucket.download(marker) == b"complete":
                 return 0
         except Exception:
             pass
         pending = set(REFERENCES.findall(index.text))
+        pending.update(extra_entries)
         if not pending:
             raise RuntimeError("Live frontend has no hashed bundles; refusing incomplete archive")
         seen = set()
@@ -144,7 +147,7 @@ def bootstrap_live_assets(bucket, base_url: str) -> int:
         return len(seen)
 
 
-def publish_build(*, bootstrap_url: str | None = None) -> int:
+def publish_build(*, bootstrap_url: str | None = None, extra_entries: tuple[str, ...] = ()) -> int:
     bucket = archive_bucket()
     if bucket is None:
         # Local development doesn't need an object-storage dependency. Production
@@ -159,13 +162,15 @@ def publish_build(*, bootstrap_url: str | None = None) -> int:
     with ThreadPoolExecutor(max_workers=4) as workers:
         list(workers.map(lambda asset: save_asset(bucket, asset.name, asset.read_bytes()), files))
     if bootstrap_url:
-        bootstrap_live_assets(bucket, bootstrap_url)
+        bootstrap_live_assets(bucket, bootstrap_url, extra_entries)
     return len(files)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--bootstrap-live", action="store_true")
+    parser.add_argument("--bootstrap-entry", action="append", default=[])
     args = parser.parse_args()
-    count = publish_build(bootstrap_url=settings.public_base_url if args.bootstrap_live else None)
+    count = publish_build(bootstrap_url=settings.public_base_url if args.bootstrap_live else None,
+                          extra_entries=tuple(args.bootstrap_entry))
     print(f"Frontend retention ready: {count} current assets archived")
