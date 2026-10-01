@@ -54,6 +54,7 @@ const MobileBookingPage = lazyPage(() => import('@/pages/MobileBookingPage'))
 const MobileInvoicePage = lazyPage(() => import('@/pages/MobileInvoicePage'))
 const MobileQuotePage = lazyPage(() => import('@/pages/MobileQuotePage'))
 const MobileJobIntakePage = lazyPage(() => import('@/pages/MobileJobIntakePage'))
+import { isNativeApp } from '@/lib/native'
 const LandingPage = lazyPage(() => import('@/pages/LandingPage'))
 const PricingPage = lazyPage(() => import('@/pages/PricingPage'))
 const AccountsPage = lazyPage(() => import('@/pages/AccountsPage'))
@@ -186,7 +187,7 @@ export default function App() {
             <Suspense fallback={<RouteFallback />}>
               <Routes>
             {/* Public — no auth required */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={isNativeApp ? <Navigate to="/login" replace /> : <LandingPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
             <Route path="/status/:token" element={<StatusPage />} />
