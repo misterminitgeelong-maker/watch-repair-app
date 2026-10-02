@@ -145,9 +145,9 @@ function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefine
 
 function SeverityBadge({ severity }: { severity: string }) {
   const s = severity.toLowerCase()
-  let bg = 'rgba(201,162,72,0.12)', color = '#9A7220'
+  let bg = 'rgba(201,162,72,0.12)', color = '#7A5A18'
   if (s.includes('very high') || s.includes('critical')) { bg = 'rgba(201,106,90,0.15)'; color = 'var(--ms-error)' }
-  else if (s.includes('high'))  { bg = 'rgba(201,106,90,0.10)'; color = '#B85A4A' }
+  else if (s.includes('high'))  { bg = 'rgba(201,106,90,0.10)'; color = '#9A4234' }
   else if (s.includes('low'))   { bg = 'rgba(120,180,120,0.15)'; color = '#4A8A4A' }
   return (
     <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0'

@@ -1,3 +1,4 @@
+import { App } from '@capacitor/app'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { isNativeApp } from '@/lib/native'
@@ -29,6 +30,18 @@ export function installNativeUi(): void {
     },
     true,
   )
+
+  // Android Back: close the open dialog first, then go back a page, and only
+  // leave the app from the first screen. Without this, Back with a form open
+  // navigates away and loses what was typed.
+  App.addListener('backButton', ({ canGoBack }) => {
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      return
+    }
+    if (canGoBack) window.history.back()
+    else App.exitApp().catch(() => {})
+  }).catch(() => {})
 
   syncStatusBar()
   new MutationObserver(syncStatusBar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })

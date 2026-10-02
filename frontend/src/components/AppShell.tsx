@@ -1017,17 +1017,18 @@ export default function AppShell() {
             minHeight: 44,
           }}
         >
-          <img
-            src={demoModeEnabled || theme !== 'minit' ? '/mainspring-logo.svg' : '/minit-logo.jpg'}
-            alt={demoModeEnabled || theme !== 'minit' ? 'Mainspring' : 'Mister Minit'}
-            style={{
-              height: 28,
-              width: 'auto',
-              maxWidth: 140,
-              display: 'block',
-              objectFit: 'contain',
-            }}
-          />
+          {demoModeEnabled || theme !== 'minit' ? (
+            <span className="flex items-center gap-2" role="img" aria-label="Mainspring">
+              <img src="/marketing/mainspring-badge-vermilion.svg" alt="" style={{ width: 28, height: 28, display: 'block' }} />
+              <span style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 21, fontWeight: 700, color: 'var(--ms-text)' }}>Mainspring</span>
+            </span>
+          ) : (
+            <img
+              src="/minit-logo.jpg"
+              alt="Mister Minit"
+              style={{ height: 28, width: 'auto', maxWidth: 140, display: 'block', objectFit: 'contain' }}
+            />
+          )}
           <button
             onClick={() => setSearchOpen(true)}
             className="flex h-11 w-11 items-center justify-center rounded-lg transition-colors"
@@ -1144,7 +1145,20 @@ export default function AppShell() {
         </Modal>
       )}
 
-      {activeTutorial && (
+      {activeTutorial && typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches && (
+        <div
+          role="status"
+          className="md:hidden fixed inset-x-2 z-40 flex items-center gap-3 rounded-xl border px-3 py-2 shadow-lg"
+          style={{ bottom: 'calc(var(--ms-mobile-bar-h) + 8px)', backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)' }}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>{activeTutorial.title}</p>
+            <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>{activeTutorial.intro}</p>
+          </div>
+          <Button size="sm" onClick={dismissTutorial}>Got it</Button>
+        </div>
+      )}
+      {activeTutorial && !(typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches) && (
         <Modal title={activeTutorial.title} onClose={dismissTutorial}>
           <div className="space-y-3 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
             <p style={{ color: 'var(--ms-text)' }}>{activeTutorial.intro}</p>
