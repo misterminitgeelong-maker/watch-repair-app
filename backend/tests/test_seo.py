@@ -42,3 +42,20 @@ def test_titles_and_descriptions_fit_search_results():
     for title, description in seo.PUBLIC_PAGES.values():
         assert len(title) <= 65
         assert len(description) <= 165
+
+
+def test_trade_pages_have_crawlable_content_and_own_canonical():
+    for path, word in (("watch-repair-software", "watch"), ("shoe-repair-software", "shoe")):
+        out = seo.render_index(INDEX, path)
+        assert f'<link rel="canonical" href="https://mainspring.au/{path}"' in out
+        assert "<h1>" in out and word in out.lower()
+        assert "A$50" in out
+        assert "noindex" not in out
+        assert seo.robots_header(path) is None
+
+
+def test_nonmarketing_pages_keep_noindex_in_html_as_well_as_header():
+    for path in ("login", "shop-invite/example", "shoe-approve/example", "dashboard"):
+        assert 'name="robots" content="noindex, nofollow"' in seo.render_index(INDEX, path)
+        assert seo.robots_header(path) == "noindex, nofollow"
+        assert "<h1>x</h1>" not in seo.render_index(INDEX, path)

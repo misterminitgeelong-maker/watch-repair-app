@@ -970,6 +970,8 @@ function Footer() {
         <div className="flex flex-wrap" style={{ gap: 20 }}>
           <a href="#pricing" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Pricing</a>
           <Link to="/login" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Log in</Link>
+          <Link to="/watch-repair-software" style={{ fontSize: 11, fontWeight: 700, color: MKT.textBody }}>Watch repair software</Link>
+          <Link to="/shoe-repair-software" style={{ fontSize: 11, fontWeight: 700, color: MKT.textBody }}>Shoe repair software</Link>
           <Link to="/privacy" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Privacy</Link>
           <a href="mailto:admin@mainspring.au" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Contact</a>
         </div>

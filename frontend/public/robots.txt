@@ -1,24 +1,6 @@
 User-agent: *
 Allow: /
-Allow: /pricing
-Allow: /mobile-services
-Allow: /privacy
+# HTML routes return noindex where appropriate. Let crawlers read that rule.
 Disallow: /v1/
-Disallow: /dashboard
-Disallow: /login
-Disallow: /signup
-Disallow: /approve/
-Disallow: /status/
-Disallow: /shoe-status/
-Disallow: /shoe-approve/
-Disallow: /customer-portal
-Disallow: /portal/
-Disallow: /mobile-booking/
-Disallow: /mobile-invoice/
-Disallow: /mobile-quote/
-Disallow: /mobile-job-intake/
-Disallow: /shop-invite/
-Disallow: /hq-invite/
-Disallow: /intake
 
 Sitemap: https://mainspring.au/sitemap.xml

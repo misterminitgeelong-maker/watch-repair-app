@@ -24,6 +24,16 @@ PUBLIC_PAGES: dict[str, tuple[str, str]] = {
         "Job tickets, quotes, invoices and customer texts for watch, shoe and mobile key repair "
         "businesses. Australian-owned, built in Geelong. 14-day trial.",
     ),
+    "watch-repair-software": (
+        "Watch repair management software Australia | Mainspring",
+        "Track watch repairs from intake photos to quotes, approvals and invoices. "
+        "Mainspring for Australian watch repair shops. From A$50/month.",
+    ),
+    "shoe-repair-software": (
+        "Shoe repair management software Australia | Mainspring",
+        "Manage shoe repair tickets, intake photos, quotes and collection in one place. "
+        "Mainspring for Australian repair shops. From A$50/month.",
+    ),
     "pricing": (
         "Mainspring pricing — from A$50 a month",
         "Mainspring for watch, shoe and mobile key repair businesses. Shop plan A$50 a month, Pro "
@@ -33,6 +43,21 @@ PUBLIC_PAGES: dict[str, tuple[str, str]] = {
         "Mobile locksmith and auto key software | Mainspring",
         "Quote, invoice and get paid on site. Job book, price list, arrival texts, key photos and "
         "lead inbox for mobile locksmiths and car key operators in Australia.",
+    ),
+}
+
+TRADE_CONTENT = {
+    "watch-repair-software": (
+        "Watch repair management software for Australian shops",
+        ["Keep customer details, watch intake photos and repair notes on one ticket. Follow each repair through quoting, customer approval, work and collection.",
+         "Send a customer a quote approval link and prepare invoices from the repair job. Keep the job record available to your team instead of passing a paper diary between the counter and bench.",
+         "Use Mainspring in the browser on your phone, tablet or computer. Watch, shoe and mobile services are included in the Shop plan: A$50 a month, with a 14-day trial and a card required to start."],
+    ),
+    "shoe-repair-software": (
+        "Shoe repair management software for Australian shops",
+        ["Book shoe repairs with customer details, intake photos, fault notes and a collection date. Keep the repair ticket together from the counter to collection.",
+         "Send quotes for customer approval, record progress and prepare invoices from the job. Follow jobs awaiting a go-ahead, in progress, completed and awaiting collection.",
+         "Use Mainspring on your shop computer, tablet or phone. Watch, shoe and mobile services are included in the Shop plan: A$50 a month, with a 14-day trial and a card required to start."],
     ),
 }
 
@@ -98,10 +123,20 @@ def render_index(index_html: str, full_path: str) -> str:
         index_html = _CONTENT_RE.sub("", index_html)
     page = PUBLIC_PAGES.get(path)
     if page is None:
+        if robots_header(full_path):
+            return index_html.replace("</head>", '<meta name="robots" content="noindex, nofollow" /></head>', 1)
         return index_html
     title, description = page
     url = f"{SITE}/{path}" if path else f"{SITE}/"
     t, d, u = html.escape(title, quote=True), html.escape(description, quote=True), html.escape(url, quote=True)
+
+    # Give non-JavaScript crawlers meaningful trade-page content as well.
+    if path in TRADE_CONTENT:
+        heading, paragraphs = TRADE_CONTENT[path]
+        content = '<main><h1>' + html.escape(heading) + '</h1>'
+        content += ''.join('<p>' + html.escape(text) + '</p>' for text in paragraphs)
+        content += '<p><a href="/pricing">Plans from A$50/month</a> · <a href="/signup">Start a 14-day trial</a> · <a href="/login?demo=1">Try the demo</a></p></main>'
+        index_html = index_html.replace('<div id="root">', '<div id="root">' + content, 1)
 
     out = _TITLE_RE.sub(lambda _m: f"<title>{t}</title>", index_html, count=1)
     out = _DESC_RE.sub(lambda _m: f'<meta name="description" content="{d}" />', out, count=1)
