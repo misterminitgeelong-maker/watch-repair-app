@@ -15,7 +15,7 @@ const tabs = [
 export default function MobileServicesSubNav({ className }: { className?: string }) {
   return (
     <div
-      className={cn('-mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0', className)}
+      className={cn('-mx-4 px-4 overflow-x-auto sm:mx-0 sm:px-0 [mask-image:linear-gradient(to_right,#000_88%,transparent)] sm:[mask-image:none]', className)}
       role="navigation"
       aria-label="Mobile services sections"
     >
@@ -27,7 +27,7 @@ export default function MobileServicesSubNav({ className }: { className?: string
           end={t.end}
           className={({ isActive }) =>
             cn(
-              'rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors min-h-11 inline-flex items-center',
+              'rounded-lg px-3.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors min-h-11 inline-flex items-center',
               isActive
                 ? 'shadow-sm'
                 : '',

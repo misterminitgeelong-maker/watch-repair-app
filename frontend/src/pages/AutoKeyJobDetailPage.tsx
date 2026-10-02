@@ -64,6 +64,9 @@ import { preparePhotoFile } from '@/lib/photoUpload'
  * starts so a solo operator does not get caught out on-site.
  */
 function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefined }) {
+  // On phones the detail list is long reference material; keep it one tap away
+  // so status, address and call buttons stay on the first screen.
+  const [expanded, setExpanded] = useState(false)
   if (!context) return null
   const knownIssues = context.known_issues ?? []
   const toolRecs = context.tool_recommendations ?? []
@@ -99,6 +102,17 @@ function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefine
         )}
       </div>
 
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(v => !v)}
+        className="flex min-h-11 w-full items-center justify-between text-left text-sm font-medium lg:hidden"
+        style={{ color: 'var(--ms-text)' }}
+      >
+        <span>{knownIssues.length} known issue{knownIssues.length === 1 ? '' : 's'}{recommendedTools.length > 0 ? ` · tools: ${recommendedTools.slice(0, 2).join(', ')}` : ''}</span>
+        <span aria-hidden>{expanded ? 'Hide' : 'Show'}</span>
+      </button>
+      <div className={expanded ? 'space-y-3' : 'hidden space-y-3 lg:block'}>
       {knownIssues.length > 0 && (
         <ul className="space-y-2">
           {knownIssues.slice(0, 4).map((issue: KnownIssue, i: number) => (
@@ -124,6 +138,7 @@ function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefine
           {recommendedTools.join(', ')}
         </p>
       )}
+      </div>
     </div>
   )
 }
@@ -623,7 +638,7 @@ export default function AutoKeyJobDetailPage() {
         >
           <ChevronLeft size={14} /> Back to Mobile Services
         </Link>
-        <MobileServicesSubNav className='mt-4' />
+        <MobileServicesSubNav className='mt-4 hidden sm:block' />
       </div>
 
       <PageHeader
