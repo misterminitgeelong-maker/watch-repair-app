@@ -36,6 +36,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMeChecked] = useState(getRememberMe)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [editShop, setEditShop] = useState(false)
   const showMinitBranding = isMinitTenantSlug(slug)
 
   useEffect(() => {
@@ -219,14 +220,22 @@ export default function LoginPage() {
               {loading ? 'Preparing demo…' : 'Launch interactive demo'}
             </button>
 
-            {mode === 'single' && (
+            {mode === 'single' && slug.trim() !== '' && !editShop && !error && (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--mkt-ink)' }}>
+                Signing in to <strong>{slug.trim()}</strong>{' '}
+                <button type="button" onClick={() => setEditShop(true)} style={{ background: 'none', border: 'none', padding: '10px 4px', textDecoration: 'underline', cursor: 'pointer', color: 'inherit', font: 'inherit' }}>
+                  Change
+                </button>
+              </p>
+            )}
+            {mode === 'single' && (slug.trim() === '' || editShop || !!error) && (
               <MarketingField
                 label="Shop ID (leave blank if you don't know it)"
                 value={slug}
                 onChange={setSlug}
                 placeholder="myshop"
                 autoComplete="organization"
-                autoFocus
+                autoFocus={typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches}
               />
             )}
             <MarketingField

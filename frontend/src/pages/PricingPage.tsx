@@ -8,8 +8,8 @@ const LANDING_CSS = `
 .lp-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(90, 55, 16, 0.08), 0 18px 34px rgba(90, 55, 16, 0.10); }
 `
 
-const SEO_TITLE = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$50/month.'
-const SEO_DESCRIPTION = 'Mainspring Pricing — Repair OS for watchmakers, shoe repairs, and mobile services. From A$50/month. 14-day trial; card required to start.'
+const SEO_TITLE = 'Mainspring pricing — from A$50 a month'
+const SEO_DESCRIPTION = 'Mainspring for watch, shoe and mobile key repair businesses. Shop plan A$50 a month, Pro A$90 for multiple sites. 14-day trial; card required to start.'
 
 export default function PricingPage() {
   useEffect(() => {

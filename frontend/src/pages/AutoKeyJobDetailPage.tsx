@@ -64,6 +64,9 @@ import { preparePhotoFile } from '@/lib/photoUpload'
  * starts so a solo operator does not get caught out on-site.
  */
 function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefined }) {
+  // On phones the detail list is long reference material; keep it one tap away
+  // so status, address and call buttons stay on the first screen.
+  const [expanded, setExpanded] = useState(false)
   if (!context) return null
   const knownIssues = context.known_issues ?? []
   const toolRecs = context.tool_recommendations ?? []
@@ -99,6 +102,17 @@ function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefine
         )}
       </div>
 
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(v => !v)}
+        className="flex min-h-11 w-full items-center justify-between text-left text-sm font-medium lg:hidden"
+        style={{ color: 'var(--ms-text)' }}
+      >
+        <span>{knownIssues.length} known issue{knownIssues.length === 1 ? '' : 's'}{recommendedTools.length > 0 ? ` · tools: ${recommendedTools.slice(0, 2).join(', ')}` : ''}</span>
+        <span aria-hidden>{expanded ? 'Hide' : 'Show'}</span>
+      </button>
+      <div className={expanded ? 'space-y-3' : 'hidden space-y-3 lg:block'}>
       {knownIssues.length > 0 && (
         <ul className="space-y-2">
           {knownIssues.slice(0, 4).map((issue: KnownIssue, i: number) => (
@@ -124,15 +138,16 @@ function VehicleAlertBanner({ context }: { context: VehicleJobContext | undefine
           {recommendedTools.join(', ')}
         </p>
       )}
+      </div>
     </div>
   )
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
   const s = severity.toLowerCase()
-  let bg = 'rgba(201,162,72,0.12)', color = '#9A7220'
+  let bg = 'rgba(201,162,72,0.12)', color = '#7A5A18'
   if (s.includes('very high') || s.includes('critical')) { bg = 'rgba(201,106,90,0.15)'; color = 'var(--ms-error)' }
-  else if (s.includes('high'))  { bg = 'rgba(201,106,90,0.10)'; color = '#B85A4A' }
+  else if (s.includes('high'))  { bg = 'rgba(201,106,90,0.10)'; color = '#9A4234' }
   else if (s.includes('low'))   { bg = 'rgba(120,180,120,0.15)'; color = '#4A8A4A' }
   return (
     <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap shrink-0'
@@ -623,7 +638,7 @@ export default function AutoKeyJobDetailPage() {
         >
           <ChevronLeft size={14} /> Back to Mobile Services
         </Link>
-        <MobileServicesSubNav className='mt-4' />
+        <MobileServicesSubNav className='mt-4 hidden sm:block' />
       </div>
 
       <PageHeader
@@ -670,7 +685,7 @@ export default function AutoKeyJobDetailPage() {
       <div className="lg:hidden mb-3 flex items-center gap-2 flex-wrap">
         <Badge status={job.status} />
         <select
-          className="flex-1 min-w-0 h-9 rounded-lg border px-2 text-sm"
+          aria-label="Job status" className="flex-1 min-w-0 h-9 rounded-lg border px-2 text-sm"
           style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
           value={job.status}
           disabled={statusMut.isPending}

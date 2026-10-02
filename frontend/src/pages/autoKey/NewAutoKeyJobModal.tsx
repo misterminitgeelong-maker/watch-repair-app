@@ -81,6 +81,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
   const { online } = useOnlineStatus()
   const [error, setError] = useState('')
   const [step, setStep] = useState<1 | 2>(1)
+  const [showKeyDetails, setShowKeyDetails] = useState(false)
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('existing')
   const [newCustomer, setNewCustomer] = useState({ full_name: '', email: '', phone: '', notes: '' })
   const [applySuggestedQuote, setApplySuggestedQuote] = useState(true)
@@ -428,7 +429,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
               <>
                 <Input label="Full Name *" value={newCustomer.full_name} onChange={e => setNewCustomer(f => ({ ...f, full_name: e.target.value }))} placeholder="Jane Smith" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Input label="Phone" value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder="0412 345 678" />
+                  <Input label="Phone" type="tel" inputMode="tel" autoComplete="off" value={newCustomer.phone} onChange={e => setNewCustomer(f => ({ ...f, phone: e.target.value }))} placeholder="0412 345 678" />
                   <Input label="Email" type="email" value={newCustomer.email} onChange={e => setNewCustomer(f => ({ ...f, email: e.target.value }))} placeholder="jane@example.com" />
                 </div>
                 <Textarea label="Notes" value={newCustomer.notes} onChange={e => setNewCustomer(f => ({ ...f, notes: e.target.value }))} rows={1} placeholder="Optional" />
@@ -569,14 +570,29 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
                 </ul>
               </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input label="VIN" value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
-              <Input label="Key type" value={form.key_type} onChange={e => setForm(f => ({ ...f, key_type: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input label="Blade / blank ref." value={form.blade_code} onChange={e => setForm(f => ({ ...f, blade_code: e.target.value }))} />
-              <Input label="Chip / transponder" value={form.chip_type} onChange={e => setForm(f => ({ ...f, chip_type: e.target.value }))} />
-            </div>
+            {(() => {
+              const keyDetailsFilled = !!(form.vin || form.key_type || form.blade_code || form.chip_type)
+              const keyDetailsOpen = showKeyDetails || keyDetailsFilled
+              return (
+                <>
+                  {!keyDetailsOpen && (
+                    <Button type="button" variant="secondary" className="w-full sm:hidden" onClick={() => setShowKeyDetails(true)}>
+                      Add VIN, key type, blade and chip details
+                    </Button>
+                  )}
+                  <div className={keyDetailsOpen ? 'space-y-3' : 'hidden space-y-3 sm:block'}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input label="VIN" value={form.vin} onChange={e => setForm(f => ({ ...f, vin: e.target.value }))} />
+                      <Input label="Key type" value={form.key_type} onChange={e => setForm(f => ({ ...f, key_type: e.target.value }))} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input label="Blade / blank ref." value={form.blade_code} onChange={e => setForm(f => ({ ...f, blade_code: e.target.value }))} />
+                      <Input label="Chip / transponder" value={form.chip_type} onChange={e => setForm(f => ({ ...f, chip_type: e.target.value }))} />
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
             <Input label="Qty" type="number" min="1" value={form.key_quantity} onChange={e => setForm(f => ({ ...f, key_quantity: e.target.value }))} />
           </>
         )}

@@ -46,6 +46,7 @@ const ToolkitPage = lazyPage(() => import('@/pages/ToolkitPage'))
 const ReportsPage = lazyPage(() => import('@/pages/ReportsPage'))
 const InboxPage = lazyPage(() => import('@/pages/InboxPage'))
 const LoginPage = lazyPage(() => import('@/pages/LoginPage'))
+const MobileServicesLandingPage = lazyPage(() => import('@/pages/MobileServicesLandingPage'))
 const SignupPage = lazyPage(() => import('@/pages/SignupPage'))
 const SignupCheckoutPage = lazyPage(() => import('@/pages/SignupCheckoutPage'))
 const StatusPage = lazyPage(() => import('@/pages/StatusPage'))
@@ -190,6 +191,7 @@ export default function App() {
               <Routes>
             {/* Public — no auth required */}
             <Route path="/" element={isNativeApp ? <Navigate to="/login" replace /> : <LandingPage />} />
+            <Route path="/mobile-services" element={isNativeApp ? <Navigate to="/login" replace /> : <MobileServicesLandingPage />} />
             <Route path="/pricing" element={isNativeApp ? <Navigate to="/login" replace /> : <PricingPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/delete-account" element={<AccountDeletionPage />} />

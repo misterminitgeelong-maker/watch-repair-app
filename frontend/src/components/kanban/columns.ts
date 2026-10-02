@@ -156,7 +156,7 @@ function mobileColumn(key: string, label: string, keys: readonly string[], color
 
 /** Active lifecycle: what the board shows by default. */
 export const AUTO_KEY_KANBAN_COLUMNS: readonly KanbanColumnDef[] = [
-  mobileColumn('awaiting_quote', 'Awaiting Quote', ['awaiting_quote', 'awaiting_customer_details'], '#C07820', '#FAEEDB'),
+  mobileColumn('awaiting_quote', 'Awaiting Quote', ['awaiting_quote', 'awaiting_customer_details'], '#9A5F10', '#FAEEDB'),
   mobileColumn('quote_sent', 'Quote Sent', ['quote_sent'], '#2A5FA0', '#EDF3FA'),
   mobileColumn('awaiting_booking_confirmation', 'Awaiting Booking Confirmation', ['awaiting_booking_confirmation'], '#3E6FB0', '#E7F0FA'),
   mobileColumn('booking_confirmed', 'Booking Confirmed', ['booking_confirmed'], '#B06010', '#FFF0E0'),
