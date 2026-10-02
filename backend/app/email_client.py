@@ -1321,10 +1321,11 @@ def _send_email(
     if reply and "@" in reply and reply.lower() != from_addr.lower():
         payload["reply_to"] = {"email": reply, "name": _from_name(shop_name)}
     unsub_target = reply if (reply and "@" in reply) else from_addr
-    payload["headers"] = {
-        "List-Unsubscribe": f"<mailto:{unsub_target}?subject=unsubscribe>",
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    }
+    # One-Click (RFC 8058) needs an https URL; advertising it with only a mailto:
+    # is malformed and counts against us at Gmail/Outlook. Account-security mail
+    # (invites, resets) is not a list, so it carries no unsubscribe header at all.
+    if event not in {"shop_owner_invite", "shop_owner_invite_reminder", "hq_owner_invite", "account_reset_link"}:
+        payload["headers"] = {"List-Unsubscribe": f"<mailto:{unsub_target}?subject=unsubscribe>"}
     attachments: list[dict] = []
     if pdf_bytes:
         attachments.append(
