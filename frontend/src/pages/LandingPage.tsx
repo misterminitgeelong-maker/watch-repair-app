@@ -181,7 +181,7 @@ const TRADE_BLOCKS = [
   },
 ]
 
-const MOBILE_CHIPS = ['Install as an app', 'Works on tablet', 'Photos from the camera', 'SMS built in']
+const MOBILE_CHIPS = ['Add to your home screen', 'Works on tablet', 'Photos from the camera', 'SMS built in']
 
 const PHONE_JOBS = [
   { type: 'Watch repair', title: 'Rolex Datejust — service', status: 'In progress', dot: DOTS.progress },
@@ -204,7 +204,7 @@ const PRICING_NOTES = [
 
 const FAQS = [
   { q: 'Do I have to pay for trades I don’t do?', a: 'No extra charge. Shop is A$50/month for one location with watch, shoe and mobile services all included. Pro is A$90/month when you need more than one site.' },
-  { q: 'Can I use it on the shop tablet and my phone?', a: 'Yes. Mainspring installs as an app on iOS and Android as well as running in the browser — same account, same data everywhere.' },
+  { q: 'Can I use it on the shop tablet and my phone?', a: 'Yes. Mainspring runs in the browser on any phone, tablet or computer and can be added to your home screen — same account, same data everywhere.' },
   { q: 'What happens to my open jobs when I switch?', a: 'Most shops enter open jobs as they come back in, which takes a week or two. Keep your diary alongside until you are comfortable.' },
   { q: 'Do customers get texted automatically?', a: 'Quote and pickup messages are sent from the ticket, so the customer hears from you at each status change without anyone remembering to call.' },
 ]
@@ -363,6 +363,7 @@ function Nav() {
         <nav className="flex items-center gap-3 lg:gap-[30px] shrink-0">
           <a href="#product" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Product</a>
           <a href="#trades" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Trades</a>
+          <Link to="/mobile-services" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Mobile services</Link>
           <a href="#pricing" className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Pricing</a>
           <a href="#faq" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>FAQ</a>
           <Link to="/login" className="inline-flex items-center" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink, minHeight: 44 }}>Log in</Link>
@@ -816,7 +817,7 @@ function MobileBlock() {
               Take intake anywhere.
             </h2>
             <p style={{ margin: '16px 0 0', maxWidth: 520, fontSize: 15, lineHeight: 1.65, color: MKT.textBody }}>
-              Install Mainspring on the shop tablet or your phone. Book a job at the counter, cut a key at the customer&rsquo;s car, photograph a sole before you start — same ticket, same second.
+              Open Mainspring on the shop tablet or your phone. Book a job at the counter, cut a key at the customer&rsquo;s car, photograph a sole before you start — same ticket, same second.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2" style={{ columnGap: 24, marginTop: 22, maxWidth: 460 }}>
               {MOBILE_CHIPS.map((chip) => (
@@ -1007,6 +1008,12 @@ export default function LandingPage() {
     const id = setInterval(() => setStep((s) => (s + 1) % LIFECYCLE.length), LIFECYCLE_SPEED_MS)
     return () => clearInterval(id)
   }, [reduceMotion])
+
+  useEffect(() => {
+    const prev = document.title
+    document.title = 'Mainspring — job tickets, quotes and invoices for repair trades'
+    return () => { document.title = prev }
+  }, [])
 
   // After /auth/session succeeds, send signed-in users straight to the app.
   if (token && sessionReady) return <Navigate to="/dashboard" replace />
