@@ -33,7 +33,7 @@ export default function MobileServicesLandingPage() {
 
   useEffect(() => {
     const prev = document.title
-    document.title = 'Mainspring for mobile locksmiths and auto key operators'
+    document.title = 'Mobile locksmith and auto key software | Mainspring'
     return () => { document.title = prev }
   }, [])
 

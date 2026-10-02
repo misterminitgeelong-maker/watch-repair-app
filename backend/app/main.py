@@ -8,7 +8,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from . import seo
 from .frontend_assets import RetainedFrontendAssets
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -628,4 +629,11 @@ if _static and _static.is_dir():
             elif full_path in ("manifest.json", "index.html"):
                 headers = {"Cache-Control": "no-cache"}
             return FileResponse(str(file_path), headers=headers)
-        return FileResponse(str(_static / "index.html"), headers={"Cache-Control": "no-cache"})
+        index_path = _static / "index.html"
+        headers = {"Cache-Control": "no-cache"}
+        robots = seo.robots_header(full_path)
+        if robots:
+            headers["X-Robots-Tag"] = robots
+        if seo.normalise_path(full_path) in seo.PUBLIC_PAGES and index_path.is_file():
+            return HTMLResponse(seo.render_index(index_path.read_text(encoding="utf-8"), full_path), headers=headers)
+        return FileResponse(str(index_path), headers=headers)
