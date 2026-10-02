@@ -92,6 +92,11 @@ def test_create_and_complete_invite_replaces_owner_credentials():
     assert public.status_code == 200, public.text
     assert public.json()["status"] == "pending"
 
+    # Mail scanners can fetch the invite repeatedly before its owner opens it.
+    scanned_again = client.get(f"/v1/public/shop-invite/{token}")
+    assert scanned_again.status_code == 200
+    assert scanned_again.json()["status"] == "pending"
+
     new_email = f"franchisee-{suffix}@test.local"
     complete = client.post(
         f"/v1/public/shop-invite/{token}/complete",

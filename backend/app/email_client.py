@@ -46,14 +46,14 @@ def _api_key() -> str:
 
 
 def _from_email() -> str:
-    return (getattr(settings, "email_from_address", "") or "noreply@em695.mainspring.au").strip()
+    return (getattr(settings, "email_from_address", "") or "noreply@mainspring.au").strip()
 
 
 def _from_name(shop_name: str | None = None) -> str:
     default = (getattr(settings, "email_from_name", "") or "").strip()
     if default:
         return default
-    return (shop_name or "").strip() or "Mainspring"
+    return "Mainspring"
 
 
 
@@ -478,9 +478,9 @@ def send_shop_owner_invite_email(
     if shop_number:
         shop_label += f" (#{shop_number})"
 
-    subject = f"Set up your {shop_label} login"
+    subject = f"Your Mainspring invitation for {shop_label}"
     if is_reminder:
-        subject = f"Reminder: {subject} — link expires soon"
+        subject = f"Reminder: {subject}"
     shop_id_line = (
         f"Your Shop ID is {tenant_slug}. Next time, sign in at mainspring.au with it and your email.\n\n"
         if tenant_slug
@@ -488,15 +488,18 @@ def send_shop_owner_invite_email(
     )
     body_plain = (
         f"Hi {owner_full_name.strip() or 'there'},\n\n"
-        f"Set up your own login for {shop_label} — this replaces the shared HQ login "
+        f"Mister Minit HQ invited you to manage {shop_label} on Mainspring (mainspring.au).\n\n"
+        f"Create your Mainspring login — this replaces the shared HQ login "
         f"you may have been using, with your own email and password.\n\n"
         f"Set up your login: {invite_url}\n\n"
         f"{shop_id_line}"
         f"This link is one-time use and expires in {expiry_days} days. "
-        f"If you weren't expecting this, contact Mister Minit HQ.\n"
+        f"If you weren't expecting this, contact Mister Minit HQ. "
+        f"Choose a new password for Mainspring; you do not need to enter your email account password.\n"
     )
     intro_html = (
-        f"Set up your own login for <strong>{_html.escape(shop_label)}</strong> — this replaces the "
+        f"Mister Minit HQ invited you to manage <strong>{_html.escape(shop_label)}</strong> "
+        "on Mainspring (mainspring.au).<br><br>Create your Mainspring login — this replaces the "
         f"shared HQ login you may have been using, with your own email and password."
     )
     if tenant_slug:
@@ -509,9 +512,14 @@ def send_shop_owner_invite_email(
         preheader=f"One-time link, expires in {expiry_days} days",
         greeting=f"Hi {owner_full_name.strip() or 'there'},",
         intro_html=intro_html,
-        shop=ShopInfo(name="Mister Minit HQ"),
+        shop=ShopInfo(name="Mainspring · Mister Minit HQ"),
         cta_label="Set up your login",
         cta_url=invite_url,
+        note_html=(
+            f"This one-time link expires in {expiry_days} days. If you were not expecting this invitation, "
+            "contact Mister Minit HQ. Choose a new password for Mainspring; "
+            "you do not need to enter your email account password."
+        ),
     )
     return _send_email(
         to_email=to_email.strip(),
@@ -541,7 +549,7 @@ def send_account_reset_email(
     subject = f"Reset your {tenant_name.strip()} login"
     body_plain = (
         f"Hi {full_name.strip() or 'there'},\n\n"
-        f"Mister Minit HQ sent you a link to reset your {tenant_name.strip()} login.\n\n"
+        f"Mister Minit HQ sent you a link to reset your {tenant_name.strip()} login on Mainspring (mainspring.au).\n\n"
         f"Reset your login: {reset_url}\n\n"
         f"This link is one-time use and expires in {expiry_days} days. "
         f"If you weren't expecting this, contact Mister Minit HQ.\n"
@@ -551,7 +559,8 @@ def send_account_reset_email(
         preheader=f"One-time link, expires in {expiry_days} days",
         greeting=f"Hi {full_name.strip() or 'there'},",
         intro_html=(
-            f"Mister Minit HQ sent you a link to reset your <strong>{_html.escape(tenant_name.strip())}</strong> login."
+            f"Mister Minit HQ sent you a link to reset your <strong>{_html.escape(tenant_name.strip())}</strong> "
+            "login on Mainspring (mainspring.au)."
         ),
         shop=ShopInfo(name="Mister Minit HQ"),
         cta_label="Reset your login",
@@ -1309,22 +1318,19 @@ def _send_email(
         "subject": subject,
         "content": content,
         "categories": [event],
-        # Click tracking rewrites every link through the SendGrid link-branding
-        # domain (urlNNNN.<domain>), which has no TLS cert → browsers show
-        # NET::ERR_CERT_COMMON_NAME_INVALID. These are transactional emails
-        # carrying invite/reset/approval tokens, so links must go out untouched.
+        # Keep invite/reset/approval URLs on the app's domain rather than
+        # routing sensitive token links through a tracking redirect.
         "tracking_settings": {
             "click_tracking": {"enable": False, "enable_text": False},
+            "open_tracking": {"enable": False},
         },
     }
-    reply = (reply_to or "").strip()
+    reply = (reply_to or "").strip() or settings.email_reply_to_address.strip()
     if reply and "@" in reply and reply.lower() != from_addr.lower():
         payload["reply_to"] = {"email": reply, "name": _from_name(shop_name)}
-    unsub_target = reply if (reply and "@" in reply) else from_addr
-    payload["headers"] = {
-        "List-Unsubscribe": f"<mailto:{unsub_target}?subject=unsubscribe>",
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    }
+    # A mailto URL cannot implement RFC 8058 one-click POST. Essential
+    # transactional messages are not mailing-list subscriptions; recurring
+    # report preferences are managed separately in the application.
     attachments: list[dict] = []
     if pdf_bytes:
         attachments.append(

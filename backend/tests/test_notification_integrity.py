@@ -57,7 +57,48 @@ def live_email(monkeypatch):
     monkeypatch.setattr("app.email_client.settings.enable_email_notifications", True)
     monkeypatch.setattr("app.email_client.settings.sendgrid_api_key", "sg-test-key")
     monkeypatch.setattr("app.email_client.settings.email_from_address", "noreply@example.test")
+    monkeypatch.setattr("app.email_client.settings.email_from_name", "")
+    monkeypatch.setattr("app.email_client.settings.email_reply_to_address", "")
     monkeypatch.setattr("app.email_client.time.sleep", lambda _s: None)
+
+
+def test_invite_keeps_token_links_direct_and_identifies_mainspring(live_email, monkeypatch):
+    from app.email_client import send_shop_owner_invite_email
+
+    posts = _patch_sendgrid(monkeypatch, lambda *_a, **_k: _FakeResponse(202))
+    monkeypatch.setattr("app.email_client.settings.email_from_address", "")
+    monkeypatch.setattr("app.email_client.settings.email_reply_to_address", "admin@mainspring.au")
+    invite_url = "https://mainspring.au/shop-invite/disposable-test-token"
+    ok, err = send_shop_owner_invite_email(
+        to_email="owner@example.test", owner_full_name="Alex", tenant_name="Test Shop",
+        shop_number="42", invite_url=invite_url, expiry_days=7,
+    )
+    assert ok and err is None
+    payload = posts[0]["json"]
+    assert payload["from"] == {"email": "noreply@mainspring.au", "name": "Mainspring"}
+    assert payload["reply_to"]["email"] == "admin@mainspring.au"
+    assert payload["tracking_settings"]["click_tracking"] == {"enable": False, "enable_text": False}
+    assert payload["tracking_settings"]["open_tracking"] == {"enable": False}
+    assert "headers" not in payload
+    assert "attachments" not in payload
+    assert [part["type"] for part in payload["content"]] == ["text/plain", "text/html"]
+    for part in payload["content"]:
+        assert invite_url in part["value"]
+        assert "expires in 7 days" in part["value"]
+        assert "Mainspring" in part["value"]
+
+
+def test_shop_reply_to_overrides_platform_mailbox(live_email, monkeypatch):
+    from app.email_client import _send_email
+
+    posts = _patch_sendgrid(monkeypatch, lambda *_a, **_k: _FakeResponse(202))
+    monkeypatch.setattr("app.email_client.settings.email_reply_to_address", "admin@mainspring.au")
+    ok, err = _send_email(
+        to_email="customer@example.test", subject="Quote", body_plain="Your quote",
+        shop_name="Test Shop", reply_to="shop@example.test", event="quote_sent",
+    )
+    assert ok and err is None
+    assert posts[0]["json"]["reply_to"]["email"] == "shop@example.test"
 
 
 @pytest.fixture

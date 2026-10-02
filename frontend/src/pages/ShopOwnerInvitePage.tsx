@@ -67,9 +67,10 @@ export default function ShopOwnerInvitePage() {
       style={{ backgroundColor: 'var(--ms-bg, #F7F4EF)' }}
     >
       <div className="w-full max-w-md">
+        <img src="/mainspring-logo.svg" alt="Mainspring" className="w-40 mx-auto mb-4" />
         <div className="flex items-center gap-2 justify-center mb-6" style={{ color: 'var(--ms-text-muted)' }}>
           <KeyRound size={18} />
-          <span className="text-sm font-medium">Set up your shop login</span>
+          <span className="text-sm font-medium">Set up your Mainspring shop login</span>
         </div>
 
         {isLoading && (
@@ -110,6 +111,9 @@ export default function ShopOwnerInvitePage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+                Create a new password for Mainspring. You do not need to enter your email account password.
+              </p>
               <Input
                 label="Your full name"
                 value={fullName}

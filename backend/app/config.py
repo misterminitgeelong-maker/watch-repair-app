@@ -106,7 +106,8 @@ class Settings(BaseSettings):
     # Email via Twilio SendGrid (Console → Email → API Keys). Not the same as TWILIO_ACCOUNT_SID.
     sendgrid_api_key: str = ""
     email_from_address: str = ""  # Verified sender in SendGrid, e.g. quotes@yourshop.com
-    email_from_name: str = ""  # Display name; defaults to shop name when sending
+    email_from_name: str = ""  # Display name; defaults to Mainspring
+    email_reply_to_address: str = ""  # Monitored mailbox; per-message shop replies take precedence
 
     # Sentry (leave blank to disable)
     sentry_dsn: str = ""
