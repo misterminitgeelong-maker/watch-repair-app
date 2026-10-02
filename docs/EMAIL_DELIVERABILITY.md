@@ -16,7 +16,7 @@ Verified 2 October 2026 (Australia/Sydney).
 - Safe Browsing Transparency Report: No unsafe content found (report last updated 30 September). A specific token URL or recipient-side warning remains unverified.
 - Corrected the Google Workspace DKIM hostname from google._domainkey._domainkey.mainspring.au to google._domainkey.mainspring.au, retaining the exact key confirmed in Google Admin. Authoritative DNS resolves the key and Google Admin reports Authenticating email with DKIM. This is separate from SendGrid signing.
 - Search Console domain property mainspring.au is verified under admin@mainspring.au and Security Issues reports No issues detected.
-- Google Postmaster Tools v2 domain creation did not advance or register mainspring.au under admin@mainspring.au; no error was shown. Monitoring setup remains pending.
+- Google Postmaster Tools domain mainspring.au is registered and successfully verified under admin@mainspring.au using the existing verification TXT. Manage Domains shows Verified and No issues. Actual dashboard history may remain empty at low sending volumes.
 - Deployment follow-up is active in this chat for 18:05 Sydney time. Draft PR: https://github.com/misterminitgeelong-maker/watch-repair-app/pull/44.
 
 ## Pending app deployment
