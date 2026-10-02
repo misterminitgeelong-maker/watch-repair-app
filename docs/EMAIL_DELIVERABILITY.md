@@ -14,7 +14,10 @@ Verified 2 October 2026 (Australia/Sydney).
 - DMARC: v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net;
 - Received SendGrid report dated 28 September: From Mainspring <admin@mainspring.au>, SPF pass (149.72.126.143), DKIM pass (d=mainspring.au; s=s1), DMARC pass with relaxed alignment. This was an archived message, not confirmed junk-folder evidence.
 - Safe Browsing Transparency Report: No unsafe content found (report last updated 30 September). A specific token URL or recipient-side warning remains unverified.
-- Cloudflare has a potentially mistyped Workspace DKIM hostname google._domainkey._domainkey.mainspring.au. Confirm the configured selector/key in Google Admin before correcting it; this is separate from SendGrid signing.
+- Corrected the Google Workspace DKIM hostname from google._domainkey._domainkey.mainspring.au to google._domainkey.mainspring.au, retaining the exact key confirmed in Google Admin. Authoritative DNS resolves the key and Google Admin reports Authenticating email with DKIM. This is separate from SendGrid signing.
+- Search Console domain property mainspring.au is verified under admin@mainspring.au and Security Issues reports No issues detected.
+- Google Postmaster Tools v2 domain creation did not advance or register mainspring.au under admin@mainspring.au; no error was shown. Monitoring setup remains pending.
+- Deployment follow-up is active in this chat for 18:05 Sydney time. Draft PR: https://github.com/misterminitgeelong-maker/watch-repair-app/pull/44.
 
 ## Pending app deployment
 
