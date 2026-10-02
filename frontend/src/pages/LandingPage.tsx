@@ -399,7 +399,7 @@ function Hero() {
           </h1>
           <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr_0.9fr] gap-8" style={{ marginTop: 36, paddingBottom: 40 }}>
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: MKT.textBody }}>
-              Intake, quotes, approvals, invoices and reports for every trade you run — one ticket book instead of a diary, a notebook and three spreadsheets.
+              Mainspring is repair management software for watch repairs, shoe repairs and mobile locksmiths. Intake, quotes, approvals, invoices and reports — one ticket book instead of a diary, a notebook and three spreadsheets.
             </p>
             <div className="flex items-start flex-wrap">
               <Link

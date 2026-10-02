@@ -8,7 +8,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
+from .frontend_seo import frontend_html
 from .frontend_assets import RetainedFrontendAssets
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -618,7 +619,7 @@ if _static and _static.is_dir():
             from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "Not Found"}, status_code=404)
         file_path = _static / full_path
-        if full_path and file_path.is_file():
+        if full_path and full_path != "index.html" and file_path.is_file():
             headers = None
             if full_path == "sw.js":
                 headers = {
@@ -628,4 +629,8 @@ if _static and _static.is_dir():
             elif full_path in ("manifest.json", "index.html"):
                 headers = {"Cache-Control": "no-cache"}
             return FileResponse(str(file_path), headers=headers)
-        return FileResponse(str(_static / "index.html"), headers={"Cache-Control": "no-cache"})
+        headers = {"Cache-Control": "no-cache"}
+        if full_path:
+            headers["X-Robots-Tag"] = "noindex"
+        html = (_static / "index.html").read_text(encoding="utf-8")
+        return HTMLResponse(frontend_html(html, full_path), headers=headers)
