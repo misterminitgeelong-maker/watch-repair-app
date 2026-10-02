@@ -197,6 +197,7 @@ export default function AutoKeyJobsPage() {
   const [mapRangeMode, setMapRangeMode] = useState<'day' | 'week' | 'month'>(initialMapRangeMode)
   const [boardActionErr, setBoardActionErr] = useState('')
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
   const [bulkStatus, setBulkStatus] = useState<JobStatus>('booking_confirmed')
   const toast = useToast()
   const bulkStatusMut = useMutation({
@@ -987,6 +988,15 @@ export default function AutoKeyJobsPage() {
                 </div>
               )}
               <div className="space-y-3 md:hidden">
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setSelectMode(m => !m); setBulkSelected(new Set()) }}
+                  >
+                    {selectMode ? 'Done' : 'Select'}
+                  </Button>
+                </div>
                 {pagedJobs.map(job => {
                   const tech = users.find((user: { id: string; full_name: string }) => user.id === job.assigned_user_id)?.full_name
                   const vehicle = [job.vehicle_year, job.vehicle_make, job.vehicle_model].filter(Boolean).join(' ')
@@ -996,19 +1006,32 @@ export default function AutoKeyJobsPage() {
                   return (
                     <Card key={job.id} hoverable className="p-4" onClick={() => navigate(`/auto-key/${job.id}`)} style={{ cursor: 'pointer' }}>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>
-                            #{job.job_number}{job.customer_name ? ` · ${job.customer_name}` : ''}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold" style={{ color: 'var(--ms-accent)' }}>#{job.job_number}</p>
+                            <Badge status={job.status} />
+                          </div>
+                          <p className="mt-1 text-base font-semibold leading-snug" style={{ color: 'var(--ms-text)' }}>
+                            {job.customer_name ?? job.title}
                           </p>
-                          <p className="mt-1 truncate text-sm" style={{ color: 'var(--ms-text)' }}>
+                          <p className="mt-0.5 text-sm leading-snug" style={{ color: 'var(--ms-text)' }}>
                             {vehicle || job.title}{job.registration_plate ? ` · ${job.registration_plate}` : ''}
                           </p>
                           <p className="mt-1 text-xs" style={{ color: 'var(--ms-text-muted)' }}>
                             {tech ?? 'Unassigned'}{scheduled ? ` · ${scheduled}` : ''}{job.cost_cents > 0 ? ` · ${formatCents(job.cost_cents)}` : ''}
                           </p>
+                          {job.customer_phone && (
+                            <a
+                              href={`tel:${job.customer_phone.replace(/\s/g, '')}`}
+                              onClick={event => event.stopPropagation()}
+                              className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium touch-manipulation"
+                              style={{ color: 'var(--ms-accent)' }}
+                            >
+                              <Phone size={14} /> {job.customer_phone}
+                            </a>
+                          )}
                         </div>
-                        <div className="flex shrink-0 flex-col items-end gap-2">
-                          <Badge status={job.status} />
+                        {selectMode && (
                           <input
                             type="checkbox"
                             aria-label={`Select job ${job.job_number}`}
@@ -1022,9 +1045,9 @@ export default function AutoKeyJobsPage() {
                                 return next
                               })
                             }}
-                            className="h-5 w-5"
+                            className="mt-1 h-6 w-6 shrink-0"
                           />
-                        </div>
+                        )}
                       </div>
                     </Card>
                   )
