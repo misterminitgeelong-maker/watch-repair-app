@@ -634,6 +634,6 @@ if _static and _static.is_dir():
         robots = seo.robots_header(full_path)
         if robots:
             headers["X-Robots-Tag"] = robots
-        if seo.normalise_path(full_path) in seo.PUBLIC_PAGES and index_path.is_file():
+        if index_path.is_file():
             return HTMLResponse(seo.render_index(index_path.read_text(encoding="utf-8"), full_path), headers=headers)
         return FileResponse(str(index_path), headers=headers)

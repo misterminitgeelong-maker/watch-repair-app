@@ -6,7 +6,7 @@ INDEX = """<!doctype html><html><head>
 <meta property="og:description" content="old" />
 <meta property="og:url" content="https://mainspring.au/" />
 <title>Mainspring</title>
-</head><body><div id="root"></div></body></html>"""
+</head><body><div id="root"><!-- seo-content-start --><main><h1>x</h1></main><!-- seo-content-end --></div></body></html>"""
 
 
 def test_public_page_gets_its_own_head_tags():
@@ -26,7 +26,9 @@ def test_home_page_has_structured_data_and_trailing_slash_is_ignored():
 
 
 def test_unknown_paths_are_untouched_and_noindex():
-    assert seo.render_index(INDEX, "dashboard") == INDEX
+    assert "<h1>x</h1>" not in seo.render_index(INDEX, "dashboard")
+    assert "<h1>x</h1>" not in seo.render_index(INDEX, "pricing")
+    assert "<h1>x</h1>" in seo.render_index(INDEX, "")
     assert seo.robots_header("approve/abc123") == "noindex, nofollow"
     assert seo.robots_header("dashboard") == "noindex, nofollow"
 

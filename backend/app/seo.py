@@ -39,6 +39,7 @@ PUBLIC_PAGES: dict[str, tuple[str, str]] = {
 # Public but not worth ranking: keep indexable so links resolve, but no custom tags.
 INDEXABLE_PATHS = {"privacy"}
 
+_CONTENT_RE = re.compile(r"<!-- seo-content-start -->.*?<!-- seo-content-end -->", re.S)
 _TITLE_RE = re.compile(r"<title>.*?</title>", re.S)
 _DESC_RE = re.compile(r'<meta name="description"[^>]*>')
 _OG_RE = {
@@ -92,6 +93,9 @@ def robots_header(full_path: str) -> str | None:
 def render_index(index_html: str, full_path: str) -> str:
     """Return index.html with the head tags for ``full_path`` (unchanged if not a public page)."""
     path = normalise_path(full_path)
+    if path:
+        # The crawler-visible home copy in #root only belongs on the home page.
+        index_html = _CONTENT_RE.sub("", index_html)
     page = PUBLIC_PAGES.get(path)
     if page is None:
         return index_html
