@@ -258,12 +258,15 @@ const labelStyle: React.CSSProperties = { fontFamily: 'var(--ms-font-heading)', 
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }>(
   function Input({ label, error, ...props }, ref) {
+    const autoId = useId()
+    const id = props.id ?? autoId
     return (
       <div className="flex flex-col">
-        {label && <label className={labelClass} style={labelStyle}>{label}</label>}
+        {label && <label htmlFor={id} className={labelClass} style={labelStyle}>{label}</label>}
         <input
           ref={ref}
           {...props}
+          id={id}
           className={cn('h-11 w-full border text-base outline-none transition focus:ring-2 sm:h-9 sm:text-[13px]', props.className)}
           style={{
             ...inputBase,
@@ -286,11 +289,14 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
 )
 
 export function Select({ label, error, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string; error?: string }) {
+  const autoId = useId()
+  const id = props.id ?? autoId
   return (
     <div className="flex flex-col">
-      {label && <label className={labelClass} style={labelStyle}>{label}</label>}
+      {label && <label htmlFor={id} className={labelClass} style={labelStyle}>{label}</label>}
       <select
         {...props}
+        id={id}
         className={cn('h-11 w-full border text-base outline-none transition focus:ring-2 sm:h-9 sm:text-[13px]', props.className)}
         style={{
           ...inputBase,
@@ -306,11 +312,14 @@ export function Select({ label, error, children, ...props }: React.SelectHTMLAtt
 }
 
 export function Textarea({ label, error, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string; error?: string }) {
+  const autoId = useId()
+  const id = props.id ?? autoId
   return (
     <div className="flex flex-col">
-      {label && <label className={labelClass} style={labelStyle}>{label}</label>}
+      {label && <label htmlFor={id} className={labelClass} style={labelStyle}>{label}</label>}
       <textarea
         {...props}
+        id={id}
         className={cn('w-full resize-none border text-base outline-none transition focus:ring-2 sm:text-[13px]', props.className)}
         style={{
           backgroundColor: 'var(--ms-surface)',

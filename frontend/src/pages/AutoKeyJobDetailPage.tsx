@@ -670,7 +670,7 @@ export default function AutoKeyJobDetailPage() {
       <div className="lg:hidden mb-3 flex items-center gap-2 flex-wrap">
         <Badge status={job.status} />
         <select
-          className="flex-1 min-w-0 h-9 rounded-lg border px-2 text-sm"
+          aria-label="Job status" className="flex-1 min-w-0 h-9 rounded-lg border px-2 text-sm"
           style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border-strong)', color: 'var(--ms-text)' }}
           value={job.status}
           disabled={statusMut.isPending}

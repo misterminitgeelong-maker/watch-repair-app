@@ -176,7 +176,7 @@ function LeadCard({ lead }: { lead: InboundLead }) {
             onClick={() => convert.mutate()}
             disabled={convert.isPending}
             className="text-xs px-2 py-1 rounded-md font-semibold disabled:opacity-50"
-            style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
+            style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
           >
             {convert.isPending ? '…' : 'Convert to account'}
           </button>

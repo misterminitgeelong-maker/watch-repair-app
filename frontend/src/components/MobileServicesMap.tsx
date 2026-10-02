@@ -297,7 +297,7 @@ function MarkerWithInfoWindow({
           className="rounded-full px-2.5 py-1 text-xs font-bold shadow-md"
           style={approximated
             ? { backgroundColor: '#F4E6C3', color: '#6A4A10', border: '2px dashed #6A4A10' }
-            : { backgroundColor: 'var(--ms-accent)', color: '#2C1810', border: '2px solid #fff' }}
+            : { backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)', border: '2px solid #fff' }}
         >
           {approximated ? `? · ${labelText}` : labelText}
         </div>
@@ -757,7 +757,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
           <button
             type="button"
             className="mt-4 px-4 py-2 rounded-lg text-sm font-medium touch-manipulation"
-            style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
+            style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
             onClick={() => setMapFilter('all_addresses')}
           >
             Show all jobs with addresses
@@ -971,7 +971,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
             disabled={applyVisitOrderPending}
             onClick={() => onApplyVisitOrder(orderedJobs.map((j) => j.id))}
             className="px-3 py-1.5 rounded-md text-xs font-semibold touch-manipulation disabled:opacity-50"
-            style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
+            style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
           >
             {applyVisitOrderPending ? 'Applying…' : 'Apply to schedule'}
           </button>
@@ -986,7 +986,7 @@ function MobileServicesMapInner({ jobs, customers = [], rangeLabel, onApplyVisit
             <a
               href={`/auto-key/${j.id}`}
               className="px-3 py-1.5 rounded inline-block"
-              style={{ backgroundColor: 'var(--ms-accent)', color: '#2C1810' }}
+              style={{ backgroundColor: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
             >
               {i + 1}. #{j.job_number} · {j.title}
             </a>

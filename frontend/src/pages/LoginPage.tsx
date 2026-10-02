@@ -226,7 +226,7 @@ export default function LoginPage() {
                 onChange={setSlug}
                 placeholder="myshop"
                 autoComplete="organization"
-                autoFocus
+                autoFocus={typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches}
               />
             )}
             <MarketingField

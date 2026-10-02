@@ -365,7 +365,7 @@ function Nav() {
           <a href="#trades" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Trades</a>
           <a href="#pricing" className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Pricing</a>
           <a href="#faq" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>FAQ</a>
-          <Link to="/login" className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Log in</Link>
+          <Link to="/login" className="inline-flex items-center" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink, minHeight: 44 }}>Log in</Link>
           <Link
             to="/signup"
             className="mkt-nav-cta inline-flex items-center whitespace-nowrap px-3 sm:px-4"
@@ -401,7 +401,7 @@ function Hero() {
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: MKT.textBody }}>
               Intake, quotes, approvals, invoices and reports for every trade you run — one ticket book instead of a diary, a notebook and three spreadsheets.
             </p>
-            <div className="flex items-start flex-wrap">
+            <div className="flex items-start flex-wrap gap-3 sm:gap-0">
               <Link
                 to="/signup"
                 className="mkt-btn-primary inline-flex items-center whitespace-nowrap"
@@ -497,7 +497,6 @@ function Lifecycle({ step }: { step: number }) {
                 <p style={{ margin: '6px 0 0', fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: MKT.ink }}>Rolex Datejust — full service</p>
               </div>
               <span
-                aria-live="polite"
                 className="inline-flex items-center whitespace-nowrap"
                 style={{ gap: 9, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: MKT.ink }}
               >
@@ -948,7 +947,7 @@ function ClosingCTA() {
             <Link to="/signup" className="mkt-btn-close-primary inline-flex items-center whitespace-nowrap px-4 sm:px-[26px]" style={{ height: 56, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
               Start your shop
             </Link>
-            <a href="#pricing" className="mkt-btn-close-outline inline-flex items-center whitespace-nowrap px-4 sm:px-[26px]" style={{ height: 56, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+            <a href="mailto:admin@mainspring.au" className="mkt-btn-close-outline inline-flex items-center whitespace-nowrap px-4 sm:px-[26px]" style={{ height: 56, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
               Talk to us
             </a>
           </div>
@@ -970,8 +969,8 @@ function Footer() {
         <div className="flex flex-wrap" style={{ gap: 20 }}>
           <a href="#pricing" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Pricing</a>
           <Link to="/login" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Log in</Link>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.greyChip }}>Privacy</span>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.greyChip }}>Contact</span>
+          <Link to="/privacy" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Privacy</Link>
+          <a href="mailto:admin@mainspring.au" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Contact</a>
         </div>
       </Container>
     </div>
