@@ -1132,9 +1132,9 @@ export default function AppShell() {
               <button
                 onClick={() => chooseMode('guided')}
                 className="rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: 'var(--cafe-espresso-2)', border: '2px solid var(--ms-accent)' }}
+                style={{ backgroundColor: 'var(--ms-accent-light, var(--ms-surface))', border: '2px solid var(--ms-accent)' }}
               >
-                <div className="font-semibold mb-1" style={{ color: 'var(--ms-accent)' }}>In-Depth Guided Tour</div>
+                <div className="font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>In-Depth Guided Tour</div>
                 <div className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>
                   Follow a structured demo with real customer, watch, shoe, mobile services, quote, and invoice records.
                 </div>

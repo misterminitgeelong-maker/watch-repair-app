@@ -18,7 +18,7 @@ export const MKT = {
   vermilion: '#E8452A',
   vermilionDeep: '#B32D16',
   textBody: '#4A4A46',
-  textMuted: '#6E6E68',
+  textMuted: '#5E5E58',
   ruleMid: '#D8D6CE',
   ruleLight: '#E4E2DA',
   greyChip: '#C4C2BA',
@@ -46,6 +46,7 @@ export const MARKETING_CSS = `
   --mkt-vermilion: ${MKT.vermilion};
   --mkt-vermilion-hover: #FF5636;
   --mkt-vermilion-deep: ${MKT.vermilionDeep};
+  --mkt-white: ${MKT.white};
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   background: var(--mkt-paper);
