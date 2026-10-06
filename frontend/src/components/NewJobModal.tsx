@@ -110,10 +110,12 @@ interface WatchForm {
   serial_number: string
   movement_type: string
   condition_notes: string
+  /** Physical ticket number handed to the customer (multi-watch intake only). */
+  ticket_number: string
 }
 
 function emptyWatchForm(): WatchForm {
-  return { mode: 'new', selectedWatchId: '', brand: '', model: '', serial_number: '', movement_type: '', condition_notes: '' }
+  return { mode: 'new', selectedWatchId: '', brand: '', model: '', serial_number: '', movement_type: '', condition_notes: '', ticket_number: '' }
 }
 
 // ── Draft ─────────────────────────────────────────────────────────────────────
@@ -384,12 +386,9 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
       const compressed = await preparePhotoFile(file)
       await yieldToMainThread()
       const url = URL.createObjectURL(compressed)
-      setPhotos(prev => prev.map((p, i) => {
-        if (i !== watchIdx) return p
-        const oldUrl = p[`${side}Preview` as 'frontPreview' | 'backPreview']
-        if (oldUrl) URL.revokeObjectURL(oldUrl)
-        return { ...p, [side]: compressed, [`${side}Preview`]: url }
-      }))
+      const oldUrl = photosRef.current[watchIdx]?.[`${side}Preview` as 'frontPreview' | 'backPreview']
+      setPhotos(prev => prev.map((p, i) => (i === watchIdx ? { ...p, [side]: compressed, [`${side}Preview`]: url } : p)))
+      if (oldUrl) URL.revokeObjectURL(oldUrl)
     } catch (err: unknown) {
       setError(getPhotoPrepareErrorMessage(err, 'Could not process this photo.'))
     } finally {
@@ -521,7 +520,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           deposit_cents: dollarsToCents(job.deposit_cents),
           pre_quote_cents: dollarsToCents(job.pre_quote_cents),
           cost_cents: 0,
-          job_number_override: (watchCount === 1 && job.job_number_override.trim()) ? job.job_number_override.trim() : undefined,
+          job_number_override: ((watchCount === 1 ? job.job_number_override : watchForms[i].ticket_number).trim()) || undefined,
         })
         createdJobIdsRef.current.push(data.id)
         createdCount += 1
@@ -740,6 +739,9 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
                   Add New Watch
                 </button>
               </div>
+              {watchCount > 1 && (
+                <Input label={`Physical Ticket # for Watch ${idx + 1} (optional)`} value={watchForms[idx].ticket_number} onChange={e => updateWatchForm(idx, { ticket_number: e.target.value })} placeholder="e.g. 1234 — leave blank to auto-assign" />
+              )}
               {watchForms[idx].mode === 'existing' ? (
                 <Select label="Select Watch" value={watchForms[idx].selectedWatchId} onChange={e => updateWatchForm(idx, { selectedWatchId: e.target.value })}>
                   <option value="">Choose…</option>
@@ -885,7 +887,7 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
           {watchCount > 1 && (
             <div className="flex gap-1 border-b" style={{ borderColor: 'var(--ms-border)' }}>
               {Array.from({ length: watchCount }, (_, i) => (
-                <button key={i} onClick={() => setActiveWatchTab(i)}
+                <button key={i} type="button" onClick={() => setActiveWatchTab(i)}
                   className="px-3 py-1.5 text-xs font-medium transition-colors"
                   style={{ borderBottom: activeWatchTab === i ? '2px solid var(--ms-accent)' : '2px solid transparent', color: activeWatchTab === i ? 'var(--ms-accent)' : 'var(--ms-text-muted)', marginBottom: -1 }}>
                   Watch {i + 1}
@@ -895,8 +897,8 @@ export default function NewJobModal({ onClose, preselectedCustomer, onSuccess }:
             </div>
           )}
 
-          {Array.from({ length: watchCount }, (_, idx) => idx).map(idx => (
-            <div key={idx} className={idx === activeWatchTab ? 'grid grid-cols-1 gap-4 sm:grid-cols-2' : 'hidden'}>
+          {Array.from({ length: watchCount }, (_, idx) => idx).filter(idx => idx === activeWatchTab).map(idx => (
+            <div key={idx} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Front photo */}
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ms-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
