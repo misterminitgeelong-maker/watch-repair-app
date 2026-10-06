@@ -8566,6 +8566,58 @@
         }
       }
     },
+    "/v1/public/key-enquiry/{ingest_public_id}": {
+      "post": {
+        "tags": [
+          "mobile-lead-ingest"
+        ],
+        "summary": "Submit Key Enquiry",
+        "description": "Public car key enquiry form \u2192 same routing as the website lead feed (operator Lead Inbox, else HQ).\n\nNo shared secret: the form is public by design. The unguessable ingest id, a per-IP rate\nlimit and a honeypot field keep it from being abused.",
+        "operationId": "submit_key_enquiry_v1_public_key_enquiry__ingest_public_id__post",
+        "parameters": [
+          {
+            "name": "ingest_public_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Ingest Public Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyEnquiryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/inbound-email/{ingest_public_id}": {
       "post": {
         "tags": [
@@ -29026,6 +29078,187 @@
         "title": "JobThreadMessage",
         "description": "Unified view of a job's message thread: manual outbound, customer inbound, and automated system SMS."
       },
+      "KeyEnquiryBody": {
+        "properties": {
+          "customer_name": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Customer Name"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 6,
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "suburb": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Suburb"
+          },
+          "state_code": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 2,
+            "title": "State Code"
+          },
+          "street_address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Street Address"
+          },
+          "location_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Type"
+          },
+          "service": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Service"
+          },
+          "key_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Type"
+          },
+          "vehicle_make": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Vehicle Make"
+          },
+          "vehicle_model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Model"
+          },
+          "vehicle_year": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Year"
+          },
+          "registration_plate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Plate"
+          },
+          "has_working_key": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Working Key"
+          },
+          "urgency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_name",
+          "phone",
+          "suburb",
+          "state_code",
+          "service",
+          "vehicle_make"
+        ],
+        "title": "KeyEnquiryBody",
+        "description": "Public car key enquiry form. Richer than the webhook body so operators can quote without a call-back."
+      },
       "LatLng": {
         "properties": {
           "lat": {
@@ -32561,6 +32794,11 @@
             "type": "integer",
             "title": "Operators Missing Dispatch Phone"
           },
+          "operators_paused_dispatch": {
+            "type": "integer",
+            "title": "Operators Paused Dispatch",
+            "default": 0
+          },
           "bookings_7d": {
             "type": "integer",
             "title": "Bookings 7D",
@@ -33331,6 +33569,22 @@
             "type": "boolean",
             "title": "Is Minit",
             "default": false
+          },
+          "hq_billed": {
+            "type": "boolean",
+            "title": "Hq Billed",
+            "default": false
+          },
+          "hq_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hq Name"
           },
           "user_count": {
             "type": "integer",

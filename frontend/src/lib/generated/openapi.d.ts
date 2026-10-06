@@ -424,6 +424,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register Device
+         * @description Idempotent: a token moves to whoever registered it last (shared phones, re-logins).
+         *
+         *     Unscoped on purpose: the same phone can sign in to a different shop, and the
+         *     token's existing row may belong to the previous shop's tenant.
+         */
+        post: operations["register_device_v1_me_devices_post"];
+        /** Unregister Device */
+        delete: operations["unregister_device_v1_me_devices_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers": {
         parameters: {
             query?: never;
@@ -2734,6 +2758,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/key-enquiry/{ingest_public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Key Enquiry
+         * @description Public car key enquiry form → same routing as the website lead feed (operator Lead Inbox, else HQ).
+         *
+         *     No shared secret: the form is public by design. The unguessable ingest id, a per-IP rate
+         *     limit and a honeypot field keep it from being abused.
+         */
+        post: operations["submit_key_enquiry_v1_public_key_enquiry__ingest_public_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/inbound-email/{ingest_public_id}": {
         parameters: {
             query?: never;
@@ -4626,6 +4673,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/mobile-dispatch-operators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Mobile Dispatch Operators */
+        get: operations["list_mobile_dispatch_operators_v1_parent_accounts_me_mobile_dispatch_operators_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/sites": {
         parameters: {
             query?: never;
@@ -5154,6 +5218,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform-admin/hq-owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Hq Owners */
+        get: operations["list_hq_owners_v1_platform_admin_hq_owners_get"];
+        put?: never;
+        /** Create Hq Invite */
+        post: operations["create_hq_invite_v1_platform_admin_hq_owners_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform-admin/hq-owners/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Hq Invite */
+        delete: operations["revoke_hq_invite_v1_platform_admin_hq_owners__invite_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/hq-invite/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Hq Invite */
+        get: operations["public_hq_invite_v1_public_hq_invite__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/hq-invite/{token}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Hq Invite */
+        post: operations["accept_hq_invite_v1_public_hq_invite__token__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/operations/overview": {
         parameters: {
             query?: never;
@@ -5373,6 +5506,40 @@ export interface paths {
         };
         /** Get Mobile Kpis Live Csv */
         get: operations["get_mobile_kpis_live_csv_v1_parent_accounts_me_operations_mobile_kpis_live_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/period": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpi Period */
+        get: operations["get_mobile_kpi_period_v1_parent_accounts_me_operations_mobile_kpis_period_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/mobile-kpis/period/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mobile Kpi Period Csv */
+        get: operations["get_mobile_kpi_period_csv_v1_parent_accounts_me_operations_mobile_kpis_period_csv_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6111,6 +6278,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/prospects/contact-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contact Details
+         * @description Explicit, single-business lookup; stored searches never spend API calls.
+         */
+        get: operations["contact_details_v1_prospects_contact_details_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/prospects/search": {
         parameters: {
             query?: never;
@@ -6743,6 +6930,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptRequest */
+        AcceptRequest: {
+            /** Password */
+            password: string;
+        };
         /** ActiveSiteSwitchRequest */
         ActiveSiteSwitchRequest: {
             /**
@@ -8375,6 +8567,16 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /** DeviceRegister */
+        DeviceRegister: {
+            /** Token */
+            token: string;
+            /**
+             * Platform
+             * @default android
+             */
+            platform: string;
+        };
         /** FollowUpUpdate */
         FollowUpUpdate: {
             /** Expected Version */
@@ -8758,6 +8960,28 @@ export interface components {
             /** Attachment Backend */
             attachment_backend: string;
         };
+        /** InviteRequest */
+        InviteRequest: {
+            /**
+             * Parent Account Id
+             * Format: uuid
+             */
+            parent_account_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Send Email
+             * @default true
+             */
+            send_email: boolean;
+        };
         /** InvoiceCreateFromQuoteResponse */
         InvoiceCreateFromQuoteResponse: {
             invoice: components["schemas"]["InvoiceRead"];
@@ -8953,6 +9177,46 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * KeyEnquiryBody
+         * @description Public car key enquiry form. Richer than the webhook body so operators can quote without a call-back.
+         */
+        KeyEnquiryBody: {
+            /** Customer Name */
+            customer_name: string;
+            /** Phone */
+            phone: string;
+            /** Email */
+            email?: string | null;
+            /** Suburb */
+            suburb: string;
+            /** State Code */
+            state_code: string;
+            /** Street Address */
+            street_address?: string | null;
+            /** Location Type */
+            location_type?: string | null;
+            /** Service */
+            service: string;
+            /** Key Type */
+            key_type?: string | null;
+            /** Vehicle Make */
+            vehicle_make: string;
+            /** Vehicle Model */
+            vehicle_model?: string | null;
+            /** Vehicle Year */
+            vehicle_year?: string | null;
+            /** Registration Plate */
+            registration_plate?: string | null;
+            /** Has Working Key */
+            has_working_key?: boolean | null;
+            /** Urgency */
+            urgency?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Website */
+            website?: string | null;
         };
         /** LatLng */
         LatLng: {
@@ -9786,6 +10050,11 @@ export interface components {
              */
             network_role: string;
             /**
+             * Mobile Reporting Enabled
+             * @default false
+             */
+            mobile_reporting_enabled: boolean;
+            /**
              * Owner User Id
              * Format: uuid
              */
@@ -9829,6 +10098,8 @@ export interface components {
         };
         /** ParentAccountSiteUpdateRequest */
         ParentAccountSiteUpdateRequest: {
+            /** Mobile Reporting Enabled */
+            mobile_reporting_enabled?: boolean | null;
             /** Network Role */
             network_role?: string | null;
             /** Region Id */
@@ -10317,6 +10588,11 @@ export interface components {
             /** Operators Missing Dispatch Phone */
             operators_missing_dispatch_phone: number;
             /**
+             * Operators Paused Dispatch
+             * @default 0
+             */
+            operators_paused_dispatch: number;
+            /**
              * Bookings 7D
              * @default 0
              */
@@ -10593,6 +10869,13 @@ export interface components {
              * @default false
              */
             is_minit: boolean;
+            /**
+             * Hq Billed
+             * @default false
+             */
+            hq_billed: boolean;
+            /** Hq Name */
+            hq_name?: string | null;
             /** User Count */
             user_count: number;
             /**
@@ -10746,6 +11029,20 @@ export interface components {
             category: string;
             /** Place Id */
             place_id: string;
+        };
+        /** ProspectContactDetails */
+        ProspectContactDetails: {
+            /** Place Id */
+            place_id: string;
+            /** Phone */
+            phone?: string | null;
+            /** Website */
+            website?: string | null;
+            /**
+             * Attributions
+             * @default []
+             */
+            attributions: string[];
         };
         /** ProspectLeadConvert */
         ProspectLeadConvert: {
@@ -10923,6 +11220,11 @@ export interface components {
             total: number;
             /** Category */
             category: string;
+            /**
+             * Source
+             * @default stored
+             */
+            source: string;
         };
         /** PublicAutoKeyIntakeSubmit */
         PublicAutoKeyIntakeSubmit: {
@@ -13109,6 +13411,8 @@ export interface components {
         ToolkitRecommendBody: {
             /** Scenario Id */
             scenario_id: string;
+            /** Tool Keys */
+            tool_keys?: string[] | null;
         };
         /** ToolkitSelectionUpdate */
         ToolkitSelectionUpdate: {
@@ -13973,6 +14277,66 @@ export interface operations {
         parameters: {
             query: {
                 mode: "watch" | "shoe";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_device_v1_me_devices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRegister"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unregister_device_v1_me_devices_delete: {
+        parameters: {
+            query: {
+                token: string;
             };
             header?: never;
             path?: never;
@@ -18506,6 +18870,41 @@ export interface operations {
             };
         };
     };
+    submit_key_enquiry_v1_public_key_enquiry__ingest_public_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingest_public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyEnquiryBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     receive_inbound_email_v1_public_inbound_email__ingest_public_id__post: {
         parameters: {
             query?: never;
@@ -22250,6 +22649,26 @@ export interface operations {
             };
         };
     };
+    list_mobile_dispatch_operators_v1_parent_accounts_me_mobile_dispatch_operators_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMobileOperatorOption"][];
+                };
+            };
+        };
+    };
     list_parent_account_sites_v1_parent_accounts_me_sites_get: {
         parameters: {
             query?: {
@@ -23148,6 +23567,156 @@ export interface operations {
             };
         };
     };
+    list_hq_owners_v1_platform_admin_hq_owners_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    create_hq_invite_v1_platform_admin_hq_owners_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_hq_invite_v1_platform_admin_hq_owners__invite_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_hq_invite_v1_public_hq_invite__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_hq_invite_v1_public_hq_invite__token__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_operations_overview_v1_parent_accounts_me_operations_overview_get: {
         parameters: {
             query?: never;
@@ -23495,6 +24064,72 @@ export interface operations {
         parameters: {
             query?: {
                 scope?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mobile_kpi_period_v1_parent_accounts_me_operations_mobile_kpis_period_get: {
+        parameters: {
+            query?: {
+                period?: string;
+                anchor?: string | null;
+                year_start_month?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MobileKpiPeriodRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mobile_kpi_period_csv_v1_parent_accounts_me_operations_mobile_kpis_period_csv_get: {
+        parameters: {
+            query?: {
+                period?: string;
+                anchor?: string | null;
+                year_start_month?: number;
             };
             header?: never;
             path?: never;
@@ -24870,6 +25505,37 @@ export interface operations {
             };
         };
     };
+    contact_details_v1_prospects_contact_details_get: {
+        parameters: {
+            query: {
+                place_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectContactDetails"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     search_prospects_v1_prospects_search_get: {
         parameters: {
             query: {
@@ -25231,7 +25897,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeadBody"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
