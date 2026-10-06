@@ -34,7 +34,7 @@ import { isMinitRestrictedUi } from '@/lib/minitProduct'
 import { isChecklistDismissed, setChecklistDismissed } from '@/lib/onboarding'
 import { formatCents, formatDate } from '@/lib/utils'
 import { invalidateAutoKeyJobCollections } from '@/lib/autoKeyJobQueries'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { countActiveWatchJobs, isActiveMobileStatus, isActiveShoeStatus } from '@/lib/activeJobs'
 
 type DashboardStatProps = {
@@ -209,7 +209,8 @@ function QuickMobileIntakeModal({ onClose }: { onClose: () => void }) {
 
 export default function DashboardPage() {
   const { tenantId, role, planCode, product, tenantSlug, availableSites, hasFeature } = useAuth()
-  const mainspringDashboard = !isMinitRestrictedUi(product, planCode, tenantSlug)
+  const autoOnly = hasFeature('auto_key') && !hasFeature('watch') && !hasFeature('shoe')
+  const mainspringDashboard = !autoOnly && !isMinitRestrictedUi(product, planCode, tenantSlug)
   const navigate = useNavigate()
   const [checklistDismissed, setChecklistDismissedState] = useState(false)
   const [showQuickMobileIntake, setShowQuickMobileIntake] = useState(false)
@@ -421,6 +422,8 @@ export default function DashboardPage() {
       icon: UserCog,
     },
   ]
+
+  if (autoOnly) return <Navigate to="/auto-key?view=jobs&jobs_layout=today" replace />
 
   return (
     <div style={{ position: 'relative' }}>

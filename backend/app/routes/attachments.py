@@ -30,7 +30,6 @@ from ..models import (
     User,
     Watch,
 )
-from ..security import decode_access_token
 from ..services.attachment_storage import (
     AttachmentNotFoundError,
     InvalidStorageKeyError,
@@ -258,12 +257,9 @@ def download_attachment(
         if not token:
             raise HTTPException(status_code=401, detail="Not authenticated")
 
-        try:
-            claims = decode_access_token(token)
-            tenant_id = claims.tenant_id
-            user_id = claims.user_id
-        except Exception as exc:
-            raise HTTPException(status_code=401, detail="Invalid token") from exc
+        auth = get_auth_context(request, credentials, session)
+        tenant_id = auth.tenant_id
+        user_id = auth.user_id
 
     user = session.get(User, user_id)
     if not user or user.tenant_id != tenant_id or not user.is_active:
@@ -273,12 +269,6 @@ def download_attachment(
     tenant = session.get(Tenant, tenant_id)
     if tenant is None or not tenant.is_active:
         raise HTTPException(status_code=403, detail="Shop is suspended. Contact platform admin.")
-    if not dl_token and tenant.auth_revoked_at is not None:
-        revoked_at = tenant.auth_revoked_at
-        if revoked_at.tzinfo is None:
-            revoked_at = revoked_at.replace(tzinfo=timezone.utc)
-        if claims.issued_at is None or claims.issued_at < revoked_at:
-            raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
     attachment = session.exec(
         select(Attachment)

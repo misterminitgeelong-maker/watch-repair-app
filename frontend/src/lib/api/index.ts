@@ -746,6 +746,7 @@ export interface ParentOperationsOverview {
   shops_without_recent_booking: number
   problem_bookings_7d: number
   operators_missing_dispatch_phone: number
+  operators_paused_dispatch?: number
   bookings_7d?: number
   accepted_7d?: number
   declined_7d?: number

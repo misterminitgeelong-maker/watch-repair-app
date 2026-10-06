@@ -143,7 +143,8 @@ def enter_linked_shop(
     session.commit()
 
     access_token, expires = create_access_token(
-        tenant.id, owner.id, owner.role, expires_minutes=HQ_ENTER_SHOP_MINUTES
+        tenant.id, owner.id, owner.role, expires_minutes=HQ_ENTER_SHOP_MINUTES,
+        support_actor_user_id=current_user.id,
     )
     return ParentEnterShopResponse(
         access_token=access_token,

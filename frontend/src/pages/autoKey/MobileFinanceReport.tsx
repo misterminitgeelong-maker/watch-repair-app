@@ -17,6 +17,7 @@ import { PeriodDateInput, PeriodSelect, ReportStateNote } from '@/components/mob
 import { TONE_BACKGROUNDS, TONE_COLORS, formatDelta, formatMetricValue, formatMinutes } from '@/lib/cockpitFormat'
 import { FINANCE_PRESETS, drillHref, focusHref } from '@/lib/cockpitFocus'
 import { formatCents } from '@/lib/money'
+import { formatDate } from '@/lib/utils'
 
 function fmt(value: number | null, unit: MobileFinanceMetric['unit']): string {
   if (value == null) return '—'
@@ -125,7 +126,7 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
   }
 
   const data = query.data
-  const previousLabel = data ? `prev ${data.period.previous_start.slice(5)}–${data.period.previous_end.slice(5)}` : 'prev'
+  const previousLabel = data ? `prev ${formatDate(data.period.previous_start)}–${formatDate(data.period.previous_end)}` : 'prev'
   const money = data?.metrics.filter(m => ['booked', 'completed', 'invoiced', 'collected', 'outstanding'].includes(m.key)) ?? []
   const profit = data?.metrics.filter(m => ['commission', 'contribution', 'aov'].includes(m.key)) ?? []
   const activity = data?.metrics.filter(m => ['jobs_created', 'jobs_completed', 'jobs_per_working_day', 'quotes_sent'].includes(m.key)) ?? []
@@ -139,7 +140,7 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
           <h2 className="text-base font-bold" style={{ color: 'var(--ms-text)' }}>Mobile Services finance</h2>
           {data && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--ms-text-muted)' }}>
-              {data.period.label} · {data.period.start} → {data.period.end} · {data.period.working_days} working day{data.period.working_days === 1 ? '' : 's'}{data.period.complete ? '' : ' so far'} · shop time {data.timezone}
+              {data.period.label} · {formatDate(data.period.start)} → {formatDate(data.period.end)} · {data.period.working_days} working day{data.period.working_days === 1 ? '' : 's'}{data.period.complete ? '' : ' so far'} · shop time {data.timezone}
               {query.isFetching && ' · refreshing…'}
             </p>
           )}
@@ -169,8 +170,8 @@ export default function MobileFinanceReport({ params, onParamsChange, onPeriodRe
       {exportError && <p role="alert" className="text-xs" style={{ color: 'var(--ms-error)' }}>{exportError}</p>}
       {data && !data.period.complete && (
         <ReportStateNote tone="warn">
-          Partial period: {data.period.label} is still running, so these figures cover {data.period.start} → today
-          only. The previous-period comparison uses the full {data.period.previous_start} → {data.period.previous_end}.
+          Partial period: {data.period.label} is still running, so these figures cover {formatDate(data.period.start)} → today
+          only. The previous-period comparison uses the full {formatDate(data.period.previous_start)} → {formatDate(data.period.previous_end)}.
         </ReportStateNote>
       )}
       {data && noActivity && (

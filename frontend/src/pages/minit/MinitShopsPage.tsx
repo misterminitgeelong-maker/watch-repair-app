@@ -30,7 +30,7 @@ function compareShopNumber(a: ParentAccountSite, b: ParentAccountSite): number {
 function groupRetailByRegion(sites: ParentAccountSite[]): { region: string; shops: ParentAccountSite[] }[] {
   const map = new Map<string, ParentAccountSite[]>()
   for (const site of sites) {
-    const region = site.region?.trim() || UNASSIGNED_REGION
+    const region = site.region?.trim().replace(/\s+/g, ' ').toUpperCase() || UNASSIGNED_REGION
     const list = map.get(region) ?? []
     list.push(site)
     map.set(region, list)
@@ -47,7 +47,7 @@ function groupRetailByRegion(sites: ParentAccountSite[]): { region: string; shop
 function groupByArea(shops: ParentAccountSite[]): { area: string; shops: ParentAccountSite[] }[] {
   const map = new Map<string, ParentAccountSite[]>()
   for (const site of shops) {
-    const area = site.area?.trim() || UNASSIGNED_AREA
+    const area = site.area?.trim().replace(/\s+/g, ' ').toUpperCase() || UNASSIGNED_AREA
     const list = map.get(area) ?? []
     list.push(site)
     map.set(area, list)

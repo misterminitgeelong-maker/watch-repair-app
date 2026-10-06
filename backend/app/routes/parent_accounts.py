@@ -559,6 +559,8 @@ def _parent_for_scoped_read(
 
 def _parent_for_write(session: Session, auth: AuthContext) -> tuple[User, ParentAccount]:
     """Only hq_admin may change the network."""
+    if auth.support_actor_user_id is not None or not auth.sid:
+        raise HTTPException(status_code=403, detail="Support access cannot manage the HQ network")
     user = _current_user(session, auth)
     parent = _get_parent_account_for_user(session, user)
     require_parent_role(session, parent, user, write=True)
@@ -1737,7 +1739,7 @@ def get_shop_owner_invite(
     session: Session = Depends(unscoped_session),
 ):
     """The most recent owner-login invite for a site, if any has ever been sent."""
-    current_user, parent, _ = _parent_for_read(session, auth)
+    current_user, parent = _parent_for_write(session, auth)
 
 
     if not _tenant_linked_to_parent(session, parent.id, tenant_id):

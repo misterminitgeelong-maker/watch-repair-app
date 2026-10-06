@@ -37,6 +37,14 @@ TZ = ZoneInfo("Australia/Melbourne")
 
 
 # ── Periods ──────────────────────────────────────────────────────────────────
+def test_month_comparison_uses_calendar_month_including_leap_year():
+    for today, start, end in ((date(2026,10,6),date(2026,9,1),date(2026,9,30)),
+                              (date(2024,3,10),date(2024,2,1),date(2024,2,29)),
+                              (date(2026,1,10),date(2025,12,1),date(2025,12,31))):
+        previous=resolve_period("month",today).previous()
+        assert (previous.start,previous.end)==(start,end)
+
+
 def test_period_presets_are_shop_civil_dates():
     today = date(2026, 9, 17)  # Thursday
     assert (resolve_period("week", today).start, resolve_period("week", today).end) == (date(2026, 9, 14), date(2026, 9, 20))

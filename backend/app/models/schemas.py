@@ -656,6 +656,7 @@ class ParentOperationsOverview(SQLModel):
     shops_without_recent_booking: int
     problem_bookings_7d: int
     operators_missing_dispatch_phone: int
+    operators_paused_dispatch: int = 0
     bookings_7d: int = 0
     accepted_7d: int = 0
     declined_7d: int = 0

@@ -149,6 +149,7 @@ function needsAttentionCount(data: ParentOperationsOverview) {
     + (data.stale_pending_count ?? 0)
     + data.problem_bookings_7d
     + data.operators_missing_dispatch_phone
+    + (data.operators_paused_dispatch ?? (data.attention_items ?? []).filter(item => item.kind === 'operator_dispatch_paused').length)
   )
 }
 

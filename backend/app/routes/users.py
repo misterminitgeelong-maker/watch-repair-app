@@ -30,6 +30,20 @@ from ..models import (
     WorkLog,
 )
 from ..security import hash_password
+from ..parent_network import parents_for_user, require_parent_role, sites_for_parent
+
+
+def _require_user_management(session: Session, auth: AuthContext) -> None:
+    """A restricted HQ owner must not manufacture or take over HQ logins."""
+    if auth.support_actor_user_id is not None or not auth.sid:
+        raise HTTPException(status_code=403, detail="Sign in directly to manage account access")
+    actor = session.get(User, auth.user_id)
+    if actor is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    for parent in parents_for_user(session, actor):
+        if any(site.tenant_id == auth.tenant_id and site.network_role == "hq"
+               for site in sites_for_parent(session, parent.id)):
+            require_parent_role(session, parent, actor, write=True)
 
 router = APIRouter(prefix="/v1/users", tags=["users"])
 
@@ -181,6 +195,7 @@ def create_user(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(get_session),
 ):
+    _require_user_management(session, auth)
     email = _normalize_email(payload.email)
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="A valid email is required")
@@ -252,6 +267,7 @@ def update_user(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(get_session),
 ):
+    _require_user_management(session, auth)
     user = session.get(User, user_id)
     if not user or user.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="User not found")
@@ -324,6 +340,7 @@ def delete_user(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(get_session),
 ) -> Response:
+    _require_user_management(session, auth)
     if user_id == auth.user_id:
         raise HTTPException(status_code=400, detail="You cannot delete your own account")
 

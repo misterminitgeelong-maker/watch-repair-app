@@ -25,6 +25,7 @@ class TokenClaims:
     # issued before per-session tracking was introduced.
     sid: str | None = None
     jti: str | None = None
+    support_actor_user_id: UUID | None = None
 
 
 def hash_password(password: str) -> str:
@@ -65,6 +66,7 @@ def create_access_token(
     role: str,
     sid: str | None = None,
     expires_minutes: int | None = None,
+    support_actor_user_id: UUID | None = None,
 ) -> tuple[str, int]:
     now = datetime.now(timezone.utc)
     minutes = settings.jwt_expire_minutes if expires_minutes is None else expires_minutes
@@ -80,6 +82,8 @@ def create_access_token(
     }
     if sid:
         payload["sid"] = sid
+    if support_actor_user_id is not None:
+        payload["support_actor_user_id"] = str(support_actor_user_id)
     encoded_jwt = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return encoded_jwt, int(expires_delta.total_seconds())
 
@@ -146,6 +150,9 @@ def _parse_claims(payload: dict, *, expect_refresh: bool) -> TokenClaims:
         issued_at = datetime.fromtimestamp(iat_raw, tz=timezone.utc)
     sid_raw = payload.get("sid")
     jti_raw = payload.get("jti")
+    support_actor_raw = payload.get("support_actor_user_id")
+    if "support_actor_user_id" in payload and not isinstance(support_actor_raw, str):
+        raise ValueError("Invalid support actor")
     return TokenClaims(
         sub=sub,
         tenant_id=tenant_id,
@@ -154,6 +161,7 @@ def _parse_claims(payload: dict, *, expect_refresh: bool) -> TokenClaims:
         issued_at=issued_at,
         sid=sid_raw if isinstance(sid_raw, str) else None,
         jti=jti_raw if isinstance(jti_raw, str) else None,
+        support_actor_user_id=UUID(support_actor_raw) if isinstance(support_actor_raw, str) else None,
     )
 
 

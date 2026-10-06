@@ -113,7 +113,9 @@ function EmailLeadReviewForm({ id, onCreated }: { id: string; onCreated: (result
       )}
       {parsed?.nearest_provider_raw && !parsed?.suggested_operator_name && (
         <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>
-          Email says nearest provider is "{parsed.nearest_provider_raw}" but no matching operator was found ({parsed.match_confidence}).
+          Email says nearest provider is "{parsed.nearest_provider_raw}". {parsed.match_confidence === 'not_live'
+            ? 'The provider is recognised but is not available for dispatch. Review its activation and owner invitation.'
+            : 'No unique matching operator was found. Review the provider directory.'}
         </p>
       )}
 

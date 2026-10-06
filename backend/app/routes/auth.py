@@ -65,7 +65,6 @@ from ..models import (
 from ..parent_network import (
     PARENT_ROLE_HQ_ADMIN,
     grant_parent_role,
-    is_hq_viewer_or_admin,
     link_site,
     parent_role_for_user,
     parents_for_user,
@@ -194,7 +193,7 @@ def _hq_parents_for_user(session: Session, user: User) -> list[ParentAccount]:
     return [
         parent
         for parent in parents_for_user(session, user)
-        if is_hq_viewer_or_admin(parent_role_for_user(session, parent, user))
+        if parent_role_for_user(session, parent, user) == PARENT_ROLE_HQ_ADMIN
     ]
 
 
@@ -1192,6 +1191,10 @@ def switch_active_site(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
+    # Borrowed support authority cannot become a persistent login. Requiring
+    # a tracked session also closes exchanges from old unmarked support JWTs.
+    if auth.support_actor_user_id is not None or not auth.sid:
+        raise HTTPException(status_code=403, detail="Sign in directly to switch sites")
     current_user = session.get(User, auth.user_id)
     if not current_user or not current_user.is_active:
         raise HTTPException(status_code=401, detail="Invalid token")

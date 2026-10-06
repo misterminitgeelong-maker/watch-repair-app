@@ -9,7 +9,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from sqlalchemy import or_
 from sqlmodel import Session, col, func, select
 
 from ..database import get_session, unscoped_session
@@ -77,6 +76,7 @@ from ..parent_network import (
     sites_for_parent,
 )
 from ..shop_number import format_tenant_label
+from ..auto_key_status import AUTO_KEY_ACTIVE_STATUSES
 from .parent_accounts import _parent_for_read, _parent_for_write, _record_event
 from .shop_mobile_bookings import (
     _maybe_move_pending_to_pool,
@@ -89,18 +89,7 @@ router = APIRouter(
     dependencies=[Depends(require_feature("multi_site"))],
 )
 
-_AUTO_KEY_ACTIVE_STATUSES = frozenset(
-    {
-        "awaiting_quote",
-        "awaiting_customer_details",
-        "quote_sent",
-        "quote_approved",
-        "scheduled",
-        "en_route",
-        "on_site",
-        "in_progress",
-    }
-)
+_AUTO_KEY_ACTIVE_STATUSES = AUTO_KEY_ACTIVE_STATUSES
 _PROBLEM_BOOKING_STATUSES = frozenset({"declined", "cancelled", "expired"})
 _REGION_ORDER = ("VIC", "NSW", "QLD", "SW", "NZ", "SEA")
 _UNASSIGNED_REGION = "Unassigned"
@@ -582,18 +571,13 @@ def get_operations_overview(
     )
 
     active_jobs = 0
-    if operator_ids:
+    reporting_ids = [tenant.id for tenant in mobile_reporting_tenants_for_parent(session, parent.id)]
+    if reporting_ids:
         active_jobs = int(
             session.exec(
                 select(func.count())
                 .select_from(AutoKeyJob)
-                .where(AutoKeyJob.tenant_id.in_(operator_ids))  # type: ignore[attr-defined]
-                .where(
-                    or_(
-                        AutoKeyJob.referring_shop_tenant_id.in_(retail_ids),  # type: ignore[attr-defined]
-                        AutoKeyJob.shop_mobile_booking_request_id.isnot(None),  # type: ignore[union-attr]
-                    )
-                )
+                .where(AutoKeyJob.tenant_id.in_(reporting_ids))  # type: ignore[attr-defined]
                 .where(AutoKeyJob.status.in_(_AUTO_KEY_ACTIVE_STATUSES))  # type: ignore[attr-defined]
             ).one()
         )
@@ -665,6 +649,7 @@ def get_operations_overview(
         shops_without_recent_booking=shops_without_recent,
         problem_bookings_7d=problem_bookings,
         operators_missing_dispatch_phone=missing_dispatch,
+        operators_paused_dispatch=sum(1 for operator in operators if operator.mobile_dispatch_paused),
         bookings_7d=bookings_7d,
         accepted_7d=accepted_7d,
         declined_7d=declined_7d,

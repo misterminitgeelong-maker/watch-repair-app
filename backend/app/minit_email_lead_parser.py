@@ -29,7 +29,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from .models import Tenant
-from .parent_network import dispatch_operators_for_parent, tenant_is_live, tenant_dispatch_enabled
+from .parent_network import dispatch_operators_for_parent, operator_tenants_for_parent, tenant_is_live, tenant_dispatch_enabled
 
 # Order matters: matched top-to-bottom against each stripped line.
 _FIELD_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
@@ -133,12 +133,28 @@ def parse_powerfulform_body(text_body: str | None) -> ParsedEmailLead:
 
 
 def _normalize_operator_name(name: str) -> str:
+    name = re.sub(r"^mister\s+minit\s+", "", name.strip(), flags=re.I)
+    name = re.sub(r"^mobile\s+services\s+", "", name, flags=re.I)
+    name = re.sub(r"\s*\(mv\)\s*$", "", name, flags=re.I)
     return re.sub(r"\s+", " ", name.strip().lower())
 
 
 def _loose_operator_key(name: str) -> str:
     """Drop spacing/punctuation entirely — catches 'Smithfield/Cairns' vs 'Smithfield / Cairns'."""
-    return re.sub(r"[^a-z0-9]+", "", name.lower())
+    return re.sub(r"[^a-z0-9]+", "", _normalize_operator_name(name))
+
+
+def _operator_directory(session: Session, parent_id: UUID) -> list[Tenant]:
+    # Identify paused/imported operators too, so triage distinguishes an
+    # unavailable known provider from an unknown name. Eligibility is checked
+    # only after matching; opted-in live logins take precedence over shells.
+    pool = {tenant.id: tenant for tenant in operator_tenants_for_parent(session, parent_id)}
+    for tenant in bookable_operators_for_parent(session, parent_id):
+        if tenant.shop_number:
+            pool = {tid: other for tid, other in pool.items()
+                    if other.shop_number != tenant.shop_number or tid == tenant.id}
+        pool[tenant.id] = tenant
+    return list(pool.values())
 
 
 @dataclass
@@ -169,7 +185,7 @@ def match_operator_for_lead(
     if not parsed.nearest_provider_clean:
         return OperatorMatch(tenant=None, confidence="no_provider_field")
 
-    pool = operators if operators is not None else bookable_operators_for_parent(session, parent_id)
+    pool = operators if operators is not None else _operator_directory(session, parent_id)
 
     def _gate(tenant: Tenant, confidence: str) -> OperatorMatch:
         # Operators who haven't accepted their invite aren't live: never routed leads.
@@ -178,14 +194,25 @@ def match_operator_for_lead(
         return OperatorMatch(tenant=tenant, confidence=confidence)
 
     target = _normalize_operator_name(parsed.nearest_provider_clean)
-    for tenant in pool:
-        if _normalize_operator_name(tenant.name) == target:
-            return _gate(tenant, "matched")
+    matches = [tenant for tenant in pool if _normalize_operator_name(tenant.name) == target]
+    if len(matches) == 1:
+        return _gate(matches[0], "matched")
+    if len(matches) > 1:
+        return OperatorMatch(tenant=None, confidence="unmatched")
 
     loose_target = _loose_operator_key(parsed.nearest_provider_clean)
-    for tenant in pool:
-        if _loose_operator_key(tenant.name) == loose_target:
-            return _gate(tenant, "matched_loose")
+    matches = [tenant for tenant in pool if _loose_operator_key(tenant.name) == loose_target]
+    if len(matches) == 1:
+        return _gate(matches[0], "matched_loose")
+    if len(matches) > 1:
+        return OperatorMatch(tenant=None, confidence="unmatched")
+
+    # Form labels add geographic aliases after a slash (Smithfield / Cairns),
+    # whereas imported MV names often contain only the primary location.
+    primary = _loose_operator_key(parsed.nearest_provider_clean.split('/')[0])
+    matches = [tenant for tenant in pool if _loose_operator_key(tenant.name.split('/')[0]) == primary]
+    if len(matches) == 1:
+        return _gate(matches[0], "matched_loose")
 
     return OperatorMatch(tenant=None, confidence="unmatched")
 
@@ -218,7 +245,7 @@ def bucket_email_leads_by_operator(
     "matched" vs "unmatched" vs "no fields extracted".
     """
     buckets: dict[str, EmailLeadOperatorBucket] = {}
-    pool = operators if operators is not None else bookable_operators_for_parent(session, parent_id)
+    pool = operators if operators is not None else _operator_directory(session, parent_id)
 
     def _bucket(key: str, tenant_id: UUID | None, name: str) -> EmailLeadOperatorBucket:
         existing = buckets.get(key)
@@ -238,7 +265,8 @@ def bucket_email_leads_by_operator(
                 bucket = _bucket(str(match.tenant.id), match.tenant.id, match.tenant.name)
             else:
                 label = parsed.nearest_provider_clean or "Unmatched operator"
-                bucket = _bucket(f"unmatched:{label}", None, f"{label} (no matching operator)")
+                detail = "operator not available for dispatch" if match.confidence == "not_live" else "no unique matching operator"
+                bucket = _bucket(f"{match.confidence}:{label}", None, f"{label} ({detail})")
 
         bucket.total_count += 1
         if email.status == "new":

@@ -210,6 +210,26 @@ def test_match_operator_exact_name():
     assert match.tenant.id == operator_id
 
 
+def test_match_imported_mv_name_with_form_prefix_and_geographic_alias():
+    parent_id, operator_id = _setup_parent_with_operator("Smithfield (MV)")
+    parsed = parse_powerfulform_body(BODY_KEY_CUTTING)
+    with Session(engine) as session:
+        match = match_operator_for_lead(session, parent_id=parent_id, parsed=parsed)
+    assert match.tenant.id == operator_id
+
+
+def test_paused_known_mv_is_not_reported_unknown_or_routed():
+    parent_id, operator_id = _setup_parent_with_operator("Burwood (MV)")
+    with Session(engine) as session:
+        tenant = session.get(Tenant, operator_id)
+        tenant.mobile_dispatch_paused = True
+        session.add(tenant)
+        session.commit()
+        match = match_operator_for_lead(session, parent_id=parent_id, parsed=parse_powerfulform_body(BODY_GARAGE_REMOTE))
+    assert match.confidence == "not_live"
+    assert match.tenant is None
+
+
 def test_match_operator_loose_punctuation_variant():
     # Tenant name has different slash spacing than the email's provider line.
     parent_id, operator_id = _setup_parent_with_operator("Mobile Services Smithfield/Cairns")

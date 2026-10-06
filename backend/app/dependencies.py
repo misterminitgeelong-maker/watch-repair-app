@@ -180,6 +180,7 @@ class AuthContext:
     # Session id from the access token (present for tokens issued with per-session
     # tracking). Used by /auth/sessions/revoke-others to keep the current device.
     sid: str | None = None
+    support_actor_user_id: UUID | None = None
 
 
 def _resolve_auth_context(
@@ -284,6 +285,7 @@ def _resolve_auth_context(
             role=user.role,
             plan_code=plan_code,
             sid=claims.sid,
+            support_actor_user_id=claims.support_actor_user_id,
         )
 
         if len(_auth_cache) >= _AUTH_CACHE_MAX:

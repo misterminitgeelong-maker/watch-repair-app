@@ -470,7 +470,7 @@ export default function MinitMobileReportsPage() {
     <div>
       <PageHeader title="Mobile reports" />
       <p className="text-sm mb-4" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
-        Live mobile-services KPIs for every operator in the network. Days freeze at 9pm Sydney time; the weekly CSV compiles Saturday 11:05pm.
+        Live mobile-services KPIs for linked operators and opted-in reporting accounts. Accounts can share a shop number; each account reports its own activity. Days freeze at 9pm Sydney time; the weekly CSV compiles Saturday 11:05pm.
       </p>
 
       <div className="flex flex-wrap gap-2 mb-5">

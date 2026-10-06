@@ -64,7 +64,7 @@ function AccountRow({ tenantId, account }: { tenantId: string; account: HqAccoun
       </div>
       {account.is_hq_login ? (
         <p className="text-xs" style={muted}>
-          This is a copy of an HQ login. Use "Invite owner" to hand it to the shop.
+          This login still holds HQ network access. Review its ownership and use "Invite owner" to hand it to the shop.
         </p>
       ) : editing ? (
         <div className="space-y-2">

@@ -144,6 +144,30 @@ def test_operations_overview_requires_minit_hq_plan():
     assert res.status_code == 403
 
 
+def test_overview_counts_same_active_jobs_as_mobile_reporting_accounts():
+    from uuid import UUID
+    from app.models import AutoKeyJob, Customer, ParentAccount, ParentMobileReportingSource
+    ctx=_setup_hq_network(uuid4().hex[:8])
+    with Session(engine) as session:
+        parent=session.exec(select(ParentAccount).where(ParentAccount.owner_email==HQ_OWNER_EMAIL)).one()
+        reporting=Tenant(slug=f"report-{uuid4().hex[:8]}",name="Opted-in shop",plan_code="basic_auto_key")
+        session.add(reporting);session.flush()
+        session.add(ParentMobileReportingSource(parent_account_id=parent.id,tenant_id=reporting.id))
+        for tenant_id in (UUID(ctx["op_id"]),reporting.id):
+            customer=Customer(tenant_id=tenant_id,full_name="Synthetic customer")
+            session.add(customer);session.flush()
+            for status in ("booking_confirmed","booking_on_hold","booked","work_completed","invoice_paid"):
+                session.add(AutoKeyJob(tenant_id=tenant_id,customer_id=customer.id,job_number=f"AK-{uuid4().hex[:8]}",title="Synthetic job",status=status))
+        operator=session.get(Tenant,UUID(ctx["op_id"]))
+        operator.mobile_dispatch_paused=True;session.add(operator);session.commit()
+    overview=client.get("/v1/parent-accounts/me/operations/overview",headers=ctx["hq"])
+    jobs=client.get("/v1/parent-accounts/me/operations/mobile-jobs",headers=ctx["hq"])
+    assert overview.status_code==jobs.status_code==200
+    assert overview.json()["active_mobile_jobs"]==jobs.json()["active_count"]
+    assert overview.json()["active_mobile_jobs"]>=6
+    assert overview.json()["operators_paused_dispatch"]>=1
+
+
 def test_operations_overview_and_bookings_for_hq():
     suffix = uuid4().hex[:8]
     ctx = _setup_hq_network(suffix)

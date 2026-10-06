@@ -85,8 +85,12 @@ class Period:
         return self.start <= local <= self.end
 
     def previous(self) -> "Period":
-        """The same number of days immediately before this period."""
+        """Previous calendar month/quarter, or the preceding equal-length span."""
         end = self.start - timedelta(days=1)
+        if self.label in ("This month", "Last month"):
+            return Period(_month_start(end), end, "Previous month")
+        if self.label == "This quarter":
+            return Period(_month_start(end).replace(month=((end.month - 1) // 3) * 3 + 1), end, "Previous quarter")
         return Period(end - timedelta(days=self.days - 1), end, "previous period")
 
 

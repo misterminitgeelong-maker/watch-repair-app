@@ -711,7 +711,7 @@ export function NewAutoKeyJobModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Deposit ($)" type="number" step="0.01" value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
               <div>
-                <Input label="Cost ($)" type="number" step="0.01" value={form.cost} onChange={e => {
+                <Input label="Customer price ($, including GST)" type="number" step="0.01" value={form.cost} onChange={e => {
                   setPricingSelection(null)
                   setForm(f => ({ ...f, cost: e.target.value }))
                 }} />

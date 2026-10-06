@@ -236,7 +236,10 @@ def enter_shop(
     # whose role differs from the user row's, which is why stamping
     # "platform_admin" here made every request after entering a 401 (and bounced
     # the admin to the login page). Who really entered is in the event above.
-    access_token, expires = create_access_token(tenant_id, owner.id, owner.role, expires_minutes=30)
+    access_token, expires = create_access_token(
+        tenant_id, owner.id, owner.role, expires_minutes=30,
+        support_actor_user_id=auth.user_id,
+    )
 
     return PlatformEnterShopResponse(
         access_token=access_token,
