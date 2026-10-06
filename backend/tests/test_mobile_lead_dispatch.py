@@ -377,3 +377,48 @@ def test_bare_postcode_works_without_google_key(monkeypatch):
     )
     assert full.status_code == 422
     assert "not configured" in full.text
+
+
+def test_public_key_enquiry_form_routes_without_secret_and_keeps_details():
+    ingest_id, op1_id, _op2_id, _hq_id, _hq_h = _setup_network()
+    res = client.post(
+        f"/v1/public/key-enquiry/{ingest_id}",
+        json={
+            "customer_name": "Jane Doe",
+            "phone": "0412345678",
+            "suburb": "Sydney",
+            "state_code": "NSW",
+            "service": "lost_all_keys",
+            "key_type": "push_start",
+            "location_type": "home",
+            "urgency": "today",
+            "has_working_key": False,
+            "vehicle_make": "Toyota",
+            "vehicle_model": "Camry",
+            "vehicle_year": "2019",
+        },
+    )
+    assert res.status_code == 200, res.text
+    with Session(engine) as session:
+        lead = session.exec(
+            select(ProspectLead).where(ProspectLead.tenant_id == UUID(op1_id)).order_by(ProspectLead.created_at.desc())
+        ).first()
+        assert lead is not None and lead.source == "website_lead"
+        assert "Lost all keys" in lead.notes
+        assert "Push-button start" in lead.notes
+        assert "Has a working key: No" in lead.notes
+
+
+def test_public_key_enquiry_form_rejects_bad_input_and_honeypot_creates_nothing():
+    ingest_id, _op1, _op2, _hq, _h = _setup_network()
+    base = {
+        "customer_name": "Jane", "phone": "0412345678", "suburb": "Sydney",
+        "state_code": "NSW", "service": "spare_key", "vehicle_make": "Honda",
+    }
+    assert client.post(f"/v1/public/key-enquiry/{ingest_id}", json={**base, "service": "bogus"}).status_code == 400
+    assert client.post(f"/v1/public/key-enquiry/{uuid4()}", json=base).status_code == 404
+    with Session(engine) as session:
+        before = len(session.exec(select(ProspectLead)).all())
+    assert client.post(f"/v1/public/key-enquiry/{ingest_id}", json={**base, "website": "spam"}).status_code == 200
+    with Session(engine) as session:
+        assert len(session.exec(select(ProspectLead)).all()) == before

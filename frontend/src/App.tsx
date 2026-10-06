@@ -87,6 +87,7 @@ const PublicCustomerPortalPage = lazyPage(() => import('@/pages/PublicCustomerPo
 const ShoeApprovePage = lazyPage(() => import('@/pages/ShoeApprovePage'))
 const JobPoolPage = lazyPage(() => import('@/pages/JobPoolPage'))
 const PublicIntakePage = lazyPage(() => import('@/pages/PublicIntakePage'))
+const KeyEnquiryPage = lazyPage(() => import('@/pages/KeyEnquiryPage'))
 const CustomerOrdersPage = lazyPage(() => import('@/pages/CustomerOrdersPage'))
 const ShopMobileBookingsPage = lazyPage(() => import('@/pages/ShopMobileBookingsPage'))
 const ShopOwnerInvitePage = lazyPage(() => import('@/pages/ShopOwnerInvitePage'))
@@ -213,6 +214,7 @@ export default function App() {
             <Route path="/shop-invite/:token" element={<ShopOwnerInvitePage />} />
             <Route path="/hq-invite/:token" element={<HqOwnerInvitePage />} />
             <Route path="/intake" element={<PublicIntakePage />} />
+            <Route path="/key-enquiry/:ingestId" element={<KeyEnquiryPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupPage />} />
             <Route path="/signup/checkout" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupCheckoutPage />} />

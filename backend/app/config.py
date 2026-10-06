@@ -84,6 +84,9 @@ class Settings(BaseSettings):
 
     # Public base URL used to build approval links in SMS messages
     public_base_url: str = "https://mainspring.au"
+    #: Space-separated origins (e.g. "https://www.misterminit.com.au") allowed to embed the public
+    #: car key enquiry form in an iframe. Empty keeps it unframeable like every other page.
+    key_enquiry_frame_ancestors: str = ""
     # IANA timezone: week/dispatch date filters and customer SMS use this for “local” calendar days.
     schedule_calendar_timezone: str = "Australia/Sydney"
 
