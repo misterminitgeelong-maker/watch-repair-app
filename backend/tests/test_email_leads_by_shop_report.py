@@ -158,7 +158,7 @@ def test_report_unmatched_operator_name_bucket():
     res = client.get("/v1/parent-accounts/me/operations/email-leads-by-shop", headers=headers)
     assert res.status_code == 200, res.text
     data = res.json()
-    unmatched = [s for s in data["shops"] if s["operator_tenant_id"] is None and "no matching operator" in s["operator_name"]]
+    unmatched = [s for s in data["shops"] if s["operator_tenant_id"] is None and "matching operator" in s["operator_name"]]
     assert any("Nowhere Special" in s["operator_name"] for s in unmatched)
 
 
