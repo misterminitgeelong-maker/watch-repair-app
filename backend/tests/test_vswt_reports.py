@@ -192,6 +192,40 @@ def vswt_client(client):
     return client
 
 
+@pytest.mark.parametrize("size_bytes,expected_status", [
+    (20 * 1024 * 1024, 200),
+    (25 * 1024 * 1024, 200),
+    (25 * 1024 * 1024 + 1, 413),
+])
+def test_regional_workbook_upload_size_limit(vswt_client, size_bytes, expected_status):
+    import zipfile
+
+    headers, _ = _bootstrap(vswt_client, f"vswt-size-{size_bytes}", f"size-{size_bytes}@test.com")
+    raw = _build_workbook(41, [_shop_row(3269, "Chadstone", 50000)])
+
+    # Add an uncompressed ZIP member to exercise the real workbook parser and
+    # multipart request with a valid Excel file at the exact upload boundary.
+    def padded_workbook(padding_bytes):
+        buf = io.BytesIO(raw)
+        with zipfile.ZipFile(buf, "a") as workbook:
+            workbook.writestr("padding.bin", b"\0" * padding_bytes, compress_type=zipfile.ZIP_STORED)
+        return buf.getvalue()
+
+    overhead = len(padded_workbook(0))
+    payload = padded_workbook(size_bytes - overhead)
+    assert len(payload) == size_bytes
+    response = vswt_client.post(
+        "/v1/reports/vswt/upload", headers=headers,
+        files=[("files", ("large.xlsx", payload,
+                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))],
+    )
+    assert response.status_code == expected_status, response.text
+    if expected_status == 200:
+        assert response.json()["batch"][0]["shop_count"] == 1
+    else:
+        assert response.json()["detail"] == "File exceeds maximum size of 25 MB"
+
+
 def test_upload_then_commit_then_read_flow(vswt_client):
     headers, tenant_id = _bootstrap(vswt_client, "vswt-shop-3269", "owner-3269@test.com")
     _set_shop_number(tenant_id, "3269")

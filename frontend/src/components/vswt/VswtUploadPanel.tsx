@@ -143,7 +143,7 @@ export function VswtUploadPanel() {
           <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
             Drop this week's VSWT-WSS file(s) here, or click to browse
           </p>
-          <p className="text-xs">Select as many weeks at once as you like — reads the Summary tab from each, .xlsx only</p>
+          <p className="text-xs">Select as many weeks at once as you like — reads the Summary tab from each, .xlsx only, up to 25 MB per file</p>
         </div>
       </button>
 

@@ -62,8 +62,8 @@ from sqlmodel import SQLModel
 
 router = APIRouter(prefix="/v1/reports/vswt", tags=["vswt"])
 
-# Per-workbook cap; a VSWT export is well under this.
-MAX_VSWT_WORKBOOK_BYTES = 10 * 1024 * 1024
+# Per-workbook cap; HQ exports often exceed 10 MB and typically stay under 20 MB.
+MAX_VSWT_WORKBOOK_BYTES = 25 * 1024 * 1024
 
 _DATA_START_ROW = 6  # 1-based Excel row; shop rows start here
 _WEEK_NUMBER_ROW = 3  # 1-based Excel row: "Week Number:" label in col A, value in col C
