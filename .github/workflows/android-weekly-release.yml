@@ -1,0 +1,147 @@
+name: Android weekly release
+
+# Every Thursday afternoon (Melbourne time) build ONE Android bundle containing
+# everything merged to main since the last release and upload it to the Play
+# *internal testing* track. Promote it to production by hand in Play Console
+# after review. Nothing here publishes to production.
+on:
+  schedule:
+    # GitHub cron is UTC: 05:00 UTC = 3pm AEST / 4pm AEDT.
+    - cron: "0 5 * * 4"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Release even if nothing in frontend/ changed since the last release"
+        type: boolean
+        default: false
+
+concurrency: android-weekly-release
+
+permissions:
+  contents: write # tag + GitHub Release (the changelog record)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Work out what changed since the last release
+        id: changes
+        env:
+          FORCE: ${{ inputs.force }}
+        run: |
+          last_tag=$(git tag --list 'android-v*' --sort=-creatordate | head -n1)
+          range=${last_tag:+$last_tag..HEAD}
+          echo "last_tag=$last_tag" >> "$GITHUB_OUTPUT"
+          # Anything under frontend/ changes the app's bundled web code or native shell.
+          count=$(git rev-list --count ${range:-HEAD} -- frontend)
+          echo "frontend_commits=$count" >> "$GITHUB_OUTPUT"
+          git log --no-merges --pretty='- %s (%h)' ${range:-HEAD} > "$RUNNER_TEMP/notes.md"
+          if [ "$count" = "0" ] && [ "$FORCE" != "true" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "No frontend changes since ${last_tag:-the beginning}; skipping."
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: steps.changes.outputs.release == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up JDK
+        if: steps.changes.outputs.release == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install, check and build web app
+        if: steps.changes.outputs.release == 'true'
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: https://mainspring.au
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          RAILWAY_GIT_COMMIT_SHA: ${{ github.sha }}
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          npx cap sync android
+
+      - name: Restore signing key and Firebase config
+        if: steps.changes.outputs.release == 'true'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_SERVICES_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          umask 077
+          dir="$HOME/.mainspring-signing"
+          mkdir -p "$dir"
+          echo "$KEYSTORE_B64" | base64 -d > "$dir/upload.keystore"
+          cat > "$dir/keystore.properties" <<PROPS
+          storeFile=$dir/upload.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          PROPS
+          sed -i 's/^ *//' "$dir/keystore.properties"
+          if [ -n "$GOOGLE_SERVICES_B64" ]; then
+            echo "$GOOGLE_SERVICES_B64" | base64 -d > frontend/android/app/google-services.json
+          fi
+
+      - name: Build signed bundle
+        if: steps.changes.outputs.release == 'true'
+        id: build
+        working-directory: frontend/android
+        run: |
+          code=$(( $(date +%s) / 60 ))
+          name="$(date -u +%Y.%m.%d)"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          chmod +x gradlew
+          ./gradlew bundleRelease -PversionCode="$code" -PversionName="$name"
+
+      - name: Write Play "what's new"
+        if: steps.changes.outputs.release == 'true'
+        run: |
+          mkdir -p whatsnew
+          echo "Weekly update: improvements and fixes." > whatsnew/whatsnew-en-AU
+
+      - name: Upload to Play internal testing
+        if: steps.changes.outputs.release == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: au.mainspring.app
+          releaseFiles: frontend/android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: whatsnew
+
+      - name: Tag release and record the changelog
+        if: steps.changes.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ steps.build.outputs.name }}
+        run: |
+          tag="android-v$NAME"
+          git tag "$tag"
+          git push origin "$tag"
+          gh release create "$tag" \
+            --title "Android $NAME" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            frontend/android/app/build/outputs/bundle/release/app-release.aab
