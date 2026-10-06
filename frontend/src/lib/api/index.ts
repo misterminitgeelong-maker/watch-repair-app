@@ -2047,6 +2047,9 @@ export interface PlatformTenant {
   trial_end?: string | null
   has_stripe_subscription?: boolean
   is_minit?: boolean
+  /** Linked to an HQ network: the HQ is invoiced for it, so it isn't a billable shop. */
+  hq_billed?: boolean
+  hq_name?: string | null
   user_count: number
   created_at: string
 }

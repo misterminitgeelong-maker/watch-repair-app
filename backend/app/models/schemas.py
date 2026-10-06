@@ -1025,6 +1025,9 @@ class PlatformTenantRead(SQLModel):
     has_stripe_subscription: bool = False
     #: Mister Minit network shop — its plan is limited to what HQ runs on.
     is_minit: bool = False
+    #: Linked to an HQ network: the HQ is invoiced for this account, so it is not a billable shop.
+    hq_billed: bool = False
+    hq_name: Optional[str] = None
     user_count: int
     created_at: datetime
 

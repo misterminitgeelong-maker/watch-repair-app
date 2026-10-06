@@ -12,6 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
+from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
@@ -28,6 +29,9 @@ from ..models import (
     RefreshSession,
     AutoKeyJob,
     Invoice,
+    NETWORK_ROLE_HQ,
+    ParentAccount,
+    ParentAccountSite,
     PlatformEnterShopResponse,
     PlatformTenantBillingExemptRequest,
     PlatformTenantForceLogoutRequest,
@@ -112,7 +116,33 @@ def tenant_detach_plan() -> list[str]:
     return statements
 
 
+def _hq_billing_names(session: Session) -> dict[UUID, str]:
+    """tenant_id -> HQ name for accounts billed through their HQ.
+
+    An account is HQ-billed when it sits in a network (retail/operator role) that
+    has an HQ site. The HQ's own tenant is not included: the HQ is the one invoiced.
+    One grouped query, so listing stays a constant number of round trips.
+    """
+    hq_site = aliased(ParentAccountSite)
+    rows = session.exec(
+        select(ParentAccountSite.tenant_id, ParentAccount.name)
+        .join(ParentAccount, ParentAccount.id == ParentAccountSite.parent_account_id)
+        .join(
+            hq_site,
+            (hq_site.parent_account_id == ParentAccountSite.parent_account_id)
+            & (hq_site.network_role == NETWORK_ROLE_HQ),
+        )
+        .where(ParentAccountSite.network_role != NETWORK_ROLE_HQ)
+        .order_by(ParentAccount.name)
+    ).all()
+    names: dict[UUID, str] = {}
+    for tenant_id, name in rows:
+        names.setdefault(tenant_id, name)
+    return names
+
+
 def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
+    hq_name = _hq_billing_names(session).get(tenant.id)
     user_count = int(session.exec(select(func.count(User.id)).where(User.tenant_id == tenant.id)).one())
     return PlatformTenantRead(
         id=tenant.id,
@@ -126,6 +156,8 @@ def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
         trial_end=tenant.trial_end,
         has_stripe_subscription=bool((tenant.stripe_subscription_id or "").strip()),
         is_minit=is_minit_tenant(tenant),
+        hq_billed=hq_name is not None,
+        hq_name=hq_name,
         user_count=user_count,
         created_at=tenant.created_at,
     )
@@ -173,6 +205,7 @@ def list_all_tenants(
         select(User.tenant_id, func.count(User.id)).group_by(User.tenant_id)
     ).all()
     user_counts: dict[UUID, int] = dict(count_rows)
+    hq_names = _hq_billing_names(session)
 
     return [
         PlatformTenantRead(
@@ -185,6 +218,8 @@ def list_all_tenants(
             billing_exempt=t.billing_exempt,
             subscription_status=t.subscription_status,
             is_minit=is_minit_tenant(t),
+            hq_billed=t.id in hq_names,
+            hq_name=hq_names.get(t.id),
             user_count=user_counts.get(t.id, 0),
             created_at=t.created_at,
         )

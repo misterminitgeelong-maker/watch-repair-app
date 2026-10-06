@@ -670,3 +670,36 @@ def test_platform_admin_home_workspace_is_the_console(monkeypatch):
         "/v1/auth/session", headers={"Authorization": f"Bearer {owner_login['access_token']}"}
     ).json()
     assert owner_session["is_platform_console"] is False
+
+
+def test_hq_linked_accounts_are_flagged_as_billed_through_hq():
+    """Accounts in an HQ's network are invoiced to the HQ, so platform admin must
+    not treat them as individually billable shops. The HQ itself and unlinked
+    shops stay billable."""
+    suffix = uuid4().hex[:8]
+    _bootstrap_and_login(f"admin-hqb-{suffix}", f"admin-hqb-{suffix}@test.com")
+    _promote_to_platform_admin(f"admin-hqb-{suffix}@test.com")
+    admin_login = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": f"admin-hqb-{suffix}", "email": f"admin-hqb-{suffix}@test.com", "password": "pass123456"},
+    )
+    headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    _, hq_id = _bootstrap_and_login(f"hqb-hq-{suffix}", f"hqb-hq-{suffix}@test.com")
+    _, op_id = _bootstrap_and_login(f"hqb-op-{suffix}", f"hqb-op-{suffix}@test.com")
+    _, free_id = _bootstrap_and_login(f"hqb-free-{suffix}", f"hqb-free-{suffix}@test.com")
+    with Session(engine) as db:
+        parent = ParentAccount(name=f"HQ Net {suffix}", owner_email=f"hqb-hq-{suffix}@test.com")
+        db.add(parent)
+        db.commit()
+        db.refresh(parent)
+        db.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=UUID(hq_id), network_role="hq"))
+        db.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=UUID(op_id), network_role="operator"))
+        db.commit()
+
+    rows = {r["id"]: r for r in client.get("/v1/platform-admin/tenants", headers=headers).json()}
+    assert rows[op_id]["hq_billed"] is True
+    assert rows[op_id]["hq_name"] == f"HQ Net {suffix}"
+    assert rows[hq_id]["hq_billed"] is False
+    assert rows[free_id]["hq_billed"] is False
+    assert rows[free_id]["hq_name"] is None

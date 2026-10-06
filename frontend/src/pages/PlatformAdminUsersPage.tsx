@@ -120,14 +120,20 @@ function billingAttention(t: { is_active: boolean; signup_payment_pending: boole
 }
 
 function BillingTab({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
-  const { data: tenants, isLoading, isError } = useQuery({
+  const { data: allTenants, isLoading, isError } = useQuery({
     queryKey: ['platform-tenants'],
     queryFn: () => listPlatformTenants().then(r => r.data),
   })
   const [onlyAttention, setOnlyAttention] = useState(true)
   const [page, setPage] = useState(0)
   if (isLoading) return <Spinner />
-  if (isError || !tenants) return <EmptyState message="Could not load shops." />
+  if (isError || !allTenants) return <EmptyState message="Could not load shops." />
+  // HQ-linked accounts are invoiced to their HQ as one bundle, so they never
+  // show up as individually billable shops; they are rolled up per HQ below.
+  const tenants = allTenants.filter(t => !t.hq_billed)
+  const hqBundles = Array.from(
+    allTenants.filter(t => t.hq_billed).reduce((m, t) => m.set(t.hq_name || 'HQ', (m.get(t.hq_name || 'HQ') ?? 0) + 1), new Map<string, number>()),
+  )
   const q = search.trim().toLowerCase()
   const rows = tenants
     .map(t => ({ t, attention: billingAttention(t) }))
@@ -150,6 +156,17 @@ function BillingTab({ search, setSearch }: { search: string; setSearch: (v: stri
         <StatCard label="On trial" value={String(counts.trialing)} />
         <StatCard label="Billing exempt" value={String(counts.exempt)} />
       </div>
+      {hqBundles.length > 0 && (
+        <Card className="mb-5 px-4 py-3 text-sm">
+          <div className="font-medium">Billed through HQ</div>
+          {hqBundles.map(([name, count]) => (
+            <div key={name} className="flex justify-between" style={{ color: 'var(--ms-text-mid)' }}>
+              <span>{name}</span>
+              <span>{count} account{count === 1 ? '' : 's'} on the HQ's bundled invoice</span>
+            </div>
+          ))}
+        </Card>
+      )}
       <div className="flex flex-wrap items-center gap-4">
         <SearchBar value={search} onChange={v => { setSearch(v); setPage(0) }} placeholder="Search shops…" />
         <label className="mb-5 flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text-mid)' }}>
