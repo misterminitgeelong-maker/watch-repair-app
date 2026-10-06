@@ -3701,7 +3701,7 @@ export interface ProspectSearchResponse {
   results: Prospect[]
   total: number
   category: string
-  source?: 'stored' | 'google'
+  source?: string
 }
 export const getProspectContactDetails = (place_id: string) =>
   api.get<{ place_id: string; phone: string | null; website: string | null; attributions: string[] }>('/prospects/contact-details', { params: { place_id } })
