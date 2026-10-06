@@ -14,7 +14,7 @@ export interface CompressionOptions {
 }
 
 export function getCompressionOptions(): CompressionOptions {
-  return { maxDim: 1500, quality: 0.8, maxPixels: 2_250_000 }
+  return { maxDim: 1280, quality: 0.78, maxPixels: 1_600_000 }
 }
 
 /**
@@ -120,23 +120,40 @@ function canvasToJpegFile(
   height: number,
   fileName: string,
   quality: number,
+  attempt = 0,
 ): Promise<File> {
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
+  // Phone browsers keep canvas backing stores alive until GC, so a second photo
+  // can run out of memory. Always shrink the canvas to 0 once we are done with it.
+  const release = () => { canvas.width = 0; canvas.height = 0 }
   const ctx = canvas.getContext('2d')
   if (!ctx) {
+    release()
     return Promise.reject(
       new ImageCompressionError(
         'Could not process this photo. Try closing other apps, then retake with the camera (not gallery) if it keeps failing.',
       ),
     )
   }
-  ctx.drawImage(source, 0, 0, width, height)
+  try {
+    ctx.drawImage(source, 0, 0, width, height)
+  } catch (err) {
+    release()
+    return Promise.reject(err)
+  }
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
+        release()
         if (!blob) {
+          // Low memory: retry once at half size before giving up.
+          if (attempt < 2 && width > 320) {
+            canvasToJpegFile(source, Math.round(width / 2), Math.round(height / 2), fileName, quality, attempt + 1)
+              .then(resolve, reject)
+            return
+          }
           reject(
             new ImageCompressionError(
               'Not enough memory to process this photo. Close other apps, then retake a photo (smaller file) and try again.',
