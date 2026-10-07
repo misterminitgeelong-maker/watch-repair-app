@@ -35,9 +35,10 @@ Mainspring works for a single shop or a network of shops. You need a Mainspring 
 - Notifications permission: alerts about new activity in the shop.
 
 ## Assets in this folder
-- icon-512.png (store icon)
+- icon-512.png (store icon: mainspring coil in a watch bezel)
 - feature-graphic-1024x500.png
-- screenshots/ (phone screenshots, 1080x2160)
+- screenshots/ (8 phone screenshots, 1080x2160, captioned): dashboard, watch board, job detail and quoting, quotes, invoices, shoe repairs, keys and mobile services, customers
+- screenshots-tablet/ (same 8 screens, 1600x2560)
 
 ## Play Console app content: suggested answers
 - Privacy policy: https://mainspring.au/privacy (already saved in the console).

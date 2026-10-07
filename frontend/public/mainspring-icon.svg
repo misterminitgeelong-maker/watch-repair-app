@@ -1,45 +1,11 @@
-<svg width="160" height="160" viewBox="38 25 160 160" xmlns="http://www.w3.org/2000/svg">
-
-  <!-- Cream face fill -->
-  <circle cx="118" cy="105" r="74" fill="#FDFAF4"/>
-
-  <!-- Outer bezel ring -->
-  <circle cx="118" cy="105" r="74" fill="none" stroke="#1B2B3E" stroke-width="2.5"/>
-
-  <!-- Inner dashed track ring -->
-  <circle cx="118" cy="105" r="63" fill="none" stroke="#1B2B3E" stroke-width="0.5" stroke-dasharray="2,5" opacity="0.35"/>
-
-  <!-- Cardinal tick marks -->
-  <line x1="118" y1="31" x2="118" y2="42" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="181" y1="105" x2="192" y2="105" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="118" y1="168" x2="118" y2="179" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="44" y1="105" x2="55" y2="105" stroke="#1B2B3E" stroke-width="2.5" stroke-linecap="round"/>
-
-  <!-- Minor tick marks at 30° intervals -->
-  <line x1="155" y1="42" x2="150" y2="51" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-  <line x1="182" y1="68" x2="174" y2="73" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-  <line x1="182" y1="142" x2="174" y2="137" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-  <line x1="155" y1="168" x2="150" y2="159" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-  <line x1="81" y1="168" x2="86" y2="159" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-  <line x1="54" y1="142" x2="62" y2="137" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-  <line x1="54" y1="68" x2="62" y2="73" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-  <line x1="81" y1="42" x2="86" y2="51" stroke="#1B2B3E" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-
-  <!-- Mainspring coil spiral -->
-  <path d="
-    M 118 90
-    A 15 15 0 0 1 118 120
-    L 118 125
-    A 20 20 0 0 0 118 85
-    L 118 77
-    A 28 28 0 0 1 118 133
-    L 118 141
-    A 36 36 0 0 0 118 69
-    L 118 59
-    A 46 46 0 0 1 118 151" fill="none" stroke="#C9922A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- Arbor (centre pivot) -->
-  <circle cx="118" cy="105" r="7" fill="#1B2B3E"/>
-  <circle cx="118" cy="105" r="3.5" fill="#C9922A"/>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 512 512" role="img" aria-label="Mainspring">
+<circle cx="256.0" cy="256.0" r="256.0" fill="#1B2B3E"/>
+<circle cx="256.0" cy="256.0" r="214.0" fill="none" stroke="#FDFAF4" stroke-width="22.0"/>
+<line x1="256.0" y1="61.0" x2="256.0" y2="87.0" stroke="#FDFAF4" stroke-width="12.0" stroke-linecap="round" opacity="0.9"/>
+<line x1="451.0" y1="256.0" x2="425.0" y2="256.0" stroke="#FDFAF4" stroke-width="12.0" stroke-linecap="round" opacity="0.9"/>
+<line x1="256.0" y1="451.0" x2="256.0" y2="425.0" stroke="#FDFAF4" stroke-width="12.0" stroke-linecap="round" opacity="0.9"/>
+<line x1="61.0" y1="256.0" x2="87.0" y2="256.0" stroke="#FDFAF4" stroke-width="12.0" stroke-linecap="round" opacity="0.9"/>
+<path d="M256.0 222.0 L258.4 221.6 L260.9 221.3 L263.4 221.3 L265.9 221.4 L268.5 221.7 L271.1 222.2 L273.6 222.9 L276.1 223.8 L278.6 224.8 L281.1 226.1 L283.5 227.6 L285.7 229.2 L287.9 231.0 L290.0 233.1 L292.0 235.2 L293.8 237.6 L295.4 240.1 L296.9 242.7 L298.2 245.5 L299.4 248.4 L300.3 251.3 L301.0 254.4 L301.5 257.6 L301.8 260.8 L301.8 264.1 L301.7 267.4 L301.2 270.7 L300.6 274.0 L299.6 277.3 L298.5 280.5 L297.1 283.7 L295.5 286.8 L293.6 289.8 L291.5 292.7 L289.2 295.5 L286.6 298.1 L283.9 300.6 L280.9 302.9 L277.8 305.0 L274.5 306.8 L271.0 308.5 L267.5 309.9 L263.7 311.1 L259.9 312.0 L256.0 312.6 L252.0 313.0 L248.0 313.0 L243.9 312.8 L239.8 312.3 L235.8 311.5 L231.8 310.5 L227.8 309.1 L223.9 307.4 L220.1 305.4 L216.4 303.2 L212.8 300.7 L209.5 297.9 L206.3 294.9 L203.2 291.6 L200.5 288.1 L197.9 284.3 L195.6 280.4 L193.6 276.3 L191.8 272.0 L190.4 267.6 L189.2 263.0 L188.4 258.4 L187.9 253.6 L187.7 248.8 L187.9 244.0 L188.4 239.1 L189.3 234.3 L190.5 229.5 L192.0 224.8 L193.9 220.2 L196.2 215.6 L198.7 211.3 L201.6 207.0 L204.8 203.0 L208.3 199.2 L212.1 195.6 L216.2 192.2 L220.5 189.2 L225.0 186.4 L229.8 183.9 L234.7 181.8 L239.8 180.0 L245.1 178.6 L250.5 177.5 L256.0 176.8 L261.6 176.5 L267.2 176.6 L272.8 177.1 L278.4 177.9 L283.9 179.2 L289.4 180.9 L294.8 183.0 L300.1 185.4 L305.2 188.3 L310.1 191.5 L314.9 195.1 L319.3 199.0 L323.6 203.2 L327.5 207.8 L331.1 212.6 L334.4 217.8 L337.3 223.1 L339.9 228.7 L342.1 234.5 L343.9 240.5 L345.3 246.6 L346.2 252.9 L346.7 259.2 L346.8 265.5 L346.4 271.9 L345.5 278.3 L344.2 284.7 L342.5 290.9 L340.3 297.1 L337.6 303.1 L334.6 309.0 L331.1 314.7 L327.2 320.1 L322.9 325.3 L318.2 330.1 L313.2 334.7 L307.8 338.9 L302.1 342.8 L296.2 346.2 L290.0 349.3 L283.5 351.9 L276.9 354.1 L270.0 355.8 L263.1 357.1 L256.0 357.8 L248.9 358.1 L241.7 357.8 L234.5 357.0 L227.4 355.8 L220.3 354.0 L213.4 351.8 L206.6 349.0 L199.9 345.7 L193.5 342.0 L187.3 337.8 L181.4 333.2 L175.9 328.2 L170.6 322.7 L165.8 316.9 L161.3 310.7 L157.3 304.1 L153.7 297.3 L150.6 290.3 L148.0 282.9 L145.9 275.4 L144.3 267.7 L143.2 259.9 L142.7 252.0 L142.8 244.1 L143.4 236.1 L144.6 228.2 L146.3 220.4 L148.6 212.6 L151.4 205.0 L154.8 197.6 L158.7 190.4 L163.1 183.4 L168.0 176.8 L173.4 170.5 L179.3 164.6 L185.5 159.0 L192.2 153.9 L199.2 149.3 L206.6 145.1 L214.3 141.5 L222.3 138.4 L230.4 135.8 L238.8 133.8 L247.4 132.4 L256.0 131.6 L264.7 131.4 L273.5 131.8 L282.2 132.8 L290.8 134.5 L299.4 136.7 L307.8 139.6 L316.1 143.1 L324.1 147.1 L331.8 151.7 L339.2 156.9 L346.3 162.5 L352.9 168.7 L359.2 175.4 L365.0 182.5 L370.3 190.0 L375.0 197.9 L379.3 206.2 L382.9 214.8 L386.0 223.6 L388.4 232.7 L390.2 241.9 L391.4 251.3 L391.9 260.7 L391.7 270.3 L390.9 279.8 L389.4 289.3 L387.2 298.6 L384.4 307.9 L380.9 316.9 L376.8 325.7 L372.0 334.3 L366.7 342.5 L360.8 350.3 L354.3 357.8 L347.3 364.8 L339.7 371.3 L331.8 377.3 L323.4 382.7 L314.6 387.5 L305.4 391.8 L296.0 395.4 L286.2 398.3 L276.3 400.6 L266.2 402.1 L256.0 403.0" fill="none" stroke="#D9A334" stroke-width="26.0" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="256.0" cy="256.0" r="20.0" fill="#FDFAF4"/>
+<circle cx="256.0" cy="256.0" r="8.0" fill="#1B2B3E"/>
 </svg>
