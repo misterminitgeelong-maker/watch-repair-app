@@ -1,4 +1,7 @@
 import base64
+import hashlib
+import hmac
+import secrets
 import io
 import importlib
 import json
@@ -40,6 +43,7 @@ from ..models import (
     Customer,
     Invoice,
     JobStatusHistory,
+    PortalAccessCode,
     PortalSession,
     Quote,
     RepairJob,
@@ -1359,33 +1363,29 @@ class PortalVerifyRequest(SQLModel):
     ticket_number: str = Field(..., min_length=1, max_length=40)
 
 
-@router.post("/portal/verify")
-@limiter.limit(auth_limit)
-def verify_portal_access(request: Request, payload: PortalVerifyRequest, session: Session = Depends(get_session)):
-    """Open a portal session from the phone number and ticket number on a repair.
+class PortalVerifyCodeRequest(SQLModel):
+    challenge_id: UUID
+    code: str = Field(..., min_length=4, max_length=12)
 
-    Both must belong to the same job, so knowing one (or guessing a sequential
-    ticket number) is not enough. Every miss returns the same answer, and the
-    endpoint uses the stricter per-IP auth rate limit against guessing.
-    """
-    phone = normalize_phone(payload.phone or "")
-    ticket = (payload.ticket_number or "").strip().lstrip("#").strip().lower()
-    not_found = HTTPException(
-        status_code=404,
-        detail="We couldn't find a repair matching that phone number and ticket number.",
-    )
-    if not phone or not ticket:
-        raise not_found
 
-    customer: Customer | None = None
-    watch_row = session.exec(
+_PORTAL_CODE_TTL_MINUTES = 10
+_PORTAL_CODE_MAX_ATTEMPTS = 5
+_PORTAL_CODE_MAX_PER_CUSTOMER_PER_HOUR = 3
+
+
+def _hash_portal_code(challenge_id: UUID, code: str) -> str:
+    return hmac.new(settings.jwt_secret.encode(), f"{challenge_id}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
+def _find_customer_by_phone_and_ticket(session: Session, phone: str, ticket: str) -> Customer | None:
+    """The customer whose phone is ``phone`` and who owns a job numbered ``ticket``."""
+    customer = session.exec(
         select(Customer)
         .join(Watch, Watch.customer_id == Customer.id)
         .join(RepairJob, RepairJob.watch_id == Watch.id)
         .where(func.lower(RepairJob.job_number) == ticket)
         .where(Customer.phone_normalized == phone)
     ).first()
-    customer = watch_row
     if customer is None:
         customer = session.exec(
             select(Customer)
@@ -1401,14 +1401,100 @@ def verify_portal_access(request: Request, payload: PortalVerifyRequest, session
             .where(func.lower(AutoKeyJob.job_number) == ticket)
             .where(Customer.phone_normalized == phone)
         ).first()
-    if customer is None:
-        raise not_found
+    return customer
 
-    portal_session = PortalSession(
-        email=(customer.email or "").strip().lower(),
-        customer_id=customer.id,
+
+@router.post("/portal/verify")
+@limiter.limit(auth_limit)
+def verify_portal_access(request: Request, payload: PortalVerifyRequest, session: Session = Depends(get_session)):
+    """Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.
+
+    The answer is identical whether or not the pair matched (a challenge id is
+    always returned), so this cannot be used to probe which tickets exist. The
+    phone number and ticket must belong to the same job, and the portal only
+    opens once the texted code is entered at ``/portal/verify-code``.
+    """
+    if settings.app_env == "production" and not (
+        settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number
+    ):
+        raise HTTPException(status_code=503, detail="Repair tracking by phone isn't available right now.")
+
+    phone = normalize_phone(payload.phone or "")
+    ticket = (payload.ticket_number or "").strip().lstrip("#").strip().lower()
+    challenge_id = uuid4()
+    response = {"challenge_id": str(challenge_id), "expires_minutes": _PORTAL_CODE_TTL_MINUTES}
+    if not phone or not ticket:
+        return response
+
+    customer = _find_customer_by_phone_and_ticket(session, phone, ticket)
+    if customer is None or not customer.phone:
+        return response
+
+    now = datetime.now(timezone.utc)
+    recent = session.exec(
+        select(PortalAccessCode)
+        .where(PortalAccessCode.customer_id == customer.id)
+        .where(PortalAccessCode.created_at >= now - timedelta(hours=1))
+    ).all()
+    if len(recent) >= _PORTAL_CODE_MAX_PER_CUSTOMER_PER_HOUR:
+        # Cap texts to one number (SMS bombing); stay silent so it isn't a tell.
+        return response
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    session.add(
+        PortalAccessCode(
+            id=challenge_id,
+            customer_id=customer.id,
+            tenant_id=customer.tenant_id,
+            code_hash=_hash_portal_code(challenge_id, code),
+            expires_at=now + timedelta(minutes=_PORTAL_CODE_TTL_MINUTES),
+        )
+    )
+    session.commit()
+
+    from ..sms import send_portal_access_code
+
+    tenant = session.get(Tenant, customer.tenant_id)
+    send_portal_access_code(
+        session,
         tenant_id=customer.tenant_id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=_PORTAL_SESSION_TTL_DAYS),
+        to_phone=customer.phone,
+        shop_name=(tenant.name if tenant else "") or "",
+        code=code,
+    )
+    return response
+
+
+@router.post("/portal/verify-code")
+@limiter.limit(auth_limit)
+def verify_portal_code(request: Request, payload: PortalVerifyCodeRequest, session: Session = Depends(get_session)):
+    """Step 2: exchange the texted code for a 30-day session scoped to that customer."""
+    now = datetime.now(timezone.utc)
+    row = session.get(PortalAccessCode, payload.challenge_id)
+    expired_or_used = (
+        row is None
+        or row.consumed_at is not None
+        or (row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=timezone.utc)) < now
+        or row.attempts >= _PORTAL_CODE_MAX_ATTEMPTS
+    )
+    if expired_or_used:
+        raise HTTPException(status_code=401, detail="That code isn't right or has expired. Start again to get a new one.")
+    assert row is not None
+
+    row.attempts += 1
+    if not hmac.compare_digest(row.code_hash, _hash_portal_code(row.id, payload.code.strip())):
+        session.add(row)
+        session.commit()
+        raise HTTPException(status_code=401, detail="That code isn't right or has expired. Start again to get a new one.")
+
+    row.consumed_at = now
+    session.add(row)
+    customer = session.get(Customer, row.customer_id)
+    portal_session = PortalSession(
+        email=((customer.email if customer else "") or "").strip().lower(),
+        customer_id=row.customer_id,
+        tenant_id=row.tenant_id,
+        expires_at=now + timedelta(days=_PORTAL_SESSION_TTL_DAYS),
     )
     session.add(portal_session)
     session.commit()

@@ -966,6 +966,20 @@ def send_portal_login_code(session: Session, *, tenant_id: UUID, to_phone: str, 
     return sms_status
 
 
+def send_portal_access_code(session: Session, *, tenant_id: UUID, to_phone: str, shop_name: str, code: str) -> str:
+    """Text the code that completes phone + ticket sign-in to the repair tracker."""
+    body = f"{shop_name.strip() or 'Your repair shop'}: your repair tracker code is {code}. It expires in 10 minutes."
+    _sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="portal_access_code",
+    )
+    return sms_status
+
+
 def notify_shop_mobile_booking_request(
     session: Session,
     *,

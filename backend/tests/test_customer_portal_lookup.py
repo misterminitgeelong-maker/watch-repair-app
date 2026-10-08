@@ -356,7 +356,15 @@ def test_public_auto_key_job_status_endpoint(client: TestClient):
     assert "pending_actions" in body
 
 
-def test_portal_verify_requires_matching_phone_and_ticket(client: TestClient) -> None:
+def test_portal_phone_and_ticket_sign_in_needs_texted_code(client: TestClient, monkeypatch) -> None:
+    sent: list[tuple[str, str]] = []
+
+    def fake_send(session, *, tenant_id, to_phone, shop_name, code):
+        sent.append((to_phone, code))
+        return "sent"
+
+    monkeypatch.setattr("app.sms.send_portal_access_code", fake_send)
+
     headers = _bootstrap(client)
     cust = client.post(
         "/v1/customers",
@@ -377,14 +385,34 @@ def test_portal_verify_requires_matching_phone_and_ticket(client: TestClient) ->
     assert job.status_code == 201, job.text
     number = job.json()["job_number"]
 
+    # Wrong phone / wrong ticket: same shape of answer, nothing texted.
+    for body in (
+        {"phone": "0499 999 999", "ticket_number": number},
+        {"phone": "0412345678", "ticket_number": "NOPE-1"},
+    ):
+        miss = client.post("/v1/public/portal/verify", json=body)
+        assert miss.status_code == 200, miss.text
+        assert set(miss.json()) == {"challenge_id", "expires_minutes"}
+        bad = client.post("/v1/public/portal/verify-code", json={"challenge_id": miss.json()["challenge_id"], "code": "123456"})
+        assert bad.status_code == 401
+    assert sent == []
+
     ok = client.post("/v1/public/portal/verify", json={"phone": "+61412345678", "ticket_number": f"#{number}"})
     assert ok.status_code == 200, ok.text
-    view = client.get(f"/v1/public/portal/session/{ok.json()['session_token']}")
+    assert len(sent) == 1
+    to_phone, code = sent[0]
+    assert to_phone == "0412 345 678"
+    challenge = ok.json()["challenge_id"]
+
+    wrong = client.post("/v1/public/portal/verify-code", json={"challenge_id": challenge, "code": "000000" if code != "000000" else "111111"})
+    assert wrong.status_code == 401
+
+    done = client.post("/v1/public/portal/verify-code", json={"challenge_id": challenge, "code": code})
+    assert done.status_code == 200, done.text
+    view = client.get(f"/v1/public/portal/session/{done.json()['session_token']}")
     assert view.status_code == 200
     assert [j["job_number"] for s in view.json()["shops"] for j in s["jobs"]] == [number]
 
-    wrong_phone = client.post("/v1/public/portal/verify", json={"phone": "0499 999 999", "ticket_number": number})
-    wrong_ticket = client.post("/v1/public/portal/verify", json={"phone": "0412345678", "ticket_number": "NOPE-1"})
-    assert wrong_phone.status_code == 404
-    assert wrong_ticket.status_code == 404
-    assert wrong_phone.json() == wrong_ticket.json()
+    # A code works once.
+    again = client.post("/v1/public/portal/verify-code", json={"challenge_id": challenge, "code": code})
+    assert again.status_code == 401

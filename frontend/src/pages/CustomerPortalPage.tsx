@@ -17,7 +17,8 @@ import {
 import {
   getPortalSession,
   patchPortalNotificationPrefs,
-  verifyPortalAccess,
+  requestPortalCode,
+  verifyPortalCode,
   type CustomerPortalLookupResponse,
   type CustomerPortalShop,
 } from '@/lib/api'
@@ -382,22 +383,45 @@ function CustomerPortalLookupPage() {
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
   const [ticket, setTicket] = useState('')
+  const [code, setCode] = useState('')
+  const [challenge, setChallenge] = useState<{ id: string; minutes: number } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // The phone number and ticket number must belong to the same repair, so
-  // knowing only one of them (or guessing a ticket) shows nothing.
-  async function handleSubmit(e: React.FormEvent) {
+  function errorMessage(err: unknown) {
+    const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+    return msg || 'Something went wrong. Please try again.'
+  }
+
+  // Step 1: the phone number and ticket number must belong to the same repair.
+  // We always answer the same way, so nobody can use this to probe tickets.
+  async function requestCode(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     if (!phone.trim() || !ticket.trim()) return
     setLoading(true)
     try {
-      const res = await verifyPortalAccess(phone.trim(), ticket.trim())
+      const res = await requestPortalCode(phone.trim(), ticket.trim())
+      setChallenge({ id: res.data.challenge_id, minutes: res.data.expires_minutes })
+      setCode('')
+    } catch (err: unknown) {
+      setError(errorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Step 2: the code texted to that phone opens the tracker.
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!challenge || !code.trim()) return
+    setLoading(true)
+    try {
+      const res = await verifyPortalCode(challenge.id, code.trim())
       navigate(`/customer-portal/s/${res.data.session_token}`)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg || 'Something went wrong. Please try again.')
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -408,44 +432,77 @@ function CustomerPortalLookupPage() {
       <PortalHero
         eyebrow="Repair tracking"
         title={<>Where’s my <em>repair?</em></>}
-        lede="Enter the phone number you gave us and the ticket number from your receipt or text message."
+        lede={
+          challenge
+            ? 'Enter the 6-digit code we just texted you.'
+            : 'Enter the phone number you gave us and the ticket number from your receipt or text message.'
+        }
       />
       <PortalBody>
-        <form onSubmit={handleSubmit} className="pt-card pt-card-pad pt-rise" style={{ padding: 24 }}>
-          <label className="pt-field">
-            <span>Phone number</span>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="0412 345 678"
-              autoComplete="tel"
-              required
-              className="pt-input"
-            />
-          </label>
-          <label className="pt-field" style={{ marginTop: 12 }}>
-            <span>Ticket number</span>
-            <input
-              type="text"
-              value={ticket}
-              onChange={(e) => setTicket(e.target.value)}
-              placeholder="e.g. 00142"
-              autoComplete="off"
-              autoCapitalize="characters"
-              required
-              className="pt-input"
-            />
-          </label>
-          <button type="submit" disabled={loading} className="pt-btn pt-btn--block" style={{ marginTop: 14, padding: '13px 18px' }}>
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <Ticket size={16} />}
-            {loading ? 'Checking…' : 'Track my repair'}
-          </button>
-          {error && <p role="alert" className="pt-flash pt-flash--err" style={{ marginTop: 12, justifyContent: 'center', width: '100%' }}>{error}</p>}
-          <p className="pt-muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '14px 0 0' }}>
-            No password needed. Can’t find your ticket number? It’s on your receipt and in our texts and emails.
-          </p>
-        </form>
+        {challenge ? (
+          <form onSubmit={submitCode} className="pt-card pt-card-pad pt-rise" style={{ padding: 24 }}>
+            <p className="pt-muted" style={{ fontSize: 13.5, margin: '0 0 14px', lineHeight: 1.55 }}>
+              If that phone number and ticket match a repair, we’ve texted a code to the number on file. It expires in {challenge.minutes} minutes.
+            </p>
+            <label className="pt-field">
+              <span>6-digit code</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="123456"
+                autoComplete="one-time-code"
+                required
+                className="pt-input"
+              />
+            </label>
+            <button type="submit" disabled={loading} className="pt-btn pt-btn--block" style={{ marginTop: 14, padding: '13px 18px' }}>
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Ticket size={16} />}
+              {loading ? 'Checking…' : 'Track my repair'}
+            </button>
+            {error && <p role="alert" className="pt-flash pt-flash--err" style={{ marginTop: 12, justifyContent: 'center', width: '100%' }}>{error}</p>}
+            <button type="button" className="pt-link" style={{ marginTop: 14 }} onClick={() => { setChallenge(null); setError(null) }}>
+              Start again
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={requestCode} className="pt-card pt-card-pad pt-rise" style={{ padding: 24 }}>
+            <label className="pt-field">
+              <span>Phone number</span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="0412 345 678"
+                autoComplete="tel"
+                required
+                className="pt-input"
+              />
+            </label>
+            <label className="pt-field" style={{ marginTop: 12 }}>
+              <span>Ticket number</span>
+              <input
+                type="text"
+                value={ticket}
+                onChange={(e) => setTicket(e.target.value)}
+                placeholder="e.g. 00142"
+                autoComplete="off"
+                autoCapitalize="characters"
+                required
+                className="pt-input"
+              />
+            </label>
+            <button type="submit" disabled={loading} className="pt-btn pt-btn--block" style={{ marginTop: 14, padding: '13px 18px' }}>
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Ticket size={16} />}
+              {loading ? 'Sending…' : 'Text me a code'}
+            </button>
+            {error && <p role="alert" className="pt-flash pt-flash--err" style={{ marginTop: 12, justifyContent: 'center', width: '100%' }}>{error}</p>}
+            <p className="pt-muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '14px 0 0' }}>
+              No password needed. Can’t find your ticket number? It’s on your receipt and in our texts and emails.
+            </p>
+          </form>
+        )}
 
         <div className="pt-rise" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, animationDelay: '0.15s' }}>
           {[

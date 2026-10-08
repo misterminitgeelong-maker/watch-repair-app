@@ -7958,13 +7958,53 @@
           "public-jobs"
         ],
         "summary": "Verify Portal Access",
-        "description": "Open a portal session from the phone number and ticket number on a repair.\n\nBoth must belong to the same job, so knowing one (or guessing a sequential\nticket number) is not enough. Every miss returns the same answer, and the\nendpoint uses the stricter per-IP auth rate limit against guessing.",
+        "description": "Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.\n\nThe answer is identical whether or not the pair matched (a challenge id is\nalways returned), so this cannot be used to probe which tickets exist. The\nphone number and ticket must belong to the same job, and the portal only\nopens once the texted code is entered at ``/portal/verify-code``.",
         "operationId": "verify_portal_access_v1_public_portal_verify_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PortalVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/portal/verify-code": {
+      "post": {
+        "tags": [
+          "public-jobs"
+        ],
+        "summary": "Verify Portal Code",
+        "description": "Step 2: exchange the texted code for a 30-day session scoped to that customer.",
+        "operationId": "verify_portal_code_v1_public_portal_verify_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalVerifyCodeRequest"
               }
             }
           },
@@ -33951,6 +33991,27 @@
         ],
         "title": "PortalShopOut",
         "description": "The shop's public face: what the portal shows before and after sign-in."
+      },
+      "PortalVerifyCodeRequest": {
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Challenge Id"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 4,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "challenge_id",
+          "code"
+        ],
+        "title": "PortalVerifyCodeRequest"
       },
       "PortalVerifyRequest": {
         "properties": {

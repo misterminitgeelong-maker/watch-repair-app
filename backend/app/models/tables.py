@@ -1299,6 +1299,23 @@ class PortalSession(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class PortalAccessCode(SQLModel, table=True):
+    """One-time code texted to the phone on a repair before a scoped portal session opens.
+
+    Created only after the phone number and ticket number matched a job, so
+    guessing a ticket number is not enough to see anyone's repairs.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    customer_id: UUID = Field(index=True)
+    tenant_id: UUID = Field(index=True)
+    code_hash: str = Field(max_length=128)
+    attempts: int = Field(default=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+    consumed_at: Optional[datetime] = None
+
+
 class UserNotificationPreference(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")

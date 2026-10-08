@@ -2533,13 +2533,34 @@ export interface paths {
         put?: never;
         /**
          * Verify Portal Access
-         * @description Open a portal session from the phone number and ticket number on a repair.
+         * @description Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.
          *
-         *     Both must belong to the same job, so knowing one (or guessing a sequential
-         *     ticket number) is not enough. Every miss returns the same answer, and the
-         *     endpoint uses the stricter per-IP auth rate limit against guessing.
+         *     The answer is identical whether or not the pair matched (a challenge id is
+         *     always returned), so this cannot be used to probe which tickets exist. The
+         *     phone number and ticket must belong to the same job, and the portal only
+         *     opens once the texted code is entered at ``/portal/verify-code``.
          */
         post: operations["verify_portal_access_v1_public_portal_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/portal/verify-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Portal Code
+         * @description Step 2: exchange the texted code for a 30-day session scoped to that customer.
+         */
+        post: operations["verify_portal_code_v1_public_portal_verify_code_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11020,6 +11041,16 @@ export interface components {
              */
             is_minit: boolean;
         };
+        /** PortalVerifyCodeRequest */
+        PortalVerifyCodeRequest: {
+            /**
+             * Challenge Id
+             * Format: uuid
+             */
+            challenge_id: string;
+            /** Code */
+            code: string;
+        };
         /** PortalVerifyRequest */
         PortalVerifyRequest: {
             /** Phone */
@@ -18503,6 +18534,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PortalVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_portal_code_v1_public_portal_verify_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalVerifyCodeRequest"];
             };
         };
         responses: {
