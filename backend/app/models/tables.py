@@ -1288,6 +1288,10 @@ class PortalSession(SQLModel, table=True):
     """Short-lived session token for the customer self-service portal."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     email: str = Field(index=True)
+    #: Set when the session was opened by phone + ticket number rather than by
+    #: an emailed link: it is then limited to this customer's jobs at one shop.
+    customer_id: Optional[UUID] = Field(default=None, index=True)
+    tenant_id: Optional[UUID] = Field(default=None, index=True)
     token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     expires_at: datetime
     status_notify_email: bool = False

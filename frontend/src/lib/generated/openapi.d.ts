@@ -2522,6 +2522,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/portal/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Portal Access
+         * @description Open a portal session from the phone number and ticket number on a repair.
+         *
+         *     Both must belong to the same job, so knowing one (or guessing a sequential
+         *     ticket number) is not enough. Every miss returns the same answer, and the
+         *     endpoint uses the stricter per-IP auth rate limit against guessing.
+         */
+        post: operations["verify_portal_access_v1_public_portal_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/portal/session/{token}": {
         parameters: {
             query?: never;
@@ -10996,6 +11020,13 @@ export interface components {
              */
             is_minit: boolean;
         };
+        /** PortalVerifyRequest */
+        PortalVerifyRequest: {
+            /** Phone */
+            phone: string;
+            /** Ticket Number */
+            ticket_number: string;
+        };
         /** ProfileResponse */
         ProfileResponse: {
             /** Customer Id */
@@ -18439,6 +18470,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PortalSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_portal_access_v1_public_portal_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalVerifyRequest"];
             };
         };
         responses: {

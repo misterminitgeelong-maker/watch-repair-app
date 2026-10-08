@@ -354,3 +354,37 @@ def test_public_auto_key_job_status_endpoint(client: TestClient):
     assert body["job_number"] == ak_job.job_number
     assert body["status"] == ak_job.status
     assert "pending_actions" in body
+
+
+def test_portal_verify_requires_matching_phone_and_ticket(client: TestClient) -> None:
+    headers = _bootstrap(client)
+    cust = client.post(
+        "/v1/customers",
+        headers=headers,
+        json={"full_name": "Phone Customer", "phone": "0412 345 678"},
+    )
+    assert cust.status_code == 201, cust.text
+    watch = client.post(
+        "/v1/watches",
+        headers=headers,
+        json={"customer_id": cust.json()["id"], "brand": "Seiko", "model": "5"},
+    )
+    job = client.post(
+        "/v1/repair-jobs",
+        headers=headers,
+        json={"watch_id": watch.json()["id"], "title": "Service", "priority": "normal"},
+    )
+    assert job.status_code == 201, job.text
+    number = job.json()["job_number"]
+
+    ok = client.post("/v1/public/portal/verify", json={"phone": "+61412345678", "ticket_number": f"#{number}"})
+    assert ok.status_code == 200, ok.text
+    view = client.get(f"/v1/public/portal/session/{ok.json()['session_token']}")
+    assert view.status_code == 200
+    assert [j["job_number"] for s in view.json()["shops"] for j in s["jobs"]] == [number]
+
+    wrong_phone = client.post("/v1/public/portal/verify", json={"phone": "0499 999 999", "ticket_number": number})
+    wrong_ticket = client.post("/v1/public/portal/verify", json={"phone": "0412345678", "ticket_number": "NOPE-1"})
+    assert wrong_phone.status_code == 404
+    assert wrong_ticket.status_code == 404
+    assert wrong_phone.json() == wrong_ticket.json()

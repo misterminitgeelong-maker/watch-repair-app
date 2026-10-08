@@ -19,10 +19,11 @@ from ..config import settings
 from ..upload_limits import read_upload_capped
 from ..auto_key_status import AUTO_KEY_AWAITING_CONFIRMATION_STATUSES, AUTO_KEY_BOOKED_STATUSES
 from ..database import get_session
-from ..limiter import limiter, public_read_limit, public_write_limit
+from ..limiter import auth_limit, limiter, public_read_limit, public_write_limit
 
 logger = logging.getLogger(__name__)
 from ..datetime_utils import isoformat_z_utc, naive_utc_from_any
+from ..phone_utils import normalize_phone
 from ..minit_branding import (
     customer_brand_color,
     customer_logo_url,
@@ -1153,14 +1154,35 @@ def _collect_customer_jobs(
     email: str,
     *,
     include_history: bool = False,
+    customer_id: UUID | None = None,
 ) -> CustomerPortalLookupResponse:
-    """Cross-tenant job lookup grouped by shop. OTP gate can wrap this later."""
+    """Job lookup grouped by shop.
+
+    With ``customer_id`` (a session opened by phone + ticket number) the result
+    is limited to that customer's shop, including any duplicate customer
+    records at that shop with the same phone. Otherwise it is every shop that
+    has the emailed address on file.
+    """
     normalized = (email or "").strip().lower()
-    # Exact match on the address. ilike() on raw input treated % and _ as
-    # wildcards, so "%@%" matched every customer on the platform.
-    customers = session.exec(
-        select(Customer).where(func.lower(Customer.email) == normalized)
-    ).all()
+    if customer_id is not None:
+        anchor = session.get(Customer, customer_id)
+        if anchor is None:
+            return CustomerPortalLookupResponse(email=normalized, shops=[])
+        customers = [anchor]
+        if anchor.phone_normalized:
+            customers = list(
+                session.exec(
+                    select(Customer)
+                    .where(Customer.tenant_id == anchor.tenant_id)
+                    .where(Customer.phone_normalized == anchor.phone_normalized)
+                ).all()
+            )
+    else:
+        # Exact match on the address. ilike() on raw input treated % and _ as
+        # wildcards, so "%@%" matched every customer on the platform.
+        customers = session.exec(
+            select(Customer).where(func.lower(Customer.email) == normalized)
+        ).all()
     if not customers:
         return CustomerPortalLookupResponse(email=normalized, shops=[])
 
@@ -1332,6 +1354,68 @@ def create_portal_session(request: Request, payload: PortalSessionRequest, sessi
     return {"sent": True, "expires_days": _PORTAL_SESSION_TTL_DAYS}
 
 
+class PortalVerifyRequest(SQLModel):
+    phone: str = Field(..., min_length=6, max_length=80)
+    ticket_number: str = Field(..., min_length=1, max_length=40)
+
+
+@router.post("/portal/verify")
+@limiter.limit(auth_limit)
+def verify_portal_access(request: Request, payload: PortalVerifyRequest, session: Session = Depends(get_session)):
+    """Open a portal session from the phone number and ticket number on a repair.
+
+    Both must belong to the same job, so knowing one (or guessing a sequential
+    ticket number) is not enough. Every miss returns the same answer, and the
+    endpoint uses the stricter per-IP auth rate limit against guessing.
+    """
+    phone = normalize_phone(payload.phone or "")
+    ticket = (payload.ticket_number or "").strip().lstrip("#").strip().lower()
+    not_found = HTTPException(
+        status_code=404,
+        detail="We couldn't find a repair matching that phone number and ticket number.",
+    )
+    if not phone or not ticket:
+        raise not_found
+
+    customer: Customer | None = None
+    watch_row = session.exec(
+        select(Customer)
+        .join(Watch, Watch.customer_id == Customer.id)
+        .join(RepairJob, RepairJob.watch_id == Watch.id)
+        .where(func.lower(RepairJob.job_number) == ticket)
+        .where(Customer.phone_normalized == phone)
+    ).first()
+    customer = watch_row
+    if customer is None:
+        customer = session.exec(
+            select(Customer)
+            .join(Shoe, Shoe.customer_id == Customer.id)
+            .join(ShoeRepairJob, ShoeRepairJob.shoe_id == Shoe.id)
+            .where(func.lower(ShoeRepairJob.job_number) == ticket)
+            .where(Customer.phone_normalized == phone)
+        ).first()
+    if customer is None:
+        customer = session.exec(
+            select(Customer)
+            .join(AutoKeyJob, AutoKeyJob.customer_id == Customer.id)
+            .where(func.lower(AutoKeyJob.job_number) == ticket)
+            .where(Customer.phone_normalized == phone)
+        ).first()
+    if customer is None:
+        raise not_found
+
+    portal_session = PortalSession(
+        email=(customer.email or "").strip().lower(),
+        customer_id=customer.id,
+        tenant_id=customer.tenant_id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=_PORTAL_SESSION_TTL_DAYS),
+    )
+    session.add(portal_session)
+    session.commit()
+    session.refresh(portal_session)
+    return {"session_token": portal_session.token, "expires_days": _PORTAL_SESSION_TTL_DAYS}
+
+
 @router.get("/portal/session/{token}", response_model=CustomerPortalLookupResponse)
 @limiter.limit(get_public_read_rate_limit)
 def get_portal_session_jobs(
@@ -1351,7 +1435,9 @@ def get_portal_session_jobs(
     if datetime.now(timezone.utc) > exp:
         raise HTTPException(status_code=410, detail="This portal link has expired. Please request a new one.")
 
-    lookup = _collect_customer_jobs(session, portal.email, include_history=include_history)
+    lookup = _collect_customer_jobs(
+        session, portal.email, include_history=include_history, customer_id=portal.customer_id
+    )
     lookup.status_notify_email = portal.status_notify_email
     lookup.status_notify_sms = portal.status_notify_sms
     return lookup
@@ -1421,7 +1507,7 @@ def portal_message_to_shop(
     else:
         raise HTTPException(status_code=422, detail="Invalid job_type")
 
-    if not tenant_id:
+    if not tenant_id or (portal.tenant_id and portal.tenant_id != tenant_id):
         raise HTTPException(status_code=404, detail="Job not found")
 
     session.add(
@@ -1430,7 +1516,7 @@ def portal_message_to_shop(
             entity_type=entity_type,
             entity_id=payload.job_id,
             event_type="portal_customer_message",
-            event_summary=f"{portal.email}: {body[:200]}",
+            event_summary=f"{portal.email or 'Portal customer'}: {body[:200]}",
         )
     )
     session.commit()

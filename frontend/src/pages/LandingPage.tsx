@@ -366,6 +366,7 @@ function Nav() {
           <Link to="/mobile-services" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Mobile services</Link>
           <a href="#pricing" className="hidden sm:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>Pricing</a>
           <a href="#faq" className="hidden lg:inline" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink }}>FAQ</a>
+          <Link to="/customer-portal" className="hidden sm:inline-flex items-center" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink, minHeight: 44 }}>Track a repair</Link>
           <Link to="/login" className="inline-flex items-center" style={{ fontSize: 13, fontWeight: 600, color: MKT.ink, minHeight: 44 }}>Log in</Link>
           <Link
             to="/signup"
@@ -969,6 +970,7 @@ function Footer() {
         </div>
         <div className="flex flex-wrap" style={{ gap: 20 }}>
           <a href="#pricing" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Pricing</a>
+          <Link to="/customer-portal" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Track a repair</Link>
           <Link to="/login" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Log in</Link>
           <Link to="/watch-repair-software" style={{ fontSize: 11, fontWeight: 700, color: MKT.textBody }}>Watch repair software</Link>
           <Link to="/shoe-repair-software" style={{ fontSize: 11, fontWeight: 700, color: MKT.textBody }}>Shoe repair software</Link>

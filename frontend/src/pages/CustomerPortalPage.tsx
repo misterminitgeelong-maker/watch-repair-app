@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowRight,
   Bell,
@@ -9,15 +9,15 @@ import {
   History,
   Loader2,
   Mail,
-  MailCheck,
   Phone,
+  Ticket,
   RefreshCw,
   Sparkles,
 } from 'lucide-react'
 import {
-  createPortalSession,
   getPortalSession,
   patchPortalNotificationPrefs,
+  verifyPortalAccess,
   type CustomerPortalLookupResponse,
   type CustomerPortalShop,
 } from '@/lib/api'
@@ -379,23 +379,22 @@ function PortalFooter() {
 }
 
 function CustomerPortalLookupPage() {
-  const [email, setEmail] = useState('')
+  const navigate = useNavigate()
+  const [phone, setPhone] = useState('')
+  const [ticket, setTicket] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [sentTo, setSentTo] = useState<string | null>(null)
 
-  // Jobs are only ever shown behind the private link we email. Showing them
-  // for whatever address was typed here let anyone read anyone's repairs.
+  // The phone number and ticket number must belong to the same repair, so
+  // knowing only one of them (or guessing a ticket) shows nothing.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setSentTo(null)
-    const trimmed = email.trim()
-    if (!trimmed) return
+    if (!phone.trim() || !ticket.trim()) return
     setLoading(true)
     try {
-      await createPortalSession(trimmed)
-      setSentTo(trimmed)
+      const res = await verifyPortalAccess(phone.trim(), ticket.trim())
+      navigate(`/customer-portal/s/${res.data.session_token}`)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setError(msg || 'Something went wrong. Please try again.')
@@ -409,53 +408,44 @@ function CustomerPortalLookupPage() {
       <PortalHero
         eyebrow="Repair tracking"
         title={<>Where’s my <em>repair?</em></>}
-        lede="Enter your email and we’ll send you a private link to every repair, at every shop you use."
+        lede="Enter the phone number you gave us and the ticket number from your receipt or text message."
       />
       <PortalBody>
-        {sentTo ? (
-          <div role="status" className="pt-card pt-card-pad pt-rise" style={{ textAlign: 'center', padding: '36px 24px' }}>
-            <span
-              className="pt-pop"
-              style={{
-                width: 64, height: 64, borderRadius: 999, display: 'inline-grid', placeItems: 'center',
-                background: 'var(--pt-ok-soft)', color: 'var(--pt-ok)',
-              }}
-            >
-              <MailCheck size={28} />
-            </span>
-            <p className="pt-serif" style={{ fontSize: 28, margin: '16px 0 0' }}>Check your inbox</p>
-            <p className="pt-muted" style={{ fontSize: 14, margin: '8px auto 0', maxWidth: 360, lineHeight: 1.55 }}>
-              If we have repairs for <strong style={{ color: 'var(--pt-text)' }}>{sentTo}</strong>, a link to them is on
-              its way. It works for 30 days — bookmark it once it arrives.
-            </p>
-            <button type="button" className="pt-link" style={{ marginTop: 18 }} onClick={() => setSentTo(null)}>
-              Use a different email
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="pt-card pt-card-pad pt-rise" style={{ padding: 24 }}>
-            <label className="pt-field">
-              <span>Email address</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-                required
-                className="pt-input"
-              />
-            </label>
-            <button type="submit" disabled={loading} className="pt-btn pt-btn--block" style={{ marginTop: 14, padding: '13px 18px' }}>
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
-              {loading ? 'Sending…' : 'Email me my link'}
-            </button>
-            {error && <p className="pt-flash pt-flash--err" style={{ marginTop: 12, justifyContent: 'center', width: '100%' }}>{error}</p>}
-            <p className="pt-muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '14px 0 0' }}>
-              No password needed. Your link is private to you.
-            </p>
-          </form>
-        )}
+        <form onSubmit={handleSubmit} className="pt-card pt-card-pad pt-rise" style={{ padding: 24 }}>
+          <label className="pt-field">
+            <span>Phone number</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="0412 345 678"
+              autoComplete="tel"
+              required
+              className="pt-input"
+            />
+          </label>
+          <label className="pt-field" style={{ marginTop: 12 }}>
+            <span>Ticket number</span>
+            <input
+              type="text"
+              value={ticket}
+              onChange={(e) => setTicket(e.target.value)}
+              placeholder="e.g. 00142"
+              autoComplete="off"
+              autoCapitalize="characters"
+              required
+              className="pt-input"
+            />
+          </label>
+          <button type="submit" disabled={loading} className="pt-btn pt-btn--block" style={{ marginTop: 14, padding: '13px 18px' }}>
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Ticket size={16} />}
+            {loading ? 'Checking…' : 'Track my repair'}
+          </button>
+          {error && <p role="alert" className="pt-flash pt-flash--err" style={{ marginTop: 12, justifyContent: 'center', width: '100%' }}>{error}</p>}
+          <p className="pt-muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '14px 0 0' }}>
+            No password needed. Can’t find your ticket number? It’s on your receipt and in our texts and emails.
+          </p>
+        </form>
 
         <div className="pt-rise" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, animationDelay: '0.15s' }}>
           {[

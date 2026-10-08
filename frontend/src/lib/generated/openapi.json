@@ -7952,6 +7952,46 @@
         }
       }
     },
+    "/v1/public/portal/verify": {
+      "post": {
+        "tags": [
+          "public-jobs"
+        ],
+        "summary": "Verify Portal Access",
+        "description": "Open a portal session from the phone number and ticket number on a repair.\n\nBoth must belong to the same job, so knowing one (or guessing a sequential\nticket number) is not enough. Every miss returns the same answer, and the\nendpoint uses the stricter per-IP auth rate limit against guessing.",
+        "operationId": "verify_portal_access_v1_public_portal_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/portal/session/{token}": {
       "get": {
         "tags": [
@@ -33911,6 +33951,28 @@
         ],
         "title": "PortalShopOut",
         "description": "The shop's public face: what the portal shows before and after sign-in."
+      },
+      "PortalVerifyRequest": {
+        "properties": {
+          "phone": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 6,
+            "title": "Phone"
+          },
+          "ticket_number": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Ticket Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone",
+          "ticket_number"
+        ],
+        "title": "PortalVerifyRequest"
       },
       "ProfileResponse": {
         "properties": {
