@@ -159,9 +159,13 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     : isBookingOnly
     ? filterItems(bookingOnlyNav)
     : filterItems(navBeforeMobile)
+  // Auto-key-only accounts (no watch or shoe repairs) have no stock to count.
+  const autoKeyOnly = hasFeature('auto_key') && !hasFeature('watch') && !hasFeature('shoe')
   const filteredAfter = demoModeEnabled
     ? filterItems(demoNavAfterMobile)
-    : isMinitUi ? [] : filterItems(navAfterMobile)
+    : isMinitUi
+    ? []
+    : filterItems(navAfterMobile).filter((item) => !(autoKeyOnly && item.to === '/stocktakes'))
   const showMobile = !isMinitUi && hasFeature('auto_key')
   const insideMobile = pathname.startsWith('/auto-key')
 

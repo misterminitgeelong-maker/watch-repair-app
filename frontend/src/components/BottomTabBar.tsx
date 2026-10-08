@@ -75,7 +75,7 @@ export default function BottomTabBar() {
     { to: '/customers', label: 'Customers', icon: Users },
     { to: '/invoices', label: 'Invoices', icon: Receipt },
     { to: '/reports', label: 'Reports', icon: BarChart3 },
-    !demoModeEnabled && { to: '/stocktakes', label: 'Stocktake', icon: ClipboardList },
+    !demoModeEnabled && !(hasMobile && !hasWatch && !hasShoe) && { to: '/stocktakes', label: 'Stocktake', icon: ClipboardList },
     !demoModeEnabled && hasFeature('customer_accounts') && { to: '/customer-accounts', label: 'Accounts', icon: Building2 },
     !demoModeEnabled && hasFeature('multi_site') && { to: '/parent-account', label: 'Parent', icon: Building2 },
     !demoModeEnabled && { to: '/database', label: 'Database', icon: Database },

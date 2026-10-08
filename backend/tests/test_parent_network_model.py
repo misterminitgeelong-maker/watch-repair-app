@@ -1019,7 +1019,7 @@ def test_mv_merge_pairs_vans_and_folds_the_operator_into_the_mv_shop():
     suffix = uuid4().hex[:8]
     net = _network(suffix)
     hq_h = net["hq"]
-    base = int(suffix[:4], 16) % 5000 + 1000
+    base = int(suffix, 16) % 800000 + 100000
 
     # Pair 1: same phone, same place — the strong case.
     op1 = _provision(hq_h, str(base + 1), f"Mobile Services Bribie {suffix}", "mobile")
