@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
@@ -1377,13 +1377,19 @@ def _hash_portal_code(challenge_id: UUID, code: str) -> str:
     return hmac.new(settings.jwt_secret.encode(), f"{challenge_id}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
+def _ticket_matches(column, ticket: str):
+    """Job numbers carry a prefix (JOB-10002, SHO-10002, IMP-00123); accept the digits alone too."""
+    lowered = func.lower(column)
+    return or_(lowered == ticket, lowered.endswith(f"-{ticket}", autoescape=True))
+
+
 def _find_customer_by_phone_and_ticket(session: Session, phone: str, ticket: str) -> Customer | None:
     """The customer whose phone is ``phone`` and who owns a job numbered ``ticket``."""
     customer = session.exec(
         select(Customer)
         .join(Watch, Watch.customer_id == Customer.id)
         .join(RepairJob, RepairJob.watch_id == Watch.id)
-        .where(func.lower(RepairJob.job_number) == ticket)
+        .where(_ticket_matches(RepairJob.job_number, ticket))
         .where(Customer.phone_normalized == phone)
     ).first()
     if customer is None:
@@ -1391,14 +1397,14 @@ def _find_customer_by_phone_and_ticket(session: Session, phone: str, ticket: str
             select(Customer)
             .join(Shoe, Shoe.customer_id == Customer.id)
             .join(ShoeRepairJob, ShoeRepairJob.shoe_id == Shoe.id)
-            .where(func.lower(ShoeRepairJob.job_number) == ticket)
+            .where(_ticket_matches(ShoeRepairJob.job_number, ticket))
             .where(Customer.phone_normalized == phone)
         ).first()
     if customer is None:
         customer = session.exec(
             select(Customer)
             .join(AutoKeyJob, AutoKeyJob.customer_id == Customer.id)
-            .where(func.lower(AutoKeyJob.job_number) == ticket)
+            .where(_ticket_matches(AutoKeyJob.job_number, ticket))
             .where(Customer.phone_normalized == phone)
         ).first()
     return customer

@@ -397,7 +397,9 @@ def test_portal_phone_and_ticket_sign_in_needs_texted_code(client: TestClient, m
         assert bad.status_code == 401
     assert sent == []
 
-    ok = client.post("/v1/public/portal/verify", json={"phone": "+61412345678", "ticket_number": f"#{number}"})
+    # The digits alone (without the JOB-/SHO- prefix) are accepted too.
+    digits = number.split("-")[-1]
+    ok = client.post("/v1/public/portal/verify", json={"phone": "+61412345678", "ticket_number": f"#{digits}"})
     assert ok.status_code == 200, ok.text
     assert len(sent) == 1
     to_phone, code = sent[0]
