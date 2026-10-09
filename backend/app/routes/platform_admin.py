@@ -24,6 +24,7 @@ from ..dependencies import (
     normalize_plan_code,
     require_platform_admin,
 )
+from ..hq_access import allowed_plans_for_hq_network_tenant
 from ..minit_branding import allowed_plans_for_minit_tenant, is_minit_tenant
 from ..models import (
     RefreshSession,
@@ -348,6 +349,10 @@ def set_tenant_plan(
             status_code=400,
             detail=f"Mister Minit shops can only be on {allowed}.",
         )
+    network_plans = allowed_plans_for_hq_network_tenant(session, tenant)
+    if network_plans is not None and requested not in network_plans:
+        allowed = " or ".join(sorted(network_plans))
+        raise HTTPException(status_code=400, detail=f"This account's HQ only allows {allowed}.")
     old_plan = tenant.plan_code
     tenant.plan_code = requested
     session.add(tenant)

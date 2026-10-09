@@ -19,7 +19,7 @@ from ..dependencies import (
     require_feature,
     require_owner,
 )
-from ..minit_branding import MINIT_HQ_PLAN, tenant_product
+from ..hq_access import require_hq
 from ..minit_email_lead_parser import bucket_email_leads_by_operator
 from ..minit_shops import tenant_slug_for_shop
 from ..models import (
@@ -93,17 +93,6 @@ _AUTO_KEY_ACTIVE_STATUSES = AUTO_KEY_ACTIVE_STATUSES
 _PROBLEM_BOOKING_STATUSES = frozenset({"declined", "cancelled", "expired"})
 _REGION_ORDER = ("VIC", "NSW", "QLD", "SW", "NZ", "SEA")
 _UNASSIGNED_REGION = "Unassigned"
-
-
-def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
-    tenant = session.get(Tenant, auth.tenant_id)
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    if normalize_plan_code(auth.plan_code) != MINIT_HQ_PLAN:
-        raise HTTPException(status_code=403, detail="Minit HQ plan required")
-    if tenant_product(tenant) != "minit":
-        raise HTTPException(status_code=403, detail="Minit product required")
-    return tenant
 
 
 def _retail_and_operator_tenants(session: Session, parent_id: UUID) -> tuple[list[Tenant], list[Tenant]]:
@@ -550,7 +539,7 @@ def get_operations_overview(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'mobile_services')
     user, parent, _ = _parent_for_read(session, auth)
     retail_ids, operator_ids, region_shop_counts, missing_dispatch = _classify_linked_tenants(
         session, parent.id
@@ -673,7 +662,7 @@ def get_operations_bookings_report(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'mobile_services')
     user, parent, _ = _parent_for_read(session, auth)
     start, end = _parse_date_range(from_date, to_date)
 
@@ -772,7 +761,7 @@ def get_operations_mobile_jobs_report(
     from ..auto_key_status import AUTO_KEY_ACTIVE_STATUSES
     from ..mobile_network_kpis import classify_job_type
 
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'mobile_services')
     user, parent, _ = _parent_for_read(session, auth)
     operators = mobile_reporting_tenants_for_parent(session, parent.id)
     operator_ids = [t.id for t in operators]
@@ -883,7 +872,7 @@ def get_email_leads_by_shop_report(
     on the fly (nothing is persisted) — fine at current volume; revisit if the
     inbox grows into the thousands.
     """
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'lead_routing')
     user, parent, _ = _parent_for_read(session, auth)
     start, end = _parse_date_range(from_date, to_date)
 
@@ -925,7 +914,7 @@ def get_lead_volume_report(
     enquiry email (InboundEmail). Days are bucketed in Melbourne time; periods
     with no leads are returned as zeros so charts have no gaps.
     """
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'lead_routing')
     _, parent, _ = _parent_for_read(session, auth)
     tz = ZoneInfo("Australia/Melbourne")
     today = datetime.now(tz).date()
@@ -978,7 +967,7 @@ def get_mobile_weekly_report_preview(
     completed week — the same data the opted-in weekly email would contain.
     Read-only; does not send anything or change opt-in state.
     """
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'mobile_services')
     user, parent, _ = _parent_for_read(session, auth)
 
     from ..mobile_network_kpis import last_completed_operating_week
@@ -1037,7 +1026,7 @@ def get_mobile_kpi_email_settings(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     user, parent, _ = _parent_for_read(session, auth)
     return ParentMobileWeeklyReportSettingsRead(
         opt_in=parent.mobile_weekly_report_opt_in,
@@ -1051,7 +1040,7 @@ def update_mobile_kpi_email_settings(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     user, parent = _parent_for_write(session, auth)
     parent.mobile_weekly_report_opt_in = body.opt_in
     session.add(parent)
@@ -1068,7 +1057,7 @@ def send_mobile_kpi_weekly_now(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     user, parent = _parent_for_write(session, auth)
     from ..services.mobile_kpi_close import send_weekly_now
 
@@ -1112,7 +1101,7 @@ def get_mobile_kpis_live(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from ..mobile_network_kpis import (
         NETWORK_TIMEZONE_NAME,
@@ -1177,7 +1166,7 @@ def get_mobile_kpis_live_csv(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from ..mobile_network_kpis import (
         as_utc,
@@ -1236,7 +1225,7 @@ def get_mobile_kpi_period(
     year_start_month: int = Query(default=4),
     auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _, parent, _ = _parent_for_read(session, auth)
     return _period_read(_calendar_kpi_report(session, parent, period, anchor, year_start_month))
 
@@ -1248,7 +1237,7 @@ def get_mobile_kpi_period_csv(
     auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session),
 ):
     from ..mobile_network_kpis import csv_bytes_for_report
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _, parent, _ = _parent_for_read(session, auth)
     report = _calendar_kpi_report(session, parent, period, anchor, year_start_month)
     label = {"month": "Monthly", "quarter": "Quarterly", "half_year": "6 months", "year": "Yearly"}[period]
@@ -1261,7 +1250,7 @@ def list_mobile_kpi_days(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from datetime import date as date_cls, timedelta
     from ..mobile_network_kpis import NETWORK_TIMEZONE_NAME
@@ -1299,7 +1288,7 @@ def get_mobile_kpi_day(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from datetime import date as date_cls
     from ..mobile_network_kpis import (
@@ -1374,7 +1363,7 @@ def rebuild_mobile_kpi_day(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent = _parent_for_write(session, auth)
     from datetime import date as date_cls
     from ..services.mobile_kpi_close import compile_daily_snapshot
@@ -1392,7 +1381,7 @@ def list_mobile_kpi_weeks(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from ..mobile_network_kpis import NETWORK_TIMEZONE_NAME
     from ..models import MobileKpiWeeklySnapshot
@@ -1428,7 +1417,7 @@ def get_mobile_kpi_week(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from ..mobile_network_kpis import NETWORK_TIMEZONE_NAME, NetworkKpiReport, operator_row_from_dict, rollup_operators
     from ..models import MobileKpiWeeklySnapshot
@@ -1472,7 +1461,7 @@ def get_mobile_kpi_week_csv(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from ..models import MobileKpiWeeklySnapshot
     from ..services.mobile_kpi_close import csv_bytes_for_report_payload
@@ -1495,7 +1484,7 @@ def get_mobile_kpi_recipients(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent, _ = _parent_for_read(session, auth)
     from .parent_network_admin import _collapse_shared_logins, _parent_user_reads
     from ..parent_network import parent_user_row
@@ -1526,7 +1515,7 @@ def update_mobile_kpi_recipient(
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'kpis')
     _user, parent = _parent_for_write(session, auth)
     target = session.get(User, body.user_id)
     if target is None or not target.is_active:
@@ -1547,7 +1536,7 @@ def get_operations_troubleshooting(
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'mobile_services')
     user, parent, _ = _parent_for_read(session, auth)
     retail, operators = _retail_and_operator_tenants(session, parent.id)
     items = _collect_troubleshooting_items(session, parent, retail, operators, limit=limit)

@@ -12,6 +12,7 @@ import ConnectivityBanner from '@/components/ConnectivityBanner'
 import NewVersionBanner from '@/components/NewVersionBanner'
 import { FeatureGate, RouteFallback } from '@/components/FeatureGate'
 import { defaultHomePathForMinit, isMinitHqUi } from '@/lib/minitProduct'
+import { hqHasModule, useHqConfig } from '@/hooks/useHqConfig'
 import { lazyPage } from '@/lib/routePrefetch'
 
 function DashboardRoute() {
@@ -93,6 +94,7 @@ const ShopMobileBookingsPage = lazyPage(() => import('@/pages/ShopMobileBookings
 const ShopOwnerInvitePage = lazyPage(() => import('@/pages/ShopOwnerInvitePage'))
 const HqOwnerInvitePage = lazyPage(() => import('@/pages/HqOwnerInvitePage'))
 const MinitOperationsPage = lazyPage(() => import('@/pages/minit/MinitOperationsPage'))
+const HqShoeRepairsPage = lazyPage(() => import('@/pages/hq/HqShoeRepairsPage'))
 const MinitShopsPage = lazyPage(() => import('@/pages/minit/MinitShopsPage'))
 const MinitShopReportsPage = lazyPage(() => import('@/pages/minit/MinitShopReportsPage'))
 const MinitMobileReportsPage = lazyPage(() => import('@/pages/minit/MinitMobileReportsPage'))
@@ -105,6 +107,17 @@ const MinitReportsHubPage = lazyPage(() => import('@/pages/minit/MinitReportsHub
 const MinitRegionCockpitPage = lazyPage(() => import('@/pages/minit/MinitRegionCockpitPage'))
 
 /** Minit HQ pages — allow when server/session says HQ, not only when multi_site is in enabled_features. */
+/** An HQ without mobile services has no mobile dashboard; send it to the area it does have. */
+function HqLandingGate({ children }: { children: React.ReactNode }) {
+  const config = useHqConfig()
+  if (config.isLoading) return <RouteFallback />
+  const modules = config.data?.modules
+  if (modules && !hqHasModule(modules, 'mobile_services') && hqHasModule(modules, 'shoe')) {
+    return <Navigate to="/minit/shoe-repairs" replace />
+  }
+  return <>{children}</>
+}
+
 function MinitHqGate({ children }: { children: React.ReactNode }) {
   const { product, planCode, tenantSlug, minitHqUi, hasFeature } = useAuth()
   const { pathname } = useLocation()
@@ -263,7 +276,8 @@ export default function App() {
               <Route path="customer-orders" element={<CustomerOrdersPage />} />
               <Route path="customer-accounts" element={<FeatureGate feature="customer_accounts"><CustomerAccountsPage /></FeatureGate>} />
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
-              <Route path="minit/dashboard" element={<MinitHqGate><MinitOperationsPage /></MinitHqGate>} />
+              <Route path="minit/dashboard" element={<MinitHqGate><HqLandingGate><MinitOperationsPage /></HqLandingGate></MinitHqGate>} />
+              <Route path="minit/shoe-repairs" element={<MinitHqGate><HqShoeRepairsPage /></MinitHqGate>} />
               <Route path="minit/operations" element={<Navigate to="/minit/dashboard" replace />} />
               <Route path="minit/inbox" element={<MinitHqGate><MinitInboxPage /></MinitHqGate>} />
               <Route path="minit/shops" element={<MinitHqGate><MinitShopsPage /></MinitHqGate>} />

@@ -420,6 +420,43 @@ export const listPlatformHqOwners = () => api.get<{ accounts: HqOwnerAccount[]; 
 export const createPlatformHqInvite = (payload: { parent_account_id: string; tenant_id: string; email: string; full_name: string; send_email: boolean }) =>
   api.post<HqOwnerInvite & { invite_url: string; email_sent: boolean }>('/platform-admin/hq-owners', payload)
 export const revokePlatformHqInvite = (id: string) => api.delete(`/platform-admin/hq-owners/${id}`)
+export interface PlatformHq {
+  parent_account_id: string; tenant_id: string | null; tenant_slug: string | null; product_key: string
+  display_name: string; logo_url: string | null; brand_color: string | null
+  modules: string[]; site_plans: string[]; shop_count: number
+}
+export interface PlatformHqSettingsInput {
+  display_name: string; logo_url?: string | null; brand_color?: string | null; modules: string[]; site_plans: string[]
+}
+export const listPlatformHqs = () =>
+  api.get<{ hqs: PlatformHq[]; available_modules: string[]; available_site_plans: string[] }>('/platform-admin/hqs')
+export const createPlatformHq = (payload: PlatformHqSettingsInput & { slug: string; owner_name: string; owner_email: string; send_invite: boolean }) =>
+  api.post<PlatformHq & { invite_url: string | null; email_sent: boolean }>('/platform-admin/hqs', payload)
+export const updatePlatformHq = (parentAccountId: string, payload: PlatformHqSettingsInput) =>
+  api.patch<PlatformHq>(`/platform-admin/hqs/${parentAccountId}`, payload)
+
+export interface HqConfig { product_key: string; display_name: string; logo_url: string | null; brand_color: string | null; modules: string[] }
+export const getMyHqConfig = () => api.get<HqConfig>('/parent-accounts/me/hq-config')
+
+export interface HqShoeShopRow {
+  tenant_id: string; tenant_name: string; tenant_slug: string; region: string | null
+  opened: number; active: number; ready_to_collect: number; collected: number; billed_cents: number
+  avg_turnaround_days: number | null; oldest_active_days: number | null
+}
+export interface HqShoeSummary {
+  from_date: string | null; to_date: string | null
+  totals: { shops: number; opened: number; active: number; ready_to_collect: number; collected: number; billed_cents: number; avg_turnaround_days: number | null }
+  status_counts: Record<string, number>
+  by_shop: HqShoeShopRow[]
+}
+export interface HqShoeJobRow {
+  id: string; job_number: string; status: string; title: string; tenant_id: string; tenant_name: string; region: string | null
+  customer_name: string; shoe: string | null; created_at: string; age_days: number
+}
+export const getHqShoeSummary = (params?: { from_date?: string; to_date?: string }) =>
+  api.get<HqShoeSummary>('/parent-accounts/me/operations/shoe-jobs/summary', { params })
+export const searchHqShoeJobs = (params?: { q?: string; status?: string; tenant_id?: string; limit?: number }) =>
+  api.get<{ jobs: HqShoeJobRow[]; has_more: boolean }>('/parent-accounts/me/operations/shoe-jobs/search', { params })
 export const getHqOwnerInvite = (token: string) => api.get<{ name: string; email: string; full_name: string; tenant_slug: string; existing_account: boolean; expires_at: string }>(`/public/hq-invite/${token}`)
 export const acceptHqOwnerInvite = (token: string, password: string) => api.post<{ access_token: string; refresh_token: string; expires_in_seconds: number }>(`/public/hq-invite/${token}/complete`, { password })
 

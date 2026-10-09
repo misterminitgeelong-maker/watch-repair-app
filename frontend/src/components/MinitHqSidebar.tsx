@@ -10,23 +10,48 @@ import {
   Sparkles,
   Download,
   Route,
+  Scissors,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
+import { hqHasModule, useHqConfig } from '@/hooks/useHqConfig'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import { APP_BUILD_ID } from '@/lib/buildInfo'
 
-/** Single source of truth — Minit HQ sidebar links (no feature gates). */
+/** Single source of truth — HQ sidebar links. `module` is the HQ module a link needs (none = always shown). */
 export const MINIT_HQ_NAV = [
-  { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, title: 'Website leads, email enquiries, and Support Office alerts' },
+  { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard, module: 'mobile_services' },
+  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, module: 'lead_routing', title: 'Website leads, email enquiries, and Support Office alerts' },
   { to: '/minit/shops', label: 'Shops', icon: Building2, title: 'Browse the retail network by region' },
-  { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, title: 'Website ingest, dispatch, and territory map' },
-  { to: '/minit/mobile-services', label: 'Mobile reports', icon: KeyRound, title: 'Live mobile-services KPIs and compiled daily/weekly reports' },
-  { to: '/minit/reports', label: 'Reports', icon: BarChart3, title: 'Shop analytics and troubleshooting' },
+  { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, module: 'lead_routing', title: 'Website ingest, dispatch, and territory map' },
+  { to: '/minit/mobile-services', label: 'Mobile reports', icon: KeyRound, module: 'kpis', title: 'Live mobile-services KPIs and compiled daily/weekly reports' },
+  { to: '/minit/reports', label: 'Reports', icon: BarChart3, module: 'mobile_services', title: 'Shop analytics and troubleshooting' },
 ] as const
+
+export type HqNavItem = {
+  to: string
+  label: string
+  icon: typeof LayoutDashboard
+  module?: string
+  title?: string
+}
+
+const HQ_SHOE_NAV: HqNavItem = {
+  to: '/minit/shoe-repairs', label: 'Shoe repairs', icon: Scissors, module: 'shoe',
+  title: 'Shoe repairs across every shop, with network-wide search',
+}
+
+/**
+ * The links this HQ should see. Until its settings load (or if they can't), the
+ * original six stay, so Minit's menu never flickers or vanishes.
+ */
+export function hqNavFor(modules: readonly string[] | undefined): readonly HqNavItem[] {
+  if (!modules) return MINIT_HQ_NAV
+  const base = (MINIT_HQ_NAV as readonly HqNavItem[]).filter((item) => !item.module || hqHasModule(modules, item.module))
+  return hqHasModule(modules, 'shoe') ? [...base, HQ_SHOE_NAV] : base
+}
 
 export interface MinitHqSidebarProps {
   className?: string
@@ -45,6 +70,10 @@ export default function MinitHqSidebar({
 }: MinitHqSidebarProps) {
   const { logout } = useAuth()
   const inboxCount = useInboxCount()
+  const hqConfig = useHqConfig().data
+  const navItems = hqNavFor(hqConfig?.modules)
+  const brandName = hqConfig?.display_name ?? 'Mister Minit'
+  const isMinitBrand = !hqConfig || hqConfig.product_key === 'minit'
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
   const { isIos, showInstallAffordance, promptInstall, dismissInstallPrompt } = useInstallPrompt()
@@ -93,16 +122,20 @@ export default function MinitHqSidebar({
               display: 'inline-block',
             }}
           >
-            <img
-              src="/minit-logo.jpg"
-              alt="Mister Minit"
-              style={{
-                width: mobile ? 'min(100%, 120px)' : 'min(100%, 148px)',
-                height: 'auto',
-                display: 'block',
-                objectFit: 'contain',
-              }}
-            />
+            {isMinitBrand || hqConfig?.logo_url ? (
+              <img
+                src={isMinitBrand ? '/minit-logo.jpg' : hqConfig!.logo_url!}
+                alt={brandName}
+                style={{
+                  width: mobile ? 'min(100%, 120px)' : 'min(100%, 148px)',
+                  height: 'auto',
+                  display: 'block',
+                  objectFit: 'contain',
+                }}
+              />
+            ) : (
+              <span className="text-sm font-semibold" style={{ color: hqConfig?.brand_color ?? '#111' }}>{brandName}</span>
+            )}
           </div>
           {mobile && onClose && (
             <button
@@ -117,12 +150,12 @@ export default function MinitHqSidebar({
         </div>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6" aria-label="Minit Support Office">
-        {MINIT_HQ_NAV.map((item) => (
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6" aria-label={isMinitBrand ? 'Minit Support Office' : `${brandName} HQ`}>
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            title={'title' in item ? item.title : undefined}
+            title={item.title}
             end={item.to === '/minit/dashboard' || item.to === '/minit/lead-routing'}
             onClick={onNavigate}
             className={({ isActive }) => linkClasses(isActive)}
