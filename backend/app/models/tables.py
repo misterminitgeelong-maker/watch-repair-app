@@ -1611,3 +1611,27 @@ class MobileKpiWeeklySnapshot(SQLModel, table=True):
     csv_sha256: Optional[str] = Field(default=None, max_length=64)
     emailed_at: Optional[datetime] = None
     compiled_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HqSettings(SQLModel, table=True):
+    """Per-HQ configuration: one row per parent account that acts as a company HQ.
+
+    This is what makes "Minit" one HQ among many instead of a hard-coded
+    special case. Minit's row is seeded to match what the code does today;
+    every later company gets its own row (branding, modules, shop plans)
+    without touching code. Rows are read through ``app.hq_settings``.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", unique=True, index=True, ondelete="CASCADE")
+    #: Stable key for the company, e.g. "minit". Never shown to customers.
+    product_key: str = Field(max_length=40, index=True)
+    display_name: str = Field(max_length=200)
+    logo_url: Optional[str] = Field(default=None, max_length=2000)
+    brand_color: Optional[str] = Field(default=None, max_length=20)
+    #: JSON list of module keys switched on for this HQ (see app.hq_settings.HQ_MODULES).
+    modules_json: str = Field(default="[]")
+    #: JSON list of plan codes this HQ's shops may hold.
+    site_plans_json: str = Field(default="[]")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

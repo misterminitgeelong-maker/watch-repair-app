@@ -10,6 +10,7 @@ from uuid import UUID
 from sqlmodel import Session, col, select
 
 from .dependencies import normalize_plan_code
+from .hq_settings import ensure_minit_hq_settings
 from .minit_mobile_operators import ResolvedMobileOperator, to_minit_shop_row
 from .minit_shops import MinitShopRow, tenant_slug_for_shop
 from .models import (
@@ -447,6 +448,7 @@ def ensure_minit_pilot_account(
     parent = _get_or_create_parent(session, name=parent_name, owner_email=hq_owner_email)
     _link_tenant_to_parent(session, parent=parent, tenant=hq_tenant, network_role=NETWORK_ROLE_HQ)
     _grant_hq_admin(session, parent=parent, user=hq_owner)
+    ensure_minit_hq_settings(session, parent.id)
 
     existing_numbers = existing_shop_numbers_in_parent(session, parent.id)
     created: list[str] = []
