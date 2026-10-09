@@ -17,11 +17,15 @@ import { useAuth } from '@/context/AuthContext'
  * a shop, and each "return" unwinds one level.
  */
 
-const HQ_PREV_TOKEN_KEY = 'hq_prev_token'
-const HQ_PREV_REFRESH_KEY = 'hq_prev_refresh_token'
-const HQ_SESSION_EXPIRES_KEY = 'hq_enter_shop_expires_at'
-const HQ_SESSION_SHOP_KEY = 'hq_enter_shop_name'
-const HQ_RETURN_PATH_KEY = 'hq_enter_shop_return_path'
+import {
+  clearHqSupportSession,
+  DEFAULT_HQ_RETURN_PATH,
+  HQ_PREV_REFRESH_KEY,
+  HQ_PREV_TOKEN_KEY,
+  HQ_RETURN_PATH_KEY,
+  HQ_SESSION_EXPIRES_KEY,
+  HQ_SESSION_SHOP_KEY,
+} from '@/lib/hqSupportSession'
 
 function formatCountdown(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000))
@@ -56,9 +60,7 @@ export function useHqEnterShop() {
       await refreshSession()
       navigate('/dashboard')
     } catch {
-      sessionStorage.removeItem(HQ_PREV_TOKEN_KEY)
-      sessionStorage.removeItem(HQ_PREV_REFRESH_KEY)
-      sessionStorage.removeItem(HQ_RETURN_PATH_KEY)
+      clearHqSupportSession()
       setError('Could not open that shop. Try again.')
     } finally {
       setEntering('')
@@ -90,12 +92,8 @@ export function HqReturnBanner() {
     setReturning(true)
     const prevAccess = sessionStorage.getItem(HQ_PREV_TOKEN_KEY) ?? ''
     const prevRefresh = sessionStorage.getItem(HQ_PREV_REFRESH_KEY) ?? ''
-    const returnPath = sessionStorage.getItem(HQ_RETURN_PATH_KEY) || '/minit/accounts'
-    sessionStorage.removeItem(HQ_PREV_TOKEN_KEY)
-    sessionStorage.removeItem(HQ_PREV_REFRESH_KEY)
-    sessionStorage.removeItem(HQ_SESSION_EXPIRES_KEY)
-    sessionStorage.removeItem(HQ_SESSION_SHOP_KEY)
-    sessionStorage.removeItem(HQ_RETURN_PATH_KEY)
+    const returnPath = sessionStorage.getItem(HQ_RETURN_PATH_KEY) || DEFAULT_HQ_RETURN_PATH
+    clearHqSupportSession()
     if (prevAccess) {
       authLogin(prevAccess, prevRefresh || null)
       await refreshSession()

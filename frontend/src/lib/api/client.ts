@@ -1,6 +1,7 @@
 import axios, { type AxiosResponse } from 'axios'
 import { enqueueOffline } from '@/lib/offlineQueue'
 import { isNativeApp, NATIVE_API_ORIGIN } from '@/lib/native'
+import { clearHqSupportSession, readParkedHqSession } from '@/lib/hqSupportSession'
 
 /**
  * Optional API origin when the UI is served from a different host than the API (scheme + host, no path).
@@ -137,6 +138,15 @@ function expireSession(): void {
 async function doRefresh(): Promise<string | null> {
   const rt = getStoredRefreshToken()
   if (!rt) {
+    // An HQ support session in a shop has no refresh token by design. When its
+    // window closes, go back to the parked HQ login rather than signing out.
+    const parked = readParkedHqSession()
+    if (parked) {
+      clearHqSupportSession()
+      setStoredTokens(parked.access, parked.refresh)
+      window.location.assign(parked.returnPath)
+      return null
+    }
     expireSession()
     return null
   }
@@ -278,6 +288,9 @@ export function clearStoredTokens() {
   localStorage.removeItem(REFRESH_TOKEN_KEY)
   sessionStorage.removeItem('token')
   sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+  // Signing out (or an expired login) ends any HQ support session too; left
+  // behind, its banner would reappear on the next login.
+  clearHqSupportSession()
 }
 
 export interface TokenResponse {
