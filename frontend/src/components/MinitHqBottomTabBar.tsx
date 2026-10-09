@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, MoreHorizontal } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
-import { MINIT_HQ_NAV } from './MinitHqSidebar'
+import { hqNavFor } from './MinitHqSidebar'
+import { useHqConfig } from '@/hooks/useHqConfig'
 import { cn } from '@/lib/utils'
 
 /** Mobile bottom nav for Minit HQ — mirrors the six-item desktop sidebar. */
@@ -13,8 +14,9 @@ export default function MinitHqBottomTabBar() {
   const navigate = useNavigate()
   const [showMore, setShowMore] = useState(false)
 
-  const primary = MINIT_HQ_NAV.slice(0, 3)
-  const moreItems = MINIT_HQ_NAV.slice(3)
+  const navItems = hqNavFor(useHqConfig().data?.modules)
+  const primary = navItems.slice(0, 3)
+  const moreItems = navItems.slice(3)
 
   const tabStyle = (isActive: boolean) => ({
     color: isActive ? 'var(--ms-accent)' : 'var(--ms-text-muted)',

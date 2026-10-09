@@ -34,7 +34,8 @@ from ..dependencies import (
     require_feature,
     require_owner,
 )
-from ..minit_branding import MINIT_HQ_PLAN, is_minit_tenant, tenant_product
+from ..hq_access import require_hq
+from ..minit_branding import is_minit_tenant
 from fastapi.concurrency import run_in_threadpool
 
 from ..dispatch_utils import geocode_address
@@ -509,17 +510,6 @@ def _normalize_suburb(name: str) -> str:
     return " ".join(name.strip().lower().split())
 
 
-def _require_minit_hq(auth: AuthContext, session: Session) -> Tenant:
-    tenant = session.get(Tenant, auth.tenant_id)
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    if normalize_plan_code(auth.plan_code) != MINIT_HQ_PLAN:
-        raise HTTPException(status_code=403, detail="Minit HQ plan required")
-    if tenant_product(tenant) != "minit":
-        raise HTTPException(status_code=403, detail="Minit product required")
-    return tenant
-
-
 def _get_parent_account_for_user(session: Session, user: User) -> ParentAccount:
     """The network this login acts on — by access row, then by account
     owner email, always in a fixed order (see parent_network.parents_for_user)."""
@@ -942,7 +932,7 @@ def test_mobile_operator_routing(
     session: Session = Depends(unscoped_session),
 ):
     """Preview which mobile operator would receive a lead for suburb + state."""
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'lead_routing')
     current_user, parent, _ = _parent_for_read(session, auth)
     resolution = resolve_mobile_operator_route(
         session,
@@ -1831,7 +1821,7 @@ async def import_shops_from_xlsx(
     session: Session = Depends(unscoped_session),
 ):
     """Bulk create/update retail shops from a Minit shop-list Excel workbook (HQ only)."""
-    _require_minit_hq(auth, session)
+    require_hq(auth, session)
     current_user, parent = _parent_for_write(session, auth)
 
     filename = (file.filename or "").strip()
@@ -1973,7 +1963,7 @@ async def backfill_shop_owner_contacts(
 
     Preview (apply=false, the default) writes nothing — call again with
     apply=true, using the same file, once the preview looks right."""
-    _require_minit_hq(auth, session)
+    require_hq(auth, session)
     current_user, parent = _parent_for_write(session, auth)
 
     directory = await _read_directory_upload(file)
@@ -2011,7 +2001,7 @@ async def import_directory_export(
 
     Preview (apply=false, the default) makes no changes — call again with
     apply=true, using the same file, once you're happy with the preview."""
-    _require_minit_hq(auth, session)
+    require_hq(auth, session)
     current_user, parent = _parent_for_write(session, auth)
 
     # Captured before the read so the audit entry can name the file.
@@ -2053,7 +2043,7 @@ async def import_mobile_operators_from_xlsx(
     session: Session = Depends(unscoped_session),
 ):
     """Bulk create/update mobile operators from bundled seed + TSS workbook (HQ only)."""
-    _require_minit_hq(auth, session)
+    require_hq(auth, session)
     current_user, parent = _parent_for_write(session, auth)
 
     filename = (file.filename or "").strip()
@@ -2156,7 +2146,7 @@ def import_mobile_territory_routes(
     session: Session = Depends(unscoped_session),
 ):
     """Import bundled AU territory suburb routes (HQ only). Dry-run by default."""
-    _require_minit_hq(auth, session)
+    require_hq(auth, session, 'lead_routing')
     current_user, parent = _parent_for_write(session, auth)
 
     try:

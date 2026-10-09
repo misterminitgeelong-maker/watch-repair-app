@@ -5332,6 +5332,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform-admin/hqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Hqs */
+        get: operations["list_hqs_v1_platform_admin_hqs_get"];
+        put?: never;
+        /** Create Hq */
+        post: operations["create_hq_v1_platform_admin_hqs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform-admin/hqs/{parent_account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Hq */
+        patch: operations["update_hq_v1_platform_admin_hqs__parent_account_id__patch"];
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/hq-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get My Hq Config */
+        get: operations["get_my_hq_config_v1_parent_accounts_me_hq_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/shoe-jobs/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shoe Jobs Summary */
+        get: operations["shoe_jobs_summary_v1_parent_accounts_me_operations_shoe_jobs_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/shoe-jobs/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shoe Jobs Search
+         * @description Find a repair anywhere in the network by ticket number, customer name or phone.
+         */
+        get: operations["shoe_jobs_search_v1_parent_accounts_me_operations_shoe_jobs_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/operations/overview": {
         parameters: {
             query?: never;
@@ -8049,6 +8138,30 @@ export interface components {
              */
             created_at: string;
         };
+        /** CreateHqRequest */
+        CreateHqRequest: {
+            /** Display Name */
+            display_name: string;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Brand Color */
+            brand_color?: string | null;
+            /** Modules */
+            modules?: string[];
+            /** Site Plans */
+            site_plans?: string[];
+            /** Slug */
+            slug: string;
+            /** Owner Name */
+            owner_name: string;
+            /** Owner Email */
+            owner_email: string;
+            /**
+             * Send Invite
+             * @default true
+             */
+            send_invite: boolean;
+        };
         /** CustomFieldsUpdate */
         CustomFieldsUpdate: {
             /** Fields */
@@ -8756,6 +8869,19 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+        };
+        /** HqSettingsPayload */
+        HqSettingsPayload: {
+            /** Display Name */
+            display_name: string;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Brand Color */
+            brand_color?: string | null;
+            /** Modules */
+            modules?: string[];
+            /** Site Plans */
+            site_plans?: string[];
         };
         /** ImportSummaryResponse */
         ImportSummaryResponse: {
@@ -23832,6 +23958,180 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_hqs_v1_platform_admin_hqs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    create_hq_v1_platform_admin_hqs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHqRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_hq_v1_platform_admin_hqs__parent_account_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HqSettingsPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_hq_config_v1_parent_accounts_me_hq_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shoe_jobs_summary_v1_parent_accounts_me_operations_shoe_jobs_summary_get: {
+        parameters: {
+            query?: {
+                from_date?: string | null;
+                to_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shoe_jobs_search_v1_parent_accounts_me_operations_shoe_jobs_search_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                status?: string | null;
+                tenant_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

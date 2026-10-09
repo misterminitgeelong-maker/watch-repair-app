@@ -7,6 +7,8 @@ import MinitHqBottomTabBar from './MinitHqBottomTabBar'
 const auth = vi.hoisted(() => ({ logout: vi.fn(), sessionReady: false, initializing: true, hasFeature: () => false }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => auth }))
 vi.mock('@/hooks/useInboxCount', () => ({ useInboxCount: () => 0 }))
+// Settings not loaded yet: the menu falls back to the full Minit set.
+vi.mock('@/hooks/useHqConfig', async original => ({ ...await original<typeof import('@/hooks/useHqConfig')>(), useHqConfig: () => ({ data: undefined }) }))
 
 beforeEach(() => { auth.logout.mockClear() })
 
