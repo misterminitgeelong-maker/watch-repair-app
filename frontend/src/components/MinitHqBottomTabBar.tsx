@@ -62,7 +62,7 @@ export default function MinitHqBottomTabBar() {
           height: 'var(--ms-mobile-bar-h)',
         }}
         data-nav="minit-hq"
-        aria-label="Minit HQ"
+        aria-label="Minit Support Office"
       >
         {primary.map((item) => (
           <NavLink
@@ -95,7 +95,7 @@ export default function MinitHqBottomTabBar() {
             'flex flex-1 flex-col items-center justify-center gap-1 pt-2 transition-colors active:opacity-60',
           )}
           style={{ color: showMore ? 'var(--ms-accent)' : 'var(--ms-text-muted)' }}
-          aria-label="More Minit HQ pages"
+          aria-label="More Minit Support Office pages"
         >
           <MoreHorizontal size={22} strokeWidth={showMore ? 2.5 : 1.8} />
           <span className="text-[10px] font-medium">More</span>

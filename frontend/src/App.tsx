@@ -117,7 +117,7 @@ function MinitHqGate({ children }: { children: React.ReactNode }) {
   if (pathname === fallback) {
     return (
       <div className="p-6 text-sm" style={{ color: 'var(--ms-error)' }}>
-        Minit HQ pages are only available on the support account (mmsupport). Switch back to HQ in the site menu.
+        Support Office pages are only available on the support account (mmsupport). Switch back to Support Office in the site menu.
       </div>
     )
   }

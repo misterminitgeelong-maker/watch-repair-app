@@ -123,14 +123,14 @@ export function HqReturnBanner() {
       }}
     >
       <span>
-        HQ support session in {shopName}. Window {returning ? 'ending…' : formatCountdown(remainingMs)}.
+        Support Office session in {shopName}. Window {returning ? 'ending…' : formatCountdown(remainingMs)}.
       </span>
       <button
         className="ml-4 px-3 py-1.5 rounded-lg text-xs font-semibold"
         style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: 'inherit' }}
         onClick={() => void returnToHq()}
       >
-        Return to HQ
+        Return to Support Office
       </button>
     </div>
   )

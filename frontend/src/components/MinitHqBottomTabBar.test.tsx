@@ -16,7 +16,7 @@ describe('HQ mobile session recovery', () => {
     auth.initializing = !sessionReady
     const user = userEvent.setup()
     render(<MemoryRouter initialEntries={['/minit/dashboard']}><MinitHqBottomTabBar /></MemoryRouter>)
-    await user.click(screen.getByRole('button', { name: 'More Minit HQ pages' }))
+    await user.click(screen.getByRole('button', { name: 'More Minit Support Office pages' }))
     await user.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(auth.logout).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()

@@ -21,7 +21,7 @@ import { APP_BUILD_ID } from '@/lib/buildInfo'
 /** Single source of truth — Minit HQ sidebar links (no feature gates). */
 export const MINIT_HQ_NAV = [
   { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, title: 'Website leads, email enquiries, and HQ alerts' },
+  { to: '/minit/inbox', label: 'Inbox', icon: Inbox, title: 'Website leads, email enquiries, and Support Office alerts' },
   { to: '/minit/shops', label: 'Shops', icon: Building2, title: 'Browse the retail network by region' },
   { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, title: 'Website ingest, dispatch, and territory map' },
   { to: '/minit/mobile-services', label: 'Mobile reports', icon: KeyRound, title: 'Live mobile-services KPIs and compiled daily/weekly reports' },
@@ -117,7 +117,7 @@ export default function MinitHqSidebar({
         </div>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6" aria-label="Minit HQ">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-6" aria-label="Minit Support Office">
         {MINIT_HQ_NAV.map((item) => (
           <NavLink
             key={item.to}
