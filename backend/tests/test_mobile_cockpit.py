@@ -244,9 +244,13 @@ def _seed(headers, tenant_id):
 
     # Booked yesterday evening and never started -> late, and not part of today.
     late = _job(headers, customer, "Late one", status="booking_confirmed", scheduled_at=local(today - timedelta(days=1), 23, 0), assigned_user_id=tech, cost_cents=20000)
-    # Two bookings 30 minutes apart late tonight -> today + conflict, not late.
-    b1 = _job(headers, customer, "Tonight A", status="booking_confirmed", scheduled_at=local(today, 23, 0), assigned_user_id=tech, cost_cents=15000)
-    b2 = _job(headers, customer, "Tonight B", status="booking_confirmed", scheduled_at=local(today, 23, 30), assigned_user_id=tech, cost_cents=0)
+    # Two bookings 30 minutes apart later today -> today + conflict, not late. Relative to the clock so the
+    # test is stable at any hour; the pair can't fit before midnight in the day's last 45 minutes.
+    first_slot = local_now + timedelta(minutes=15)
+    if (first_slot + timedelta(minutes=30)).date() != today:
+        pytest.skip("too close to local midnight to book two same-day slots")
+    b1 = _job(headers, customer, "Tonight A", status="booking_confirmed", scheduled_at=first_slot.astimezone(timezone.utc), assigned_user_id=tech, cost_cents=15000)
+    b2 = _job(headers, customer, "Tonight B", status="booking_confirmed", scheduled_at=(first_slot + timedelta(minutes=30)).astimezone(timezone.utc), assigned_user_id=tech, cost_cents=0)
     unscheduled = _job(headers, customer, "No time yet", status="awaiting_quote")  # also unassigned + needs quote
     on_hold = _job(headers, customer, "Parts", status="booking_on_hold", scheduled_at=now - timedelta(days=1), assigned_user_id=tech)
     stale_quote = _job(headers, customer, "Quoted ages ago", status="quote_sent")
