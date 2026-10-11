@@ -2245,6 +2245,13 @@ export interface Shoe {
   brand?: string | null
   color?: string | null
   description_notes?: string | null
+  model_name?: string | null
+  size?: string | null
+  purchase_date?: string | null
+  purchase_store?: string | null
+  purchase_ref?: string | null
+  warranty_status?: 'in_warranty' | 'expired' | 'unknown'
+  warranty_expires_on?: string | null
   created_at: string
 }
 
@@ -2586,9 +2593,9 @@ export const sendAutoKeyInvoice = (invoiceId: string, channel: InvoiceSendChanne
     { params: { channel } },
   )
 
-export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at'>) =>
+export const createShoe = (data: Omit<Shoe, 'id' | 'tenant_id' | 'created_at' | 'warranty_status' | 'warranty_expires_on'>) =>
   api.post<Shoe>('/shoe-repair-jobs/shoes', data)
-export const updateShoe = (id: string, data: Partial<Pick<Shoe, 'shoe_type' | 'brand' | 'color' | 'description_notes'>>) =>
+export const updateShoe = (id: string, data: Partial<Pick<Shoe, 'shoe_type' | 'brand' | 'color' | 'description_notes' | 'model_name' | 'size' | 'purchase_date' | 'purchase_store' | 'purchase_ref'>>) =>
   api.patch<Shoe>(`/shoe-repair-jobs/shoes/${id}`, data)
 
 // ── Shoe Repair Jobs ──────────────────────────────────────────────────────────

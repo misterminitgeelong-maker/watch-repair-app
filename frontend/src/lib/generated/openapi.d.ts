@@ -12314,6 +12314,16 @@ export interface components {
             color?: string | null;
             /** Description Notes */
             description_notes?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Purchase Store */
+            purchase_store?: string | null;
+            /** Purchase Ref */
+            purchase_ref?: string | null;
         };
         /** ShoeJobStatusHistoryRead */
         ShoeJobStatusHistoryRead: {
@@ -12373,11 +12383,25 @@ export interface components {
             color?: string | null;
             /** Description Notes */
             description_notes?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Purchase Store */
+            purchase_store?: string | null;
+            /** Purchase Ref */
+            purchase_ref?: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Warranty Status */
+            readonly warranty_status: string;
+            /** Warranty Expires On */
+            readonly warranty_expires_on: string | null;
         };
         /** ShoeRepairJobCreate */
         ShoeRepairJobCreate: {
@@ -12709,6 +12733,16 @@ export interface components {
             color?: string | null;
             /** Description Notes */
             description_notes?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Purchase Store */
+            purchase_store?: string | null;
+            /** Purchase Ref */
+            purchase_ref?: string | null;
         };
         /** ShopBookingUsageResponse */
         ShopBookingUsageResponse: {

@@ -2,9 +2,10 @@
 from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
-from pydantic import field_serializer
+from pydantic import computed_field, field_serializer
 from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
+from .. import shoe_warranty as _shoe_warranty
 from ..datetime_utils import as_utc_for_json
 
 from .base import *  # noqa: F401,F403
@@ -1408,6 +1409,11 @@ class ShoeCreate(SQLModel):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = Field(default=None, max_length=120)
+    purchase_ref: Optional[str] = Field(default=None, max_length=120)
 
 class ShoeRead(SQLModel):
     id: UUID
@@ -1417,13 +1423,33 @@ class ShoeRead(SQLModel):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = None
+    size: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = None
+    purchase_ref: Optional[str] = None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def warranty_status(self) -> str:
+        return _shoe_warranty.warranty_status(self.purchase_date)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def warranty_expires_on(self) -> Optional[date]:
+        return _shoe_warranty.warranty_expiry(self.purchase_date)
 
 class ShoeUpdate(SQLModel):
     shoe_type: Optional[str] = None
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = Field(default=None, max_length=120)
+    purchase_ref: Optional[str] = Field(default=None, max_length=120)
 
 class ShoeRepairJobItemCreate(SQLModel):
     catalogue_key: str

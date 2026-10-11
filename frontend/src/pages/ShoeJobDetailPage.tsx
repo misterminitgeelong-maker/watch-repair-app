@@ -40,8 +40,15 @@ function itemPriceDisplay(item: ShoeRepairJobItem): string {
 
 function shoeLabel(shoe: Shoe | undefined): string {
   if (!shoe) return 'Pair'
-  const parts = [shoe.brand, shoe.shoe_type, shoe.color].filter(Boolean)
+  const parts = [shoe.brand, shoe.model_name, shoe.size ? `size ${shoe.size}` : null, shoe.shoe_type, shoe.color].filter(Boolean)
   return parts.join(' · ') || 'Pair'
+}
+
+function warrantyLabel(shoe: Shoe | undefined): string | null {
+  if (!shoe) return null
+  if (shoe.warranty_status === 'in_warranty') return `In warranty until ${shoe.warranty_expires_on ?? ''}`.trim()
+  if (shoe.warranty_status === 'expired') return `Out of warranty (ended ${shoe.warranty_expires_on ?? ''})`.trim()
+  return null
 }
 
 const SHOE_STATUSES = [
@@ -135,6 +142,11 @@ function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => 
     brand: shoe?.brand ?? '',
     color: shoe?.color ?? '',
     description_notes: shoe?.description_notes ?? '',
+    model_name: shoe?.model_name ?? '',
+    size: shoe?.size ?? '',
+    purchase_date: shoe?.purchase_date ?? '',
+    purchase_store: shoe?.purchase_store ?? '',
+    purchase_ref: shoe?.purchase_ref ?? '',
     full_name: '',
     phone: '',
     email: '',
@@ -169,6 +181,8 @@ function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => 
       if (shoe) {
         await updateShoe(shoe.id, {
           shoe_type: form.shoe_type, brand: form.brand, color: form.color, description_notes: form.description_notes,
+          model_name: form.model_name || null, size: form.size || null,
+          purchase_date: form.purchase_date || null, purchase_store: form.purchase_store || null, purchase_ref: form.purchase_ref || null,
         })
       }
       if (customer) {
@@ -215,6 +229,11 @@ function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => 
               <Input label="Type" value={form.shoe_type} onChange={e => set('shoe_type', e.target.value)} />
               <Input label="Brand" value={form.brand} onChange={e => set('brand', e.target.value)} />
               <Input label="Colour" value={form.color} onChange={e => set('color', e.target.value)} />
+              <Input label="Model" value={form.model_name} onChange={e => set('model_name', e.target.value)} />
+              <Input label="Size" value={form.size} onChange={e => set('size', e.target.value)} />
+              <Input label="Purchase date" type="date" value={form.purchase_date} onChange={e => set('purchase_date', e.target.value)} />
+              <Input label="Bought at" value={form.purchase_store} onChange={e => set('purchase_store', e.target.value)} />
+              <Input label="Receipt / order ref" value={form.purchase_ref} onChange={e => set('purchase_ref', e.target.value)} />
             </div>
             <Textarea label="Notes" value={form.description_notes} onChange={e => set('description_notes', e.target.value)} />
           </section>
@@ -579,7 +598,11 @@ function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
   const rows = [
     ['Type', shoe.shoe_type],
     ['Brand', shoe.brand],
+    ['Model', shoe.model_name],
+    ['Size', shoe.size],
     ['Colour', shoe.color],
+    ['Bought', [shoe.purchase_date, shoe.purchase_store, shoe.purchase_ref].filter(Boolean).join(' · ')],
+    ['Warranty', warrantyLabel(shoe)],
     ['Notes', shoe.description_notes],
   ].filter(([, v]) => v)
 
@@ -589,7 +612,7 @@ function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
     <div className="space-y-2 text-sm">
       {rows.map(([label, value]) => (
         <div key={label} className="flex gap-3">
-          <span className="w-16 shrink-0 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{label}</span>
+          <span className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{label}</span>
           <span style={{ color: 'var(--ms-text)' }}>{value}</span>
         </div>
       ))}

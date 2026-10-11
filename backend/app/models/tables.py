@@ -919,6 +919,13 @@ class Shoe(SQLModel, table=True):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    #: Manufacturer model and size (e.g. "Arizona", "41"); used for stock and warranty.
+    model_name: Optional[str] = None
+    size: Optional[str] = None
+    #: Proof of purchase: when and where it was bought and the receipt/order reference.
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = None
+    purchase_ref: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShoeRepairJob(SQLModel, table=True):

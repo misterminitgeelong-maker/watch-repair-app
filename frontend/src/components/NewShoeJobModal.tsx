@@ -40,11 +40,16 @@ type IntakeShoe = {
   brand: string
   color: string
   description_notes: string
+  model_name: string
+  size: string
+  purchase_date: string
+  purchase_store: string
+  purchase_ref: string
   services: SelectedShoeService[]
 }
 
 function newIntakeShoe(): IntakeShoe {
-  return { shoe_type: '', brand: '', color: '', description_notes: '', services: [] }
+  return { shoe_type: '', brand: '', color: '', description_notes: '', model_name: '', size: '', purchase_date: '', purchase_store: '', purchase_ref: '', services: [] }
 }
 
 function toItemPayload(services: SelectedShoeService[], pairIndex: number, pairCount: number) {
@@ -114,7 +119,7 @@ function draftHasContent(d: ShoeIntakeDraft): boolean {
   if (d.job.title.trim() || d.job.description.trim()) return true
   if (d.customerMode === 'new' && d.newCustomer.full_name.trim()) return true
   if (d.selectedCustomerId) return true
-  return d.shoes.some(s => s.shoe_type || s.brand.trim() || s.color.trim() || s.description_notes.trim() || s.services.length > 0)
+  return d.shoes.some(s => s.shoe_type || s.brand.trim() || s.color.trim() || s.description_notes.trim() || s.model_name.trim() || s.size.trim() || s.purchase_date || s.purchase_store.trim() || s.purchase_ref.trim() || s.services.length > 0)
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
@@ -372,6 +377,11 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
           brand: intakeShoe.brand || undefined,
           color: intakeShoe.color || undefined,
           description_notes: intakeShoe.description_notes || undefined,
+          model_name: intakeShoe.model_name || undefined,
+          size: intakeShoe.size || undefined,
+          purchase_date: intakeShoe.purchase_date || undefined,
+          purchase_store: intakeShoe.purchase_store || undefined,
+          purchase_ref: intakeShoe.purchase_ref || undefined,
         })
         createdShoeIds.push(data.id)
       }
@@ -588,6 +598,37 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
                 onChange={e => updateShoe(idx, { color: e.target.value })}
                 placeholder="e.g. Tan"
               />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  label="Model"
+                  value={shoe.model_name}
+                  onChange={e => updateShoe(idx, { model_name: e.target.value })}
+                  placeholder="e.g. Arizona"
+                />
+                <Input
+                  label="Size"
+                  value={shoe.size}
+                  onChange={e => updateShoe(idx, { size: e.target.value })}
+                  placeholder="e.g. 41"
+                />
+                <Input
+                  label="Purchase date"
+                  type="date"
+                  value={shoe.purchase_date}
+                  onChange={e => updateShoe(idx, { purchase_date: e.target.value })}
+                />
+                <Input
+                  label="Bought at"
+                  value={shoe.purchase_store}
+                  onChange={e => updateShoe(idx, { purchase_store: e.target.value })}
+                  placeholder="Store"
+                />
+                <Input
+                  label="Receipt / order ref"
+                  value={shoe.purchase_ref}
+                  onChange={e => updateShoe(idx, { purchase_ref: e.target.value })}
+                />
+              </div>
               <Textarea
                 label="Description / Condition Notes"
                 value={shoe.description_notes}
