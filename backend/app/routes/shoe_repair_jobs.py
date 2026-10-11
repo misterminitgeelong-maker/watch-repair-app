@@ -288,7 +288,7 @@ def create_shoe_repair_job(
             session,
             tenant_id=auth.tenant_id,
             shoe_repair_job_id=job.id,
-            customer_name=customer.first_name or customer.name or "there",
+            customer_name=customer.full_name or "there",
             to_phone=customer.phone,
             status_token=job.status_token,
             job_number=job.job_number,
@@ -373,7 +373,7 @@ def update_shoe_repair_job_status(
             session,
             tenant_id=auth.tenant_id,
             shoe_repair_job_id=job.id,
-            customer_name=customer.first_name or customer.name or "there",
+            customer_name=customer.full_name or "there",
             to_phone=customer.phone,
             job_number=job.job_number,
             status_token=job.status_token,
@@ -658,7 +658,7 @@ def send_shoe_quote(
             session,
             tenant_id=auth.tenant_id,
             shoe_repair_job_id=job.id,
-            customer_name=customer.first_name or customer.name or "there",
+            customer_name=customer.full_name or "there",
             to_phone=customer.phone,
             total_cents=total_cents,
             approval_token=job.quote_approval_token,
@@ -823,7 +823,7 @@ def resend_shoe_notification(
         raise HTTPException(status_code=422, detail="No phone number on customer record")
 
     event = payload.event
-    customer_name = customer.first_name or customer.name or "there"
+    customer_name = customer.full_name or "there"
 
     if event == "job_live":
         sms_service.notify_shoe_job_live(

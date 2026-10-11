@@ -12693,7 +12693,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "awaiting_quote" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "completed" | "awaiting_collection" | "collected";
+            status: "awaiting_quote" | "quote_sent" | "awaiting_go_ahead" | "go_ahead" | "no_go" | "working_on" | "awaiting_parts" | "completed" | "awaiting_collection" | "collected";
             /** Note */
             note?: string | null;
             /** Customer Note */

@@ -169,3 +169,31 @@ def test_intake_cannot_change_shoe_status_and_invalid_status_rejected(client: Te
     ok = client.post(f"/v1/shoe-repair-jobs/{job_id}/status", headers=owner_h, json={"status": "working_on"})
     assert ok.status_code == 200, ok.text
     assert ok.json()["status"] == "working_on"
+
+
+def test_shoe_job_with_phone_customer_and_extra_statuses(client: TestClient):
+    """Customers with a phone trigger SMS code paths that used to crash on a missing name field."""
+    headers = _bootstrap(client)
+    customer = client.post(
+        "/v1/customers",
+        headers=headers,
+        json={"full_name": "Phone Customer", "phone": "0412345678", "email": f"p-{uuid4().hex[:8]}@shoe.test"},
+    )
+    assert customer.status_code == 201, customer.text
+    shoe = client.post(
+        "/v1/shoe-repair-jobs/shoes",
+        headers=headers,
+        json={"customer_id": customer.json()["id"], "shoe_type": "Sandal", "brand": "Birkenstock"},
+    )
+    assert shoe.status_code == 201, shoe.text
+    created = client.post(
+        "/v1/shoe-repair-jobs",
+        headers=headers,
+        json={"shoe_id": shoe.json()["id"], "title": "Footbed", "priority": "normal", "items": [_SHOE_ITEM]},
+    )
+    assert created.status_code == 201, created.text
+    job_id = created.json()["id"]
+    for status in ("awaiting_parts", "quote_sent", "working_on"):
+        res = client.post(f"/v1/shoe-repair-jobs/{job_id}/status", headers=headers, json={"status": status})
+        assert res.status_code == 200, f"{status}: {res.text}"
+        assert res.json()["status"] == status

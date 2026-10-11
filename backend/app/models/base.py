@@ -46,10 +46,12 @@ JobStatus = Literal[
 ]
 ShoeJobStatus = Literal[
     "awaiting_quote",
+    "quote_sent",
     "awaiting_go_ahead",
     "go_ahead",
     "no_go",
     "working_on",
+    "awaiting_parts",
     "completed",
     "awaiting_collection",
     "collected",
