@@ -10,13 +10,14 @@ import {
   getCustomer, updateCustomer,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
-  getShoeJobSmsLog, getShoeJobMessages, sendShoeJobMessage, resendShoeNotification, sendShoeQuote, cloneShoeRepairJob, getApiErrorMessage,
+  getShoeJobSmsLog, getShoeJobMessages, sendShoeJobMessage, resendShoeNotification, sendShoeQuote, cloneShoeRepairJob, getApiErrorMessage, shopSuggestedParts, shopJobParts, shopUsePart, type SuggestedPart,
   getShoeJobHistory,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount, type SmsLogEntry, type ShoeJobHistoryEntry,
 } from '@/lib/api'
 import { dollarsToCents } from '@/lib/money'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
+import { useShopStockEnabled } from '@/hooks/useShopStock'
 import { Card, PageHeader, Badge, Button, MobileActionMenu, Modal, Select, Spinner, Input, Textarea } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import JobMessageThread from '@/components/JobMessageThread'
@@ -593,6 +594,41 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
 }
 
 // ── Shoe tab content ──────────────────────────────────────────────────────────
+function PartsCard({ jobId }: { jobId: string }) {
+  const qc = useQueryClient()
+  const stockOn = useShopStockEnabled()
+  const suggested = useQuery({ queryKey: ['shop-job-suggested', jobId], queryFn: () => shopSuggestedParts(jobId).then(r => r.data), retry: false, enabled: stockOn })
+  const used = useQuery({ queryKey: ['shop-job-parts', jobId], queryFn: () => shopJobParts(jobId).then(r => r.data), retry: false, enabled: stockOn })
+  const use = useMutation({
+    mutationFn: (p: SuggestedPart) => shopUsePart(jobId, { part_id: p.part_id, quantity: p.quantity }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shop-job-parts', jobId] })
+      qc.invalidateQueries({ queryKey: ['shop-stock-levels'] })
+    },
+  })
+  if (!stockOn || suggested.isError || used.isError) return null
+  const usedIds = new Set((used.data ?? []).map(u => u.part_id))
+  const todo = (suggested.data ?? []).filter(p => !usedIds.has(p.part_id))
+  if (todo.length === 0 && (used.data ?? []).length === 0) return null
+  return (
+    <Card className="p-5 space-y-3">
+      <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Parts</h2>
+      {todo.map(p => (
+        <div key={p.part_id} className="flex items-center justify-between gap-2 text-sm">
+          <span>{p.quantity} × {p.name} <span style={{ color: 'var(--ms-text-muted)' }}>({p.in_stock} in stock)</span></span>
+          <Button size="sm" variant="secondary" disabled={use.isPending} onClick={() => use.mutate(p)}>Use</Button>
+        </div>
+      ))}
+      {(used.data ?? []).length > 0 && (
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+          Used: {(used.data ?? []).map(u => `${u.quantity} × ${u.name}`).join(', ')}
+        </p>
+      )}
+      {use.isError && <p role="alert" className="text-sm" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(use.error, 'Could not use that part.')}</p>}
+    </Card>
+  )
+}
+
 function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
   if (!shoe) return <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No shoe details.</p>
   const rows = [
@@ -1040,6 +1076,8 @@ export default function ShoeJobDetailPage() {
               <ShoeTab shoe={activePair.shoe ?? undefined} />
             </div>
           </Card>
+
+          <PartsCard jobId={job.id} />
 
           {/* ── Job Info ──────────────────────────────────────────── */}
           <Card className="p-5 space-y-3">

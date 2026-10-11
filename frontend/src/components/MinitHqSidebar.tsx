@@ -11,6 +11,7 @@ import {
   Download,
   Route,
   Scissors,
+  Boxes,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
@@ -43,6 +44,11 @@ const HQ_SHOE_NAV: HqNavItem = {
   title: 'Shoe repairs across every shop, with network-wide search',
 }
 
+const HQ_STOCK_NAV: HqNavItem = {
+  to: '/minit/stock', label: 'Stock', icon: Boxes, module: 'stock',
+  title: 'Parts catalogue, stock by location, transfers and sales lookup',
+}
+
 /**
  * The links this HQ should see. Until its settings load (or if they can't), the
  * original six stay, so Minit's menu never flickers or vanishes.
@@ -50,7 +56,11 @@ const HQ_SHOE_NAV: HqNavItem = {
 export function hqNavFor(modules: readonly string[] | undefined): readonly HqNavItem[] {
   if (!modules) return MINIT_HQ_NAV
   const base = (MINIT_HQ_NAV as readonly HqNavItem[]).filter((item) => !item.module || hqHasModule(modules, item.module))
-  return hqHasModule(modules, 'shoe') ? [...base, HQ_SHOE_NAV] : base
+  const extra = [
+    ...(hqHasModule(modules, 'shoe') ? [HQ_SHOE_NAV] : []),
+    ...(hqHasModule(modules, 'stock') ? [HQ_STOCK_NAV] : []),
+  ]
+  return [...base, ...extra]
 }
 
 export interface MinitHqSidebarProps {

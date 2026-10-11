@@ -4836,3 +4836,76 @@ export const runMvMerge = (pairs: MvMergePair[]) =>
 export const updateMvOperator = (tenantId: string, data: {
   preview_token: string; activate_dispatch: boolean; dispatch_phone?: string
 }) => api.post<{ message: string }>(`/parent-accounts/me/mv-operators/${tenantId}`, data)
+
+// ── HQ catalogue and stock (HQ side: /parent-accounts/me/stock, shop side: /stock) ──
+export interface StockPart { id: string; sku: string; name: string; part_type: string | null; cost_cents: number; reorder_level: number; active: boolean }
+export interface StockModel { id: string; name: string; category: string | null; active: boolean }
+export interface StockModelPart { part_id: string; sku: string; name: string; size: string | null; quantity: number }
+export interface StockLocation { id: string; name: string; kind: string; tenant_id: string | null; active: boolean; mine?: boolean }
+export interface StockLevelRow {
+  location_id: string; location_name: string; part_id: string; sku: string; name: string; part_type: string | null
+  quantity: number; reorder_level: number; low: boolean
+}
+export interface StockTransferRow {
+  id: string; status: 'in_transit' | 'received' | 'cancelled'; from_location_id: string; to_location_id: string
+  note: string | null; created_at: string; received_at: string | null
+  lines: Array<{ part_id: string; sku: string; name: string; quantity: number; received_quantity: number }>
+}
+export interface StockSummary {
+  low_stock: StockLevelRow[]; in_transit_transfers: number; locations: number
+  parts_used_30d: Array<{ sku: string; name: string; quantity: number }>
+}
+export interface PurchaseRecord {
+  id: string; purchase_ref: string; purchase_date: string | null; store: string | null
+  customer_name: string | null; customer_email: string | null; customer_phone: string | null
+  model_name: string | null; size: string | null
+}
+export type PurchaseImportRow = Partial<Omit<PurchaseRecord, 'id'>> & { purchase_ref: string }
+export interface StockLineInput { sku?: string; part_id?: string; quantity: number }
+
+const HQ_STOCK = '/parent-accounts/me/stock'
+export const hqListParts = () => api.get<StockPart[]>(`${HQ_STOCK}/parts`)
+export const hqCreatePart = (data: { sku: string; name: string; part_type?: string; cost_cents?: number; reorder_level?: number }) =>
+  api.post<StockPart>(`${HQ_STOCK}/parts`, data)
+export const hqUpdatePart = (id: string, data: Partial<Pick<StockPart, 'name' | 'part_type' | 'cost_cents' | 'reorder_level' | 'active'>>) =>
+  api.patch<StockPart>(`${HQ_STOCK}/parts/${id}`, data)
+export const hqListModels = () => api.get<StockModel[]>(`${HQ_STOCK}/models`)
+export const hqCreateModel = (data: { name: string; category?: string }) => api.post<StockModel>(`${HQ_STOCK}/models`, data)
+export const hqUpdateModel = (id: string, data: Partial<Pick<StockModel, 'name' | 'category' | 'active'>>) =>
+  api.patch<StockModel>(`${HQ_STOCK}/models/${id}`, data)
+export const hqGetModelParts = (id: string) => api.get<StockModelPart[]>(`${HQ_STOCK}/models/${id}/parts`)
+export const hqSetModelParts = (id: string, lines: Array<{ part_id: string; size?: string | null; quantity: number }>) =>
+  api.put<{ count: number }>(`${HQ_STOCK}/models/${id}/parts`, lines)
+export const hqListLocations = () => api.get<StockLocation[]>(`${HQ_STOCK}/locations`)
+export const hqCreateLocation = (data: { name: string; kind: string; tenant_id?: string }) => api.post<StockLocation>(`${HQ_STOCK}/locations`, data)
+export const hqUpdateLocation = (id: string, data: Partial<Pick<StockLocation, 'name' | 'kind' | 'tenant_id' | 'active'>>) =>
+  api.patch<StockLocation>(`${HQ_STOCK}/locations/${id}`, data)
+export const hqStockLevels = (locationId?: string) => api.get<StockLevelRow[]>(`${HQ_STOCK}/levels`, { params: locationId ? { location_id: locationId } : undefined })
+export const hqAdjustStock = (data: { location_id: string; sku?: string; part_id?: string; quantity: number; kind?: 'receive' | 'adjust'; note?: string }) =>
+  api.post(`${HQ_STOCK}/adjust`, data)
+export const hqSyncStock = (data: { location_id: string; rows: Array<{ sku: string; quantity: number }>; create_missing?: boolean }) =>
+  api.post<{ updated: number; unknown_skus: string[] }>(`${HQ_STOCK}/sync`, data)
+export const hqListTransfers = (status?: string) => api.get<StockTransferRow[]>(`${HQ_STOCK}/transfers`, { params: status ? { status } : undefined })
+export const hqCreateTransfer = (data: { from_location_id: string; to_location_id: string; lines: StockLineInput[]; note?: string }) =>
+  api.post<StockTransferRow>(`${HQ_STOCK}/transfers`, data)
+export const hqReceiveTransfer = (id: string, lines?: StockLineInput[]) => api.post<StockTransferRow>(`${HQ_STOCK}/transfers/${id}/receive`, { lines })
+export const hqImportPurchases = (rows: PurchaseImportRow[]) => api.post<{ created: number; updated: number }>(`${HQ_STOCK}/purchases/import`, { rows })
+export const hqStockSummary = () => api.get<StockSummary>(`${HQ_STOCK}/summary`)
+
+export const shopStockModels = () => api.get<StockModel[]>('/stock/models')
+export const shopStockLocations = () => api.get<StockLocation[]>('/stock/locations')
+export const shopStockParts = () => api.get<StockPart[]>('/stock/parts')
+export const shopStockLevels = () => api.get<StockLevelRow[]>('/stock/levels')
+export const shopAdjustStock = (data: { location_id: string; sku?: string; part_id?: string; quantity: number; kind?: 'receive' | 'adjust'; note?: string }) =>
+  api.post('/stock/adjust', data)
+export const shopListTransfers = () => api.get<StockTransferRow[]>('/stock/transfers')
+export const shopCreateTransfer = (data: { from_location_id: string; to_location_id: string; lines: StockLineInput[]; note?: string }) =>
+  api.post<StockTransferRow>('/stock/transfers', data)
+export const shopReceiveTransfer = (id: string, lines?: StockLineInput[]) => api.post<StockTransferRow>(`/stock/transfers/${id}/receive`, { lines })
+export const shopSearchPurchases = (q: string) => api.get<PurchaseRecord[]>('/stock/purchases/search', { params: { q } })
+export interface SuggestedPart { part_id: string; sku: string; name: string; part_type: string | null; quantity: number; in_stock: number }
+export interface JobPartUse { id: string; part_id: string; sku: string; name: string; quantity: number; location_id: string; created_at: string }
+export const shopSuggestedParts = (jobId: string) => api.get<SuggestedPart[]>(`/stock/jobs/${jobId}/suggested-parts`)
+export const shopJobParts = (jobId: string) => api.get<JobPartUse[]>(`/stock/jobs/${jobId}/parts`)
+export const shopUsePart = (jobId: string, data: { part_id?: string; sku?: string; quantity?: number; location_id?: string }) =>
+  api.post<JobPartUse & { stock_left: number }>(`/stock/jobs/${jobId}/parts`, data)

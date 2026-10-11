@@ -6,7 +6,10 @@
  * where the three verticals differ that difference is asserted deliberately —
  * this page shows the shoe, the watch page does not show the watch.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+
+// Parts stock needs a signed-in shop; this page is tested without one.
+vi.mock('@/hooks/useShopStock', () => ({ useShopStockEnabled: () => false }))
 import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 

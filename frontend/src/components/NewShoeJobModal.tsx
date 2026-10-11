@@ -32,6 +32,8 @@ import { draftScope, photoMetaFromFile, type DraftPhotoMeta } from '@/lib/draftS
 import DraftRestoredNotice from '@/components/DraftRestoredNotice'
 import IntakeSubmitStatus from '@/components/IntakeSubmitStatus'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useShopStockEnabled } from '@/hooks/useShopStock'
+import { shopStockModels, shopSearchPurchases, type PurchaseRecord } from '@/lib/api'
 
 const SHOE_INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
 
@@ -133,6 +135,15 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { tenantId, activeSiteTenantId, sessionUserId } = useAuth()
+  const stockOn = useShopStockEnabled()
+  const { data: stockModels = [] } = useQuery({
+    queryKey: ['shop-stock-models'], queryFn: () => shopStockModels().then(r => r.data), enabled: stockOn,
+  })
+  const [purchaseQuery, setPurchaseQuery] = useState('')
+  const [purchaseHits, setPurchaseHits] = useState<PurchaseRecord[] | null>(null)
+  async function lookUpPurchases() {
+    try { setPurchaseHits((await shopSearchPurchases(purchaseQuery.trim())).data) } catch { setPurchaseHits([]) }
+  }
   const { online } = useOnlineStatus()
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
@@ -599,12 +610,29 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
                 placeholder="e.g. Tan"
               />
               <div className="grid grid-cols-2 gap-2">
+                {stockOn && (
+                  <div className="col-span-2 space-y-1">
+                    <div className="flex gap-2 items-end">
+                      <Input label="Find original purchase" value={purchaseQuery} onChange={e => setPurchaseQuery(e.target.value)} placeholder="Name, phone, email or receipt" />
+                      <Button type="button" variant="secondary" disabled={purchaseQuery.trim().length < 2} onClick={lookUpPurchases}>Search</Button>
+                    </div>
+                    {purchaseHits && purchaseHits.length === 0 && <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No matching purchases.</p>}
+                    {purchaseHits?.map(h => (
+                      <button key={h.id} type="button" className="block w-full text-left text-sm rounded border px-2 py-1"
+                        onClick={() => { updateShoe(idx, { model_name: h.model_name ?? '', size: h.size ?? '', purchase_date: h.purchase_date ?? '', purchase_store: h.store ?? '', purchase_ref: h.purchase_ref }); setPurchaseHits(null) }}>
+                        {[h.customer_name, h.model_name, h.size && `size ${h.size}`, h.purchase_date, h.store].filter(Boolean).join(' · ')}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <Input
                   label="Model"
+                  list={stockOn ? 'shoe-models' : undefined}
                   value={shoe.model_name}
                   onChange={e => updateShoe(idx, { model_name: e.target.value })}
                   placeholder="e.g. Arizona"
                 />
+                {stockOn && <datalist id="shoe-models">{stockModels.map(m => <option key={m.id} value={m.name} />)}</datalist>}
                 <Input
                   label="Size"
                   value={shoe.size}

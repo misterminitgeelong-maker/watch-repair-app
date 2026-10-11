@@ -57,6 +57,7 @@ from .routes.hq_owner_invites import router as hq_owner_invites_router
 from .routes.platform_hqs import router as platform_hqs_router
 from .routes.hq_config import router as hq_config_router
 from .routes.parent_shoe_operations import router as parent_shoe_operations_router
+from .routes.hq_stock import hq_router as hq_stock_router, shop_router as shop_stock_router
 from .routes.parent_operations import router as parent_operations_router
 from .routes.parent_network_admin import router as parent_network_admin_router
 from .routes.parent_regions import router as parent_regions_router
@@ -583,6 +584,8 @@ app.include_router(hq_owner_invites_router)
 app.include_router(platform_hqs_router)
 app.include_router(hq_config_router)
 app.include_router(parent_shoe_operations_router)
+app.include_router(hq_stock_router)
+app.include_router(shop_stock_router)
 app.include_router(parent_operations_router)
 app.include_router(parent_network_admin_router)
 app.include_router(parent_regions_router)

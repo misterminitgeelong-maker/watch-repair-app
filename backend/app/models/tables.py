@@ -1642,3 +1642,131 @@ class HqSettings(SQLModel, table=True):
     site_plans_json: str = Field(default="[]")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── HQ shoe catalogue and stock (Birkenstock-style HQs) ───────────────────────
+# These tables belong to an HQ (parent account), not to a shop, so they carry
+# parent_account_id instead of tenant_id and are read through an unscoped session.
+
+class StockPart(SQLModel, table=True):
+    """A repair part the HQ tracks (footbed, sole, buckle...). ``sku`` is what a scan reads."""
+    __table_args__ = (UniqueConstraint("parent_account_id", "sku", name="uq_stockpart_parent_sku"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    sku: str = Field(max_length=80, index=True)
+    name: str = Field(max_length=200)
+    part_type: Optional[str] = Field(default=None, max_length=40)  # footbed | sole | upper | buckle | liner | other
+    cost_cents: int = 0
+    reorder_level: int = 0
+    active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HqShoeModel(SQLModel, table=True):
+    """A style the HQ sells and repairs (Arizona, Boston...)."""
+    __table_args__ = (UniqueConstraint("parent_account_id", "name", name="uq_hqshoemodel_parent_name"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    name: str = Field(max_length=120)
+    category: Optional[str] = Field(default=None, max_length=40)  # sandal | clog | shoe | boot | slipper | kids | work
+    active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HqShoeModelPart(SQLModel, table=True):
+    """Parts a model uses. ``size`` empty means every size; a set size overrides for that size only."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    model_id: UUID = Field(foreign_key="hqshoemodel.id", index=True, ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id", index=True, ondelete="CASCADE")
+    size: Optional[str] = Field(default=None, max_length=40)
+    quantity: int = 1
+
+
+class StockLocation(SQLModel, table=True):
+    """A place that holds stock: a workshop, a branded shop or a warehouse. May be linked to a shop account."""
+    __table_args__ = (UniqueConstraint("parent_account_id", "name", name="uq_stocklocation_parent_name"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    name: str = Field(max_length=120)
+    kind: str = Field(default="workshop", max_length=20)  # workshop | store | warehouse
+    tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", index=True)
+    active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StockLevel(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("location_id", "part_id", name="uq_stocklevel_location_part"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    location_id: UUID = Field(foreign_key="stocklocation.id", index=True, ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id", index=True, ondelete="CASCADE")
+    quantity: int = 0
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StockTransfer(SQLModel, table=True):
+    """Stock moving between two locations: in_transit until the destination scans it in."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    from_location_id: UUID = Field(foreign_key="stocklocation.id", index=True)
+    to_location_id: UUID = Field(foreign_key="stocklocation.id", index=True)
+    status: str = Field(default="in_transit", max_length=20, index=True)  # in_transit | received | cancelled
+    note: Optional[str] = None
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    received_at: Optional[datetime] = None
+
+
+class StockTransferLine(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    transfer_id: UUID = Field(foreign_key="stocktransfer.id", index=True, ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id")
+    quantity: int
+    received_quantity: int = 0
+
+
+class StockMovement(SQLModel, table=True):
+    """Ledger of every stock change. ``quantity`` is signed from ``location_id``'s point of view."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    location_id: UUID = Field(foreign_key="stocklocation.id", index=True)
+    part_id: UUID = Field(foreign_key="stockpart.id", index=True)
+    quantity: int
+    kind: str = Field(max_length=20, index=True)  # receive | adjust | transfer_out | transfer_in | use | sync
+    transfer_id: Optional[UUID] = Field(default=None, foreign_key="stocktransfer.id")
+    shoe_repair_job_id: Optional[UUID] = Field(default=None, foreign_key="shoerepairjob.id", index=True)
+    note: Optional[str] = None
+    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ShoeJobPartUse(SQLModel, table=True):
+    """A part used on a shoe repair job (shop-side record; the stock deduction is in StockMovement)."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id", ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id")
+    location_id: UUID = Field(foreign_key="stocklocation.id")
+    quantity: int = 1
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HqPurchaseRecord(SQLModel, table=True):
+    """A sale in the HQ's own shops (imported), so staff can look up a customer's purchase for warranty and repair intake."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    purchase_ref: str = Field(max_length=120, index=True)
+    purchase_date: Optional[date] = None
+    store: Optional[str] = Field(default=None, max_length=120)
+    customer_name: Optional[str] = Field(default=None, max_length=200, index=True)
+    customer_email: Optional[str] = Field(default=None, max_length=254, index=True)
+    customer_phone: Optional[str] = Field(default=None, max_length=40, index=True)
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
