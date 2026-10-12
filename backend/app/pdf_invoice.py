@@ -8,15 +8,18 @@ from __future__ import annotations
 import io
 import logging
 import re
+from xml.sax.saxutils import escape as xml_escape
 from datetime import date
 from typing import Sequence
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     Image,
+    KeepTogether,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -28,10 +31,12 @@ from .money import format_cents
 
 logger = logging.getLogger(__name__)
 
-_DARK = colors.HexColor("#1a1a2e")
+_DARK = colors.HexColor("#111827")
+_BODY = colors.HexColor("#374151")
+_RULE = colors.HexColor("#e5e7eb")
 _ACCENT = colors.HexColor("#4f46e5")
-_LIGHT_GREY = colors.HexColor("#f3f4f6")
-_MID_GREY = colors.HexColor("#9ca3af")
+_LIGHT_GREY = colors.HexColor("#f6f7f9")
+_MID_GREY = colors.HexColor("#6b7280")
 
 # Lenient hex colour: #RGB, #RRGGBB or #RRGGBBAA (alpha ignored by reportlab).
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
@@ -39,6 +44,14 @@ _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$
 _LOGO_MAX_H = 16 * mm
 _LOGO_MAX_W = 60 * mm
 
+
+
+def _escape(text: str | None) -> str:
+    return xml_escape(text or "")
+
+
+def _luminance(c: colors.Color) -> float:
+    return 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue
 
 
 def _resolve_accent(brand_color: str | None) -> colors.Color:
@@ -212,191 +225,222 @@ def _build_document_pdf(
     """Shared invoice/quote PDF renderer."""
     buf = io.BytesIO()
     accent = _resolve_accent(brand_color)
+    on_accent = colors.white if _luminance(accent) < 0.6 else _DARK
+    esc = _escape
+    is_nz = (currency or "").upper() == "NZD"
 
     doc = SimpleDocTemplate(
         buf,
         pagesize=A4,
         leftMargin=20 * mm,
         rightMargin=20 * mm,
-        topMargin=20 * mm,
-        bottomMargin=20 * mm,
+        topMargin=24 * mm,
+        bottomMargin=22 * mm,
         title=f"{doc_type.title()} {document_number}",
+        author=shop_name,
     )
 
-    styles = getSampleStyleSheet()
-    normal = styles["Normal"]
-    normal.fontName = "Helvetica"
-    normal.fontSize = 9
-    normal.leading = 13
-
-    heading = ParagraphStyle(
-        "heading",
-        parent=normal,
-        fontSize=20,
-        fontName="Helvetica-Bold",
-        textColor=_DARK,
-        spaceAfter=2 * mm,
+    base = ParagraphStyle("base", fontName="Helvetica", fontSize=9, leading=13, textColor=_BODY)
+    title_style = ParagraphStyle(
+        "title", parent=base, fontName="Helvetica-Bold", fontSize=26, leading=28,
+        textColor=accent if _luminance(accent) < 0.75 else _DARK, alignment=TA_RIGHT,
     )
-    sub = ParagraphStyle(
-        "sub",
-        parent=normal,
-        fontSize=9,
-        textColor=_MID_GREY,
-        spaceAfter=1 * mm,
-    )
+    shop_title = ParagraphStyle("shop", parent=base, fontName="Helvetica-Bold", fontSize=17, leading=20, textColor=_DARK)
     label = ParagraphStyle(
-        "label",
-        parent=normal,
-        fontSize=8,
-        fontName="Helvetica-Bold",
-        textColor=_MID_GREY,
-        spaceAfter=1 * mm,
+        "label", parent=base, fontName="Helvetica-Bold", fontSize=7.5, leading=10,
+        textColor=_MID_GREY, spaceAfter=1.5 * mm,
     )
-    bold9 = ParagraphStyle(
-        "bold9",
-        parent=normal,
-        fontSize=9,
-        fontName="Helvetica-Bold",
-        textColor=_DARK,
-    )
+    name_style = ParagraphStyle("name", parent=base, fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=_DARK)
+    small = ParagraphStyle("small", parent=base, fontSize=8.5, leading=12, textColor=_MID_GREY)
+    right = ParagraphStyle("right", parent=base, alignment=TA_RIGHT)
+    right_bold = ParagraphStyle("rightb", parent=right, fontName="Helvetica-Bold", textColor=_DARK)
+    th = ParagraphStyle("th", parent=base, fontName="Helvetica-Bold", fontSize=8, textColor=on_accent)
+    th_right = ParagraphStyle("thr", parent=th, alignment=TA_RIGHT)
 
-    page_width = A4[0] - 40 * mm  # usable width
-    col_right = 70 * mm
-    col_left = page_width - col_right
+    page_width = A4[0] - 40 * mm
+    story: list = []
 
-    story = []
-
-    # ── Header row: logo or shop name (left) / INVOICE label (right) ──
+    # ── Header: logo / shop name (left), document type (right) ──
     logo_flowable = _load_logo_file(logo_path) if logo_path else _fetch_logo(logo_url)
-    left_header = logo_flowable if logo_flowable is not None else Paragraph(shop_name, heading)
-    header_data = [
-        [
-            left_header,
-            Paragraph(doc_type, heading),
-        ]
-    ]
-    header_tbl = Table(header_data, colWidths=[col_left, col_right])
+    left_header = logo_flowable if logo_flowable is not None else Paragraph(esc(shop_name), shop_title)
+    header_tbl = Table(
+        [[left_header, Paragraph(esc(doc_type), title_style)]],
+        colWidths=[page_width * 0.55, page_width * 0.45],
+    )
     header_tbl.setStyle(TableStyle([
-        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
     ]))
     story.append(header_tbl)
-    story.append(Spacer(1, 3 * mm))
-
-    # ── Shop identity (left) / Invoice meta (right) ──
-    shop_lines = []
-    if logo_flowable is not None and shop_name:
-        # The logo replaced the name heading; keep the name in the identity block.
-        shop_lines.append(f"<b>{shop_name}</b>")
-    if shop_abn:
-        shop_lines.append(f"{'GST No.' if (currency or '').upper() == 'NZD' else 'ABN'} {shop_abn}")
-    if shop_address:
-        shop_lines.append(shop_address.replace("\n", "<br/>"))
-    if shop_phone:
-        shop_lines.append(shop_phone)
-    if shop_email:
-        shop_lines.append(shop_email)
-
-    shop_para = Paragraph("<br/>".join(shop_lines), normal) if shop_lines else Spacer(1, 1)
-
-    meta_lines = [
-        f"<b>{number_label}</b> {document_number}",
-        f"<b>Job #</b> {job_number}",
-        f"<b>Date</b> {doc_date.strftime('%d %b %Y')}",
-    ]
-    meta_para = Paragraph("<br/>".join(meta_lines), normal)
-
-    identity_data = [[shop_para, meta_para]]
-    identity_tbl = Table(identity_data, colWidths=[col_left, col_right])
-    identity_tbl.setStyle(TableStyle([
-        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
-    story.append(identity_tbl)
+    story.append(Spacer(1, 4 * mm))
+    rule = Table([[""]], colWidths=[page_width], rowHeights=[1])
+    rule.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 1.2, accent)]))
+    story.append(rule)
     story.append(Spacer(1, 6 * mm))
 
-    # ── Bill To ──
-    story.append(Paragraph("BILL TO", label))
-    story.append(Paragraph(customer_name, bold9))
-    story.append(Spacer(1, 5 * mm))
+    # ── From / Bill to / Document details ──
+    from_lines = []
+    if logo_flowable is not None and shop_name:
+        from_lines.append(f"<b>{esc(shop_name)}</b>")
+    if shop_abn:
+        from_lines.append(f"{'GST No.' if is_nz else 'ABN'} {esc(shop_abn)}")
+    if shop_address:
+        from_lines.append(esc(shop_address).replace("\n", "<br/>"))
+    if shop_phone:
+        from_lines.append(esc(shop_phone))
+    if shop_email:
+        from_lines.append(esc(shop_email))
 
-    # ── Line items table ──
-    col_desc = page_width - 30 * mm - 25 * mm - 25 * mm
-    items_header = [
-        Paragraph("Description", label),
-        Paragraph("Qty", label),
-        Paragraph("Unit Price", label),
-        Paragraph("Amount", label),
+    from_cell: list = [Paragraph("FROM", label)]
+    from_cell.append(Paragraph("<br/>".join(from_lines), base) if from_lines else Paragraph(esc(shop_name), base))
+    bill_cell = [Paragraph("BILL TO", label), Paragraph(esc(customer_name), name_style)]
+
+    meta_rows = [
+        [Paragraph(esc(number_label.replace(" #", "").upper()), label), Paragraph(esc(document_number), right_bold)],
+        [Paragraph("JOB", label), Paragraph(esc(job_number), right_bold)],
+        [Paragraph("DATE", label), Paragraph(doc_date.strftime("%d %b %Y"), right_bold)],
     ]
-    items_rows = [items_header]
+    meta_tbl = Table(meta_rows, colWidths=[22 * mm, page_width * 0.28 - 22 * mm - 8 * mm])
+    meta_tbl.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    meta_box = Table([[meta_tbl]], colWidths=[page_width * 0.28])
+    meta_box.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), _LIGHT_GREY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4 * mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 3 * mm),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3 * mm),
+        ("LINEBEFORE", (0, 0), (0, -1), 2, accent),
+    ]))
+    info_tbl = Table(
+        [[from_cell, bill_cell, meta_box]],
+        colWidths=[page_width * 0.36, page_width * 0.32, page_width * 0.32],
+    )
+    info_tbl.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (1, 0), 6 * mm),
+        ("RIGHTPADDING", (2, 0), (2, 0), 0),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+    ]))
+    story.append(info_tbl)
+    story.append(Spacer(1, 9 * mm))
 
+    # ── Line items ──
+    w_qty, w_unit, w_amt = 16 * mm, 28 * mm, 30 * mm
+    w_desc = page_width - w_qty - w_unit - w_amt
+    rows = [[
+        Paragraph("DESCRIPTION", th),
+        Paragraph("QTY", th_right),
+        Paragraph("UNIT PRICE", th_right),
+        Paragraph("AMOUNT", th_right),
+    ]]
     for li in line_items:
-        desc = (li.get("description") or "Item").strip()
+        desc = esc((li.get("description") or "Item").strip())
         qty = li.get("quantity", 1)
         unit_cents = int(li.get("unit_price_cents") or li.get("total_price_cents", 0) or 0)
         total_li_cents = int(li.get("total_price_cents") or 0)
-        items_rows.append([
-            Paragraph(desc, normal),
-            Paragraph(str(qty), normal),
-            Paragraph(f"{format_cents(unit_cents, currency)}", normal),
-            Paragraph(f"{format_cents(total_li_cents, currency)}", normal),
+        rows.append([
+            Paragraph(desc, base),
+            Paragraph(esc(str(qty)), right),
+            Paragraph(format_cents(unit_cents, currency), right),
+            Paragraph(format_cents(total_li_cents, currency), right_bold),
         ])
-
-    items_tbl = Table(
-        items_rows,
-        colWidths=[col_desc, 30 * mm, 25 * mm, 25 * mm],
-    )
+    items_tbl = Table(rows, colWidths=[w_desc, w_qty, w_unit, w_amt], repeatRows=1)
     items_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), _LIGHT_GREY),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, _LIGHT_GREY]),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("LINEBELOW", (0, 0), (-1, 0), 0.5, accent),
+        ("BACKGROUND", (0, 0), (-1, 0), accent),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.4, _RULE),
     ]))
     story.append(items_tbl)
     story.append(Spacer(1, 4 * mm))
 
-    # ── Totals ──
-    totals_col = 45 * mm
-    totals_data = []
+    # ── Totals (right-aligned block) ──
+    tax_label = "GST" if (is_nz or tax_cents) else "Tax"
+    totals_w = 78 * mm
+    totals_rows = []
     if subtotal_cents and tax_cents:
-        totals_data.append([
-            Paragraph("Subtotal", normal),
-            Paragraph(f"{format_cents(subtotal_cents, currency)}", normal),
-        ])
-        totals_data.append([
-            Paragraph("Tax", normal),
-            Paragraph(f"{format_cents(tax_cents, currency)}", normal),
-        ])
-    totals_data.append([
-        Paragraph("<b>Total</b>", bold9),
-        Paragraph(f"<b>{format_cents(total_cents, currency)}</b>", bold9),
-    ])
-
-    totals_tbl = Table(
-        totals_data,
-        colWidths=[page_width - totals_col, totals_col],
-    )
+        totals_rows.append([Paragraph("Subtotal", base), Paragraph(format_cents(subtotal_cents, currency), right)])
+        totals_rows.append([Paragraph(tax_label, base), Paragraph(format_cents(tax_cents, currency), right)])
+    totals_tbl = Table(totals_rows or [[Paragraph("", base), Paragraph("", base)]], colWidths=[totals_w - 32 * mm, 32 * mm])
     totals_tbl.setStyle(TableStyle([
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LINEABOVE", (0, -1), (-1, -1), 0.5, accent),
-        ("TOPPADDING", (0, -1), (-1, -1), 4),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
     ]))
-    story.append(totals_tbl)
+    total_label = "TOTAL DUE" if doc_type == "INVOICE" else "TOTAL"
+    cur = (currency or "AUD").upper()
+    total_style_l = ParagraphStyle("tl", parent=base, fontName="Helvetica-Bold", fontSize=9, textColor=on_accent)
+    total_style_r = ParagraphStyle("tr", parent=total_style_l, fontSize=13, leading=16, alignment=TA_RIGHT)
+    total_tbl = Table(
+        [[Paragraph(f"{total_label} ({cur})", total_style_l), Paragraph(format_cents(total_cents, currency), total_style_r)]],
+        colWidths=[totals_w - 40 * mm, 40 * mm],
+    )
+    total_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), accent),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    block = Table([[totals_tbl], [total_tbl]], colWidths=[totals_w])
+    block.setStyle(TableStyle([
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+    outer = Table([["", block]], colWidths=[page_width - totals_w, totals_w])
+    outer.setStyle(TableStyle([
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(KeepTogether(outer))
 
     # ── Footer note (payment details for invoices, terms for quotes) ──
     if footer_text and footer_text.strip():
-        story.append(Spacer(1, 8 * mm))
-        story.append(Paragraph(footer_label or "NOTES", label))
-        story.append(Paragraph(footer_text.strip().replace("\n", "<br/>"), normal))
+        story.append(Spacer(1, 10 * mm))
+        note = Table(
+            [[[Paragraph(esc(footer_label or "NOTES"), label),
+               Paragraph(esc(footer_text.strip()).replace("\n", "<br/>"), base)]]],
+            colWidths=[page_width],
+        )
+        note.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), _LIGHT_GREY),
+            ("LINEBEFORE", (0, 0), (0, -1), 2, accent),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5 * mm),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5 * mm),
+            ("TOPPADDING", (0, 0), (-1, -1), 4 * mm),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4 * mm),
+        ]))
+        story.append(KeepTogether(note))
 
-    doc.build(story)
+    def _decorate(canvas, d):
+        canvas.saveState()
+        canvas.setFillColor(accent)
+        canvas.rect(0, A4[1] - 6 * mm, A4[0], 6 * mm, stroke=0, fill=1)
+        canvas.setStrokeColor(_RULE)
+        canvas.setLineWidth(0.4)
+        canvas.line(20 * mm, 15 * mm, A4[0] - 20 * mm, 15 * mm)
+        canvas.setFont("Helvetica", 7.5)
+        canvas.setFillColor(_MID_GREY)
+        canvas.drawString(20 * mm, 10.5 * mm, f"{doc_type.title()} {document_number} · {shop_name}"[:90])
+        canvas.drawRightString(A4[0] - 20 * mm, 10.5 * mm, f"Page {d.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_decorate, onLaterPages=_decorate)
     return buf.getvalue()
