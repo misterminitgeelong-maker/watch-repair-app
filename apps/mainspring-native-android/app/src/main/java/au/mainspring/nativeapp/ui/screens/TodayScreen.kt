@@ -43,24 +43,24 @@ import java.util.Locale
             TextButton(onDirectory) {Text("Search")}
             TextButton(model::refresh,enabled=!state.loading) {Text("Refresh")}
         }) },
+        floatingActionButton = { if(TokenStore.canWorkJobs()) ExtendedFloatingActionButton(onClick=onNewJob,containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary) {Text("New job",style=MaterialTheme.typography.labelLarge)} },
     ) {padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             TabRow(selectedTabIndex=queues.indexOfFirst {it.first==state.tab}.coerceAtLeast(0),containerColor=MaterialTheme.colorScheme.surface,divider={HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)}) {
                 queues.forEach {(key,label)->Tab(selected=state.tab==key,onClick={model.tab(key)},selectedContentColor=MaterialTheme.colorScheme.primary,unselectedContentColor=MaterialTheme.colorScheme.onSurfaceVariant,text={Text(label,style=MaterialTheme.typography.labelLarge)})}
             }
-            LazyColumn(Modifier.fillMaxSize().testTag("today-list"),contentPadding=PaddingValues(horizontal=16.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+            LazyColumn(Modifier.fillMaxSize().testTag("today-list"),contentPadding=PaddingValues(start=16.dp,end=16.dp,top=12.dp,bottom=96.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 item {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("${state.todayCount ?: "—"} jobs today · ${state.unscheduledCount ?: "—"} unscheduled",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${state.unpaidCount ?: "—"} unpaid jobs",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${state.todayCount ?: "—"} ${if(state.todayCount==1) "job" else "jobs"} today · ${state.unscheduledCount ?: "—"} unscheduled",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${state.unpaidCount ?: "—"} unpaid ${if(state.unpaidCount==1) "job" else "jobs"}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if(TokenStore.canWorkJobs()) TextButton(onNewJob) {Text("+ New job")}
                     }
                 }
                 if(state.offlineSnapshot) item {Text("Saved schedule · reconnect for current job details",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
                 if(state.loading) item {LinearProgressIndicator(Modifier.fillMaxWidth())}
-                state.error?.let {item {Text(it,color=MaterialTheme.colorScheme.error)}}
+                state.error?.let {item {ErrorBanner(it,onRetry=model::refresh)}}
                 if(state.truncated) item {Text("Showing the first 1,000 jobs. Use Search to narrow this queue.",style=MaterialTheme.typography.bodySmall)}
                 val next=nextFieldJob(state.jobs)
                 if(next!=null) {
@@ -109,7 +109,10 @@ private fun jobSubtitle(job: AutoKeyJobRead)=listOf(listOfNotNull(job.vehicleMak
                 Text(job.title,style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold,maxLines=2,overflow=TextOverflow.Ellipsis)
                 Text(jobSubtitle(job),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis)
                 job.jobAddress?.takeIf {it.isNotBlank()}?.let {Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis)}
-                Text(job.status.replace('_',' ').replaceFirstChar {it.uppercase()}+if(job.priority=="urgent") " · Urgent" else "",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
+                    StatusPill(job.status)
+                    if(job.priority=="urgent") StatusPill("urgent")
+                }
                 actions?.let {Spacer(Modifier.height(5.dp));it()}
                 HorizontalDivider(Modifier.padding(top=8.dp),color=MaterialTheme.colorScheme.outlineVariant)
             }

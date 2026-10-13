@@ -77,7 +77,7 @@ import au.mainspring.nativeapp.ui.*
             Text(j?.title ?: "Job",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         }},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
-        actions={TextButton(vm::load,enabled=!state.loading && !state.statusBusy) {Text("Refresh")};TextButton(onEdit,enabled=!state.loading && !state.statusBusy && !state.offlineSnapshot) {Text("Edit")}}) },
+        actions={TextButton(vm::load,enabled=!state.loading && !state.statusBusy,modifier=Modifier.heightIn(min=48.dp)) {Text("Refresh")};TextButton(onEdit,enabled=!state.loading && !state.statusBusy && !state.offlineSnapshot) {Text("Edit")}}) },
         bottomBar = {
             if(j!=null && tab in listOf("info","vehicle")) {
                 val activeJourney=journey ?: fieldJourney(j.status)
@@ -110,14 +110,15 @@ import au.mainspring.nativeapp.ui.*
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
                         StatusPill(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status)
                         Row {
-                            TextButton({open(Uri.fromParts("tel",j.customerPhone,null),true)},enabled=!j.customerPhone.isNullOrBlank()) {Text("Call")}
-                            TextButton({open(Uri.parse("geo:0,0?q=${Uri.encode(j.jobAddress)}"))},enabled=!j.jobAddress.isNullOrBlank()) {Text("Navigate")}
+                            if(!j.customerPhone.isNullOrBlank()) OutlinedButton({open(Uri.fromParts("tel",j.customerPhone,null),true)},Modifier.heightIn(min=48.dp)) {Text("Call")}
+                            Spacer(Modifier.width(8.dp))
+                            if(!j.jobAddress.isNullOrBlank()) OutlinedButton({open(Uri.parse("geo:0,0?q=${Uri.encode(j.jobAddress)}"))},Modifier.heightIn(min=48.dp)) {Text("Navigate")}
                         }
                     }
                     if(!compactHeader) JourneyProgress((journey ?: fieldJourney(j.status)).step)
                 }
                 val sections=listOf("info" to "Info","vehicle" to "Vehicle & Key","finance" to "Financial","photos" to "Photos","messages" to "Messages")
-                ScrollableTabRow(selectedTabIndex=sections.indexOfFirst {it.first==tab}.coerceAtLeast(0),edgePadding=0.dp,containerColor=MaterialTheme.colorScheme.surface,divider={HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)}) {
+                ScrollableTabRow(selectedTabIndex=sections.indexOfFirst {it.first==tab}.coerceAtLeast(0),edgePadding=8.dp,containerColor=MaterialTheme.colorScheme.surface,divider={HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)}) {
                     sections.forEach {(key,label)->Tab(selected=tab==key,onClick={tab=key},selectedContentColor=MaterialTheme.colorScheme.primary,unselectedContentColor=MaterialTheme.colorScheme.onSurfaceVariant,text={Text(label,style=MaterialTheme.typography.labelLarge)})}
                 }
                 AnimatedContent(targetState=tab,modifier=Modifier.weight(1f).testTag("job-detail-body"),label="job-section") { activeTab ->
@@ -256,6 +257,11 @@ private fun contextText(value: com.google.gson.JsonObject,key: String): String? 
         job.description?.takeIf {it.isNotBlank()}?.let {SectionLabel("Requested work");Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(vertical=8.dp),style=MaterialTheme.typography.bodyMedium)}}
         job.techNotes?.takeIf {it.isNotBlank()}?.let {SectionLabel("Tech notes");Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(vertical=8.dp),style=MaterialTheme.typography.bodyMedium)}}
         if(job.description.isNullOrBlank() && job.techNotes.isNullOrBlank()) Text("No job notes recorded",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        FlatPanel {
+            listOfNotNull(job.customerName,job.customerPhone).takeIf {it.isNotEmpty()}?.let {DetailRow("Customer",it.joinToString(" · "))}
+            DetailRow("When",job.scheduledAt?.let {formatShopDate(it,TokenStore.calendarTimezone())} ?: "Unscheduled")
+            DetailRow("Where",job.jobAddress.orEmpty())
+        }
         TextButton({details=!details},modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurface)) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
                 Text(if(details) "Hide customer & booking details" else "Customer & booking details",Modifier.weight(1f),style=MaterialTheme.typography.labelLarge)

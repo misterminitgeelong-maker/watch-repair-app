@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
         "booked", "booking_confirmed", "booking_scheduled", "go_ahead", "working_on", "en_route", "on_site", "service" -> blue
         "work_completed", "invoice_paid", "paid", "completed", "collected", "booking_completed", "approved" -> green
         "awaiting_go_ahead", "quote_sent", "awaiting_confirmation", "awaiting_quote", "awaiting_parts", "parts_to_order", "awaiting_collection", "awaiting_customer_details", "booking_on_hold", "pending_booking" -> amber
-        "no_go", "failed_job", "job_delayed", "declined", "overdue" -> red
+        "no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent" -> red
         else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     }
     Surface(color = background, contentColor = foreground, shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
