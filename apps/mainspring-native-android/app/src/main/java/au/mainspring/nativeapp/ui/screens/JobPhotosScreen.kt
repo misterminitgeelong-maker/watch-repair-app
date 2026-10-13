@@ -79,14 +79,14 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
                     }
                     Text("The selected photo stays in your account's draft until uploaded or removed.")
                 }
-                HorizontalDivider(); Text("Saved job files", style = MaterialTheme.typography.titleLarge)
+                Text("Saved job files", style = MaterialTheme.typography.titleMedium)
                 Text("${state.files.size} saved files loaded")
                 if(!state.loading && state.files.isEmpty()) Text("No files found on this job.")
             }
             items(state.files, key = { it.id }) { file ->
-                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
-                    Text(file.label?.takeIf { it.isNotBlank() } ?: file.fileName ?: "Job file")
-                    Text(formatShopDate(file.createdAt), style = MaterialTheme.typography.bodySmall)
+                au.mainspring.nativeapp.ui.FlatPanel { Column {
+                    Text(file.label?.takeIf { it.isNotBlank() } ?: file.fileName ?: "Job file", style = MaterialTheme.typography.titleMedium)
+                    Text(formatShopDate(file.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = { scope.launch {
                         try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(vm.downloadLink(file)))) }
                         catch(e: Exception) { localError = "Could not open this file. ${e.message.orEmpty()}" }

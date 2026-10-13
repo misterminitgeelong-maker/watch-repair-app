@@ -43,7 +43,7 @@ import au.mainspring.nativeapp.ui.formatCents
    val due=state.invoices.firstOrNull {it.status=="unpaid"}
    val draftQuote=state.quotes.firstOrNull {it.status=="draft"}
    val uninvoiced=state.quotes.firstOrNull {quote->state.invoices.none {it.quoteId==quote.id}}
-   if(!state.loading && state.historyChecked) Surface(Modifier.fillMaxWidth().testTag("job-financial-next"),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) {
+   if(!state.loading && state.historyChecked) Surface(Modifier.fillMaxWidth().testTag("job-financial-next"),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {
     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
      SectionLabel(when {due!=null->"Payment to record";draftQuote!=null->"Ready for customer review";state.invoices.isNotEmpty() && state.invoices.all {it.status=="paid"}->"Payment recorded";else->"Quote & approval"})
      Text(when {due!=null->formatCents(due.total,due.currency);draftQuote!=null->formatCents(draftQuote.total,draftQuote.currency);state.invoices.isNotEmpty() && state.invoices.all {it.status=="paid"}->"All settled";else->"Agree the work first"},style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
@@ -51,11 +51,11 @@ import au.mainspring.nativeapp.ui.formatCents
      when {
       state.paymentReviewId!=null -> Text("The previous payment update may have saved. Refresh and check the invoice before repeating it.",color=MaterialTheme.colorScheme.error)
       state.unknownQuote -> Text("Refresh and review saved quotes before creating another.",color=MaterialTheme.colorScheme.error)
-      due!=null -> Button({confirm="paid" to due.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(6.dp)) {Text("Record payment")}
-      draftQuote!=null -> Button({confirm="quote" to draftQuote.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(6.dp)) {Text("Send quote for review")}
-      uninvoiced?.status=="approved" -> Button({confirm="invoice" to uninvoiced.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(6.dp)) {Text("Create invoice from quote")}
+      due!=null -> Button({confirm="paid" to due.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Record payment")}
+      draftQuote!=null -> Button({confirm="quote" to draftQuote.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Send quote for review")}
+      uninvoiced?.status=="approved" -> Button({confirm="invoice" to uninvoiced.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Create invoice from quote")}
       state.quotes.isNotEmpty() && state.invoices.isEmpty() -> TextButton(vm::refresh,enabled=enabled) {Text("Check customer response")}
-      state.quotes.isEmpty() && state.invoices.isEmpty() -> Button({composing=true},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=RoundedCornerShape(6.dp)) {Text("Create quote")}
+      state.quotes.isEmpty() && state.invoices.isEmpty() -> Button({composing=true},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Create quote")}
      }
      if(embedded) TextButton(onBack,colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurfaceVariant)) {Text("Back to job overview")}
     }
@@ -66,7 +66,7 @@ import au.mainspring.nativeapp.ui.formatCents
    }
    au.mainspring.nativeapp.ui.SectionLabel("Quotes")
    if(state.quotes.isEmpty() && !state.loading) Text("No quotes yet.",style=MaterialTheme.typography.bodySmall)
-   state.quotes.forEach { q -> Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+   state.quotes.forEach { q -> Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {StatusPill(q.status);Text(formatCents(q.total,q.currency),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
     Text("Subtotal ${formatCents(q.subtotal, q.currency)} · GST ${formatCents(q.tax, q.currency)}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     q.lines.forEach { Text("${it.description}: ${it.quantity} × ${formatCents(it.unitCents, q.currency)}") }
@@ -78,7 +78,7 @@ import au.mainspring.nativeapp.ui.formatCents
    } } }
    au.mainspring.nativeapp.ui.SectionLabel("Invoices")
    if(state.invoices.isEmpty() && !state.loading) Text("No invoices yet.",style=MaterialTheme.typography.bodySmall)
-   state.invoices.forEach { invoice -> Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+   state.invoices.forEach { invoice -> Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(invoice.number,style=MaterialTheme.typography.titleSmall);StatusPill(invoice.status)}
     Text(formatCents(invoice.total,invoice.currency),style=MaterialTheme.typography.titleLarge)
     invoice.paymentMethod?.let { Text("Payment: ${au.mainspring.nativeapp.ui.statusLabel(it)}") }

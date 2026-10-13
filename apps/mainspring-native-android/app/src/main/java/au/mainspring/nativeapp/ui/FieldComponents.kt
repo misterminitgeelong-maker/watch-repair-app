@@ -251,8 +251,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Floating rounded tab bar. `destinations` are (route, label); selected entry is tinted with the accent. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun FloatingTabBar(destinations: List<Pair<String, String>>, isSelected: (String) -> Boolean, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Surface(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
+    Box(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Surface(Modifier.fillMaxWidth().widthIn(max = 560.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
             Row(Modifier.padding(horizontal = 6.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 destinations.forEach { (route, label) ->
                     val chosen = isSelected(route)

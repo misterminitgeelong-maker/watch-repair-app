@@ -36,12 +36,17 @@ fun MessageThreadScreen(resource: String, jobId: String, onBack: () -> Unit,
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if(state.messages.isEmpty() && !state.loading) item { Text("No messages yet") }
                 items(state.messages, key = { it.id }) { message ->
-                    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(when(message.direction) { "inbound" -> "Customer"; "system" -> "Automatic notification"; else -> "Shop" }, style = MaterialTheme.typography.labelLarge)
-                        Text(message.body)
-                        Text(formatShopDate(message.createdAt, TokenStore.calendarTimezone()), style = MaterialTheme.typography.bodySmall)
-                        message.status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                    } }
+                    val mine = message.direction != "inbound"
+                    Surface(Modifier.fillMaxWidth().padding(start = if(mine) 32.dp else 0.dp, end = if(mine) 0.dp else 32.dp), shape = MaterialTheme.shapes.medium,
+                        color = if(mine) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
+                        contentColor = if(mine) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface) {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(when(message.direction) { "inbound" -> "Customer"; "system" -> "Automatic notification"; else -> "Shop" }, style = MaterialTheme.typography.labelLarge)
+                            Text(message.body)
+                            Text(formatShopDate(message.createdAt, TokenStore.calendarTimezone()), style = MaterialTheme.typography.bodySmall)
+                            message.status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        }
+                    }
                 }
             }
             au.mainspring.nativeapp.ui.AtelierTextField(state.draft, vm::setDraft, label = { Text("Message to customer") }, modifier = Modifier.fillMaxWidth(), enabled = !state.sending, maxLines = 4)

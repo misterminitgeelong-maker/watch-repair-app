@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -76,7 +78,7 @@ fun DispatchScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RouteArt(modifier: Modifier, onClick: () -> Unit) {
-    Surface(onClick, modifier.fillMaxWidth().height(210.dp), shape = MaterialTheme.shapes.medium, color = Color(0xFFE5E9DD)) {
+    Surface(onClick, modifier.fillMaxWidth().height(210.dp).semantics { contentDescription = "Open today's route" }, shape = MaterialTheme.shapes.medium, color = Color(0xFFE5E9DD)) {
         Canvas(Modifier.fillMaxSize()) {
             val u = size.width / 354f
             drawRoundRect(Color(0xFFC9DCE4), Offset(size.width * 0.72f, 0f), Size(size.width * 0.28f, size.height), CornerRadius(60f * u))

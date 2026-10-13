@@ -1,11 +1,13 @@
 package au.mainspring.nativeapp.ui
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DrawerValue
@@ -143,10 +145,11 @@ fun MainspringAppShell(
         ) { paddingValues ->
             androidx.compose.foundation.layout.Column(Modifier.padding(paddingValues)) {
             sessionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
             NavHost(
                 navController = navController,
                 startDestination = startRoute,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.widthIn(max = 680.dp).fillMaxHeight().fillMaxWidth(),
             ) {
                 composable("today") { todayContent() }
                 composable("new_intake") {
@@ -370,6 +373,7 @@ fun MainspringAppShell(
                         onSignature = { navController.navigate("quoteSignature/$id/$it") },
                     )
                 }
+            }
             }
             }
         }

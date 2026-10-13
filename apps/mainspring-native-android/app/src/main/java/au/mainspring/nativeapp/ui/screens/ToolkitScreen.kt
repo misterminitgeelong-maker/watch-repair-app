@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -52,7 +54,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
      item { au.mainspring.nativeapp.ui.SectionLabel("${group.label} · ${group.tools.count {it.key in state.selected}} of ${group.tools.size}") }
      items(tools, key = { it.key }) { tool -> Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
       Row(Modifier.fillMaxWidth().clickable(enabled = !state.busy) { vm.toggle(tool.key) }.heightIn(min = 56.dp).padding(end = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-       Checkbox(tool.key in state.selected, { vm.toggle(tool.key) }, enabled = !state.busy)
+       Checkbox(tool.key in state.selected, { vm.toggle(tool.key) }, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = tool.name })
        Column(Modifier.weight(1f).padding(vertical = 8.dp)) { Text(tool.name, style = MaterialTheme.typography.bodyLarge); tool.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
       } } }
     }

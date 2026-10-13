@@ -68,8 +68,8 @@ import java.util.Locale
                         val canEnRoute=onEnRoute!=null && !state.loading && !state.offlineSnapshot && TokenStore.canWorkJobs() && next.status in setOf("booked","booking_confirmed")
                         TodayJobRow(next,zone,onClick={onOpenJob(next.id)},nextLabel=if(state.tab in listOf("active","booked")) "Next up" else "First in queue") {
                             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                                Button({if(canEnRoute) onEnRoute?.invoke(next.id) else onOpenJob(next.id)},modifier=Modifier.weight(1f).heightIn(min=48.dp),shape=RoundedCornerShape(6.dp)) {Text(if(canEnRoute) "Mark En Route" else "Continue job")}
-                                OutlinedButton({onOpenJob(next.id)},modifier=Modifier.heightIn(min=48.dp),shape=RoundedCornerShape(6.dp)) {Text("View details")}
+                                Button({if(canEnRoute) onEnRoute?.invoke(next.id) else onOpenJob(next.id)},modifier=Modifier.weight(1f).heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text(if(canEnRoute) "Mark En Route" else "Continue job")}
+                                OutlinedButton({onOpenJob(next.id)},modifier=Modifier.heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("View details")}
                             }
                         }
                     }

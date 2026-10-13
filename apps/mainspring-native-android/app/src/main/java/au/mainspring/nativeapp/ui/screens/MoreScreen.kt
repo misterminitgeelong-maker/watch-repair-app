@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -93,7 +94,7 @@ private data class WorkspaceGroup(val key: String, val title: String, val subtit
                 if("auto_key" in features && owner) FlatPanel {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("Use field navigation", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                        Switch(fieldNavigation, { DesignPreferences.fieldNavigation(it) })
+                        Switch(fieldNavigation, { DesignPreferences.fieldNavigation(it) }, Modifier.semantics { contentDescription = "Use field navigation" })
                     }
                 }
                 SectionLabel("Appearance")

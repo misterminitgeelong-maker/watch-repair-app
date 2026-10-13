@@ -256,8 +256,8 @@ private fun contextText(value: com.google.gson.JsonObject,key: String): String? 
 @Composable private fun MobileInfoPanels(job: au.mainspring.nativeapp.api.AutoKeyJobRead,technicians: List<au.mainspring.nativeapp.api.TeamUser>) {
     var details by rememberSaveable(job.id) {mutableStateOf(false)}
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        job.description?.takeIf {it.isNotBlank()}?.let {SectionLabel("Requested work");Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(vertical=8.dp),style=MaterialTheme.typography.bodyMedium)}}
-        job.techNotes?.takeIf {it.isNotBlank()}?.let {SectionLabel("Tech notes");Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(vertical=8.dp),style=MaterialTheme.typography.bodyMedium)}}
+        job.description?.takeIf {it.isNotBlank()}?.let {SectionLabel("Requested work");Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(horizontal=16.dp,vertical=14.dp),style=MaterialTheme.typography.bodyMedium)}}
+        job.techNotes?.takeIf {it.isNotBlank()}?.let {SectionLabel("Tech notes");Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(horizontal=16.dp,vertical=14.dp),style=MaterialTheme.typography.bodyMedium)}}
         if(job.description.isNullOrBlank() && job.techNotes.isNullOrBlank()) Text("No job notes recorded",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         FlatPanel {
             listOfNotNull(job.customerName,job.customerPhone).takeIf {it.isNotEmpty()}?.let {DetailRow("Customer",it.joinToString(" · "))}
@@ -294,8 +294,8 @@ private fun contextText(value: com.google.gson.JsonObject,key: String): String? 
     }
 }
 @Composable private fun PreparationPanel(job: au.mainspring.nativeapp.api.AutoKeyJobRead,knowledge: com.google.gson.JsonObject?,onVehicle: () -> Unit) {
-    Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) {
-        Column(Modifier.padding(vertical=8.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {
+        Column(Modifier.padding(horizontal=16.dp,vertical=14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             Text("APPOINTMENT",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             Text(job.jobAddress?.takeIf {it.isNotBlank()} ?: "Address not recorded",modifier=Modifier.testTag("job-preparation-address"),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold)
             Text(job.scheduledAt?.let {formatShopDate(it,TokenStore.calendarTimezone())} ?: "Booking time not recorded",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
