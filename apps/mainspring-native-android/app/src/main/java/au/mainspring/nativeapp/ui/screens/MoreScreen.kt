@@ -69,7 +69,7 @@ import au.mainspring.nativeapp.ui.*
                 SectionLabel("Theme")
                 AppAppearance.entries.chunked(2).forEach { pair -> Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     pair.forEach { option -> Surface(Modifier.weight(1f).padding(bottom=8.dp).clickable {DesignPreferences.select(option)}.semantics {selected=appearance==option;role=Role.RadioButton},
-                        color=if(appearance==option) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                        shape=MaterialTheme.shapes.medium,color=if(appearance==option) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
                         border=BorderStroke(if(appearance==option) 2.dp else 1.dp,if(appearance==option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
                         Column(Modifier.padding(12.dp)) {Text(option.label,style=MaterialTheme.typography.labelLarge);Text(if(appearance==option) "Selected" else "Use theme",style=MaterialTheme.typography.bodySmall)}
                     } }
