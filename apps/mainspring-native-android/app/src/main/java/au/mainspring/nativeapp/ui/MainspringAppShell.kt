@@ -74,7 +74,16 @@ import au.mainspring.nativeapp.ui.screens.ShoeJobDetailScreen
 import au.mainspring.nativeapp.ui.screens.ShoeJobsScreen
 import kotlinx.coroutines.launch
 
-private val bottomDestinations = setOf("home", "today", "more", "route", "dispatchPool", "counterSale", "reports", "stock", "auto_jobs", "customers", "jobs", "quotes", "invoices", "shoe_jobs")
+private val bottomDestinations = setOf("home", "today", "dispatch", "jobs", "watch_jobs", "people", "customers", "inbox", "leads", "more", "route", "dispatchPool", "counterSale", "reports", "stock", "auto_jobs", "quotes", "invoices", "shoe_jobs", "new_intake")
+
+/** Which of the five Atelier tabs a route belongs to. */
+private fun tabFor(route: String?) = when(route) {
+    "today", "home", "dispatch", "route", "dispatchPool", "new_intake" -> "today"
+    "jobs", "watch_jobs", "shoe_jobs", "auto_jobs", "quotes", "invoices", "counterSale" -> "jobs"
+    "people", "customers" -> "people"
+    "inbox", "leads" -> "inbox"
+    else -> "more"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,40 +103,40 @@ fun MainspringAppShell(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomDestinations
-    val showMainTopBar = currentRoute in setOf("home", "customers", "jobs", "quotes", "invoices")
     val fieldPreference by DesignPreferences.fieldNavigation.collectAsState()
     val fieldMode = "auto_key" in features && (fieldPreference || !au.mainspring.nativeapp.TokenStore.canManageInvoices())
-    val startRoute = if("auto_key" in features) "today" else "home"
+    val startRoute = "today"
     val canWatch = "watch" in features
     var switchOpen by remember { mutableStateOf(false) }
     val selectedSite = sites.firstOrNull { it.tenantId == activeSiteId }
+    val todayContent: @Composable () -> Unit = {
+        au.mainspring.nativeapp.ui.screens.TodayHubScreen(features, selectedSite?.name,
+            onNewIntake = { navController.navigate("new_intake") },
+            onOpenJob = { navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(it)) },
+            onViewAll = { navController.navigate("jobs") { launchSingleTop = true } },
+            onOpenQuotes = { navController.navigate("quotes") { launchSingleTop = true } },
+            onOpenInvoices = { navController.navigate("invoices") { launchSingleTop = true } })
+    }
+    val jobsContent: @Composable () -> Unit = {
+        au.mainspring.nativeapp.ui.screens.AtelierJobsScreen(features, selectedSite?.name,
+            onOpenJob = { navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(it)) },
+            onNew = { navController.navigate("new_intake") })
+    }
+    val peopleContent: @Composable () -> Unit = {
+        CustomersScreen(onOpenCustomer = { id -> navController.navigate("customer/$id") }, onNewCustomer = { navController.navigate("newCustomer") })
+    }
 
     run {
         Scaffold(
-            topBar = {
-                if (showMainTopBar) {
-                    TopAppBar(title = { Text(mainTitle(currentRoute), style = MaterialTheme.typography.titleLarge) })
-                }
-            },
+            contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
                 if (showBottomBar) {
-                    val destinations = if(fieldMode) listOf("today" to "Jobs", "route" to "Map", "dispatchPool" to "Pool", "counterSale" to "POS", "more" to "More")
-                        else listOf("home" to "Home") +
-                            (if("auto_key" in features || canWatch || "shoe" in features) listOf((if("auto_key" in features) "today" else if(canWatch) "jobs" else "shoe_jobs") to "Jobs") else emptyList()) +
-                            (if(au.mainspring.nativeapp.TokenStore.canManageInvoices()) listOf("reports" to "Reports") else emptyList()) + listOf("stock" to "Stock", "more" to "More")
-                    androidx.compose.material3.Surface(color = MaterialTheme.colorScheme.surface) {
-                        androidx.compose.foundation.layout.Column {
-                            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            NavigationBar(containerColor=MaterialTheme.colorScheme.surface,tonalElevation=0.dp) {
-                                destinations.forEach { (route,label) ->
-                                    val chosen = currentRoute == route || (route == "today" && currentRoute == "auto_jobs")
-                                    NavigationBarItem(selected=chosen,onClick={navController.navigate(route) {
-                                        popUpTo(startRoute) {saveState=true};launchSingleTop=true;restoreState=true
-                                    }},modifier=Modifier.testTag("nav-$route"),icon={FieldIcon(label,if(chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)},label={Text(label,style=MaterialTheme.typography.labelSmall)},colors=androidx.compose.material3.NavigationBarItemDefaults.colors(selectedIconColor=MaterialTheme.colorScheme.primary,selectedTextColor=MaterialTheme.colorScheme.primary,indicatorColor=androidx.compose.ui.graphics.Color.Transparent))
-                                }
-                            }
-                        }
-                    }
+                    FloatingTabBar(
+                        destinations = listOf("today" to "Today", "jobs" to "Jobs", "people" to "People", "inbox" to "Inbox", "more" to "More"),
+                        isSelected = { it == tabFor(currentRoute) },
+                        onSelect = { route -> navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    )
                 }
             },
         ) { paddingValues ->
@@ -138,7 +147,13 @@ fun MainspringAppShell(
                 startDestination = startRoute,
                 modifier = Modifier.weight(1f),
             ) {
-                composable("today") { au.mainspring.nativeapp.ui.screens.TodayScreen(
+                composable("today") { todayContent() }
+                composable("new_intake") {
+                    au.mainspring.nativeapp.ui.screens.NewIntakeScreen(features,
+                        onBack = { navController.popBackStack() },
+                        onStart = { route -> navController.navigate(route) { popUpTo("new_intake") { inclusive = true } } })
+                }
+                composable("dispatch") { au.mainspring.nativeapp.ui.screens.TodayScreen(
                     onOpenJob = { navController.navigate("autoKeyJob/$it") }, onDirectory = { navController.navigate("auto_jobs") },
                     onNewJob = { navController.navigate("mobile_intake") },onEnRoute={navController.navigate("autoKeyJob/$it?initialStatus=en_route")}) }
                 composable("more") { au.mainspring.nativeapp.ui.screens.MoreScreen(selectedSite?.name,sessionSummary,features,sites.size>1,
@@ -146,35 +161,24 @@ fun MainspringAppShell(
                 composable("route") { au.mainspring.nativeapp.ui.screens.RouteScreen({navController.popBackStack()},{navController.navigate("autoKeyJob/$it")}) }
                 composable("team") { au.mainspring.nativeapp.ui.screens.TeamScreen({navController.popBackStack()}) }
                 composable("leads") { au.mainspring.nativeapp.ui.screens.LeadHubScreen({navController.popBackStack()},{navController.navigate(it)}) }
-                composable("home") {
-                    au.mainspring.nativeapp.ui.screens.HomeScreen(
-                        features = features,
-                        shopName = selectedSite?.name,
-                        onNewWatch = { navController.navigate("watch_intake") },
-                        onNewMobileJob = { navController.navigate("mobile_intake") },
-                        onNewShoe = { navController.navigate("shoe_intake") },
-                        onCounterSale = { navController.navigate("counterSale") },
-                        onOpenWatchJobs = { navController.navigate("jobs") { launchSingleTop = true } },
-                        onOpenQuotes = { navController.navigate("quotes") { launchSingleTop = true } },
-                        onOpenInvoices = { navController.navigate("invoices") { launchSingleTop = true } },
-                        onOpenAutoJobs = { navController.navigate("auto_jobs") { launchSingleTop = true } },
-                        onOpenShoeJobs = { navController.navigate("shoe_jobs") { launchSingleTop = true } },
-                        onOpenReports = { navController.navigate("reports") { launchSingleTop = true } },
-                    )
-                }
+                composable("home") { todayContent() }
                 composable("reports") { au.mainspring.nativeapp.ui.screens.PeriodReportsScreen({ navController.popBackStack() }) }
                 composable("stock") { au.mainspring.nativeapp.ui.screens.StockScreen({ navController.popBackStack() }) }
+                composable("people") { peopleContent() }
                 composable("customers") {
                     CustomersScreen(
                         onOpenCustomer = { id -> navController.navigate("customer/$id") },
                         onNewCustomer = { navController.navigate("newCustomer") },
                     )
                 }
-                composable("jobs") {
-                    JobsScreen(
-                        onOpenJob = { id -> navController.navigate("watchJob/$id") },
-                        onNewJob = { navController.navigate("watch_intake") },
-                    )
+                composable("jobs") { jobsContent() }
+                composable("watch_jobs") {
+                    Scaffold(topBar = { TopAppBar(title = { Text("Watch repairs", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton({ navController.popBackStack() }) }) },
+                        containerColor = MaterialTheme.colorScheme.background) { pad ->
+                        androidx.compose.foundation.layout.Box(Modifier.padding(pad)) {
+                            JobsScreen(onOpenJob = { id -> navController.navigate("watchJob/$id") }, onNewJob = { navController.navigate("watch_intake") })
+                        }
+                    }
                 }
                 composable("watch_intake?customerId={customerId}", arguments = listOf(navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
                     WatchIntakeScreen(preselectedCustomerId = entry.arguments?.getString("customerId"), onBack = { navController.popBackStack() }, onOpenJob = { id ->

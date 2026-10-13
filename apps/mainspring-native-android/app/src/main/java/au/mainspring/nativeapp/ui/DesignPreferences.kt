@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 enum class AppAppearance(val label: String) {
-    WARM("Refined Warmth"), NIGHT("Night Workshop"), STEEL("Steel & Amber"), MINIT("Mister Minit")
+    WARM("Atelier"), NIGHT("Night Workshop"), STEEL("Steel & Amber"), MINIT("Mister Minit")
 }
 
 /** Device appearance only. Entitlements and shop configuration remain server-owned. */

@@ -1,5 +1,8 @@
 package au.mainspring.nativeapp.ui
 
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -21,14 +24,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    Text(text.uppercase(), modifier = modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(text, modifier = modifier.padding(top = 8.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface)
 }
 
 @Composable fun FlatPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = MaterialTheme.shapes.small) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
     }
 }
 
@@ -41,33 +43,21 @@ import androidx.compose.ui.unit.dp
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-@Composable fun StatusPill(status: String) {
-    val dark = MaterialTheme.colorScheme.background.red < 0.2f
-    val blue = if(dark) Color(0xFF172B3B) to Color(0xFF9ACAF2) else Color(0xFFE7F0FF) to Color(0xFF315F96)
-    val green = if(dark) Color(0xFF1A3427) to Color(0xFFA2DBB6) else Color(0xFFE6F3E9) to Color(0xFF326747)
-    val amber = if(dark) Color(0xFF3C3019) to Color(0xFFEED59B) else Color(0xFFFFF3DA) to Color(0xFF866020)
-    val red = if(dark) Color(0xFF3E1D19) to Color(0xFFFFB4A8) else Color(0xFFFFE7E1) to Color(0xFF8C2514)
-    val (background, foreground) = when(status) {
-        "booked", "booking_confirmed", "booking_scheduled", "go_ahead", "working_on", "en_route", "on_site", "service" -> blue
-        "work_completed", "invoice_paid", "paid", "completed", "collected", "booking_completed", "approved" -> green
-        "unpaid", "awaiting_go_ahead", "quote_sent", "awaiting_confirmation", "awaiting_quote", "awaiting_parts", "parts_to_order", "awaiting_collection", "awaiting_customer_details", "booking_on_hold", "pending_booking" -> amber
-        "no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent" -> red
-        else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
-    }
-    Surface(color = background, contentColor = foreground, shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
-        Text(status.replace('_', ' ').replaceFirstChar { it.uppercase() }, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium)
-    }
+/** Atelier status line: one blue caption, red only for things that went wrong. */
+@Composable fun StatusPill(status: String, modifier: Modifier = Modifier) {
+    val negative = status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent")
+    Text(statusLabel(status), modifier, style = MaterialTheme.typography.labelMedium,
+        color = if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
 }
 
 @Composable fun MetricStrip(values: List<Pair<String, String>>, modifier: Modifier = Modifier) {
-    Surface(modifier.fillMaxWidth(),color=MaterialTheme.colorScheme.surface,shape=androidx.compose.foundation.shape.RoundedCornerShape(10.dp)) {
-        Row(Modifier.height(IntrinsicSize.Min)) {
-            values.forEachIndexed {index,(label,value) ->
-                Column(Modifier.weight(1f).padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                    Text(label.uppercase(),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(value,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        values.forEach { (label, value) ->
+            Surface(Modifier.weight(1f).fillMaxHeight(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(value, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if(index<values.lastIndex) VerticalDivider(Modifier.fillMaxHeight().padding(vertical=12.dp),color=MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
@@ -129,14 +119,14 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ListCard(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Surface(onClick, modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
     }
 }
 
 /** Horizontally scrolling filter chips. `options` maps a stored key (null = all) to its label. */
 @Composable fun FilterRow(options: List<Pair<String?, String>>, selected: String?, onSelect: (String?) -> Unit, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { (key, label) -> FilterChip(selected = selected == key, onClick = { onSelect(key) }, label = { Text(label) }) }
+        options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
     }
 }
 
@@ -148,7 +138,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @Composable fun SelectableCard(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     Surface(onClick, modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled, shape = MaterialTheme.shapes.medium,
         color = if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        border = BorderStroke(if(selected) 2.dp else 1.dp, if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
+        border = if(selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
             if(selected) Text("\u2713", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
@@ -165,6 +155,110 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if(onPrevious != null) SecondaryAction(onClick = onPrevious, enabled = previousEnabled, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Previous") }
                 PrimaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.weight(if(onPrevious != null) 1.5f else 1f).heightIn(min = 52.dp)) { Text(primaryLabel, style = MaterialTheme.typography.titleMedium) }
+            }
+        }
+    }
+}
+
+/** Dark/white pill used for segmented filters (Active / Mine / Ready, Watch / Shoe / Mobile). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun PillChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Surface(onClick, modifier.heightIn(min = 44.dp), enabled = enabled, shape = MaterialTheme.shapes.small,
+        color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
+        contentColor = if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface) {
+        Box(Modifier.padding(horizontal = 18.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+    }
+}
+
+/** Equal-width segmented control built from [PillChip]s. */
+@Composable fun SegmentedPills(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }, Modifier.weight(1f)) }
+    }
+}
+
+/** Atelier large-title header: small uppercase eyebrow, big bold title, optional round "+" button. */
+@Composable fun LargeHeader(eyebrow: String?, title: String, modifier: Modifier = Modifier, onAdd: (() -> Unit)? = null, addDescription: String = "New", trailing: (@Composable () -> Unit)? = null) {
+    Row(modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
+        Column(Modifier.weight(1f)) {
+            if(eyebrow != null) Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+        }
+        trailing?.invoke()
+        if(onAdd != null) RoundPlusButton(onAdd, addDescription)
+    }
+}
+
+/** White circle with a blue plus, the Atelier "new" affordance. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun RoundPlusButton(onClick: () -> Unit, description: String = "New", modifier: Modifier = Modifier) {
+    Surface(onClick, modifier.size(48.dp).semantics { contentDescription = description }, shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.surface) {
+        val color = MaterialTheme.colorScheme.primary
+        Canvas(Modifier.padding(14.dp)) {
+            val w = 2.2f * density
+            drawLine(color, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), w, cap = StrokeCap.Round)
+            drawLine(color, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), w, cap = StrokeCap.Round)
+        }
+    }
+}
+
+/** Dark hero card used on Today and for key totals (e.g. outstanding balance). */
+@Composable fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
+    }
+}
+
+/** Line-art watch used on the Today hero card. */
+@Composable fun WatchArt(modifier: Modifier = Modifier, color: Color = Color(0xFFD7F36B)) {
+    Canvas(modifier.size(width = 84.dp, height = 112.dp)) {
+        val u = size.width / 84f
+        val strap = color.copy(alpha = 0.16f)
+        drawRoundRect(strap, Offset(26f * u, 0f), Size(32f * u, 112f * u), androidx.compose.ui.geometry.CornerRadius(8f * u))
+        drawCircle(color, 38f * u, Offset(42f * u, 56f * u), style = Stroke(3f * u))
+        drawLine(color, Offset(42f * u, 56f * u), Offset(42f * u, 34f * u), 3f * u, cap = StrokeCap.Round)
+        drawLine(color, Offset(42f * u, 56f * u), Offset(58f * u, 64f * u), 3f * u, cap = StrokeCap.Round)
+        drawRoundRect(color, Offset(80f * u, 48f * u), Size(4f * u, 16f * u), androidx.compose.ui.geometry.CornerRadius(2f * u))
+    }
+}
+
+/** Atelier icon set for the tab bar (outline, 24dp grid). */
+@Composable fun AtelierIcon(name: String, color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(24.dp)) {
+        val s = size.width / 24f
+        val st = Stroke(1.6f * s, cap = StrokeCap.Round)
+        fun p(x: Float, y: Float) = Offset(x * s, y * s)
+        fun ln(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(color, p(x1, y1), p(x2, y2), 1.6f * s, cap = StrokeCap.Round)
+        when(name) {
+            "Today" -> for(cx in listOf(7f, 17f)) for(cy in listOf(7f, 17f)) drawCircle(color, 3.4f * s, p(cx, cy), style = st)
+            "Jobs" -> { ln(4f, 20f, 14f, 10f); drawCircle(color, 3.4f * s, p(17f, 7f), style = st); ln(15f, 4f, 20f, 9f); ln(5f, 5f, 10f, 10f); ln(10f, 14f, 20f, 20f).also { } }
+            "People" -> { drawCircle(color, 3.4f * s, p(9f, 8f), style = st); drawArc(color, 200f, 140f, false, p(3f, 14f), Size(12f * s, 12f * s), style = st)
+                drawCircle(color, 2.8f * s, p(17f, 9f), style = st); drawArc(color, 200f, 140f, false, p(12.5f, 14.5f), Size(9f * s, 9f * s), style = st) }
+            "Inbox" -> { val path = Path(); path.moveTo(3f * s, 13f * s); path.lineTo(6f * s, 5f * s); path.lineTo(18f * s, 5f * s); path.lineTo(21f * s, 13f * s); path.lineTo(21f * s, 19f * s); path.lineTo(3f * s, 19f * s); path.close()
+                drawPath(path, color, style = st); ln(3f, 13f, 8f, 13f); ln(16f, 13f, 21f, 13f); drawArc(color, 0f, 180f, false, p(8f, 10f), Size(8f * s, 6f * s), style = st) }
+            else -> for(cx in listOf(5f, 14f)) for(cy in listOf(5f, 14f)) drawRoundRect(color, p(cx, cy), Size(6f * s, 6f * s), androidx.compose.ui.geometry.CornerRadius(1.6f * s), style = st)
+        }
+    }
+}
+
+/** Floating rounded tab bar. `destinations` are (route, label); selected entry is tinted with the accent. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun FloatingTabBar(destinations: List<Pair<String, String>>, isSelected: (String) -> Boolean, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Surface(Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
+            Row(Modifier.padding(horizontal = 6.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                destinations.forEach { (route, label) ->
+                    val chosen = isSelected(route)
+                    val tint = if(chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    Column(Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = chosen }.testTag("nav-$route")
+                        .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = { onSelect(route) }),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        AtelierIcon(label, tint)
+                        Text(label, style = MaterialTheme.typography.labelMedium, color = tint)
+                    }
+                }
             }
         }
     }

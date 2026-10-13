@@ -101,6 +101,8 @@ object TokenStore {
     fun setShopIdentity(currency: String?,name: String?,abn: String?,phone: String?,address: String?) {
         prefs.edit().putString("shop_currency",currency).putString("shop_name",name).putString("shop_abn",abn).putString("shop_phone",phone).putString("shop_address",address).apply()
     }
+    /** User id of the signed-in account, taken from the draft scope (`base|tenant|user`). */
+    fun currentUserId(): String = if(::prefs.isInitialized) prefs.getString("draft_scope", null)?.substringAfterLast('|', "").orEmpty() else ""
     fun shopValue(key: String): String? = if(::prefs.isInitialized) prefs.getString("shop_$key",null) else null
     fun setCalendarTimezone(zone: String) { prefs.edit().putString("calendar_zone", zone).apply() }
     fun calendarTimezone(): String = if(::prefs.isInitialized) prefs.getString("calendar_zone", "Australia/Sydney") ?: "Australia/Sydney" else "Australia/Sydney"
