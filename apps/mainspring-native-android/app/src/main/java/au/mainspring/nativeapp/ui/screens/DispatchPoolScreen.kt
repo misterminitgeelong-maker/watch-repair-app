@@ -21,13 +21,13 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
     val state by vm.state.collectAsStateWithLifecycle()
     var confirmingId by rememberSaveable { mutableStateOf<String?>(null) }
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { TopAppBar(title = { Text("Dispatch pool", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Dispatch pool", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
+        actions = { TextButton(onClick = vm::refresh, enabled = !state.busy && !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text("Nearby unclaimed work. Ring 1 is closest. Claiming creates a mobile job for your shop.")
+                Text("Nearby unclaimed work, closest first. Claiming one adds it to your mobile job board.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                OutlinedButton(onClick = vm::refresh, enabled = !state.busy && !state.loading) { Text("Refresh pool") }
+                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::refresh) }
                 if(state.unresolvedId.isNotBlank()) {
                     Text("An earlier claim needs review. Refresh, then check the mobile job board before trying again.")
                     TextButton(onClick = onOpenBoard) { Text("Check mobile job board") }
@@ -40,21 +40,24 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
                     Text("Job ${result.jobNumber} claimed.")
                     Button(onClick = { onOpenJob(result.jobId) }) { Text("Open claimed job") }
                 }
-                if(!state.loading && state.jobs.isEmpty() && state.error == null) Text("No unclaimed jobs in your service area.")
+                if(!state.loading && state.jobs.isEmpty() && state.error == null) au.mainspring.nativeapp.ui.EmptyState("Nothing to claim right now", "New unclaimed work in your service area will appear here.")
             }
             items(state.jobs, key = { it.id }) { job ->
-                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ring ${job.ring} · ${job.customerName}", style = MaterialTheme.typography.titleMedium)
-                    Text(listOfNotNull(job.make, job.model, job.year, job.plate).filter { it.isNotBlank() }.joinToString(" · "))
-                    Text(job.address)
-                    job.description?.let { Text(it) }
-                    Button(onClick = { confirmingId = job.id }, enabled = !state.busy && !state.loading && state.unresolvedId.isBlank() && state.claimed == null) { Text("Claim job") }
-                } }
+                au.mainspring.nativeapp.ui.FlatPanel {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text(job.customerName, style = MaterialTheme.typography.titleMedium)
+                        Text("Ring ${job.ring}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Text(listOfNotNull(job.make, job.model, job.year?.toString(), job.plate).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(job.address, style = MaterialTheme.typography.bodyMedium)
+                    job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                    Button(onClick = { confirmingId = job.id }, enabled = !state.busy && !state.loading && state.unresolvedId.isBlank() && state.claimed == null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Claim job") }
+                }
             }
         }
     }
     confirmingId?.let { id ->
-        AlertDialog(onDismissRequest = { confirmingId = null }, title = { Text("Claim this job?", style = MaterialTheme.typography.headlineSmall) },
+        AlertDialog(onDismissRequest = { confirmingId = null }, title = { Text("Claim this job?") },
             text = { Text("The work will be assigned to your shop and added to your mobile job board.") },
             confirmButton = { TextButton(onClick = { confirmingId = null; vm.claim(id) }) { Text("Confirm claim") } },
             dismissButton = { TextButton(onClick = { confirmingId = null }) { Text("Cancel") } })

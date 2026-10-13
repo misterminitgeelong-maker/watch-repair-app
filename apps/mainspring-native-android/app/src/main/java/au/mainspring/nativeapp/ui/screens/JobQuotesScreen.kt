@@ -24,7 +24,7 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
             state.job?.let { Text("${it.jobNumber} · ${it.title}", style = MaterialTheme.typography.titleMedium) }
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            OutlinedButton(onClick = vm::load, enabled = !state.loading && !state.busy) { Text("Refresh quotes") }
+            androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading && !state.busy) { Text("Refresh") }
             if(state.unknownSave) OutlinedButton(onClick = vm::acknowledgeHistory, enabled = !state.loading && state.historyChecked) { Text("I checked for the saved quote") }
             state.quotes.forEach { q ->
                 OutlinedButton(onClick = { onOpenQuote(q.id) }, modifier = Modifier.fillMaxWidth()) { Text("${au.mainspring.nativeapp.ui.statusLabel(q.status)} · ${formatCents(q.totalCents, q.currency)}") }

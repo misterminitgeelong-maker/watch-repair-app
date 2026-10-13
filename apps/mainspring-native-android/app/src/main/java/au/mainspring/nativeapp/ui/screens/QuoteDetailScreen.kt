@@ -57,7 +57,7 @@ fun QuoteDetailScreen(
             else -> {
                 LazyColumn(Modifier.padding(padding).padding(16.dp)) {
                     item {
-                        OutlinedButton(onClick = vm::load, enabled = !state.loading) { Text("Refresh status") }
+                        androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading) { Text("Refresh") }
                         if (q != null) {
                             Text(
                                 formatCents(q.totalCents, q.currency),

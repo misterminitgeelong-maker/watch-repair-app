@@ -29,7 +29,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
      Button(onClick = vm::save, enabled = dirty && !state.loading && !state.busy) { Text("Save selection") }
      OutlinedButton(onClick = vm::discard, enabled = dirty && !state.busy) { Text("Discard draft") }
     }
-    OutlinedButton(onClick = vm::load, enabled = !state.loading && !state.busy) { Text("Refresh toolkit") }
+    androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading && !state.busy) { Text("Refresh") }
     OutlinedTextField(search, { search = it }, label = { Text("Find a tool") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
    }
    item { au.mainspring.nativeapp.ui.SectionLabel("What's the job?")

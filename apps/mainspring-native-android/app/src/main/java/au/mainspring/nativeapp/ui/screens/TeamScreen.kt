@@ -34,7 +34,7 @@ import com.google.gson.JsonParser
                     listOf("week" to "This week","month" to "This month","90" to "Last 90 days").forEach {(key,label)->FilterChip(state.period==key,{model.period(key)},label={Text(label)})}
                 }
                 Text("${state.users.count {it.active}} active accounts · ${state.users.size} total",style=MaterialTheme.typography.labelSmall)
-                OutlinedButton(model::refresh,enabled=!state.busy && !state.loading,shape=MaterialTheme.shapes.small) {Text("Refresh team")}
+                androidx.compose.material3.TextButton(model::refresh,enabled=!state.busy && !state.loading) { Text("Refresh") }
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let {Text(it,color=MaterialTheme.colorScheme.error)};state.info?.let {Text(it)}
                 if(state.uncertain) OutlinedButton(model::reviewedWrite,enabled=state.reviewed && !state.loading && !state.busy) {Text("I have reviewed the account records")}

@@ -47,7 +47,7 @@ fun ArrivalMessageScreen(id: String, onBack: () -> Unit, vm: ArrivalMessageViewM
             OutlinedTextField(state.draft.window, vm::window, label = { Text("Arrival window, e.g. 9–11 am") }, enabled = !state.busy && !state.uncertain && !state.draft.accepted, modifier = Modifier.fillMaxWidth())
             Text("Your technician is on the way and will arrive between ${state.draft.window.ifBlank { "[arrival window]" }}. Please ensure someone is available at the vehicle.")
             Button(onClick = { confirm = true }, enabled = !state.loading && !state.busy && !state.uncertain && !state.draft.accepted && state.draft.window.isNotBlank() && !state.customer?.phone.isNullOrBlank() && TokenStore.canWorkJobs()) { Text("Send arrival SMS") }
-            OutlinedButton(onClick = vm::refresh, enabled = !state.loading && !state.busy) { Text("Refresh customer contact") }
+            androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading && !state.busy) { Text("Refresh") }
         }
     }
     if(confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Send arrival SMS?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Request an arrival SMS to ${state.customer?.phone} for ${state.draft.window}.") },

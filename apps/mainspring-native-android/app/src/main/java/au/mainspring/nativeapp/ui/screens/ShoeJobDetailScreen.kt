@@ -92,7 +92,7 @@ fun ShoeJobDetailScreen(
                             Text("${item.name} · ${item.quantity} × ${item.price?.let { formatCents(it, "AUD") } ?: "Inspection quote"}")
                             item.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         }
-                        OutlinedButton(onClick = vm::load, enabled = !state.loading && !state.statusBusy) { Text("Refresh job") }
+                        androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading && !state.statusBusy) { Text("Refresh") }
                         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
                         OutlinedButton(onClick = onMessages) { Text("Customer conversation") }
                         OutlinedButton(onClick = onEdit) { Text("Edit repair details") }

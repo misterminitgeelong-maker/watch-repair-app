@@ -50,7 +50,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
             item {
                 if(state.busy || state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; localError?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }
-                OutlinedButton(onClick = vm::refresh, enabled = !state.busy && !state.loading) { Text("Refresh job files") }
+                androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.busy && !state.loading) { Text("Refresh") }
                 if(state.uncertain) {
                     Text("Refresh to look for the previously uploaded photo. Review the files before repeating the upload.")
                     OutlinedButton(onClick = vm::checkedFiles, enabled = state.historyChecked && !state.busy && !state.loading) { Text("I checked that this photo is missing") }

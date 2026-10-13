@@ -1,5 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
+import au.mainspring.nativeapp.ui.SelectableCard
+import au.mainspring.nativeapp.ui.ErrorBanner
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import androidx.activity.compose.BackHandler
@@ -30,8 +32,8 @@ import au.mainspring.nativeapp.ui.SectionLabel
         } } }) {padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("Draft saved on this device",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            state.error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
-            vm.field("trackingWarning").takeIf(String::isNotBlank)?.let {Text(it,color=MaterialTheme.colorScheme.error)}
+            state.error?.let {ErrorBanner(it)}
+            vm.field("trackingWarning").takeIf(String::isNotBlank)?.let {ErrorBanner(it)}
             if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if(vm.field("uncertain").isNotBlank()) OutlinedButton({reconcile=true}) {Text("I checked shop records")}
             if(vm.field("jobId").isNotBlank()) Button({val id=vm.field("jobId");vm.finish();onOpenJob(id)}) {Text("Job saved · open job")}
@@ -56,10 +58,17 @@ import au.mainspring.nativeapp.ui.SectionLabel
                     }
                     if(new) { field("name", "Name *"); field("phone", "Phone"); field("email", "Email") }
                     else {
-                        field("query", "Search customers"); OutlinedButton(onClick = vm::search, enabled = !locked) { Text("Search") }
-                        state.customers.forEach { c -> FilterChip(selected = vm.field("customerId") == c.id, onClick = { vm.set("customerId", c.id) }, enabled = !locked, label = { Text("${c.fullName} · ${c.phone.orEmpty()}") }) }
+                        OutlinedTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.search() }))
+                        state.customers.forEach { c ->
+                            SelectableCard(selected = vm.field("customerId") == c.id, onClick = { vm.set("customerId", c.id) }, enabled = !locked) {
+                                Text(c.fullName, style = MaterialTheme.typography.titleMedium)
+                                c.phone?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }
+                        }
                         if(state.accountsLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        state.accountError?.let { Text(it,color = MaterialTheme.colorScheme.error) }
+                        state.accountError?.let { ErrorBanner(it) }
                         val accounts = state.accounts.filter { it.active && vm.field("customerId") in it.customerIds }
                         if(accounts.isNotEmpty() || vm.field("accountId").isNotBlank()) {
                             Text("Billing account (optional)")
@@ -85,14 +94,14 @@ import au.mainspring.nativeapp.ui.SectionLabel
             field("description","Requested work");field("keyType","Key type");field("quantity","Key quantity (default 1)");field("notes","Technician notes");field("deposit","Deposit ($)")
             SectionLabel("Initial status")
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("awaiting_quote","go_ahead","pending_booking","booked").forEach {value->FilterChip(vm.field("status").ifBlank {"awaiting_quote"}==value,{vm.set("status",value)},enabled=!locked,label={Text(au.mainspring.nativeapp.ui.statusLabel(value))})}}
-            Row {Checkbox(vm.field("bookingSms")=="true",{vm.set("bookingSms",it.toString())},enabled=!locked);Text("Send booking SMS to customer")}
+            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {Checkbox(vm.field("bookingSms")=="true",{vm.set("bookingSms",it.toString())},enabled=!locked);Text("Send booking SMS to customer")}
             Text("Creation may also send the customer's tracking message according to shop settings.",style=MaterialTheme.typography.bodySmall)
         }
     }
-    if(leave) AlertDialog(onDismissRequest = { leave = false }, title = { Text("Leave intake?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Your draft stays on this device.") },
+    if(leave) AlertDialog(onDismissRequest = { leave = false }, title = { Text("Leave intake?") }, text = { Text("Your draft stays on this device.") },
         confirmButton = { TextButton(onClick = onBack) { Text("Save and leave") } }, dismissButton = { TextButton(onClick = { leave = false }) { Text("Keep editing") } })
-    if(discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard draft?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Clear device details without deleting any shop records.") },
+    if(discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard draft?") }, text = { Text("Clear device details without deleting any shop records.") },
         confirmButton = { TextButton(onClick = { vm.discard(); discard = false }) { Text("Discard") } }, dismissButton = { TextButton(onClick = { discard = false }) { Text("Cancel") } })
-    if(reconcile) AlertDialog(onDismissRequest = { reconcile = false }, title = { Text("Confirm no record saved", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Only allow a retry after checking that the last attempted customer/job does not exist. Retrying an existing save can duplicate it.") },
+    if(reconcile) AlertDialog(onDismissRequest = { reconcile = false }, title = { Text("Confirm no record saved") }, text = { Text("Only allow a retry after checking that the last attempted customer/job does not exist. Retrying an existing save can duplicate it.") },
         confirmButton = { TextButton(onClick = { vm.set("uncertain", ""); reconcile = false }) { Text("Not saved — allow retry") } }, dismissButton = { TextButton(onClick = { reconcile = false }) { Text("Cancel") } })
 }

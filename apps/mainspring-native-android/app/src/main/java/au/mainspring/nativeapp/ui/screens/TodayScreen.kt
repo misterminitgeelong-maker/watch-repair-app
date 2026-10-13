@@ -41,7 +41,7 @@ import java.util.Locale
             Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("EEE, d MMM",Locale.UK)),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         } },colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.surface),actions={
             TextButton(onDirectory) {Text("Search")}
-            TextButton(model::refresh,enabled=!state.loading) {Text("Refresh")}
+            TextButton(model::refresh,enabled=!state.loading) { Text("Refresh") }
         }) },
         floatingActionButton = { if(TokenStore.canWorkJobs()) ExtendedFloatingActionButton(onClick=onNewJob,containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary) {Text("New job",style=MaterialTheme.typography.labelLarge)} },
     ) {padding ->

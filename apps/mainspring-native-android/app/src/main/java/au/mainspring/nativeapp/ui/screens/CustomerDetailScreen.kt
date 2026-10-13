@@ -41,7 +41,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                     item {
                         if(state.loading || state.paging != null) LinearProgressIndicator(Modifier.fillMaxWidth())
                         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                        OutlinedButton(onClick = vm::load, enabled = !state.loading && state.paging == null) { Text("Refresh customer and history") }
+                        androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading && state.paging == null) { Text("Refresh") }
                         listOf("Email" to customer.email, "Phone" to customer.phone, "Address" to customer.address, "Notes" to customer.notes).forEach { (label,value) ->
                             if(!value.isNullOrBlank()) { Text(label, style = MaterialTheme.typography.labelMedium); Text(value) }
                         }

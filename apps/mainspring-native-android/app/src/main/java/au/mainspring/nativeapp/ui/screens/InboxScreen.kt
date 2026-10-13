@@ -1,5 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.material3.*
+import androidx.compose.foundation.layout.*
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,35 +41,32 @@ fun InboxScreen(
         contentWindowInsets = if(embedded) androidx.compose.foundation.layout.WindowInsets(0,0,0,0) else androidx.compose.material3.ScaffoldDefaults.contentWindowInsets,
         topBar = {
             if(!embedded) TopAppBar(
-                title = { Text("Inbox", style = MaterialTheme.typography.headlineSmall) },
+                title = { Text("Inbox", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
+                actions = { TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },
             )
         },
     ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.End) {
-                Button(onClick = { viewModel.refresh() }, enabled = !state.loading) { Text("Refresh") }
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            if (embedded) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
             }
-            if (state.loading && state.events.isEmpty()) {
-                CircularProgressIndicator(Modifier.padding(24.dp))
-            }
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+            if (state.loading && state.events.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(16.dp), onRetry = { viewModel.refresh() }) }
+            if (!state.loading && state.error == null && state.events.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("You're all caught up", "Customer replies and booking activity will show up here.")
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize().weight(1f, fill = true),
             ) {
                 items(state.events, key = { it.id }) { ev ->
-                    Column(Modifier.padding(vertical = 10.dp)) {
-                        Text(au.mainspring.nativeapp.ui.statusLabel(ev.eventType), style = MaterialTheme.typography.titleSmall)
+                    au.mainspring.nativeapp.ui.FlatPanel {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(au.mainspring.nativeapp.ui.statusLabel(ev.eventType), style = MaterialTheme.typography.titleMedium)
+                            Text(au.mainspring.nativeapp.ui.formatShopDate(ev.createdAt).substringBefore(' '), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Text(ev.eventSummary, style = MaterialTheme.typography.bodyMedium)
-                        Text(ev.createdAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    HorizontalDivider()
                 }
             }
         }

@@ -41,7 +41,7 @@ import java.time.format.DateTimeFormatter
    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     if(tab == 0) {
      item {
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh prospects") }; Text("${state.leads.size} prospects") }
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }; Text("${state.leads.size} prospects") }
       OutlinedTextField(query, { query = it }, label = { Text("Search name, contact or notes") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
        (listOf("") + listOf("new", "contacted", "visited", "onboarded") + state.leads.map { it.status }).distinct().forEach { value ->

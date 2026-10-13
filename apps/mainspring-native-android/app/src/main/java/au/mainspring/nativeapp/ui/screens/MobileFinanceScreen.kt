@@ -61,7 +61,7 @@ import au.mainspring.nativeapp.ui.formatCents
     }
    }
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
-    TextButton(onClick=vm::refresh,enabled=!state.loading && !state.busy,colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurfaceVariant)) {Text("Refresh documents")}
+    TextButton(onClick=vm::refresh,enabled=!state.loading && !state.busy,colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurfaceVariant)) { Text("Refresh") }
     if(!state.unknownQuote && (state.quotes.isNotEmpty() || state.invoices.isNotEmpty())) TextButton({composing=true},enabled=enabled,colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurfaceVariant)) {Text("Create quote")}
    }
    au.mainspring.nativeapp.ui.SectionLabel("Quotes")

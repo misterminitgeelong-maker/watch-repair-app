@@ -32,7 +32,7 @@ fun QuoteSignatureScreen(jobId: String, quoteId: String, onBack: () -> Unit,
                 quote.signedAt?.let { Text("Signed ${formatShopDate(it)}") }
             }
             state.bitmap?.let { bitmap -> Image(bitmap.asImageBitmap(), contentDescription = "Customer's recorded quote signature", modifier = Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat()/bitmap.height).background(Color.White)) }
-            OutlinedButton(model::load, enabled = !state.loading) { Text("Refresh signature") }
+            androidx.compose.material3.TextButton(model::load, enabled = !state.loading) { Text("Refresh") }
         }
     }
 }

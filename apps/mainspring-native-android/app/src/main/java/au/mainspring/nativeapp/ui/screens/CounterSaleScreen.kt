@@ -43,7 +43,9 @@ import au.mainspring.nativeapp.*
     else {
      OutlinedTextField(f("query"),{ vm.set("query",it) },label = { Text("Search customer") },modifier = Modifier.fillMaxWidth(),enabled = !locked)
      OutlinedButton(onClick = { vm.searchCustomers(f("query")) },enabled = !locked && !state.customerLoading) { Text("Search customers") }
-     state.customers.forEach { customer -> FilterChip(f("customerId") == customer.id,{ vm.set("customerId",customer.id) },enabled = !locked,label = { Text("${customer.fullName} · ${customer.phone.orEmpty()}") }) }
+     state.customers.forEach { customer -> au.mainspring.nativeapp.ui.SelectableCard(f("customerId") == customer.id,{ vm.set("customerId",customer.id) },enabled = !locked) {
+        Text(customer.fullName,style = MaterialTheme.typography.titleMedium)
+        customer.phone?.takeIf { it.isNotBlank() }?.let { Text(it,style = MaterialTheme.typography.bodyMedium,color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
      state.accounts.filter { it.active && f("customerId") in it.customerIds }.forEach { account -> FilterChip(f("accountId") == account.id,{ vm.set("accountId",if(f("accountId") == account.id) "" else account.id) },enabled = !locked,label = { Text("Account: ${account.name}") }) }
     }
     HorizontalDivider(); Text("Items",style = MaterialTheme.typography.titleLarge)
@@ -56,6 +58,6 @@ import au.mainspring.nativeapp.*
  confirmation?.let { request -> AlertDialog(onDismissRequest = { confirmation = null },title = { Text(if(request.mode == "sale") "Create counter sale?" else "Save quote?") },
   text = { Text(if(request.mode == "sale") "Create the job, quote and unpaid invoice, then mark the work complete. Record payment separately after receiving funds." else "Create the job and draft quote. Review its final totals before sending it to the customer.") },
   confirmButton = { Button(onClick = { confirmation = null; vm.submit(request) }) { Text("Confirm checkout") } },dismissButton = { TextButton(onClick = { confirmation = null }) { Text("Cancel") } }) }
- if(confirmReset) AlertDialog(onDismissRequest = { confirmReset = false }, title = { Text("Discard checkout draft?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Any saved customers, jobs, quotes and invoices remain in your shop records. Clear this device's checkout draft and start again.") },
+ if(confirmReset) AlertDialog(onDismissRequest = { confirmReset = false }, title = { Text("Discard checkout draft?") }, text = { Text("Any saved customers, jobs, quotes and invoices remain in your shop records. Clear this device's checkout draft and start again.") },
   confirmButton = { Button(onClick = { confirmReset = false; vm.reset() }) { Text("Discard draft") } }, dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } })
 }

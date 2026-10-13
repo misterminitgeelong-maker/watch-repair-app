@@ -27,7 +27,7 @@ fun BusinessAccountsScreen(onBack: () -> Unit, onOpenAccount: (String) -> Unit, 
             item {
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                OutlinedButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh accounts") }
+                androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh") }
                 if(TokenStore.canManageInvoices()) Button(onClick = onCreate) { Text("New business account") }
                 OutlinedTextField(search, { search = it }, label = { Text("Find an account") }, modifier = Modifier.fillMaxWidth())
                 if(!state.loading && state.accounts.isEmpty() && state.error == null) Text("No business accounts yet.")
@@ -64,7 +64,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }
                 printError?.let { Text(it,color = MaterialTheme.colorScheme.error) }
-                OutlinedButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh account and invoices") }
+                androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }
                 if(manager) OutlinedButton(onClick = onEdit, enabled = enabled) { Text("Edit account details") }
                 state.account?.let { account ->
                     Text("${if(account.active) "Active" else "Inactive"} · ${account.terms} day payment terms")

@@ -74,7 +74,9 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     if(new) { field("name", "Name *"); field("phone", "Phone"); field("email", "Email") }
                     else {
                         field("query", "Search customers"); OutlinedButton(onClick = vm::search, enabled = !locked) { Text("Search") }
-                        state.customers.forEach { c -> FilterChip(selected = vm.field("customerId") == c.id, onClick = { vm.set("customerId", c.id); vm.set("accountId", "") }, enabled = !locked, label = { Text("${c.fullName} · ${c.phone.orEmpty()}") }) }
+                        state.customers.forEach { c -> au.mainspring.nativeapp.ui.SelectableCard(selected = vm.field("customerId") == c.id, onClick = { vm.set("customerId", c.id); vm.set("accountId", "") }, enabled = !locked) {
+                            Text(c.fullName, style = MaterialTheme.typography.titleMedium)
+                            c.phone?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
                     }
                 }
                 1 -> {
@@ -144,11 +146,11 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
             }
         }
     }
-    if(leave) AlertDialog(onDismissRequest = { leave = false }, title = { Text("Leave intake?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Your draft and pending photos are saved on this device.") },
+    if(leave) AlertDialog(onDismissRequest = { leave = false }, title = { Text("Leave intake?") }, text = { Text("Your draft and pending photos are saved on this device.") },
         confirmButton = { TextButton(onClick = onBack) { Text("Save and leave") } }, dismissButton = { TextButton(onClick = { leave = false }) { Text("Keep editing") } })
-    if(discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard draft?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("This clears the device draft, not shop records already saved.") },
+    if(discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard draft?") }, text = { Text("This clears the device draft, not shop records already saved.") },
         confirmButton = { TextButton(onClick = { vm.discard(); discard = false }) { Text("Discard") } }, dismissButton = { TextButton(onClick = { discard = false }) { Text("Cancel") } })
-    if(reconcile) AlertDialog(onDismissRequest = { reconcile = false }, title = { Text("No record was saved?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Continue only after checking that the last attempted save did not create a customer, shoe, ticket, or added pair/service. Retrying an existing save can duplicate it.") },
+    if(reconcile) AlertDialog(onDismissRequest = { reconcile = false }, title = { Text("No record was saved?") }, text = { Text("Continue only after checking that the last attempted save did not create a customer, shoe, ticket, or added pair/service. Retrying an existing save can duplicate it.") },
         confirmButton = { TextButton(onClick = { vm.set("uncertain", ""); reconcile = false }) { Text("Not saved — allow retry") } }, dismissButton = { TextButton(onClick = { reconcile = false }) { Text("Cancel") } })
 }
 

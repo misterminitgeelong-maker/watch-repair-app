@@ -21,14 +21,17 @@ import au.mainspring.nativeapp.api.AutoKeyJobRead
 import au.mainspring.nativeapp.ui.*
 import java.time.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun MobileWorkBoardScreen(apiBaseUrl: String,onBack: () -> Unit,onOpenJob: (String) -> Unit,onNewJob: () -> Unit,onNavigate: (String)->Unit) {
     var mode by rememberSaveable {mutableStateOf("list")}
     var selected by rememberSaveable {mutableStateOf<String?>(null)}
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=12.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-            listOf("list" to "List","board" to "Kanban","planner" to "Planner").forEach {(key,label)->FilterChip(mode==key,{mode=key},label={Text(label)})}
-            TextButton({onNavigate("route")}) {Text("Map")}
-        }
+    Scaffold(
+        topBar={TopAppBar(title={Text("Mobile services",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
+            actions={TextButton({onNavigate("route")},modifier=Modifier.heightIn(min=48.dp)) {Text("Map")}})},
+        floatingActionButton={if(TokenStore.canWorkJobs()) ExtendedFloatingActionButton(onClick=onNewJob,containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary) {Text("New job",style=MaterialTheme.typography.labelLarge)}},
+    ) {padding->
+    Column(Modifier.fillMaxSize().padding(padding)) {
+        FilterRow(listOf("list" to "List","board" to "Kanban","planner" to "Planner"),mode,{mode=it ?: "list"})
         BoxWithConstraints(Modifier.weight(1f)) {
             when(mode) {
                 "board" -> MobileKanbanScreen(onBack,onOpenJob,onNewJob)
@@ -41,9 +44,10 @@ import java.time.*
                             {onNavigate("mobileEdit/$id")},onArrival={onNavigate("arrivalMessage/$id")},onSignature={onNavigate("quoteSignature/$id/$it")},embedded=true)}
                             ?: Column(Modifier.padding(32.dp)) {Text("Select a job",style=MaterialTheme.typography.headlineMedium);Text("View its details alongside your job list.")}
                     }
-                } else AutoKeyJobsScreen(onBack,onOpenJob,onNewJob)
+                } else AutoKeyJobsScreen(onBack,onOpenJob,onNewJob,embedded=true)
             }
         }
+    }
     }
 }
 
@@ -60,7 +64,7 @@ private fun boardColumn(status: String)=when(status) {
 @Composable private fun MobileKanbanScreen(onBack: ()->Unit,onJob: (String)->Unit,onNew: ()->Unit,model: AutoKeyJobsViewModel=viewModel(key="kanban")) {
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(model) {model.directory("all")}
-    Scaffold(topBar={TopAppBar(title={Text("Job board",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton(onNew,enabled=TokenStore.canWorkJobs()) {Text("New job")}})}) {padding->
+    Scaffold(contentWindowInsets=WindowInsets(0,0,0,0),containerColor=androidx.compose.ui.graphics.Color.Transparent) {padding->
         Column(Modifier.fillMaxSize().padding(padding)) {
             OutlinedTextField(state.query,model::query,label={Text("Search jobs")},modifier=Modifier.fillMaxWidth().padding(12.dp),singleLine=true)
             Text("${state.jobs.size} of ${state.total} jobs loaded",Modifier.padding(horizontal=12.dp),style=MaterialTheme.typography.bodySmall)
@@ -97,7 +101,7 @@ private fun boardColumn(status: String)=when(status) {
     var time by rememberSaveable {mutableStateOf("")}
     val zone=ZoneId.of(TokenStore.calendarTimezone())
     RefreshOnResume(model::refresh)
-    Scaffold(topBar={TopAppBar(title={Text("Week planner",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack,enabled=!state.busy)})}) {padding->
+    Scaffold(contentWindowInsets=WindowInsets(0,0,0,0),containerColor=androidx.compose.ui.graphics.Color.Transparent) {padding->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {TextButton({model.shift(-1)},enabled=!state.busy) {Text("Previous week")};TextButton({model.shift(1)},enabled=!state.busy) {Text("Next week")}}
             Text("${formatShopDate(state.start.toString())} - ${formatShopDate(state.start.plusDays(6).toString())}",Modifier.padding(horizontal=12.dp),style=MaterialTheme.typography.titleSmall)

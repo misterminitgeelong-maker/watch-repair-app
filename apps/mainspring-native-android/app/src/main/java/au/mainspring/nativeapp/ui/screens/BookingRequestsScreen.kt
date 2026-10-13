@@ -26,7 +26,7 @@ import au.mainspring.nativeapp.*
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-     OutlinedButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh requests") }
+     androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }
      if(canRequest) Button(onClick = { creating = !creating }, enabled = enabled) { Text(if(creating) "Hide form" else "New request") }
     }
     if(state.uncertain) OutlinedButton(onClick = vm::checkedHistory, enabled = enabled && state.historyChecked) { Text("I checked for the saved request") }

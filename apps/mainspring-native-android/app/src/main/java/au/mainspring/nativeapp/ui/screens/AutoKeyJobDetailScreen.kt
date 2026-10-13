@@ -77,7 +77,7 @@ import au.mainspring.nativeapp.ui.*
             Text(j?.title ?: "Job",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         }},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
-        actions={TextButton(vm::load,enabled=!state.loading && !state.statusBusy,modifier=Modifier.heightIn(min=48.dp)) {Text("Refresh")};TextButton(onEdit,enabled=!state.loading && !state.statusBusy && !state.offlineSnapshot) {Text("Edit")}}) },
+        actions={TextButton(vm::load,enabled=!state.loading && !state.statusBusy,modifier=Modifier.heightIn(min=48.dp)) { Text("Refresh") };TextButton(onEdit,enabled=!state.loading && !state.statusBusy && !state.offlineSnapshot) {Text("Edit")}}) },
         bottomBar = {
             if(j!=null && tab in listOf("info","vehicle")) {
                 val activeJourney=journey ?: fieldJourney(j.status)
