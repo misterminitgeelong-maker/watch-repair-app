@@ -81,7 +81,7 @@ private val bottomDestinations = setOf("home", "today", "dispatch", "jobs", "wat
 /** Which of the five Atelier tabs a route belongs to. */
 private fun tabFor(route: String?) = when(route) {
     "today", "home", "dispatch", "route", "dispatchPool", "new_intake" -> "today"
-    "jobs", "watch_jobs", "shoe_jobs", "auto_jobs", "quotes", "invoices", "counterSale" -> "jobs"
+    "jobs", "watch_jobs", "shoe_jobs", "auto_jobs", "counterSale" -> "jobs"
     "people", "customers" -> "people"
     "inbox", "leads" -> "inbox"
     else -> "more"
