@@ -59,7 +59,7 @@ fun ShoeJobDetailScreen(
         }
     } else AtelierDetail(
         backLabel = "Jobs", title = j.title, reference = j.jobNumber,
-        banner = listOfNotNull(statusLabel(j.status), if (j.quoteStatus != "none") "Quote ${j.quoteStatus.replace('_', ' ')}" else null).joinToString(" \u00b7 "),
+        banner = statusLabel(j.status).let { s -> val q = if (j.quoteStatus != "none") "Quote ${j.quoteStatus.replace('_', ' ')}" else null; if (q == null || q.equals(s, true)) s else "$s · $q" },
         tabs = listOf("overview" to "Overview", "history" to "History", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
         primaryLabel = if (state.statusBusy) "Updating\u2026" else "Update repair status",
