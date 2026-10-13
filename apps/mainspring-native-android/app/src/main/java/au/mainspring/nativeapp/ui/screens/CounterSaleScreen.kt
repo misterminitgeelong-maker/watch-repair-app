@@ -18,7 +18,12 @@ import au.mainspring.nativeapp.*
  var confirmReset by remember { mutableStateOf(false) }
  val f = vm::field; val done = f("done") == "true"; val locked = state.busy || f("jobId").isNotBlank() || f("uncertain").isNotBlank()
  BackHandler { if(!state.busy) onBack() }
- Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Counter sale or quote", style = MaterialTheme.typography.titleLarge) },navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack,enabled = !state.busy) }) }) { padding ->
+ Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = { Column {
+    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+      TextButton(onClick = onBack, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("‹ Jobs", style = MaterialTheme.typography.titleSmall) }
+    }
+    au.mainspring.nativeapp.ui.LargeHeader("Mobile services · Sale or quote", "Point of sale", insets = false)
+  } }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.busy || state.customerLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
    (localError ?: state.error)?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }

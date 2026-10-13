@@ -180,8 +180,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 }
 
 /** Atelier large-title header: small uppercase eyebrow, big bold title, optional round "+" button. */
-@Composable fun LargeHeader(eyebrow: String?, title: String, modifier: Modifier = Modifier, onAdd: (() -> Unit)? = null, addDescription: String = "New", trailing: (@Composable () -> Unit)? = null) {
-    Row(modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
+@Composable fun LargeHeader(eyebrow: String?, title: String, modifier: Modifier = Modifier, onAdd: (() -> Unit)? = null, addDescription: String = "New", trailing: (@Composable () -> Unit)? = null, insets: Boolean = true) {
+    Row(modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
             if(eyebrow != null) Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(title, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)

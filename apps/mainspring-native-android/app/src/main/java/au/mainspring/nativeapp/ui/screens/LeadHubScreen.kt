@@ -13,7 +13,14 @@ import au.mainspring.nativeapp.TokenStore
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun LeadHubScreen(onBack: () -> Unit,onNavigate: (String) -> Unit) {
     var tab by rememberSaveable {mutableStateOf("inbox")}
-    Scaffold(topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Lead inbox",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton({onNavigate("bookingRequests")}) {Text("Bookings")}})}) {padding->
+    Scaffold(containerColor=MaterialTheme.colorScheme.background,topBar={Column {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal=12.dp,vertical=0.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+            TextButton(onBack,modifier=Modifier.heightIn(min=48.dp)) {Text("‹ More",style=MaterialTheme.typography.titleSmall)}
+            Spacer(Modifier.weight(1f))
+            TextButton({onNavigate("bookingRequests")},modifier=Modifier.heightIn(min=48.dp)) {Text("Bookings")}
+        }
+        au.mainspring.nativeapp.ui.LargeHeader("Mobile services · Pipeline","Prospects",insets=false)
+    }}) {padding->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=12.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 val tabs=listOf("inbox" to "Lead inbox","prospects" to "Prospects","board" to "Board") + if(TokenStore.canManageInvoices()) listOf("team" to "Team") else emptyList()
