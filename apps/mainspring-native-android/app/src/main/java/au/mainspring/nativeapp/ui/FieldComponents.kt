@@ -42,14 +42,19 @@ import androidx.compose.ui.unit.dp
 
 @Composable fun StatusPill(status: String) {
     val dark = MaterialTheme.colorScheme.background.red < 0.2f
+    val blue = if(dark) Color(0xFF172B3B) to Color(0xFF9ACAF2) else Color(0xFFE7F0FF) to Color(0xFF315F96)
+    val green = if(dark) Color(0xFF1A3427) to Color(0xFFA2DBB6) else Color(0xFFE6F3E9) to Color(0xFF326747)
+    val amber = if(dark) Color(0xFF3C3019) to Color(0xFFEED59B) else Color(0xFFFFF3DA) to Color(0xFF866020)
+    val red = if(dark) Color(0xFF3E1D19) to Color(0xFFFFB4A8) else Color(0xFFFFE7E1) to Color(0xFF8C2514)
     val (background, foreground) = when(status) {
-        "booked", "booking_confirmed", "booking_scheduled" -> if(dark) Color(0xFF172B3B) to Color(0xFF9ACAF2) else Color(0xFFE7F0FF) to Color(0xFF315F96)
-        "work_completed", "invoice_paid", "paid" -> if(dark) Color(0xFF1A3427) to Color(0xFFA2DBB6) else Color(0xFFE6F3E9) to Color(0xFF326747)
-        "awaiting_go_ahead", "quote_sent", "awaiting_confirmation" -> if(dark) Color(0xFF3C3019) to Color(0xFFEED59B) else Color(0xFFFFF3DA) to Color(0xFF866020)
+        "booked", "booking_confirmed", "booking_scheduled", "go_ahead", "working_on", "en_route", "on_site", "service" -> blue
+        "work_completed", "invoice_paid", "paid", "completed", "collected", "booking_completed", "approved" -> green
+        "awaiting_go_ahead", "quote_sent", "awaiting_confirmation", "awaiting_quote", "awaiting_parts", "parts_to_order", "awaiting_collection", "awaiting_customer_details", "booking_on_hold", "pending_booking" -> amber
+        "no_go", "failed_job", "job_delayed", "declined", "overdue" -> red
         else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     }
     Surface(color = background, contentColor = foreground, shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
-        Text(status.replace('_', ' ').replaceFirstChar { it.uppercase() }, Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall)
+        Text(status.replace('_', ' ').replaceFirstChar { it.uppercase() }, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium)
     }
 }
 

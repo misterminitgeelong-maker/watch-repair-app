@@ -42,12 +42,13 @@ fun DashboardScreen(sessionSummary: String?,apiBaseUrl: String,onLogout: () -> U
     }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal=16.dp,vertical=8.dp)) {
-            Text("Operations dashboard",style=MaterialTheme.typography.headlineMedium)
-            au.mainspring.nativeapp.TokenStore.shopValue("name")?.let {Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+            Text(au.mainspring.nativeapp.TokenStore.shopValue("name") ?: "Your shop",style=MaterialTheme.typography.headlineSmall)
+            Text("Operations overview",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                if("auto_key" in features) OutlinedButton(onOpenAutoJobs,modifier=Modifier.weight(1f)) {Text("Mobile jobs")}
-                if("watch" in features) OutlinedButton(onOpenWatchJobs,modifier=Modifier.weight(1f)) {Text("Watch jobs")}
-                if("shoe" in features) OutlinedButton(onOpenShoeJobs,modifier=Modifier.weight(1f)) {Text("Shoe jobs")}
+                if("auto_key" in features) OutlinedButton(onOpenAutoJobs,modifier=Modifier.weight(1f)) {Text("Mobile")}
+                if("watch" in features) OutlinedButton(onOpenWatchJobs,modifier=Modifier.weight(1f)) {Text("Watch")}
+                if("shoe" in features) OutlinedButton(onOpenShoeJobs,modifier=Modifier.weight(1f)) {Text("Shoe")}
             }
         }
         Box(Modifier.weight(1f)) {PeriodReportsScreen({},embedded=true)}

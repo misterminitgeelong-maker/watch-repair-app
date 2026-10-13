@@ -25,28 +25,41 @@ import au.mainspring.nativeapp.ui.*
     var signOut by remember { mutableStateOf(false) }
     Scaffold(topBar={TopAppBar(title={Column {
         shop?.let {Text(it.uppercase(),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-        Text("More",style=MaterialTheme.typography.headlineMedium)
+        Text("More",style=MaterialTheme.typography.titleLarge)
     }})}) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("more-list"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             item {
                 SectionLabel("Workspace")
-                MoreLink("Home dashboard",{onNavigate("home")})
-                MoreLink("Customers",{onNavigate("customers")})
-                if("auto_key" in features) {
-                    MoreLink("Mobile services jobs",{onNavigate("auto_jobs")})
-                    MoreLink("Map and today's route",{onNavigate("route")})
-                    MoreLink("Dispatch pool",{onNavigate("dispatchPool")})
-                    MoreLink("POS / quick sale",{onNavigate("counterSale")})
-                    MoreLink("Mobile toolkit",{onNavigate("toolkit")})
-                    MoreLink("Lead inbox & prospects",{onNavigate("leads")})
+                MoreGroup {
+                    MoreLink("Home dashboard",{onNavigate("home")})
+                    MoreLink("Customers",{onNavigate("customers")})
+                    MoreLink("Inbox",{onNavigate("inbox")})
                 }
-                if("watch" in features) { MoreLink("Watch repair jobs",{onNavigate("jobs")});MoreLink("Quotes",{onNavigate("quotes")});MoreLink("Invoices",{onNavigate("invoices")}) }
-                if("shoe" in features) MoreLink("Shoe repair jobs",{onNavigate("shoe_jobs")})
-                MoreLink("Inbox",{onNavigate("inbox")})
-                if("auto_key" in features || "shop_mobile_booking" in features) MoreLink("Mobile booking requests",{onNavigate("bookingRequests")})
-                if("customer_accounts" in features) MoreLink("Business accounts",{onNavigate("businessAccounts")})
-                MoreLink("Inventory and stocktakes",{onNavigate("stock")})
-                if(TokenStore.canManageInvoices()) { MoreLink("Reports",{onNavigate("reports")});MoreLink("Team & commission",{onNavigate("team")}) }
+                if("auto_key" in features) {
+                    SectionLabel("Mobile services")
+                    MoreGroup {
+                        MoreLink("Mobile services jobs",{onNavigate("auto_jobs")})
+                        MoreLink("Map and today's route",{onNavigate("route")})
+                        MoreLink("Dispatch pool",{onNavigate("dispatchPool")})
+                        MoreLink("POS / quick sale",{onNavigate("counterSale")})
+                        MoreLink("Lead inbox & prospects",{onNavigate("leads")})
+                        MoreLink("Mobile toolkit",{onNavigate("toolkit")})
+                        if("auto_key" in features || "shop_mobile_booking" in features) MoreLink("Mobile booking requests",{onNavigate("bookingRequests")})
+                    }
+                } else if("shop_mobile_booking" in features) MoreGroup { MoreLink("Mobile booking requests",{onNavigate("bookingRequests")}) }
+                if("watch" in features || "shoe" in features) {
+                    SectionLabel("Repairs and billing")
+                    MoreGroup {
+                        if("watch" in features) { MoreLink("Watch repair jobs",{onNavigate("jobs")});MoreLink("Quotes",{onNavigate("quotes")});MoreLink("Invoices",{onNavigate("invoices")}) }
+                        if("shoe" in features) MoreLink("Shoe repair jobs",{onNavigate("shoe_jobs")})
+                    }
+                }
+                SectionLabel("Business")
+                MoreGroup {
+                    if("customer_accounts" in features) MoreLink("Business accounts",{onNavigate("businessAccounts")})
+                    MoreLink("Inventory and stocktakes",{onNavigate("stock")})
+                    if(TokenStore.canManageInvoices()) { MoreLink("Reports",{onNavigate("reports")});MoreLink("Team & commission",{onNavigate("team")}) }
+                }
             }
             item {
                 if("auto_key" in features && TokenStore.canManageInvoices()) Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
@@ -88,9 +101,13 @@ import au.mainspring.nativeapp.ui.*
         confirmButton={TextButton({signOut=false;onLogout()}) {Text("Sign out")}},dismissButton={TextButton({signOut=false}) {Text("Cancel")}})
 }
 
-@Composable private fun MoreLink(label: String,onClick: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().clickable(onClick=onClick),color=MaterialTheme.colorScheme.surface) {
-        Row(Modifier.padding(horizontal=12.dp,vertical=16.dp),horizontalArrangement=Arrangement.SpaceBetween) {Text(label,style=MaterialTheme.typography.bodyMedium);Text("›")}
+@Composable private fun MoreGroup(content: @Composable ColumnScope.() -> Unit) {
+    Surface(Modifier.fillMaxWidth(),color=MaterialTheme.colorScheme.surface,shape=MaterialTheme.shapes.medium) { Column(content=content) }
+}
+
+@Composable private fun ColumnScope.MoreLink(label: String,onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min=52.dp).clickable(onClick=onClick).padding(horizontal=16.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+        Text(label,style=MaterialTheme.typography.bodyLarge);Text("›",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+    HorizontalDivider(Modifier.padding(horizontal=16.dp),color=MaterialTheme.colorScheme.outlineVariant)
 }

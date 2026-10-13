@@ -116,7 +116,7 @@ class StockWorkflowTest {
         model.search("battery"); model.group("BAT"); model.hideZero(true)
         compose.waitUntil(10_000) { !model.state.value.loading }
         compose.setContent { MainspringTheme { StockScreen({}, {}, model) } }
-        compose.onNodeWithText("New stocktake from filters").performScrollTo().performClick()
+        compose.onNodeWithText("Start stocktake from these filters").performScrollTo().performClick()
         compose.onNodeWithText("Stocktake name").performTextReplacement("Battery count")
         Assert.assertEquals(0, creates)
         compose.onNodeWithText("Confirm creation").performClick()

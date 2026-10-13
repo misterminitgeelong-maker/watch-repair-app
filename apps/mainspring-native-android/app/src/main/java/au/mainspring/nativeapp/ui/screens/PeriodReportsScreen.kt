@@ -61,7 +61,7 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
             finally { exportBusy = false }
         }
     }
-    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) TopAppBar(title = { Text("Operational reports", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack) }) }) { padding ->
+    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) TopAppBar(title = { Text("Reports", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack) }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("period-report-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -69,18 +69,19 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
                         FilterChip(state.period == period, { model.select(period = period) }, label = { Text(period.replaceFirstChar { it.uppercase() }) })
                     }
                 }
-                TextButton({ dateOpen = true }) { Text("Report date: ${formatShopDate(state.date)}") }
-                OutlinedButton(model::refresh, enabled = !state.loading) { Text("Refresh report") }
-                OutlinedButton(onClick = {
-                    exportPeriod = state.period; exportDate = state.date; exportGeneration = TokenStore.sessionGeneration()
-                    export.launch("mainspring-report-${state.period}-${state.date}.csv")
-                }, enabled = !state.loading && state.current != null && !exportBusy) { Text(if(exportBusy) "Preparing CSV…" else "Save report CSV") }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton({ dateOpen = true },modifier=Modifier.fillMaxWidth()) { Text("Report date: ${formatShopDate(state.date)}") }
+                Row(Modifier.fillMaxWidth().padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(model::refresh, enabled = !state.loading, modifier=Modifier.weight(1f)) { Text("Refresh") }
+                    OutlinedButton(onClick = {
+                        exportPeriod = state.period; exportDate = state.date; exportGeneration = TokenStore.sessionGeneration()
+                        export.launch("mainspring-report-${state.period}-${state.date}.csv")
+                    }, enabled = !state.loading && state.current != null && !exportBusy, modifier=Modifier.weight(1f)) { Text(if(exportBusy) "Preparing…" else "Export CSV") }
+                }
                 exportInfo?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                Text("Calendar periods use the server's UTC reporting boundaries. The current period may be incomplete.", style = MaterialTheme.typography.bodySmall)
-                Text("Amounts are returned in cents; the reporting API does not identify a currency.", style = MaterialTheme.typography.bodySmall)
             }
             if(state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            state.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            state.error?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = model::refresh) } }
             state.current?.let { current ->
                 item {
                     Text("${formatShopDate(current.start)} – ${formatShopDate(current.end)}", style = MaterialTheme.typography.titleLarge)
@@ -131,6 +132,7 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
                         Triple("Average revenue per job", reportAmount(current.operations.averageRevenue), state.previous?.operations?.let { reportAmount(it.averageRevenue) }),
                     ))
                 }
+                item { Text("Periods follow the server's UTC reporting days, so the current period may be incomplete.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
     }
@@ -146,6 +148,10 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
 private fun RevenueComparison(current: Long,previous: Long?) {
     FlatPanel {
         Text("Revenue comparison",style=MaterialTheme.typography.titleMedium)
+        if(current == 0L && (previous ?: 0L) == 0L) {
+            Text("No revenue recorded in either period yet.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            return@FlatPanel
+        }
         val maximum=maxOf(current,previous ?: 0,1).toFloat()
         Row(Modifier.fillMaxWidth().height(130.dp),horizontalArrangement=Arrangement.spacedBy(16.dp),verticalAlignment=androidx.compose.ui.Alignment.Bottom) {
             listOf("Previous period" to previous,"Current period" to current).forEach {(label,value)->Column(Modifier.weight(1f),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally) {
