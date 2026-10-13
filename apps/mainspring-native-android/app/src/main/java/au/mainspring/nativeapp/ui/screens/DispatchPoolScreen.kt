@@ -21,7 +21,7 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
     val state by vm.state.collectAsStateWithLifecycle()
     var confirmingId by rememberSaveable { mutableStateOf<String?>(null) }
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { TopAppBar(title = { Text("Dispatch pool", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Dispatch pool", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text("Nearby unclaimed work. Ring 1 is closest. Claiming creates a mobile job for your shop.")

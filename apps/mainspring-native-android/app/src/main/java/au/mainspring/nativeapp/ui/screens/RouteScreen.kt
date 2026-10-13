@@ -37,7 +37,7 @@ import java.util.Locale
         try { context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://www.google.com/maps/dir/").buildUpon().appendQueryParameter("api","1").appendQueryParameter("destination",address).appendQueryParameter("travelmode","driving").build())) }
         catch(_: android.content.ActivityNotFoundException) {error="No maps app or browser is available."}
     }
-    Scaffold(topBar={TopAppBar(title={Text("Today's route",style=MaterialTheme.typography.headlineSmall)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton(model::refresh,enabled=!state.loading) {Text("Refresh")}})}) {padding ->
+    Scaffold(topBar={TopAppBar(title={Text("Today's route",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton(model::refresh,enabled=!state.loading) {Text("Refresh")}})}) {padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if(BuildConfig.MAPS_CONFIGURED) NativeStopMap(stops.map {it.jobAddress.orEmpty()},Modifier.fillMaxWidth().height(240.dp))
             else Surface(Modifier.fillMaxWidth().height(150.dp),color=MaterialTheme.colorScheme.secondaryContainer) {

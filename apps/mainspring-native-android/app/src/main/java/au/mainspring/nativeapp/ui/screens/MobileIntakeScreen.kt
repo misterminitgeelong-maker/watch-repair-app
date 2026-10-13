@@ -23,7 +23,7 @@ import au.mainspring.nativeapp.ui.SectionLabel
     var leave by remember {mutableStateOf(false)};var discard by remember {mutableStateOf(false)};var reconcile by remember {mutableStateOf(false)}
     BackHandler {if(!state.busy) leave=true}
     LaunchedEffect(Unit) {if(preselectedCustomerId!=null && state.fields.isEmpty()) {vm.set("customerId",preselectedCustomerId);vm.set("customerMode","existing")};vm.search()}
-    Scaffold(topBar={TopAppBar(title={Text("New job",style=MaterialTheme.typography.headlineSmall)},navigationIcon={au.mainspring.nativeapp.ui.BackButton({leave=true},enabled=!state.busy)},actions={TextButton({discard=true},enabled=!state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank()) {Text("Discard")}})},
+    Scaffold(topBar={TopAppBar(title={Text("New job",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton({leave=true},enabled=!state.busy)},actions={TextButton({discard=true},enabled=!state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank()) {Text("Discard")}})},
         bottomBar={if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton({leave=true},enabled=!state.busy,modifier=Modifier.weight(1f)) {Text("Cancel")}
             Button(vm::submit,enabled=!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs(),modifier=Modifier.weight(1f)) {Text("Create job")}

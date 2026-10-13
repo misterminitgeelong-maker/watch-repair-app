@@ -17,7 +17,7 @@ import au.mainspring.nativeapp.*
  var teamOpen by remember { mutableStateOf(false) }
  var accountOpen by remember { mutableStateOf(false) }
  androidx.activity.compose.BackHandler(state.busy) {}
- Scaffold(topBar = { TopAppBar(title = { Text("Edit mobile job", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+ Scaffold(topBar = { TopAppBar(title = { Text("Edit mobile job", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; if(state.saved) Text("Job changes saved.")

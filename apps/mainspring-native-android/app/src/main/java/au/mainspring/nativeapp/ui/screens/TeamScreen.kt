@@ -26,7 +26,7 @@ import com.google.gson.JsonParser
     var editorOpen by remember {mutableStateOf(false)}
     LaunchedEffect(state.info) {if(state.info=="Account saved.") editorOpen=false}
     RefreshOnResume(model::refresh)
-    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar={if(!embedded) TopAppBar(title={Text("Team",style=MaterialTheme.typography.headlineSmall)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack,enabled=!state.busy)},
+    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar={if(!embedded) TopAppBar(title={Text("Team",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack,enabled=!state.busy)},
         actions={if(TokenStore.canManageTeam()) TextButton({editing=null;editorOpen=true},enabled=!state.busy && !state.loading && !state.uncertain) {Text("Add account")}})}) {padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {

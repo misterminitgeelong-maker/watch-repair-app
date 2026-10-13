@@ -20,7 +20,7 @@ import au.mainspring.nativeapp.*
  var confirm by remember { mutableStateOf<Pair<String,String>?>(null) }; var reason by rememberSaveable { mutableStateOf("") }
  val enabled = !state.loading && !state.busy
  val tenant = TokenStore.currentTenantId()
- Scaffold(topBar = { TopAppBar(title = { Text("Mobile booking requests", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+ Scaffold(topBar = { TopAppBar(title = { Text("Mobile booking requests", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    item {
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())

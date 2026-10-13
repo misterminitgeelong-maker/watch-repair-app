@@ -61,7 +61,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
         if(preselectedCustomerId != null && state.fields.isEmpty()) { vm.selectCustomer(preselectedCustomerId); vm.setField("step", "1") }
         vm.searchCustomers(vm.field("customerQuery"))
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("New watch repair", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = {
+    Scaffold(topBar = { TopAppBar(title = { Text("New watch repair", style = MaterialTheme.typography.titleLarge) }, navigationIcon = {
         au.mainspring.nativeapp.ui.BackButton(onClick = ::close, enabled = !state.busy)
     }, actions = { TextButton(onClick = { discardDialog = true }, enabled = !state.busy && vm.field("uncertainWrite").isBlank() && state.savedJobIds.isEmpty()) { Text("Discard") } }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),

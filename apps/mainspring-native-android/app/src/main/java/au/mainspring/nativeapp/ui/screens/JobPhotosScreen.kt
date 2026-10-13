@@ -45,7 +45,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
         }
     }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success -> vm.cameraFinished(success) }
-    Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) TopAppBar(title = { Text("Job photos and files", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+    Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) TopAppBar(title = { Text("Job photos and files", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 if(state.busy || state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
