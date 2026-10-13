@@ -23,7 +23,7 @@ private fun quantityText(value: Double) = if(value % 1.0 == 0.0) value.toLong().
 @Composable fun StockScreen(onBack: () -> Unit, model: StockViewModel = viewModel()) {
     val state by model.state.collectAsStateWithLifecycle()
     val currency = TokenStore.shopValue("currency") ?: "AUD"
-    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Inventory", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.BackLargeHeader("More", "Stock & data", "Inventory", onBack) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

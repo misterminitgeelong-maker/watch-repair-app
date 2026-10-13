@@ -303,3 +303,13 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary),
 ) = OutlinedTextField(value, onValueChange, modifier, enabled, readOnly, textStyle, label, placeholder, leadingIcon, trailingIcon, prefix, suffix, supportingText,
     isError, visualTransformation, keyboardOptions, keyboardActions, singleLine, maxLines, minLines, null, shape, colors)
+
+/** Sub-screen header: blue "‹ Back" link above an eyebrow + large title (used where the screen has no Atelier tab frame). */
+@Composable fun BackLargeHeader(backLabel: String, eyebrow: String?, title: String, onBack: () -> Unit, backEnabled: Boolean = true) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Back" }) { Text("\u2039 $backLabel", style = MaterialTheme.typography.titleSmall) }
+        }
+        LargeHeader(eyebrow, title, insets = false)
+    }
+}
