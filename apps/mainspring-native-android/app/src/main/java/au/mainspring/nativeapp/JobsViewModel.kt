@@ -41,7 +41,7 @@ class JobsViewModel : ViewModel() {
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 _state.update {
-                    it.copy(loading = false, error = e.message ?: "Could not load jobs (check watch feature on plan).")
+                    it.copy(loading = false, error = e.userMessage())
                 }
             }
         }

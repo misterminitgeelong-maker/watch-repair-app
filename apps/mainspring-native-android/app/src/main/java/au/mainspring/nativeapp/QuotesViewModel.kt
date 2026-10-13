@@ -35,7 +35,7 @@ class QuotesViewModel : ViewModel() {
                 QuoteNavCache.putAll(list,generation)
                 _state.update { it.copy(loading = false, quotes = list) }
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message ?: "Could not load quotes") }
+                _state.update { it.copy(loading = false, error = e.userMessage()) }
             }
         }
     }

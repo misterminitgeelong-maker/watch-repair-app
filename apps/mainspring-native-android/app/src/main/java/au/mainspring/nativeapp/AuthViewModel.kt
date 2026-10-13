@@ -161,9 +161,12 @@ class AuthViewModelFactory(private val application: Application) : ViewModelProv
 }
 
 private fun humanError(e: Exception): String {
-    val raw = e.message ?: return "Request failed."
-    if (raw.contains("401") || raw.contains("Unable to resolve host")) return raw
-    if (raw.contains("404")) return "API not found — check API base URL in local.properties (api.base.url)."
-    if (raw.contains("Failed to connect")) return "Cannot reach API — check base URL, VPN, and that the server is running."
-    return raw
+    if (e is retrofit2.HttpException) return when (e.code()) {
+        400, 401, 403 -> "Those details weren't recognised. Check your email, password and Shop ID, then try again."
+        404 -> "We couldn't find the Mainspring service. Check the server address under Connection settings."
+        429 -> "Too many attempts. Wait a moment and try again."
+        else -> if (e.code() >= 500) "Mainspring is having trouble right now. Try again shortly." else e.userMessage()
+    }
+    if (e is java.io.IOException) return "Can't reach the server. Check your internet connection or the server address under Connection settings."
+    return e.message ?: "Sign-in failed. Try again."
 }

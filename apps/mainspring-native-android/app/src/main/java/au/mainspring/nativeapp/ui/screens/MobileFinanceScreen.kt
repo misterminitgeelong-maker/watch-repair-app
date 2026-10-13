@@ -30,7 +30,7 @@ import au.mainspring.nativeapp.ui.formatCents
  LaunchedEffect(state.lastCreatedQuoteId,state.unknownQuote) { if(state.lastCreatedQuoteId != null || state.unknownQuote) composing=false }
  var confirm by remember { mutableStateOf<Pair<String, String>?>(null) }; var method by rememberSaveable { mutableStateOf("card") }
  val enabled = !state.busy && !state.loading && state.historyChecked && TokenStore.canWorkJobs()
- Scaffold(containerColor=MaterialTheme.colorScheme.surface,contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) TopAppBar(title = { Text("Mobile quotes and invoices", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { padding ->
+ Scaffold(containerColor=MaterialTheme.colorScheme.surface,contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) TopAppBar(title = { Text("Mobile quotes and invoices", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }

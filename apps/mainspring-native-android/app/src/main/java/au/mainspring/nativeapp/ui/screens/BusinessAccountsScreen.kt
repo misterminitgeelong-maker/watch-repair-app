@@ -22,7 +22,7 @@ fun BusinessAccountsScreen(onBack: () -> Unit, onOpenAccount: (String) -> Unit, 
     val state by vm.state.collectAsStateWithLifecycle()
     var search by rememberSaveable { mutableStateOf("") }
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { TopAppBar(title = { Text("Business accounts", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Business accounts", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -58,7 +58,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
     val manager = TokenStore.canManageInvoices()
     val enabled = !state.loading && !state.busy
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { TopAppBar(title = { Text(state.account?.name ?: "Business account") }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(state.account?.name ?: "Business account") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())

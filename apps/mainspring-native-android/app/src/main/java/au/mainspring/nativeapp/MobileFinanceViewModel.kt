@@ -30,7 +30,7 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
   if(lines.isEmpty() || lines.any { it.description.isBlank() || !it.quantity.isFinite() || it.quantity <= 0 || it.quantity > 10000 || it.unitCents < 0 }) {
    mutable.update { it.copy(error = "Enter a description, valid quantity and price for each line.") }; return
   }
-  try { validateQuoteAmountRange(lines) } catch(e: IllegalArgumentException) { mutable.update { it.copy(error = e.message) }; return }
+  try { validateQuoteAmountRange(lines) } catch(e: IllegalArgumentException) { mutable.update { it.copy(error = e.userMessage()) }; return }
   if(!drafts.setPendingOperation(operation, true)) { mutable.update { it.copy(error = "Could not save the quote checkpoint. Check device storage and sign in before continuing.") }; return }
   runAction { try {
    val q = api.createMobileQuote(jobId, MobileQuoteCreate(lines, gst, inclusive))

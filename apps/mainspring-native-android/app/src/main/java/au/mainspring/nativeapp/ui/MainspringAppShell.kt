@@ -103,77 +103,11 @@ fun MainspringAppShell(
     var switchOpen by remember { mutableStateOf(false) }
     val selectedSite = sites.firstOrNull { it.tenantId == activeSiteId }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = showMainTopBar,
-        drawerContent = {
-            ModalDrawerSheet(modifier = Modifier.width(300.dp).verticalScroll(rememberScrollState())) {
-                selectedSite?.let { Text(it.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp)) }
-                sessionError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
-                if(sites.size > 1) TextButton(onClick = { switchOpen = true }, modifier = Modifier.padding(horizontal = 16.dp)) { Text("Switch shop") }
-                Text(
-                    "More",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                )
-                NavigationDrawerItem(
-                    label = { Text("Inbox") },
-                    selected = currentRoute == "inbox",
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("inbox")
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-                if ("shoe" in features) NavigationDrawerItem(
-                    label = { Text("Shoe repairs") },
-                    selected = currentRoute == "shoe_jobs" || (currentRoute?.startsWith("shoeJob/") == true),
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("shoe_jobs")
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-                if ("auto_key" in features) NavigationDrawerItem(
-                    label = { Text("Mobile services") },
-                    selected = currentRoute == "auto_jobs" || (currentRoute?.startsWith("autoKeyJob/") == true),
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("auto_jobs")
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-                Spacer(Modifier.height(16.dp))
-                NavigationDrawerItem(label = { Text("Inventory and stocktakes") }, selected = currentRoute == "stock",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("stock") }, modifier = Modifier.padding(horizontal = 12.dp))
-                if(au.mainspring.nativeapp.TokenStore.canManageInvoices()) NavigationDrawerItem(label = { Text("Operational reports") }, selected = currentRoute == "reports",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("reports") }, modifier = Modifier.padding(horizontal = 12.dp))
-                if("customer_accounts" in features) NavigationDrawerItem(label = { Text("Business accounts") }, selected = currentRoute == "businessAccounts",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("businessAccounts") }, modifier = Modifier.padding(horizontal = 12.dp))
-                if("auto_key" in features) NavigationDrawerItem(label = { Text("Dispatch pool") }, selected = currentRoute == "dispatchPool",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("dispatchPool") }, modifier = Modifier.padding(horizontal = 12.dp))
-                if("auto_key" in features) NavigationDrawerItem(label = { Text("Counter sale / quote") }, selected = currentRoute == "counterSale",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("counterSale") }, modifier = Modifier.padding(horizontal = 12.dp))
-                if("shop_mobile_booking" in features || "auto_key" in features) NavigationDrawerItem(label = { Text("Mobile booking requests") }, selected = currentRoute == "bookingRequests",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("bookingRequests") }, modifier = Modifier.padding(horizontal = 12.dp))
-                if("auto_key" in features) NavigationDrawerItem(label = { Text("Mobile prospects") }, selected = currentRoute == "prospects",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("prospects") }, modifier = Modifier.padding(horizontal = 12.dp))
-                if("auto_key" in features) NavigationDrawerItem(label = { Text("Shop toolkit") }, selected = currentRoute == "toolkit",
-                    onClick = { scope.launch { drawerState.close() }; navController.navigate("toolkit") }, modifier = Modifier.padding(horizontal = 12.dp))
-            }
-        },
-    ) {
+    run {
         Scaffold(
             topBar = {
                 if (showMainTopBar) {
-                    TopAppBar(
-                        title = { Text("Mainspring") },
-                        navigationIcon = {
-                            TextButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Text("Menu")
-                            }
-                        },
-                    )
+                    TopAppBar(title = { Text(mainTitle(currentRoute), style = MaterialTheme.typography.titleLarge) })
                 }
             },
             bottomBar = {
@@ -198,10 +132,12 @@ fun MainspringAppShell(
                 }
             },
         ) { paddingValues ->
+            androidx.compose.foundation.layout.Column(Modifier.padding(paddingValues)) {
+            sessionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
             NavHost(
                 navController = navController,
                 startDestination = startRoute,
-                modifier = Modifier.padding(paddingValues),
+                modifier = Modifier.weight(1f),
             ) {
                 composable("today") { au.mainspring.nativeapp.ui.screens.TodayScreen(
                     onOpenJob = { navController.navigate("autoKeyJob/$it") }, onDirectory = { navController.navigate("auto_jobs") },
@@ -424,6 +360,7 @@ fun MainspringAppShell(
                     )
                 }
             }
+            }
         }
     }
     if(switchOpen) androidx.compose.material3.AlertDialog(onDismissRequest = { switchOpen = false }, title = { Text("Switch shop") },
@@ -431,4 +368,9 @@ fun MainspringAppShell(
             Text("Unsaved drafts remain tied to the shop and account that opened them.")
             sites.forEach { site -> TextButton(onClick = { switchOpen = false; onSwitchSite(site.tenantId) }, enabled = site.tenantId != activeSiteId) { Text(site.name) } }
         } }, confirmButton = { TextButton(onClick = { switchOpen = false }) { Text("Cancel") } })
+}
+
+private fun mainTitle(route: String?) = when(route) {
+    "home" -> "Home"; "customers" -> "Customers"; "jobs" -> "Watch repairs"
+    "quotes" -> "Quotes"; "invoices" -> "Invoices"; else -> "Mainspring"
 }

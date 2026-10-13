@@ -55,9 +55,9 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
             labelLarge = baseline.labelLarge.copy(fontWeight = FontWeight.SemiBold),
         ),
         shapes = Shapes(
-            extraSmall = RoundedCornerShape(2.dp), small = RoundedCornerShape(2.dp),
-            medium = RoundedCornerShape(4.dp), large = RoundedCornerShape(6.dp),
-            extraLarge = RoundedCornerShape(12.dp),
+            extraSmall = RoundedCornerShape(6.dp), small = RoundedCornerShape(8.dp),
+            medium = RoundedCornerShape(12.dp), large = RoundedCornerShape(16.dp),
+            extraLarge = RoundedCornerShape(24.dp),
         ),
         content = content,
     )

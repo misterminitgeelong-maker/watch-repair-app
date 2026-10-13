@@ -60,7 +60,7 @@ private fun boardColumn(status: String)=when(status) {
 @Composable private fun MobileKanbanScreen(onBack: ()->Unit,onJob: (String)->Unit,onNew: ()->Unit,model: AutoKeyJobsViewModel=viewModel(key="kanban")) {
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(model) {model.directory("all")}
-    Scaffold(topBar={TopAppBar(title={Text("Job board",style=MaterialTheme.typography.headlineSmall)},navigationIcon={TextButton(onBack) {Text("Back")}},actions={TextButton(onNew,enabled=TokenStore.canWorkJobs()) {Text("New job")}})}) {padding->
+    Scaffold(topBar={TopAppBar(title={Text("Job board",style=MaterialTheme.typography.headlineSmall)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton(onNew,enabled=TokenStore.canWorkJobs()) {Text("New job")}})}) {padding->
         Column(Modifier.fillMaxSize().padding(padding)) {
             OutlinedTextField(state.query,model::query,label={Text("Search jobs")},modifier=Modifier.fillMaxWidth().padding(12.dp),singleLine=true)
             Text("${state.jobs.size} of ${state.total} jobs loaded",Modifier.padding(horizontal=12.dp),style=MaterialTheme.typography.bodySmall)
@@ -97,7 +97,7 @@ private fun boardColumn(status: String)=when(status) {
     var time by rememberSaveable {mutableStateOf("")}
     val zone=ZoneId.of(TokenStore.calendarTimezone())
     RefreshOnResume(model::refresh)
-    Scaffold(topBar={TopAppBar(title={Text("Week planner",style=MaterialTheme.typography.headlineSmall)},navigationIcon={TextButton(onBack,enabled=!state.busy) {Text("Back")}})}) {padding->
+    Scaffold(topBar={TopAppBar(title={Text("Week planner",style=MaterialTheme.typography.headlineSmall)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack,enabled=!state.busy)})}) {padding->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {TextButton({model.shift(-1)},enabled=!state.busy) {Text("Previous week")};TextButton({model.shift(1)},enabled=!state.busy) {Text("Next week")}}
             Text("${formatShopDate(state.start.toString())} - ${formatShopDate(state.start.plusDays(6).toString())}",Modifier.padding(horizontal=12.dp),style=MaterialTheme.typography.titleSmall)

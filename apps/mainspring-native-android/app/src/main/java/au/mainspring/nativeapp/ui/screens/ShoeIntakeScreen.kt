@@ -45,7 +45,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
         if(success) vm.set("pair.$photoPair.photo", cameraUri) else photoError = "Photo not captured. Try again or choose a photo."
     }
     LaunchedEffect(Unit) { if(preselectedCustomerId != null && state.fields.isEmpty()) { vm.set("customerId",preselectedCustomerId); vm.set("customerMode","existing"); vm.set("step","1") }; vm.search() }
-    Scaffold(topBar = { TopAppBar(title = { Text("New shoe repair", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onClick = { leave = true }, enabled = !state.busy) { Text("Back") } },
+    Scaffold(topBar = { TopAppBar(title = { Text("New shoe repair", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = { leave = true }, enabled = !state.busy) },
         actions = { TextButton(onClick = { discard = true }, enabled = !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank()) { Text("Discard") } }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("${step + 1} of 4 · ${listOf("Customer", "Pairs and services", "Job details", "Photos")[step]}", style = MaterialTheme.typography.titleMedium)

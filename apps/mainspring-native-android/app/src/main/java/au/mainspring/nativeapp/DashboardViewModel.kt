@@ -42,7 +42,7 @@ class DashboardViewModel : ViewModel() {
                         try {
                             api.getReportsSummary()
                         } catch (e: Exception) {
-                            err = e.message ?: "Could not load reports"
+                            err = e.userMessage()
                             null
                         }
                     }
@@ -60,7 +60,7 @@ class DashboardViewModel : ViewModel() {
                     it.copy(loading = false, summary = summary, widgets = widgets, error = err)
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message ?: "Could not load dashboard") }
+                _state.update { it.copy(loading = false, error = e.userMessage()) }
             }
         }
     }

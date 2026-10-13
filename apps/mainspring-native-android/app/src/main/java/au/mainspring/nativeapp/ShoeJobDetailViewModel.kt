@@ -114,7 +114,7 @@ class ShoeJobDetailViewModel(
                 val history = api.getShoeRepairJobStatusHistory(jobId)
                 _state.update { it.copy(noteBusy = false, job = j, history = history) }
             } catch (e: Exception) {
-                _state.update { it.copy(noteBusy = false, error = e.message ?: "Could not add note") }
+                _state.update { it.copy(noteBusy = false, error = e.userMessage()) }
             }
         }
     }
@@ -126,7 +126,7 @@ class ShoeJobDetailViewModel(
                 val j = api.postShoeRepairJobClaim(jobId)
                 _state.update { it.copy(claimBusy = false, job = j) }
             } catch (e: Exception) {
-                _state.update { it.copy(claimBusy = false, error = e.message ?: "Could not claim job") }
+                _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
             }
         }
     }
@@ -138,7 +138,7 @@ class ShoeJobDetailViewModel(
                 val j = api.postShoeRepairJobRelease(jobId)
                 _state.update { it.copy(claimBusy = false, job = j) }
             } catch (e: Exception) {
-                _state.update { it.copy(claimBusy = false, error = e.message ?: "Could not release job") }
+                _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
             }
         }
     }

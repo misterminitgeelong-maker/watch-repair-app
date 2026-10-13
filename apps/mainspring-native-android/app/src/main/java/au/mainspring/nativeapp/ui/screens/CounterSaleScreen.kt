@@ -18,7 +18,7 @@ import au.mainspring.nativeapp.*
  var confirmReset by remember { mutableStateOf(false) }
  val f = vm::field; val done = f("done") == "true"; val locked = state.busy || f("jobId").isNotBlank() || f("uncertain").isNotBlank()
  BackHandler { if(!state.busy) onBack() }
- Scaffold(topBar = { TopAppBar(title = { Text("Counter sale or quote", style = MaterialTheme.typography.headlineSmall) },navigationIcon = { TextButton(onClick = onBack,enabled = !state.busy) { Text("Back") } }) }) { padding ->
+ Scaffold(topBar = { TopAppBar(title = { Text("Counter sale or quote", style = MaterialTheme.typography.headlineSmall) },navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack,enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.busy || state.customerLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
    (localError ?: state.error)?.let { Text(it,color = MaterialTheme.colorScheme.error) }

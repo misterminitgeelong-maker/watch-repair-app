@@ -6,7 +6,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -79,5 +83,38 @@ import androidx.compose.ui.unit.dp
             "Stock" -> { drawRect(color,point(4f,4f),Size(16f*scale,18f*scale),style=Stroke(1.5f*scale)); line(8f,2f,16f,2f); for(y in listOf(9f,13f,17f)) line(8f,y,16f,y) }
             else -> { for(y in listOf(6f,12f,18f)) line(4f,y,20f,y) }
         }
+    }
+}
+
+/** 48dp back arrow for top bars; announced as "Back" to screen readers. */
+@Composable fun BackButton(onClick: () -> Unit, enabled: Boolean = true) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.semantics { contentDescription = "Back" }) {
+        val color = if(enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        Canvas(Modifier.size(24.dp)) {
+            val s = size.width / 24f
+            val w = 2f * s
+            drawLine(color, Offset(20f * s, 12f * s), Offset(5f * s, 12f * s), w, cap = StrokeCap.Round)
+            drawLine(color, Offset(11f * s, 5f * s), Offset(4f * s, 12f * s), w, cap = StrokeCap.Round)
+            drawLine(color, Offset(11f * s, 19f * s), Offset(4f * s, 12f * s), w, cap = StrokeCap.Round)
+        }
+    }
+}
+
+/** Friendly inline error with a retry affordance, used instead of bare red text. */
+@Composable fun ErrorBanner(message: String, modifier: Modifier = Modifier, onRetry: (() -> Unit)? = null) {
+    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
+        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+            if(onRetry != null) TextButton(onClick = onRetry) { Text("Retry") }
+        }
+    }
+}
+
+/** Centred empty-state with a headline, optional hint and optional single action. */
+@Composable fun EmptyState(title: String, hint: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        if(hint != null) Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        if(actionLabel != null && onAction != null) androidx.compose.material3.OutlinedButton(onClick = onAction) { Text(actionLabel) }
     }
 }

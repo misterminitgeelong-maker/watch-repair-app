@@ -34,7 +34,7 @@ class ProspectViewModel: ViewModel() {
   if(mutable.value.busy || mutable.value.loading || (advance && mutable.value.uncertainLead.isNotBlank())) return
   val fields = JsonObject().apply { addProperty("contact_name", name.trim()); addProperty("contact_email", email.trim()); addProperty("notes", notes.trim()) }
   try { if(visit.isBlank()) fields.add("visit_scheduled_at", JsonNull.INSTANCE) else fields.addProperty("visit_scheduled_at", scheduledTimeIso(visit, TokenStore.calendarTimezone())) }
-  catch(e: Exception) { mutable.update { it.copy(error = e.message) }; return }
+  catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) }; return }
   if(advance) drafts.saveMessageDraft("prospect-advance", id)
   runAction { try {
    val lead = if(advance) api.advanceProspect(id, fields) else api.updateProspect(id, fields)

@@ -38,7 +38,7 @@ class ShoeJobsViewModel : ViewModel() {
                 val list = api.listShoeRepairJobs(skip = if(append) _state.value.jobs.size else 0)
                 _state.update { it.copy(loading = false, jobs = if(append) (it.jobs + list).distinctBy { row -> row.id } else list, canLoadMore = list.size == 200) }
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message ?: "Could not load shoe jobs") }
+                _state.update { it.copy(loading = false, error = e.userMessage()) }
             }
         }
     }

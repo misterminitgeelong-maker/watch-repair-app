@@ -32,7 +32,7 @@ class InboxViewModel : ViewModel() {
                 val list = api.listInbox()
                 _state.update { it.copy(loading = false, events = list) }
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message ?: "Could not load inbox") }
+                _state.update { it.copy(loading = false, error = e.userMessage()) }
             }
         }
     }

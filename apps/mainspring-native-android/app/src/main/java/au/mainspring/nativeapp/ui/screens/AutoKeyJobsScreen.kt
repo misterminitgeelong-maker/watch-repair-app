@@ -58,7 +58,7 @@ fun AutoKeyJobsScreen(
             TopAppBar(
                 windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,
                 title = { Text(if(embedded) "Jobs" else "Mobile services", style = if(embedded) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+                navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
             )
         },
     ) { padding ->

@@ -69,7 +69,7 @@ class MobileIntakeViewModel(private val saved: SavedStateHandle): ViewModel() {
                 scheduledTimeIso(f("scheduled"), TokenStore.calendarTimezone()), f("address").ifBlank { null }, f("jobType").ifBlank { null },
                 f("make").ifBlank { null }, f("model").ifBlank { null }, year, f("plate").ifBlank { null }, f("vin").ifBlank { null },
                 f("keyType").ifBlank { null }, quantity, f("notes").ifBlank { null }, dollarsToCentsChecked(f("deposit")), f("bookingSms") == "true", customerAccountId = f("accountId").ifBlank { null }, assignedUserId = f("technician").ifBlank {null})
-        } catch(e: Exception) { mutable.update { it.copy(error = e.message) }; return }
+        } catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) }; return }
         mutable.update { it.copy(busy = true, error = null) }
         viewModelScope.launch {
             try {

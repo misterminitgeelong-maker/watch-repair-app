@@ -30,7 +30,7 @@ class JobQuotesViewModel(private val jobId: String) : ViewModel() {
                 QuoteNavCache.putAll(quotes,generation)
                 mutable.update { it.copy(loading = false, job = job, quotes = quotes, historyChecked = true) }
             } catch(e: CancellationException) { throw e }
-            catch(e: Exception) { mutable.update { it.copy(loading = false, error = e.message ?: "Could not load quotes.") } }
+            catch(e: Exception) { mutable.update { it.copy(loading = false, error = e.userMessage()) } }
         }
     }
     fun createLines(lines: List<MobileQuoteLine>, gst: Boolean, inclusive: Boolean) {
@@ -38,7 +38,7 @@ class JobQuotesViewModel(private val jobId: String) : ViewModel() {
         if(lines.isEmpty() || lines.any { it.description.isBlank() || !it.quantity.isFinite() || it.quantity <= 0 || it.quantity > 10000 || it.unitCents !in 0..100_000_000 }) {
             mutable.update { it.copy(error = "Enter a description, valid quantity and unit price for every line.") }; return
         }
-        try { validateQuoteAmountRange(lines) } catch(e: IllegalArgumentException) { mutable.update { it.copy(error = e.message) }; return }
+        try { validateQuoteAmountRange(lines) } catch(e: IllegalArgumentException) { mutable.update { it.copy(error = e.userMessage()) }; return }
         if(!drafts.setPendingOperation(operationKey, true)) { mutable.update { it.copy(error = "Could not save the quote checkpoint. Check device storage and sign in before continuing.") }; return }
         mutable.update { it.copy(busy = true, error = null) }
         viewModelScope.launch {

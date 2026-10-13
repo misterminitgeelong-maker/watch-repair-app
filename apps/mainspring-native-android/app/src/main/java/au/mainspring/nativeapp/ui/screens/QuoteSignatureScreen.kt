@@ -22,7 +22,7 @@ import au.mainspring.nativeapp.ui.formatShopDate
 fun QuoteSignatureScreen(jobId: String, quoteId: String, onBack: () -> Unit,
     model: QuoteSignatureViewModel = viewModel(factory = QuoteSignatureViewModel.factory(jobId,quoteId))) {
     val state by model.state.collectAsStateWithLifecycle()
-    Scaffold(topBar = { TopAppBar(title = { Text("Customer signature", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onBack) { Text("Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Customer signature", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack) }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading) CircularProgressIndicator()
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

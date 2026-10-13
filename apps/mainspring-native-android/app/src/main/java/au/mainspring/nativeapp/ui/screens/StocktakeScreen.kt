@@ -30,7 +30,7 @@ fun StocktakeScreen(id: String, onBack: () -> Unit, model: StocktakeViewModel = 
     val scroll = androidx.compose.foundation.lazy.rememberLazyListState()
     LaunchedEffect(state.lineId) { if(state.lineId.isNotBlank()) scroll.animateScrollToItem(0) }
     BackHandler(state.busy) {}
-    Scaffold(topBar = { TopAppBar(title = { Text("Stocktake counts", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onBack, enabled = !state.busy) { Text("Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Stocktake counts", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack, enabled = !state.busy) }) }) { padding ->
         val lines = state.session?.lines.orEmpty().filter { line ->
             (!state.hideCounted || line.counted == null) && (state.search.isBlank() || listOf(line.code, line.group, line.description.orEmpty(), line.shortDescription.orEmpty()).any { it.contains(state.search, true) })
         }

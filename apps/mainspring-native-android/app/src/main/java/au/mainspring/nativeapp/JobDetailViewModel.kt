@@ -129,7 +129,7 @@ class JobDetailViewModel(
                 }
                 _state.update { it.copy(noteBusy = false, history = history, smsLog = smsLog) }
             } catch (e: Exception) {
-                _state.update { it.copy(noteBusy = false, error = e.message ?: "Could not add note") }
+                _state.update { it.copy(noteBusy = false, error = e.userMessage()) }
             }
         }
     }
@@ -141,7 +141,7 @@ class JobDetailViewModel(
                 val job = api.postRepairJobClaim(jobId)
                 _state.update { it.copy(claimBusy = false, job = job) }
             } catch (e: Exception) {
-                _state.update { it.copy(claimBusy = false, error = e.message ?: "Could not claim job") }
+                _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
             }
         }
     }
@@ -153,7 +153,7 @@ class JobDetailViewModel(
                 val job = api.postRepairJobRelease(jobId)
                 _state.update { it.copy(claimBusy = false, job = job) }
             } catch (e: Exception) {
-                _state.update { it.copy(claimBusy = false, error = e.message ?: "Could not release job") }
+                _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
             }
         }
     }
@@ -179,7 +179,7 @@ class JobDetailViewModel(
                 }
                 _state.update { it.copy(resendBusy = false, resendInfo = msg, smsLog = smsLog) }
             } catch (e: Exception) {
-                _state.update { it.copy(resendBusy = false, error = e.message ?: "Resend failed") }
+                _state.update { it.copy(resendBusy = false, error = e.userMessage()) }
             }
         }
     }

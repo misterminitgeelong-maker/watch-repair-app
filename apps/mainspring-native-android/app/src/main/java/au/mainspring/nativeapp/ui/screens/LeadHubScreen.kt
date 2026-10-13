@@ -13,7 +13,7 @@ import au.mainspring.nativeapp.TokenStore
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun LeadHubScreen(onBack: () -> Unit,onNavigate: (String) -> Unit) {
     var tab by rememberSaveable {mutableStateOf("inbox")}
-    Scaffold(topBar={TopAppBar(title={Text("Lead inbox",style=MaterialTheme.typography.headlineSmall)},navigationIcon={TextButton(onBack) {Text("Back")}},actions={TextButton({onNavigate("bookingRequests")}) {Text("Bookings")}})}) {padding->
+    Scaffold(topBar={TopAppBar(title={Text("Lead inbox",style=MaterialTheme.typography.headlineSmall)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton({onNavigate("bookingRequests")}) {Text("Bookings")}})}) {padding->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=12.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 val tabs=listOf("inbox" to "Lead inbox","prospects" to "Prospects","board" to "Board") + if(TokenStore.canManageInvoices()) listOf("team" to "Team") else emptyList()

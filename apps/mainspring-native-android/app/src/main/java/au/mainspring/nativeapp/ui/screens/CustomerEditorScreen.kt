@@ -36,7 +36,7 @@ fun CustomerEditorScreen(customerId: String, onBack: () -> Unit, onOpenCustomer:
         if(!filled || state.revision > 0) state.customer?.let { c -> name = c.fullName; email = c.email.orEmpty(); phone = c.phone.orEmpty(); address = c.address.orEmpty(); notes = c.notes.orEmpty(); filled = true }
         if(customerId.isBlank() && state.revision > 0 && state.customer == null) { name = ""; email = ""; phone = ""; address = ""; notes = ""; filled = false }
     }
-    Scaffold(topBar = { TopAppBar(title = { Text(if(customerId.isBlank()) "New customer" else "Edit customer") }, navigationIcon = { TextButton(onClick = onBack, enabled = !state.saving) { Text("Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(if(customerId.isBlank()) "New customer" else "Edit customer") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.saving) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.saving) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

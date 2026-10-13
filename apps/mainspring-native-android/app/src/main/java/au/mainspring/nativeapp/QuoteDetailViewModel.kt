@@ -55,7 +55,7 @@ class QuoteDetailViewModel(
                     it.copy(loading = false, quote = meta, lines = lines, error = if (meta == null) "Quote not found in recent list." else null)
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message ?: "Could not load quote") }
+                _state.update { it.copy(loading = false, error = e.userMessage()) }
             }
         }
     }
@@ -79,7 +79,7 @@ class QuoteDetailViewModel(
                     _state.update { it.copy(sendBusy = false, error = "Quote metadata missing; pull to refresh from list.") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(sendBusy = false, error = e.message ?: "Send failed") }
+                _state.update { it.copy(sendBusy = false, error = e.userMessage()) }
             }
         }
     }
@@ -103,7 +103,7 @@ class QuoteDetailViewModel(
                         if(existing != null || page.items.isEmpty() || offset >= page.total) break
                     } while(true)
                     _state.update { it.copy(invoiceBusy = false, invoiceId = existing?.id,
-                        error = if(existing == null) e.message ?: "Could not create invoice." else null) }
+                        error = if(existing == null) e.userMessage() else null) }
                 } catch (_: Exception) { _state.update { it.copy(invoiceBusy = false, error = "Could not confirm invoice creation. Check invoices before retrying.") } }
             }
         }

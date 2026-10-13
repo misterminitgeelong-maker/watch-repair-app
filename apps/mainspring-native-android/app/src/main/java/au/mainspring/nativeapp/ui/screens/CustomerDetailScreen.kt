@@ -27,7 +27,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
     val state by vm.state.collectAsStateWithLifecycle()
     RefreshOnResume(vm::load)
     Scaffold(topBar = { TopAppBar(title = { Text(state.customer?.fullName ?: "Customer") },
-        navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+        navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
         actions = { if(state.customer != null) TextButton(onClick = { onEdit(customerId) }) { Text("Edit") } }) }) { padding ->
         when {
             state.loading && state.customer == null -> CircularProgressIndicator(Modifier.padding(padding).padding(24.dp))

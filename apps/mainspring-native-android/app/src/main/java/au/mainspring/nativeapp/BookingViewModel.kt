@@ -41,7 +41,7 @@ class BookingViewModel: ViewModel() {
     val row = api.createBookingRequest(body); drafts.setPendingOperation(draftKey, false); drafts.saveMessageDraft(draftKey, "")
     mutable.update { it.copy(fields = emptyMap(), rows = listOf(row) + it.rows, total = it.total + 1, info = "Booking request sent to ${row.operator}.") }; onCreated()
    } catch(e: Exception) { val unknown = e !is retrofit2.HttpException || e.code() >= 500; drafts.setPendingOperation(draftKey, unknown); mutable.update { it.copy(uncertain = unknown, historyChecked = false) }; throw e } }
-  } catch(e: Exception) { mutable.update { it.copy(error = e.message) } }
+  } catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) } }
  }
  fun action(id: String, action: String, reason: String = "") = runAction {
   require(action in listOf("accept", "decline", "cancel")); val body = JsonObject(); if(action == "decline") body.addProperty("decline_reason", reason.trim())

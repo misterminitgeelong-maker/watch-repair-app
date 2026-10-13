@@ -46,7 +46,7 @@ fun QuoteDetailScreen(
             TopAppBar(
                 title = { Text(q?.status?.uppercase() ?: "Quote") },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back") }
+                    au.mainspring.nativeapp.ui.BackButton(onClick = onBack)
                 },
             )
         },

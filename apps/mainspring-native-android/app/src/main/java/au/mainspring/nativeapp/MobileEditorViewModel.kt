@@ -74,7 +74,7 @@ class MobileEditorViewModel(private val id: String): ViewModel() {
     drafts.saveMessageDraft(draftKey, "")
     mutable.update { it.copy(busy = false, saved = true) }
    } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(busy = false, error = if(e is retrofit2.HttpException && e.code() == 409) "This job changed while you were editing. Reopen it and review the latest details before saving." else "Could not confirm changes. Review the job before saving again. ${e.userMessage()}") } } }
-  } catch(e: Exception) { mutable.update { it.copy(error = e.message) } }
+  } catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) } }
  }
  companion object { fun factory(id: String) = object: ViewModelProvider.Factory { @Suppress("UNCHECKED_CAST") override fun <T: ViewModel> create(modelClass: Class<T>): T = MobileEditorViewModel(id) as T } }
 }

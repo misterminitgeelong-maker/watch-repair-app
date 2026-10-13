@@ -54,7 +54,7 @@ fun InvoiceDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(inv?.invoiceNumber ?: "Invoice") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+                navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
             )
         },
     ) { padding ->

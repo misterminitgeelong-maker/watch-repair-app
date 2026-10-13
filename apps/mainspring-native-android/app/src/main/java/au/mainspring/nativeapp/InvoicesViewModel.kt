@@ -43,7 +43,7 @@ class InvoicesViewModel : ViewModel() {
                 val page = api.listInvoices(offset = if(append) _state.value.invoices.size else 0)
                 _state.update { it.copy(loading = false, invoices = if(append) (it.invoices + page.items).distinctBy { row -> row.id } else page.items, total = page.total) }
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message ?: "Could not load invoices") }
+                _state.update { it.copy(loading = false, error = e.userMessage()) }
             }
         }
     }

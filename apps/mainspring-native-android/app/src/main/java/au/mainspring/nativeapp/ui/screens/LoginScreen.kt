@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -53,30 +55,18 @@ fun LoginScreen(
     Column(
         Modifier
             .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(au.mainspring.nativeapp.R.drawable.ic_launcher_vector), contentDescription = "Mainspring", modifier = Modifier.size(64.dp))
-            Text("Mainspring", style = MaterialTheme.typography.headlineSmall)
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Sign in to your shop",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = { showServerConfig = !showServerConfig }) {
-                Text(if (showServerConfig) "Hide settings" else "Connection settings")
-            }
-        }
+        Spacer(Modifier.height(40.dp))
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(au.mainspring.nativeapp.R.drawable.ic_launcher_vector), contentDescription = "Mainspring logo", modifier = Modifier.size(88.dp))
+        Text("Mainspring", style = MaterialTheme.typography.headlineMedium)
+        Text("Sign in to your shop", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         if (showServerConfig) {
             OutlinedTextField(
@@ -89,7 +79,7 @@ fun LoginScreen(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = slug,
             onValueChange = { slug = it },
@@ -122,12 +112,12 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         state.error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            au.mainspring.nativeapp.ui.ErrorBanner(it)
         }
         Button(
             onClick = { onLogin(slug, email, password, serverUrl) },
             enabled = !state.loading && email.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
             if (state.loading) {
                 CircularProgressIndicator(
@@ -135,8 +125,11 @@ fun LoginScreen(
                     strokeWidth = 2.dp,
                 )
             } else {
-                Text("Sign in")
+                Text("Sign in", style = MaterialTheme.typography.titleMedium)
             }
+        }
+        TextButton(onClick = { showServerConfig = !showServerConfig }) {
+            Text(if (showServerConfig) "Hide connection settings" else "Connection settings")
         }
     }
 }

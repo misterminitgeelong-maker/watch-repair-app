@@ -22,7 +22,7 @@ fun StockScreen(onBack: () -> Unit, onOpenStocktake: (String) -> Unit, model: St
     var reviewOpen by remember { mutableStateOf(false) }
     var existingId by remember { mutableStateOf<String?>(null) }
     androidx.activity.compose.BackHandler(state.creating) {}
-    Scaffold(topBar = { TopAppBar(title = { Text("Inventory and stocktakes", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onBack, enabled = !state.creating) { Text("Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Inventory and stocktakes", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack, enabled = !state.creating) }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 OutlinedTextField(state.search, model::search, enabled = !state.creating && !state.unknownCreate, label = { Text("Search item code or description") }, modifier = Modifier.fillMaxWidth())

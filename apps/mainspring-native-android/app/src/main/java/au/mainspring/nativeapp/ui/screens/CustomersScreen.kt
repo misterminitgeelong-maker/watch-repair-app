@@ -34,60 +34,43 @@ fun CustomersScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     au.mainspring.nativeapp.ui.RefreshOnResume(viewModel::refresh)
 
-    Column(
-        Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Button(onClick = onNewCustomer, modifier = Modifier.padding(top = 12.dp)) { Text("New customer") }
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::setQuery,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                label = { Text("Search name") },
-            )
-            Button(onClick = { viewModel.refresh() }, enabled = !state.loading) {
-                Text("Load")
-            }
-        }
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = state.query,
+            onValueChange = viewModel::setQuery,
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+            singleLine = true,
+            label = { Text("Search customers") },
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { viewModel.refresh() }),
+        )
         if (state.loading && state.customers.isEmpty()) {
-            CircularProgressIndicator(Modifier.padding(24.dp))
+            androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
         }
-        state.error?.let {
-            Text(
-                it,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                style = MaterialTheme.typography.bodySmall,
-            )
+        state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = { viewModel.refresh() }) }
+        if (!state.loading && state.error == null && state.customers.isEmpty()) {
+            au.mainspring.nativeapp.ui.EmptyState("No customers found", "Try a different name, or add a new customer.")
         }
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 88.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f, fill = true),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize().weight(1f, fill = true),
         ) {
             items(state.customers, key = { it.id }) { c ->
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenCustomer(c.id) }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Text(c.fullName, style = MaterialTheme.typography.titleMedium)
-                    c.email?.let { e -> Text(e, style = MaterialTheme.typography.bodySmall) }
-                    c.phone?.let { p -> Text(p, style = MaterialTheme.typography.bodySmall) }
+                androidx.compose.material3.Surface(Modifier.fillMaxWidth().clickable { onOpenCustomer(c.id) },
+                    color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(c.fullName, style = MaterialTheme.typography.titleMedium)
+                        c.phone?.let { p -> Text(p, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        c.email?.let { e -> Text(e, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
                 }
-                HorizontalDivider()
             }
-            if(state.canLoadMore) item { Button(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.padding(16.dp)) { Text("Load more customers") } }
+            if(state.canLoadMore) item { androidx.compose.material3.OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more customers") } }
         }
+    }
+    androidx.compose.material3.ExtendedFloatingActionButton(onClick = onNewCustomer, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) { Text("New customer", style = MaterialTheme.typography.labelLarge) }
     }
 }

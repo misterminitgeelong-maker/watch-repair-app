@@ -76,7 +76,7 @@ import au.mainspring.nativeapp.ui.*
     Scaffold(containerColor=MaterialTheme.colorScheme.surface,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { TopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
             Text(j?.title ?: "Job",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-        }},navigationIcon={TextButton(onBack) {Text("Back")}},
+        }},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
         actions={TextButton(vm::load,enabled=!state.loading && !state.statusBusy) {Text("Refresh")};TextButton(onEdit,enabled=!state.loading && !state.statusBusy && !state.offlineSnapshot) {Text("Edit")}}) },
         bottomBar = {
             if(j!=null && tab in listOf("info","vehicle")) {

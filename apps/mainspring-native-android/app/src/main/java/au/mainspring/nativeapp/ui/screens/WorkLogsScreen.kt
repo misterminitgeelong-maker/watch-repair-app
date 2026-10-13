@@ -16,7 +16,7 @@ import au.mainspring.nativeapp.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun WorkLogsScreen(jobId: String, onBack: () -> Unit, vm: WorkLogsViewModel = viewModel(key = jobId, factory = WorkLogsViewModel.factory(jobId))) {
  val state by vm.state.collectAsStateWithLifecycle()
- Scaffold(topBar = { TopAppBar(title = { Text("Work logs", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }) }) { padding ->
+ Scaffold(topBar = { TopAppBar(title = { Text("Work logs", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    item {
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

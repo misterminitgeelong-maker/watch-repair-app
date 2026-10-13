@@ -27,7 +27,7 @@ fun MessageThreadScreen(resource: String, jobId: String, onBack: () -> Unit,
     val state by vm.state.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle, vm) { lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { while(isActive) { vm.refresh(); delay(15_000) } } }
-    Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) TopAppBar(title = { Text("Customer conversation", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+    Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) TopAppBar(title = { Text("Customer conversation", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
         actions = { TextButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh") } }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if(state.loading && state.messages.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())

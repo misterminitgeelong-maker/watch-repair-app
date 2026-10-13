@@ -71,7 +71,7 @@ fun ShoeJobDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(j?.jobNumber ?: "Shoe job") },
-                navigationIcon = { TextButton(onClick = onBack, enabled = !state.statusBusy) { Text("Back") } },
+                navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.statusBusy) },
             )
         },
     ) { padding ->

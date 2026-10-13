@@ -42,7 +42,7 @@ fun ShoeJobsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Shoe repairs", style = MaterialTheme.typography.headlineSmall) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+                navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
             )
         },
     ) { padding ->

@@ -21,7 +21,7 @@ fun WatchEditorScreen(customerId: String, id: String, onBack: () -> Unit, onCust
     val state by model.state.collectAsStateWithLifecycle()
     var review by remember { mutableStateOf(false) }
     BackHandler(state.busy) {}
-    Scaffold(topBar = { TopAppBar(title = { Text(if(id.isBlank()) "Add watch" else "Edit watch") }, navigationIcon = { TextButton(onBack, enabled = !state.busy) { Text("Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(if(id.isBlank()) "Add watch" else "Edit watch") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack, enabled = !state.busy) }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

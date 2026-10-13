@@ -40,7 +40,7 @@ fun InboxScreen(
         topBar = {
             if(!embedded) TopAppBar(
                 title = { Text("Inbox", style = MaterialTheme.typography.headlineSmall) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+                navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
             )
         },
     ) { padding ->
