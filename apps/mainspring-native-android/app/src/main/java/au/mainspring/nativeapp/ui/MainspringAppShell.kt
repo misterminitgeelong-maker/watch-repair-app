@@ -196,11 +196,13 @@ fun MainspringAppShell(
                 composable("quotes") {
                     QuotesScreen(
                         onOpenQuote = { id -> navController.navigate("quote/$id") },
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable("invoices") {
                     InvoicesScreen(
                         onOpenInvoice = { id -> navController.navigate("invoice/$id") },
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable(

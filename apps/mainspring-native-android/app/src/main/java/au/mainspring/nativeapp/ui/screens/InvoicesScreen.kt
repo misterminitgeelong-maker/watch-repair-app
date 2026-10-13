@@ -30,12 +30,14 @@ import au.mainspring.nativeapp.ui.formatCents
 @Composable
 fun InvoicesScreen(
     onOpenInvoice: (String) -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: InvoicesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var filter by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val shown = state.invoices.filter { filter == null || it.status == filter }
     Column(Modifier.fillMaxSize()) {
+        if(onBack != null) au.mainspring.nativeapp.ui.BackLargeHeader("More", "Money & performance", "Invoices", onBack)
         au.mainspring.nativeapp.ui.FilterRow(listOf(null to "All", "unpaid" to "Unpaid", "paid" to "Paid"), filter, { filter = it }, Modifier.padding(top = 4.dp))
         if (state.loading && state.invoices.isEmpty()) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
         state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = viewModel::refresh) }

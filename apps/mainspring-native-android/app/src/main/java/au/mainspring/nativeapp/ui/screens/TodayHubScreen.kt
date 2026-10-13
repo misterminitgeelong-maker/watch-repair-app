@@ -63,14 +63,14 @@ fun TodayHubScreen(
         item {
             val tiles = buildList {
                 if("watch" in features) add(Triple("Watch jobs", "Bench and counter", "watch_jobs"))
-                if("shoe" in features) add(Triple("Shoe jobs", "Repairs and collections", "shoe_jobs"))
+                if("shoe" in features) add(Triple("Shoe jobs", "Repairs", "shoe_jobs"))
                 if("auto_key" in features) { add(Triple("Mobile jobs", "On the road", "auto_jobs")); add(Triple("Dispatch", "Today's route", "dispatch")) }
             }
             if(tiles.isNotEmpty()) {
                 Text("Your workspaces", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium)
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     tiles.forEach { (title, sub, route) ->
-                        ListCard({ onOpenRoute(route) }, Modifier.width(156.dp)) {
+                        ListCard({ onOpenRoute(route) }, Modifier.width(172.dp)) {
                             Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }

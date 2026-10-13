@@ -175,7 +175,11 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 
 /** Equal-width segmented control built from [PillChip]s. */
 @Composable fun SegmentedPills(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    if(androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.25f && options.size > 2) {
+        Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
+        }
+    } else Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }, Modifier.weight(1f)) }
     }
 }
