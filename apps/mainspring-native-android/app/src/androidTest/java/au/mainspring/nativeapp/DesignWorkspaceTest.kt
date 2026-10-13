@@ -103,8 +103,8 @@ class DesignWorkspaceTest {
     }
     @Test fun ownerCanReachMoreAndThemeChoicePersistsAcrossComposition() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
-        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasText("Refined Warmth"))
-        compose.onNodeWithText("Refined Warmth").assertExists()
+        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasText("Atelier"))
+        compose.onNodeWithText("Atelier").assertExists()
         compose.onNodeWithText("Night Workshop").performScrollTo().performClick();Assert.assertEquals(AppAppearance.NIGHT,DesignPreferences.appearance.value)
         Assert.assertEquals("NIGHT",InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("mainspring_appearance",0).getString("appearance",null))
         saveNativeQaImage(compose.onRoot(),"design-more-night.png")
@@ -112,8 +112,9 @@ class DesignWorkspaceTest {
     @Test fun technicianNavigationHasMapPoolPosAndHidesTeamManagement() {
         TokenStore.setSessionRole("tech")
         compose.setContent {MainspringTheme {MainspringAppShell("Technician",server.url("/").toString(),{},setOf("auto_key"))}}
-        compose.onNodeWithText("Map").assertExists();compose.onNodeWithText("Pool").assertExists();compose.onNodeWithText("POS").assertExists()
-        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithText("Team & commission").assertDoesNotExist()
+        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithText("Repairs & customer orders").performClick()
+        compose.onNodeWithText("Map and today's route").assertExists();compose.onNodeWithText("Dispatch pool").assertExists();compose.onNodeWithText("POS / quick sale").assertExists()
+        compose.onNodeWithTag("more-list").performScrollToNode(hasText("People & network"));compose.onNodeWithText("People & network").performClick();compose.onNodeWithText("Team & commission").assertDoesNotExist()
     }
     @Test fun weekMoveOnlyPatchesBookingWithVersionAndUsesShopOffset() {
         val vm=WeekPlannerViewModel();compose.waitUntil(10_000) {!vm.state.value.loading}
@@ -167,9 +168,11 @@ class DesignWorkspaceTest {
     }
     @Test fun ownerDashboardLoadsNativePeriodMetricsAndComparisons() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
-        compose.onNodeWithTag("nav-home").performClick()
-        compose.onNodeWithText("START SOMETHING").assertExists()
-        compose.onNodeWithTag("nav-reports").performClick()
+        compose.onNodeWithTag("nav-today").performClick()
+        compose.onNodeWithText("Needs your attention").assertExists()
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("Money & performance").performClick()
+        compose.onNodeWithText("Reports").performClick()
         compose.onNodeWithTag("period-report-list").performScrollToNode(hasText("Revenue comparison"))
         compose.onNodeWithText("Revenue comparison").assertIsDisplayed()
         saveNativeQaImage(compose.onRoot(),"design-owner-dashboard.png")
@@ -344,16 +347,14 @@ class DesignWorkspaceTest {
 
     @Test fun workspaceNavigationKeepsTodaySelectedAndReturnsFromMore() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key"))}}
-        compose.waitUntil(10_000) {compose.onAllNodesWithTag("today-next-job").fetchSemanticsNodes().isNotEmpty()}
+        compose.waitUntil(10_000) {compose.onAllNodesWithText("Needs your attention").fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithTag("nav-today").assertIsSelected()
-        compose.onNodeWithText("13:00").assertIsDisplayed()
-        compose.onNodeWithText("15:00").assertIsDisplayed()
         saveNativeQaImage(compose.onRoot(),"aligned-shell.png")
         compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithTag("nav-more").assertIsSelected()
         compose.onNodeWithTag("nav-today").performClick()
         compose.onNodeWithTag("nav-today").assertIsSelected()
-        compose.onNodeWithTag("today-next-job").assertExists()
+        compose.onNodeWithText("Needs your attention").assertExists()
     }
     @Test fun largeTextTodayKeepsDetailsAndScheduleReachable() {
         val vm=TodayViewModel();compose.waitUntil(10_000) {!vm.state.value.loading}

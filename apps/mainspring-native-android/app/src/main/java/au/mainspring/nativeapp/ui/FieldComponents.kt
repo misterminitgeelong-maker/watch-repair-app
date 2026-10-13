@@ -163,7 +163,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Dark/white pill used for segmented filters (Active / Mine / Ready, Watch / Shoe / Mobile). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun PillChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    Surface(onClick, modifier.heightIn(min = 44.dp), enabled = enabled, shape = MaterialTheme.shapes.small,
+    Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface) {
         Box(Modifier.padding(horizontal = 18.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -278,7 +278,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Drop-in replacement for FilterChip with the Atelier look: dark pill when selected, white pill otherwise. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AtelierChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    Surface(onClick, modifier.heightIn(min = 44.dp), enabled = enabled, shape = MaterialTheme.shapes.small,
+    Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = (if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f)) {
         Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {

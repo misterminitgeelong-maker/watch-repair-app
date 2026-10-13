@@ -153,9 +153,14 @@ fun MainspringAppShell(
                         onBack = { navController.popBackStack() },
                         onStart = { route -> navController.navigate(route) { popUpTo("new_intake") { inclusive = true } } })
                 }
-                composable("dispatch") { au.mainspring.nativeapp.ui.screens.TodayScreen(
-                    onOpenJob = { navController.navigate("autoKeyJob/$it") }, onDirectory = { navController.navigate("auto_jobs") },
-                    onNewJob = { navController.navigate("mobile_intake") },onEnRoute={navController.navigate("autoKeyJob/$it?initialStatus=en_route")}) }
+                composable("dispatch") {
+                    au.mainspring.nativeapp.ui.screens.DispatchScreen(
+                        onOpenJob = { navController.navigate("autoKeyJob/$it") },
+                        onNew = { navController.navigate("mobile_intake") },
+                        onOpenRoute = { navController.navigate("route") },
+                        onOpenPlanner = { navController.navigate("auto_jobs") },
+                        onOpenPool = { navController.navigate("dispatchPool") })
+                }
                 composable("more") { au.mainspring.nativeapp.ui.screens.MoreScreen(selectedSite?.name,sessionSummary,features,sites.size>1,
                     {switchOpen=true},{navController.navigate(it)},onLogout) }
                 composable("route") { au.mainspring.nativeapp.ui.screens.RouteScreen({navController.popBackStack()},{navController.navigate("autoKeyJob/$it")}) }

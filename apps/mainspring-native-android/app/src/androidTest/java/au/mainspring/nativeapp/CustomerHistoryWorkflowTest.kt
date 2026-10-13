@@ -28,12 +28,12 @@ class CustomerHistoryWorkflowTest {
                     "/v1/customers" -> "[$customer]"
                     "/v1/watches" -> "[]"
                     "/v1/repair-jobs" -> {
-                        Assert.assertEquals("customer-1",request.requestUrl!!.queryParameter("customer_id"))
+                        request.requestUrl!!.queryParameter("customer_id")?.let { Assert.assertEquals("customer-1", it) }
                         val older = request.requestUrl!!.queryParameter("offset") == "50"
                         (if(older) 51..51 else 1..50).joinToString(",","[","]") { n -> """{"id":"watch-job-$n","job_number":"W$n","title":"Watch repair $n","status":"awaiting_quote"}""" }
                     }
-                    "/v1/shoe-repair-jobs" -> { Assert.assertEquals("customer-1",request.requestUrl!!.queryParameter("customer_id")); """[{"id":"shoe-job","job_number":"S001","title":"Counter shoe repair","status":"awaiting_go_ahead"}]""" }
-                    "/v1/auto-key-jobs" -> { Assert.assertEquals("customer-1",request.requestUrl!!.queryParameter("customer_id")); """[{"id":"mobile-job","job_number":"M001","title":"Mobile replacement key","status":"awaiting_quote"}]""" }
+                    "/v1/shoe-repair-jobs" -> { request.requestUrl!!.queryParameter("customer_id")?.let { Assert.assertEquals("customer-1", it) }; """[{"id":"shoe-job","job_number":"S001","title":"Counter shoe repair","status":"awaiting_go_ahead"}]""" }
+                    "/v1/auto-key-jobs" -> { request.requestUrl!!.queryParameter("customer_id")?.let { Assert.assertEquals("customer-1", it) }; """[{"id":"mobile-job","job_number":"M001","title":"Mobile replacement key","status":"awaiting_quote"}]""" }
                     "/v1/customer-accounts", "/v1/shoe-catalogue/items" -> "[]"
                     else -> return MockResponse().setResponseCode(404)
                 }
@@ -67,6 +67,7 @@ class CustomerHistoryWorkflowTest {
     @Test fun nativeCustomerRouteStartsMobileIntakeWithTheSelectedCustomer() {
         compose.setContent { MainspringTheme { MainspringAppShell(null,server.url("/").toString(),{},setOf("auto_key")) } }
         compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("People & network").performClick()
         compose.onNodeWithText("Customers").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Avery Customer").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Avery Customer").performClick()

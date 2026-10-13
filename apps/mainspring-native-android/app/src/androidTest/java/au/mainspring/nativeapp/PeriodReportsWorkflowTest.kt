@@ -48,9 +48,8 @@ class PeriodReportsWorkflowTest {
         Assert.assertEquals(listOf("quarter/2026-10-09", "quarter/2026-09-30"), queries.toList())
         Assert.assertEquals(10L, model.state.value.previous!!.jobs)
         compose.setContent { MainspringTheme { PeriodReportsScreen({}, model) } }
-        compose.onNodeWithTag("period-report-list").performScrollToNode(hasText("Revenue"))
-        compose.onNodeWithText("Revenue").assertIsDisplayed()
-        compose.onNodeWithTag("report-value-Revenue").assertTextEquals("1234.56")
+        compose.onNodeWithTag("period-report-list").performScrollToNode(hasTestTag("report-value-Revenue"))
+        compose.onNodeWithTag("report-value-Revenue").assertIsDisplayed().assertTextEquals("1234.56")
         saveNativeQaImage(compose.onRoot(), "operational-reports.png")
         compose.onNodeWithTag("period-report-list").performScrollToIndex(0)
         compose.onNodeWithText("Quarter").performScrollTo().assertIsSelected()
