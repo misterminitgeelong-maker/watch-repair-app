@@ -73,7 +73,7 @@ import au.mainspring.nativeapp.ui.*
         try { context.startActivity(Intent(if(dial) Intent.ACTION_DIAL else Intent.ACTION_VIEW,uri)) }
         catch(_: android.content.ActivityNotFoundException) { attachmentOpenError = "No compatible app is available on this device." }
     }
-    Scaffold(containerColor=MaterialTheme.colorScheme.surface,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { TopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
+    Scaffold(containerColor=MaterialTheme.colorScheme.surface,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
             Text(j?.title ?: "Job",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         }},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
@@ -205,7 +205,7 @@ import au.mainspring.nativeapp.ui.*
             title={Text(when(target) {"en_route"->"Ready to leave?";"on_site"->"Arrived at the job?";else->"Finish this job?"})},
             text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 Text(if(completion) "Confirm the work is finished. This can create an invoice and notify the customer through your shop settings. Payment is recorded separately." else "Update the job to ${target.replace('_',' ')}. Customer notifications follow your shop settings.")
-                if(completion) OutlinedTextField(statusChangeNote,{statusChangeNote=it},label={Text("Completion note (optional)")},modifier=Modifier.fillMaxWidth(),maxLines=3)
+                if(completion) au.mainspring.nativeapp.ui.AtelierTextField(statusChangeNote,{statusChangeNote=it},label={Text("Completion note (optional)")},modifier=Modifier.fillMaxWidth(),maxLines=3)
             }},
             confirmButton={Button({pendingStep=null;finishing=completion;vm.setStatus(target,if(completion) statusChangeNote.trim().takeIf {it.isNotEmpty()} else null);statusChangeNote=""},
                 enabled=!state.loading && !state.statusBusy && !state.statusReviewRequired && !state.offlineSnapshot && TokenStore.canWorkJobs()) {Text(if(completion) "Confirm completion" else "Confirm ${target.replace('_',' ')}")}},
@@ -222,7 +222,7 @@ import au.mainspring.nativeapp.ui.*
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     Text("Completing work can create an invoice and notify the customer. Review the job before choosing a completion status.")
-                    OutlinedTextField(
+                    au.mainspring.nativeapp.ui.AtelierTextField(
                         value = statusChangeNote,
                         onValueChange = { statusChangeNote = it },
                         label = { Text("Note (optional)") },

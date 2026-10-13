@@ -36,7 +36,7 @@ import java.util.Locale
     LaunchedEffect(zone) { while(true) { delay(60_000); val updated=Instant.now(); if(updated.atZone(zone).toLocalDate()!=now.atZone(zone).toLocalDate()) model.refresh(); now=updated } }
     val queues=listOf("active" to "Today","quote" to "Quotes","booked" to "Booked","completed" to "Unpaid")
     Scaffold(containerColor=MaterialTheme.colorScheme.surface,
-        topBar = { TopAppBar(title = { Column {
+        topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Column {
             Text("Today",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)
             Text(now.atZone(zone).format(DateTimeFormatter.ofPattern("EEE, d MMM",Locale.UK)),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         } },colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.surface),actions={

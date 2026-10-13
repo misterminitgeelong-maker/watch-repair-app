@@ -21,7 +21,7 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
     val state by vm.state.collectAsStateWithLifecycle()
     var confirmingId by rememberSaveable { mutableStateOf<String?>(null) }
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { TopAppBar(title = { Text("Dispatch pool", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Dispatch pool", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
         actions = { TextButton(onClick = vm::refresh, enabled = !state.busy && !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {

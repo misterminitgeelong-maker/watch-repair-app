@@ -26,12 +26,12 @@ import com.google.gson.JsonParser
     var editorOpen by remember {mutableStateOf(false)}
     LaunchedEffect(state.info) {if(state.info=="Account saved.") editorOpen=false}
     RefreshOnResume(model::refresh)
-    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar={if(!embedded) TopAppBar(title={Text("Team",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack,enabled=!state.busy)},
+    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar={if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Team",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack,enabled=!state.busy)},
         actions={if(TokenStore.canManageTeam()) TextButton({editing=null;editorOpen=true},enabled=!state.busy && !state.loading && !state.uncertain) {Text("Add account")}})}) {padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    listOf("week" to "This week","month" to "This month","90" to "Last 90 days").forEach {(key,label)->FilterChip(state.period==key,{model.period(key)},label={Text(label)})}
+                    listOf("week" to "This week","month" to "This month","90" to "Last 90 days").forEach {(key,label)->au.mainspring.nativeapp.ui.AtelierChip(state.period==key,{model.period(key)},label={Text(label)})}
                 }
                 Text("${state.users.count {it.active}} active accounts · ${state.users.size} total",style=MaterialTheme.typography.labelSmall)
                 androidx.compose.material3.TextButton(model::refresh,enabled=!state.busy && !state.loading) { Text("Refresh") }
@@ -74,14 +74,14 @@ private fun commissionAmount(value: com.google.gson.JsonObject,key: String) = ja
     var minit by remember {mutableStateOf(java.math.BigDecimal.valueOf(parsed?.getAsJsonObject("rates_bp")?.get("minit_sourced")?.asLong ?: 4000,2).toPlainString())}
     var error by remember {mutableStateOf<String?>(null)}
     AlertDialog(onDismissRequest=onClose,title={Text(if(original==null) "Add account" else "Edit account")},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(name,{name=it},enabled=!busy,label={Text("Full name")},singleLine=true)
-        if(original==null) {OutlinedTextField(email,{email=it},enabled=!busy,label={Text("Email")},singleLine=true);OutlinedTextField(password,{password=it},enabled=!busy,label={Text("Initial password")},singleLine=true,visualTransformation=PasswordVisualTransformation())}
+        au.mainspring.nativeapp.ui.AtelierTextField(name,{name=it},enabled=!busy,label={Text("Full name")},singleLine=true)
+        if(original==null) {au.mainspring.nativeapp.ui.AtelierTextField(email,{email=it},enabled=!busy,label={Text("Email")},singleLine=true);au.mainspring.nativeapp.ui.AtelierTextField(password,{password=it},enabled=!busy,label={Text("Initial password")},singleLine=true,visualTransformation=PasswordVisualTransformation())}
         listOf("owner","manager","tech","intake").forEach {option->Row {RadioButton(role==option,{role=option},enabled=!busy);Text(option.replaceFirstChar {it.uppercase()})}}
         if(original!=null) Row {Checkbox(active,{active=it},enabled=!busy);Text("Active account")}
         Row {Checkbox(comm,{comm=it},enabled=!busy);Text("Commission tracking")}
         if(comm) {
             Text("Bonus is commission above the retainer. Existing eligibility and custom rate tiers are retained.",style=MaterialTheme.typography.bodySmall)
-            listOf("Retainer per period" to Pair(retainer,{v:String->retainer=v}),"Shop referred (%)" to Pair(shop,{v:String->shop=v}),"Tech sourced (%)" to Pair(self,{v:String->self=v}),"Minit sourced (%)" to Pair(minit,{v:String->minit=v})).forEach {(label,input)->OutlinedTextField(input.first,input.second,enabled=!busy,label={Text(label)},singleLine=true)}
+            listOf("Retainer per period" to Pair(retainer,{v:String->retainer=v}),"Shop referred (%)" to Pair(shop,{v:String->shop=v}),"Tech sourced (%)" to Pair(self,{v:String->self=v}),"Minit sourced (%)" to Pair(minit,{v:String->minit=v})).forEach {(label,input)->au.mainspring.nativeapp.ui.AtelierTextField(input.first,input.second,enabled=!busy,label={Text(label)},singleLine=true)}
         }
         (error ?: serverError)?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
         if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())

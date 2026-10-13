@@ -45,7 +45,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
         }
     }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success -> vm.cameraFinished(success) }
-    Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) TopAppBar(title = { Text("Job photos and files", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+    Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Job photos and files", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 if(state.busy || state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -72,7 +72,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
                 }
                 if(state.draft.uri.isNotBlank()) {
                     PhotoThumbnail(state.draft.uri, "Selected job photo")
-                    OutlinedTextField(state.draft.label, vm::label, label = { Text("Photo label") }, enabled = editable, modifier = Modifier.fillMaxWidth())
+                    au.mainspring.nativeapp.ui.AtelierTextField(state.draft.label, vm::label, label = { Text("Photo label") }, enabled = editable, modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = { vm.select("") }, enabled = editable) { Text("Remove selected photo") }
                         Button(onClick = { confirmUpload = true }, enabled = editable && !state.loading) { Text("Upload photo") }

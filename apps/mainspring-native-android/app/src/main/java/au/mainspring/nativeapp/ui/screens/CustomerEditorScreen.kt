@@ -36,7 +36,7 @@ fun CustomerEditorScreen(customerId: String, onBack: () -> Unit, onOpenCustomer:
         if(!filled || state.revision > 0) state.customer?.let { c -> name = c.fullName; email = c.email.orEmpty(); phone = c.phone.orEmpty(); address = c.address.orEmpty(); notes = c.notes.orEmpty(); filled = true }
         if(customerId.isBlank() && state.revision > 0 && state.customer == null) { name = ""; email = ""; phone = ""; address = ""; notes = ""; filled = false }
     }
-    Scaffold(topBar = { TopAppBar(title = { Text(if(customerId.isBlank()) "New customer" else "Edit customer") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.saving) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(if(customerId.isBlank()) "New customer" else "Edit customer") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.saving) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.saving) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
@@ -49,11 +49,11 @@ fun CustomerEditorScreen(customerId: String, onBack: () -> Unit, onOpenCustomer:
                 OutlinedButton(onClick = vm::confirmNotSaved, enabled = state.reviewed && !state.loading) { Text("I checked: this customer was not saved") }
             }
             val editable = !state.saving && !state.loading && !state.unknown && !(customerId.isBlank() && state.saved)
-            OutlinedTextField(name, { name = it; vm.changed() }, label = { Text("Name *") }, enabled = editable, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(phone, { phone = it; vm.changed() }, label = { Text("Phone") }, enabled = editable, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(email, { email = it; vm.changed() }, label = { Text("Email") }, enabled = editable, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(address, { address = it; vm.changed() }, label = { Text("Address") }, enabled = editable, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(notes, { notes = it; vm.changed() }, label = { Text("Notes") }, enabled = editable, modifier = Modifier.fillMaxWidth())
+            au.mainspring.nativeapp.ui.AtelierTextField(name, { name = it; vm.changed() }, label = { Text("Name *") }, enabled = editable, modifier = Modifier.fillMaxWidth())
+            au.mainspring.nativeapp.ui.AtelierTextField(phone, { phone = it; vm.changed() }, label = { Text("Phone") }, enabled = editable, modifier = Modifier.fillMaxWidth())
+            au.mainspring.nativeapp.ui.AtelierTextField(email, { email = it; vm.changed() }, label = { Text("Email") }, enabled = editable, modifier = Modifier.fillMaxWidth())
+            au.mainspring.nativeapp.ui.AtelierTextField(address, { address = it; vm.changed() }, label = { Text("Address") }, enabled = editable, modifier = Modifier.fillMaxWidth())
+            au.mainspring.nativeapp.ui.AtelierTextField(notes, { notes = it; vm.changed() }, label = { Text("Notes") }, enabled = editable, modifier = Modifier.fillMaxWidth())
             Button(onClick = { vm.save(name, email, phone, address, notes) }, enabled = !state.saving && !state.loading && !state.unknown && !state.conflict && (if(customerId.isBlank()) !state.saved else state.customer != null)) { Text(if(customerId.isBlank()) "Create customer" else "Save changes") }
         }
     }

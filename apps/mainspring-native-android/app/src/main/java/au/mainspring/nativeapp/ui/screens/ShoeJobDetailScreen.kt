@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.background
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
@@ -49,132 +50,71 @@ fun ShoeJobDetailScreen(
     var confirmQuote by remember { mutableStateOf(false) }
     var attachmentOpenError by remember { mutableStateOf<String?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(j?.jobNumber ?: "Shoe repair", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = { BackButton(onClick = onBack, enabled = !state.statusBusy) },
-                actions = {
-                    TextButton(onClick = vm::load, enabled = !state.loading && !state.statusBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
-                    TextButton(onClick = onEdit, enabled = !state.loading && !state.statusBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit") }
-                },
-            )
-        },
-        bottomBar = {
-            if (j != null) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (j.quoteStatus != "approved") SecondaryAction(onClick = { confirmQuote = true }, enabled = !state.quoteBusy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Send quote") }
-                    PrimaryAction(
-                        onClick = { statusChangeNote = ""; statusPicker = true },
-                        enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
-                        modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                    ) { Text(if (state.statusBusy) "Updating…" else "Change status") }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("overview") }
+    if (j == null) {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(16.dp)) {
+            TextButton(onClick = onBack) { Text("\u2039 Jobs", style = MaterialTheme.typography.titleSmall) }
+            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            state.error?.let { ErrorBanner(it, onRetry = vm::load) }
+        }
+    } else AtelierDetail(
+        backLabel = "Jobs", title = j.title, reference = j.jobNumber,
+        banner = listOfNotNull(statusLabel(j.status), if (j.quoteStatus != "none") "Quote ${j.quoteStatus.replace('_', ' ')}" else null).joinToString(" \u00b7 "),
+        tabs = listOf("overview" to "Overview", "history" to "History", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
+        onBack = onBack, backEnabled = !state.statusBusy,
+        primaryLabel = if (state.statusBusy) "Updating\u2026" else "Update repair status",
+        primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
+        onPrimary = { statusChangeNote = ""; statusPicker = true },
+        footnote = j.depositCents.takeIf { it > 0 }?.let { "Deposit ${formatCents(it, currency)}" },
+        menu = listOfNotNull(
+            DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
+            DetailAction("Refresh", !state.loading && !state.statusBusy, vm::load),
+            DetailAction("Photos & files", true, onPhotos),
+            if (j.quoteStatus != "approved") DetailAction("Send quote to customer", !state.quoteBusy) { confirmQuote = true } else null,
+            DetailAction("Add note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
+        ),
+        scrollBody = tab != "messages",
+    ) { active ->
+        CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
+        state.error?.let { ErrorBanner(it) }
+        when (active) {
+            "history" -> {
+                if (state.history.isEmpty()) Text("No history yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                state.history.forEach { h -> ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt)) }
+                state.attachments.forEach { att ->
+                    FlatPanel {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleMedium)
+                                att.contentType?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }
+                            TextButton(onClick = {
+                                attachmentOpenError = null
+                                scope.launch {
+                                    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(vm.resolveDownloadUrl(att.storageKey)))) }
+                                    catch (e: Exception) { attachmentOpenError = e.message ?: "Could not open file" }
+                                }
+                            }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open") }
+                        }
+                    }
                 }
+                attachmentOpenError?.let { ErrorBanner(it) }
             }
-        },
-    ) { padding ->
-        when {
-            state.loading && j == null -> LinearProgressIndicator(Modifier.padding(padding).fillMaxWidth())
-            state.error != null && j == null -> ErrorBanner(state.error ?: "", Modifier.padding(padding).padding(16.dp), onRetry = vm::load)
-            j != null -> {
-                LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item { CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus) }
-                    item {
-                        FlatPanel {
-                            Text(j.title, style = MaterialTheme.typography.titleLarge)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                StatusPill(j.status)
-                                if (j.quoteStatus != "none") StatusPill(if (j.quoteStatus == "approved") "approved" else "quote_" + j.quoteStatus)
-                            }
-                            j.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Text("Created ${formatShopDate(j.createdAt)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            "messages" -> MessageThreadScreen("shoe-repair-jobs", jobId, { tab = "overview" }, embedded = true)
+            else -> {
+                if (j.items.isNotEmpty()) SummaryCard("Requested work", j.items.joinToString(" \u00b7 ") { it.name }, null)
+                else j.description?.takeIf { it.isNotBlank() }?.let { SummaryCard("Requested work", it, null) }
+                SummaryCard(statusLabel(j.status), listOfNotNull(j.claimedByName?.let { "Assigned to $it" }, "Created ${formatShopDate(j.createdAt)}").joinToString(" \u00b7 "), null)
+                SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
+                    "View services, pricing and payment")
+                FlatPanel {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Assigned to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(j.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.titleMedium)
                         }
-                    }
-                    item {
-                        MetricStrip(buildList {
-                            add("Deposit" to formatCents(j.depositCents, currency))
-                            j.collectionDate?.let { add("Collect by" to formatShopDate(it)) }
-                        })
-                    }
-                    if (j.items.isNotEmpty()) item {
-                        SectionLabel("Work")
-                        FlatPanel {
-                            j.items.forEachIndexed { i, item ->
-                                if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(item.name, style = MaterialTheme.typography.bodyLarge)
-                                        item.notes?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                    }
-                                    Text("${item.quantity} × " + (item.price?.let { formatCents(it, currency) } ?: "Quote"), style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
-                        }
-                    }
-                    item {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SecondaryAction(onClick = onMessages, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Messages") }
-                            SecondaryAction(onClick = onPhotos, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Photos & files") }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (state.noteBusy) "Saving…" else "Add note") }
-                    }
-                    state.error?.let { item { ErrorBanner(it) } }
-                    item {
-                        FlatPanel {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("Assigned to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(j.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.bodyLarge)
-                                }
-                                if (j.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Claim for me") }
-                                else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Release") }
-                            }
-                        }
-                    }
-                    item { SectionLabel("Attachments") }
-                    item {
-                        attachmentOpenError?.let { ErrorBanner(it) }
-                        if (state.attachments.isEmpty()) Text("No files on this job yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    items(state.attachments, key = { it.id }) { att ->
-                        FlatPanel {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.bodyLarge)
-                                    att.contentType?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                }
-                                TextButton(
-                                    onClick = {
-                                        attachmentOpenError = null
-                                        scope.launch {
-                                            try {
-                                                val url = vm.resolveDownloadUrl(att.storageKey)
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                            } catch (e: Exception) {
-                                                attachmentOpenError = e.message ?: "Could not open file"
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.heightIn(min = 48.dp),
-                                ) { Text("Open") }
-                            }
-                        }
-                    }
-                    if (state.history.isNotEmpty()) {
-                        item { SectionLabel("Status history") }
-                        item {
-                            FlatPanel {
-                                state.history.forEachIndexed { i, h ->
-                                    if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                    Column {
-                                        Text("${h.oldStatus?.let { statusLabel(it) } ?: "New"} → ${statusLabel(h.newStatus)}", style = MaterialTheme.typography.bodyLarge)
-                                        h.changeNote?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                                        Text(formatShopDate(h.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-                        }
+                        if (j.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Claim for me") }
+                        else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Release") }
                     }
                 }
             }
@@ -191,7 +131,7 @@ fun ShoeJobDetailScreen(
             title = { Text("Change status") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    OutlinedTextField(
+                    au.mainspring.nativeapp.ui.AtelierTextField(
                         value = statusChangeNote,
                         onValueChange = { statusChangeNote = it },
                         label = { Text("Note (optional)") },
@@ -223,7 +163,7 @@ fun ShoeJobDetailScreen(
             onDismissRequest = { addNoteOpen = false },
             title = { Text("Add note") },
             text = {
-                OutlinedTextField(
+                au.mainspring.nativeapp.ui.AtelierTextField(
                     value = newNoteDraft,
                     onValueChange = { newNoteDraft = it },
                     label = { Text("Note") },

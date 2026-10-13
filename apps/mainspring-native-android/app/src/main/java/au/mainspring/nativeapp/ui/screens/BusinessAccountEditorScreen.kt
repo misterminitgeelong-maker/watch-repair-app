@@ -24,7 +24,7 @@ fun BusinessAccountEditorScreen(id: String, onBack: () -> Unit, onOpenAccount: (
     var confirm by remember { mutableStateOf(false) }
     val enabled = !state.loading && !state.busy && !state.uncertain && state.createdId == null && TokenStore.canManageInvoices()
     BackHandler { if(!state.busy) onBack() }
-    Scaffold(topBar = { TopAppBar(title = { Text(if(id.isBlank()) "New business account" else "Edit business account") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(if(id.isBlank()) "New business account" else "Edit business account") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
@@ -43,7 +43,7 @@ fun BusinessAccountEditorScreen(id: String, onBack: () -> Unit, onOpenAccount: (
                 "contact_phone" to "Contact phone", "billing_address" to "Billing address", "payment_terms_days" to "Payment terms (days)", "notes" to "Notes",
                 "fleet_size" to "Fleet size", "primary_contact_name" to "Primary contact name", "primary_contact_phone" to "Primary contact phone",
                 "credit_limit" to "Credit limit (whole dollars)", "account_notes" to "Account notes").forEach { (key,label) ->
-                OutlinedTextField(state.fields[key].orEmpty(), { vm.set(key,it) }, label = { Text(label) }, enabled = enabled, modifier = Modifier.fillMaxWidth())
+                au.mainspring.nativeapp.ui.AtelierTextField(state.fields[key].orEmpty(), { vm.set(key,it) }, label = { Text(label) }, enabled = enabled, modifier = Modifier.fillMaxWidth())
             }
             Text("Account type", style = MaterialTheme.typography.titleMedium)
             (listOf("") + BusinessAccountEditorViewModel.accountTypes).forEach { option -> Row(Modifier.fillMaxWidth().selectable(state.fields["account_type"].orEmpty() == option, enabled = enabled, role = Role.RadioButton, onClick = { vm.set("account_type",option) })) {

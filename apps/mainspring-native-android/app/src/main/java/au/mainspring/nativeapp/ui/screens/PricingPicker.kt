@@ -21,7 +21,7 @@ import au.mainspring.nativeapp.api.PricingRow
   Column(Modifier.fillMaxWidth().heightIn(max = 650.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Catalogue pricing", style = MaterialTheme.typography.titleLarge); TextButton(onClick = onClose) { Text("Close") } }
    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-    state.categories.forEach { category -> FilterChip(state.category == category, { vm.category(category) }, label = { Text(when(category) { "vehicle_key" -> "Vehicle keys"; "general_service" -> "Services"; else -> "Garage doors" }) }) }
+    state.categories.forEach { category -> au.mainspring.nativeapp.ui.AtelierChip(state.category == category, { vm.category(category) }, label = { Text(when(category) { "vehicle_key" -> "Vehicle keys"; "general_service" -> "Services"; else -> "Garage doors" }) }) }
    }
    if(state.category == "vehicle_key") {
     var expanded by remember { mutableStateOf(false) }
@@ -29,7 +29,7 @@ import au.mainspring.nativeapp.api.PricingRow
      DropdownMenu(expanded, { expanded = false }) { state.makes.forEach { make -> DropdownMenuItem(text = { Text(make) }, onClick = { expanded = false; vm.make(make) }) } }
     }
    }
-   OutlinedTextField(search, { search = it }, label = { Text("Find model or service") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+   au.mainspring.nativeapp.ui.AtelierTextField(search, { search = it }, label = { Text("Find model or service") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
    if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
    LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp)) {
     val rows = state.rows.filter { search.isBlank() || "${it.label()} ${it.description.orEmpty()} ${it.notes.orEmpty()}".contains(search,true) }

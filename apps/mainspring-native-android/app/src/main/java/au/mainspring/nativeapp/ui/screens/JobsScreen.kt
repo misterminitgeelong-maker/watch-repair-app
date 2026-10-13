@@ -50,14 +50,14 @@ fun JobsScreen(
 
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(value = state.query, onValueChange = viewModel::setQuery,
+        au.mainspring.nativeapp.ui.AtelierTextField(value = state.query, onValueChange = viewModel::setQuery,
             label = { Text("Search jobs or customers") }, singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { viewModel.refresh() }),
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(null, "awaiting_quote", "working_on", "awaiting_collection", "collected").forEach { status ->
-                FilterChip(selected = state.statusFilter == status, onClick = { viewModel.filterStatus(status) },
+                au.mainspring.nativeapp.ui.AtelierChip(selected = state.statusFilter == status, onClick = { viewModel.filterStatus(status) },
                     label = { Text(status?.replace('_', ' ')?.replaceFirstChar { it.uppercase() } ?: "All") })
             }
         }

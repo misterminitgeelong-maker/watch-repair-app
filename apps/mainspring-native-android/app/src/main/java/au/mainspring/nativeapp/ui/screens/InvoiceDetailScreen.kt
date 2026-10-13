@@ -54,7 +54,7 @@ fun InvoiceDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            au.mainspring.nativeapp.ui.AtelierTopAppBar(
                 title = { Text(inv?.invoiceNumber ?: "Invoice", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
                 actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.paymentBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },
@@ -69,16 +69,12 @@ fun InvoiceDetailScreen(
                 val currency = d.invoice.currency
                 LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item {
-                        au.mainspring.nativeapp.ui.FlatPanel {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                au.mainspring.nativeapp.ui.StatusPill(d.invoice.status)
-                                Text(formatShopDate(d.invoice.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Text(formatCents(d.invoice.totalCents, currency), style = MaterialTheme.typography.headlineMedium)
-                            Text("Subtotal ${formatCents(d.invoice.subtotalCents, currency)} · GST ${formatCents(d.invoice.taxCents, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        au.mainspring.nativeapp.ui.HeroCard {
+                            Text((if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL"), style = MaterialTheme.typography.labelSmall)
+                            Text(formatCents(remainingCents.coerceAtLeast(0), currency), style = MaterialTheme.typography.displaySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Light))
+                            Text("Total ${formatCents(d.invoice.totalCents, currency)} · Paid ${formatCents(paidCents, currency)} · ${formatShopDate(d.invoice.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
-                    item { au.mainspring.nativeapp.ui.MetricStrip(listOf("Paid" to formatCents(paidCents, currency), "Remaining" to formatCents(remainingCents.coerceAtLeast(0), currency))) }
                     state.paymentInfo?.let { item { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } } }
                     state.error?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it) } }
                     state.sendInfo?.let { item { Text(it, style = MaterialTheme.typography.bodyMedium) } }
@@ -157,14 +153,14 @@ fun InvoiceDetailScreen(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(bottom = 8.dp),
                     )
-                    OutlinedTextField(
+                    au.mainspring.nativeapp.ui.AtelierTextField(
                         value = amountDraft,
                         onValueChange = { amountDraft = it },
                         label = { Text("Amount") },
                         singleLine = true,
                         placeholder = { Text("e.g. 50.00") },
                     )
-                    OutlinedTextField(
+                    au.mainspring.nativeapp.ui.AtelierTextField(
                         value = refDraft,
                         onValueChange = { refDraft = it },
                         label = { Text("Reference (optional)") },

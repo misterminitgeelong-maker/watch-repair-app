@@ -73,7 +73,7 @@ import au.mainspring.nativeapp.ui.formatCents
    if(!sheetLayout || showBundles || quickSale) Text("Editable retail presets · AUD",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
    if(sheetLayout && !quickSale) TextButton({showBundles=!showBundles},enabled=enabled) {Text(if(showBundles) "Hide bundles" else "Choose a bundle") }
    if(quickSale) {
-    OutlinedTextField(itemQuery,{itemQuery=it},label={Text("Find a quick item")},singleLine=true,modifier=Modifier.fillMaxWidth())
+    au.mainspring.nativeapp.ui.AtelierTextField(itemQuery,{itemQuery=it},label={Text("Find a quick item")},singleLine=true,modifier=Modifier.fillMaxWidth())
     val rows=MOBILE_QUICK_ITEMS.filter {it.category in categories}.filter {row->itemQuery.lowercase().split(Regex("[^a-z0-9]+")).filter {it.isNotBlank()}.all {term->("${row.label} ${row.description}").lowercase().contains(term)}}
     rows.chunked(3).forEach { group -> Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
      group.forEach {item->OutlinedButton({addLines(listOf(QuoteLineDraft("${item.label} - ${item.description}","1",java.math.BigDecimal.valueOf(item.cents.toLong(),2).toPlainString())))},enabled=enabled,modifier=Modifier.weight(1f),contentPadding=PaddingValues(8.dp)) {
@@ -97,15 +97,15 @@ import au.mainspring.nativeapp.ui.formatCents
     if(line.price.isNotBlank()) Text("${line.quantity} × ${line.price}",style=MaterialTheme.typography.bodySmall)
    }
    if(expanded==index) {
-   OutlinedTextField(line.description, { change(index, line.copy(description = it)) }, label = { Text("Description") }, enabled = enabled, modifier = Modifier.fillMaxWidth())
+   au.mainspring.nativeapp.ui.AtelierTextField(line.description, { change(index, line.copy(description = it)) }, label = { Text("Description") }, enabled = enabled, modifier = Modifier.fillMaxWidth())
    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-    OutlinedTextField(line.quantity, { change(index, line.copy(quantity = it)) }, label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
-    OutlinedTextField(line.price, { change(index, line.copy(price = it)) }, label = { Text("Unit price ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
+    au.mainspring.nativeapp.ui.AtelierTextField(line.quantity, { change(index, line.copy(quantity = it)) }, label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
+    au.mainspring.nativeapp.ui.AtelierTextField(line.price, { change(index, line.copy(price = it)) }, label = { Text("Unit price ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
    }
    if(pricingOptions || line.discountType!="none") Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-    listOf("none" to "No discount", "percent" to "% discount", "amount" to "$ discount").forEach { (key,label) -> FilterChip(line.discountType == key, { change(index, line.copy(discountType = key)) }, enabled = enabled, label = { Text(label) }) }
+    listOf("none" to "No discount", "percent" to "% discount", "amount" to "$ discount").forEach { (key,label) -> au.mainspring.nativeapp.ui.AtelierChip(line.discountType == key, { change(index, line.copy(discountType = key)) }, enabled = enabled, label = { Text(label) }) }
    }
-   if(line.discountType != "none") OutlinedTextField(line.discount, { change(index, line.copy(discount = it)) }, label = { Text(if(line.discountType == "percent") "Discount percentage" else "Discount per item ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.fillMaxWidth(), singleLine = true)
+   if(line.discountType != "none") au.mainspring.nativeapp.ui.AtelierTextField(line.discount, { change(index, line.copy(discount = it)) }, label = { Text(if(line.discountType == "percent") "Discount percentage" else "Discount per item ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.fillMaxWidth(), singleLine = true)
    }
    if(draft.lines.size > 1) TextButton(onClick = { persist(draft.copy(lines = draft.lines.filterIndexed { i,_ -> i != index })) }, enabled = enabled) { Text("Remove line ${index+1}") }
   }

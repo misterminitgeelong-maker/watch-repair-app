@@ -20,7 +20,7 @@ import au.mainspring.nativeapp.*
  var confirm by remember { mutableStateOf<Pair<String,String>?>(null) }; var reason by rememberSaveable { mutableStateOf("") }
  val enabled = !state.loading && !state.busy
  val tenant = TokenStore.currentTenantId()
- Scaffold(topBar = { TopAppBar(title = { Text("Mobile booking requests", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+ Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Mobile booking requests", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    item {
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -37,10 +37,10 @@ import au.mainspring.nativeapp.*
      listOf("customer_name" to "Customer name *", "phone" to "Customer phone", "email" to "Customer email", "suburb" to "Suburb *", "job_address" to "Visit address *",
       "vehicle_make" to "Vehicle make", "vehicle_model" to "Vehicle model", "registration_plate" to "Registration plate", "job_type" to "Requested service",
       "preferred_scheduled_at" to "Preferred time (DD/MM/YYYY HH:mm)", "notes" to "Notes").forEach { (key, label) ->
-      OutlinedTextField(state.fields[key].orEmpty(), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = enabled)
+      au.mainspring.nativeapp.ui.AtelierTextField(state.fields[key].orEmpty(), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = enabled)
      }
      Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      listOf("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA").forEach { value -> FilterChip(state.fields["state_code"] == value, { vm.set("state_code", value) }, label = { Text(value) }, enabled = enabled) }
+      listOf("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(state.fields["state_code"] == value, { vm.set("state_code", value) }, label = { Text(value) }, enabled = enabled) }
      }
      Text("Visit location")
      listOf("customer_site" to "Customer's address", "at_shop" to "At this shop").forEach { (key, label) -> Row { RadioButton(state.fields["visit_location_type"].orEmpty().ifBlank { "customer_site" } == key, { vm.set("visit_location_type", key) }, enabled = enabled); Text(label) } }
@@ -72,7 +72,7 @@ import au.mainspring.nativeapp.*
  }
  confirm?.let { action -> AlertDialog(onDismissRequest = { confirm = null }, title = { Text(when(action.first) { "create" -> "Send booking request?"; "accept" -> "Accept and create job?"; "decline" -> "Decline booking?"; else -> "Cancel booking request?" }) },
   text = { Column { Text(when(action.first) { "create" -> "Send the customer's details and preferred visit time to the selected operator or service-area routing."; "accept" -> "Create a mobile job for this request. Review scheduling warnings after acceptance."; else -> "Update this request's status." })
-   if(action.first == "decline") OutlinedTextField(reason, { reason = it }, label = { Text("Reason (optional)") })
+   if(action.first == "decline") au.mainspring.nativeapp.ui.AtelierTextField(reason, { reason = it }, label = { Text("Reason (optional)") })
   } }, confirmButton = { Button(onClick = { confirm = null; if(action.first == "create") vm.create { creating = false } else vm.action(action.second, action.first, reason) }) { Text("Confirm") } },
   dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } }) }
 }

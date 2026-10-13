@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.background
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
@@ -51,143 +52,85 @@ fun JobDetailScreen(
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     androidx.activity.compose.BackHandler(state.statusBusy) {}
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(job?.jobNumber ?: "Repair", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = { BackButton(onClick = onBack, enabled = !state.statusBusy) },
-                actions = {
-                    TextButton(onClick = vm::load, enabled = !state.loading && !state.statusBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
-                    TextButton(onClick = onEdit, enabled = !state.loading && !state.statusBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit") }
-                },
-            )
-        },
-        bottomBar = {
-            if (job != null) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryAction(onClick = { onQuotes(jobId) }, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Quotes and invoicing") }
-                    PrimaryAction(
-                        onClick = { statusChangeNote = ""; statusPicker = true },
-                        enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
-                        modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                    ) { Text(if (state.statusBusy) "Updating…" else "Change status") }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("summary") }
+    if (job == null) {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(16.dp)) {
+            TextButton(onClick = onBack) { Text("\u2039 Jobs", style = MaterialTheme.typography.titleSmall) }
+            if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            state.error?.let { ErrorBanner(it, onRetry = vm::load) }
+        }
+    } else AtelierDetail(
+        backLabel = "Jobs", title = job.title,
+        reference = listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }).joinToString(" \u00b7 "),
+        banner = listOfNotNull(statusLabel(job.status), if (job.priority == "urgent" || job.priority == "high") "Urgent" else null,
+            if (job.depositCents < job.preQuoteCents) "Balance outstanding" else null).joinToString(" \u00b7 "),
+        tabs = listOf("summary" to "Summary", "activity" to "Activity", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
+        onBack = onBack, backEnabled = !state.statusBusy,
+        primaryLabel = if (state.statusBusy) "Updating\u2026" else "Change status",
+        primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
+        onPrimary = { statusChangeNote = ""; statusPicker = true },
+        footnote = listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "Deposit ${formatCents(it, currency)}" }, job.preQuoteCents.takeIf { it > 0 }?.let { "Pre-quote ${formatCents(it, currency)}" }).joinToString(" \u00b7 ").ifBlank { null },
+        menu = listOf(
+            DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
+            DetailAction("Refresh", !state.loading && !state.statusBusy, vm::load),
+            DetailAction("Photos & files", true, onPhotos),
+            DetailAction("Log work", true, onWorkLogs),
+            DetailAction("Notify customer", !state.resendBusy) { resendPicker = true },
+            DetailAction("Add shop note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
+        ),
+        scrollBody = tab != "messages",
+    ) { active ->
+        CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
+        state.error?.let { ErrorBanner(it) }
+        state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
+        when (active) {
+            "activity" -> {
+                if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No activity recorded yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                state.history.forEach { h ->
+                    ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
                 }
+                state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} \u00b7 ${log.body}", "${log.toPhone} \u00b7 ${formatShopDate(log.createdAt)}") }
+                state.attachments.forEach { att ->
+                    FlatPanel {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleMedium)
+                                att.contentType?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }
+                            TextButton(onClick = {
+                                attachmentOpenError = null
+                                scope.launch {
+                                    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(vm.resolveDownloadUrl(att.storageKey)))) }
+                                    catch (e: Exception) { attachmentOpenError = e.message ?: "Could not open file" }
+                                }
+                            }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open") }
+                        }
+                    }
+                }
+                attachmentOpenError?.let { ErrorBanner(it) }
+                Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        },
-    ) { padding ->
-        when {
-            state.loading && job == null -> LinearProgressIndicator(Modifier.padding(padding).fillMaxWidth())
-            state.error != null && job == null -> ErrorBanner(state.error ?: "", Modifier.padding(padding).padding(16.dp), onRetry = vm::load)
-            job != null -> {
-                LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item { CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus) }
-                    item {
-                        FlatPanel {
-                            Text(job.title, style = MaterialTheme.typography.titleLarge)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                StatusPill(job.status)
-                                if (job.priority != "normal") StatusPill(if (job.priority == "urgent" || job.priority == "high") "urgent" else job.priority)
-                            }
-                            job.customerName?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
-                            job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            "messages" -> MessageThreadScreen("repair-jobs", jobId, { tab = "summary" }, embedded = true)
+            else -> {
+                FlatPanel {
+                    Text(job.title, style = MaterialTheme.typography.titleMedium)
+                    job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(listOfNotNull(job.claimedByName, job.collectionDate?.let { "Due ${formatShopDate(it)}" }, job.partsEta?.let { "Parts ${formatShopDate(it)}" }).joinToString(" \u00b7 ").ifBlank { "Unassigned" },
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                SummaryCard("Customer & contact", job.customerName ?: "No customer recorded", "Contact details and repair history")
+                SummaryCard("Quotes & invoicing", listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} deposit" }, job.preQuoteCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} pre-quote" }).joinToString(" \u00b7 ").ifBlank { "No charges recorded yet" },
+                    "View charges or record payment", { onQuotes(jobId) })
+                SummaryCard("Activity & work notes", "Intake and workshop record", "Status changes, approvals and internal notes", { tab = "activity" })
+                job.internalNotes?.takeIf { it.isNotBlank() }?.let { SummaryCard("Internal notes", it, null) }
+                FlatPanel {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Assigned to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(job.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.titleMedium)
                         }
-                    }
-                    item {
-                        MetricStrip(buildList {
-                            add("Deposit" to formatCents(job.depositCents, currency))
-                            if (job.preQuoteCents > 0) add("Pre-quote" to formatCents(job.preQuoteCents, currency))
-                            job.collectionDate?.let { add("Collect by" to formatShopDate(it)) }
-                        })
-                    }
-                    if (job.partsEta != null || !job.internalNotes.isNullOrBlank()) item {
-                        FlatPanel {
-                            job.partsEta?.let { DetailRow("Parts ETA", formatShopDate(it)) }
-                            job.internalNotes?.takeIf { it.isNotBlank() }?.let { DetailRow("Internal notes", it) }
-                        }
-                    }
-                    item {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SecondaryAction(onClick = onMessages, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Messages") }
-                            SecondaryAction(onClick = onPhotos, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Photos & files") }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SecondaryAction(onClick = onWorkLogs, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Log work") }
-                            SecondaryAction(onClick = { resendPicker = true }, enabled = !state.resendBusy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text(if (state.resendBusy) "Sending…" else "Notify customer") }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (state.noteBusy) "Saving…" else "Add shop note") }
-                    }
-                    state.resendInfo?.let { item { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } } }
-                    state.error?.let { item { ErrorBanner(it) } }
-                    item {
-                        FlatPanel {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("Assigned to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(job.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.bodyLarge)
-                                }
-                                if (job.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Claim for me") }
-                                else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Release") }
-                            }
-                        }
-                    }
-                    item { SectionLabel("Attachments") }
-                    item {
-                        attachmentOpenError?.let { ErrorBanner(it) }
-                        if (state.attachments.isEmpty()) Text("No files on this job yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    items(state.attachments, key = { it.id }) { att ->
-                        FlatPanel {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.bodyLarge)
-                                    att.contentType?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                }
-                                TextButton(
-                                    onClick = {
-                                        attachmentOpenError = null
-                                        scope.launch {
-                                            try {
-                                                val url = vm.resolveDownloadUrl(att.storageKey)
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                            } catch (e: Exception) {
-                                                attachmentOpenError = e.message ?: "Could not open file"
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.heightIn(min = 48.dp),
-                                ) { Text("Open") }
-                            }
-                        }
-                    }
-                    if (state.smsLog.isNotEmpty()) {
-                        item { SectionLabel("Customer messages sent") }
-                        items(state.smsLog, key = { it.id }) { log ->
-                            FlatPanel {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(statusLabel(log.event), style = MaterialTheme.typography.bodyLarge)
-                                    Text(statusLabel(log.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                Text(log.body, style = MaterialTheme.typography.bodyMedium)
-                                Text("${log.toPhone} · ${formatShopDate(log.createdAt)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                    if (state.history.isNotEmpty()) {
-                        item { SectionLabel("Status history") }
-                        item {
-                            FlatPanel {
-                                state.history.forEachIndexed { i, h ->
-                                    if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                    Column {
-                                        Text("${h.oldStatus?.let { statusLabel(it) } ?: "New"} → ${statusLabel(h.newStatus)}", style = MaterialTheme.typography.bodyLarge)
-                                        h.changeNote?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                                        Text(formatShopDate(h.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-                        }
+                        if (job.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Claim for me") }
+                        else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Release") }
                     }
                 }
             }
@@ -200,7 +143,7 @@ fun JobDetailScreen(
             title = { Text("Change status") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    OutlinedTextField(
+                    au.mainspring.nativeapp.ui.AtelierTextField(
                         value = statusChangeNote,
                         onValueChange = { statusChangeNote = it },
                         label = { Text("Note (optional)") },
@@ -232,7 +175,7 @@ fun JobDetailScreen(
             onDismissRequest = { addNoteOpen = false },
             title = { Text("Add shop note") },
             text = {
-                OutlinedTextField(
+                au.mainspring.nativeapp.ui.AtelierTextField(
                     value = newNoteDraft,
                     onValueChange = { newNoteDraft = it },
                     label = { Text("Note") },

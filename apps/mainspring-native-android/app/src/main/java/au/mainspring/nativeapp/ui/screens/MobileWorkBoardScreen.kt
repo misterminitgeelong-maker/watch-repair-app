@@ -26,7 +26,7 @@ import java.time.*
     var mode by rememberSaveable {mutableStateOf("list")}
     var selected by rememberSaveable {mutableStateOf<String?>(null)}
     Scaffold(
-        topBar={TopAppBar(title={Text("Mobile services",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
+        topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Mobile services",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
             actions={TextButton({onNavigate("route")},modifier=Modifier.heightIn(min=48.dp)) {Text("Map")}})},
         floatingActionButton={if(TokenStore.canWorkJobs()) ExtendedFloatingActionButton(onClick=onNewJob,containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary) {Text("New job",style=MaterialTheme.typography.labelLarge)}},
     ) {padding->
@@ -66,7 +66,7 @@ private fun boardColumn(status: String)=when(status) {
     LaunchedEffect(model) {model.directory("all")}
     Scaffold(contentWindowInsets=WindowInsets(0,0,0,0),containerColor=androidx.compose.ui.graphics.Color.Transparent) {padding->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            OutlinedTextField(state.query,model::query,label={Text("Search jobs")},modifier=Modifier.fillMaxWidth().padding(12.dp),singleLine=true)
+            au.mainspring.nativeapp.ui.AtelierTextField(state.query,model::query,label={Text("Search jobs")},modifier=Modifier.fillMaxWidth().padding(12.dp),singleLine=true)
             Text("${state.jobs.size} of ${state.total} jobs loaded",Modifier.padding(horizontal=12.dp),style=MaterialTheme.typography.bodySmall)
             state.error?.let {Text(it,Modifier.padding(12.dp),color=MaterialTheme.colorScheme.error)}
             if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -111,9 +111,9 @@ private fun boardColumn(status: String)=when(status) {
             if(state.uncertain) Column(Modifier.padding(12.dp)) {Text(model.pendingMove());Text("Review the latest job booking before clearing the interrupted move.");OutlinedButton(model::reviewMove,enabled=state.reviewed && !state.loading && !state.busy) {Text("I have reviewed the booking")}}
             if(state.total>state.jobs.size) Text("Showing ${state.jobs.size} of ${state.total} bookings. Narrow the schedule from the job list.",Modifier.padding(12.dp),style=MaterialTheme.typography.bodySmall)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=12.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                FilterChip(technician.isBlank(),{technician=""},label={Text("All technicians")})
-                FilterChip(technician=="unassigned",{technician="unassigned"},label={Text("Unassigned")})
-                state.technicians.filter {it.active || state.jobs.any {job->job.assignedUserId==it.id}}.forEach {user->FilterChip(technician==user.id,{technician=user.id},label={Text(user.name)})}
+                au.mainspring.nativeapp.ui.AtelierChip(technician.isBlank(),{technician=""},label={Text("All technicians")})
+                au.mainspring.nativeapp.ui.AtelierChip(technician=="unassigned",{technician="unassigned"},label={Text("Unassigned")})
+                state.technicians.filter {it.active || state.jobs.any {job->job.assignedUserId==it.id}}.forEach {user->au.mainspring.nativeapp.ui.AtelierChip(technician==user.id,{technician=user.id},label={Text(user.name)})}
             }
             selecting?.let {job->Row(Modifier.fillMaxWidth().padding(12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {Text("Move ${job.jobNumber}",style=MaterialTheme.typography.titleSmall);Text("Choose a time slot, then confirm.",style=MaterialTheme.typography.bodySmall)}
@@ -163,7 +163,7 @@ private fun boardColumn(status: String)=when(status) {
         }
     }
     moving?.let {job->AlertDialog(onDismissRequest={moving=null},title={Text("Move ${job.jobNumber}")},text={Column {
-        Text(job.title);OutlinedTextField(time,{time=it},label={Text("Booking: dd/MM/yyyy HH:mm")},singleLine=true)
+        Text(job.title);au.mainspring.nativeapp.ui.AtelierTextField(time,{time=it},label={Text("Booking: dd/MM/yyyy HH:mm")},singleLine=true)
         Text("Shop timezone: ${zone.id}",style=MaterialTheme.typography.bodySmall)
     }},confirmButton={TextButton({moving=null;selecting=null;model.move(job,time)},enabled=!state.loading && !state.busy && !state.uncertain) {Text("Confirm move")}},dismissButton={TextButton({moving=null}) {Text("Cancel")}})}
 }

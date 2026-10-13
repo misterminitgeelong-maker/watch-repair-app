@@ -42,7 +42,7 @@ fun ShoeJobsScreen(
     au.mainspring.nativeapp.ui.RefreshOnResume(viewModel::refresh)
     Scaffold(
         topBar = {
-            TopAppBar(
+            au.mainspring.nativeapp.ui.AtelierTopAppBar(
                 title = { Text("Shoe repairs", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
                 actions = { TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },

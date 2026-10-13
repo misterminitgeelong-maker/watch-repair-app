@@ -18,7 +18,7 @@ import au.mainspring.nativeapp.*
  var confirmReset by remember { mutableStateOf(false) }
  val f = vm::field; val done = f("done") == "true"; val locked = state.busy || f("jobId").isNotBlank() || f("uncertain").isNotBlank()
  BackHandler { if(!state.busy) onBack() }
- Scaffold(topBar = { TopAppBar(title = { Text("Counter sale or quote", style = MaterialTheme.typography.titleLarge) },navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack,enabled = !state.busy) }) }) { padding ->
+ Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Counter sale or quote", style = MaterialTheme.typography.titleLarge) },navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack,enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.busy || state.customerLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
    (localError ?: state.error)?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
@@ -37,16 +37,16 @@ import au.mainspring.nativeapp.*
     } else Button(onClick = vm::resume,enabled = !state.busy) { Text("Continue saved checkout") }
     OutlinedButton(onClick = { confirmReset = true }, enabled = !state.busy && (f("uncertain").isBlank() || state.reviewed)) { Text("Discard checkout draft") }
    } else {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("sale" to "Counter sale","quote" to "Quote only").forEach { (key,label) -> FilterChip(f("mode").ifBlank { "sale" } == key,{ vm.set("mode",key) },label = { Text(label) },enabled = !locked) } }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("existing" to "Existing customer","new" to "New customer").forEach { (key,label) -> FilterChip(f("customerMode").ifBlank { "existing" } == key,{ vm.set("customerMode",key) },label = { Text(label) },enabled = !locked) } }
-    if(f("customerMode") == "new") listOf("name" to "Customer name *","phone" to "Phone","email" to "Email").forEach { (key,label) -> OutlinedTextField(f(key),{ vm.set(key,it) },label = { Text(label) },modifier = Modifier.fillMaxWidth(),enabled = !locked) }
+    au.mainspring.nativeapp.ui.SegmentedPills(listOf("sale" to "Counter sale","quote" to "Quote only"),f("mode").ifBlank { "sale" },{ if(!locked) vm.set("mode",it) })
+    au.mainspring.nativeapp.ui.SegmentedPills(listOf("existing" to "Existing customer","new" to "New customer"),f("customerMode").ifBlank { "existing" },{ if(!locked) vm.set("customerMode",it) })
+    if(f("customerMode") == "new") listOf("name" to "Customer name *","phone" to "Phone","email" to "Email").forEach { (key,label) -> au.mainspring.nativeapp.ui.AtelierTextField(f(key),{ vm.set(key,it) },label = { Text(label) },modifier = Modifier.fillMaxWidth(),enabled = !locked) }
     else {
-     OutlinedTextField(f("query"),{ vm.set("query",it) },label = { Text("Search customer") },modifier = Modifier.fillMaxWidth(),enabled = !locked)
+     au.mainspring.nativeapp.ui.AtelierTextField(f("query"),{ vm.set("query",it) },label = { Text("Search customer") },modifier = Modifier.fillMaxWidth(),enabled = !locked)
      OutlinedButton(onClick = { vm.searchCustomers(f("query")) },enabled = !locked && !state.customerLoading) { Text("Search customers") }
      state.customers.forEach { customer -> au.mainspring.nativeapp.ui.SelectableCard(f("customerId") == customer.id,{ vm.set("customerId",customer.id) },enabled = !locked) {
         Text(customer.fullName,style = MaterialTheme.typography.titleMedium)
         customer.phone?.takeIf { it.isNotBlank() }?.let { Text(it,style = MaterialTheme.typography.bodyMedium,color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
-     state.accounts.filter { it.active && f("customerId") in it.customerIds }.forEach { account -> FilterChip(f("accountId") == account.id,{ vm.set("accountId",if(f("accountId") == account.id) "" else account.id) },enabled = !locked,label = { Text("Account: ${account.name}") }) }
+     state.accounts.filter { it.active && f("customerId") in it.customerIds }.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(f("accountId") == account.id,{ vm.set("accountId",if(f("accountId") == account.id) "" else account.id) },enabled = !locked,label = { Text("Account: ${account.name}") }) }
     }
     HorizontalDivider(); Text("Items",style = MaterialTheme.typography.titleLarge)
     QuoteComposer("quote-composer/pos",f("accountId").isNotBlank(),!locked && TokenStore.canWorkJobs(),catalogue = true,quickSale = true,buttonLabel = if(f("mode").ifBlank { "sale" } == "sale") "Review counter sale" else "Review quote",onSave = { lines,gst,inclusive ->

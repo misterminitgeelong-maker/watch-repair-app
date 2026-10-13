@@ -26,7 +26,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
     vm: CustomerDetailViewModel = viewModel(key = customerId, factory = CustomerDetailViewModel.factory(customerId,features))) {
     val state by vm.state.collectAsStateWithLifecycle()
     RefreshOnResume(vm::load)
-    Scaffold(topBar = { TopAppBar(title = { Text(state.customer?.fullName ?: "Customer", style = MaterialTheme.typography.titleLarge) },
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(state.customer?.fullName ?: "Customer", style = MaterialTheme.typography.titleLarge) },
         navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
         actions = {
             TextButton(onClick = vm::load, enabled = !state.loading && state.paging == null, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }

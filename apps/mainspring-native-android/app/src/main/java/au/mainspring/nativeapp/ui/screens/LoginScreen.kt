@@ -69,7 +69,7 @@ fun LoginScreen(
         Text("Sign in to your shop", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         if (showServerConfig) {
-            OutlinedTextField(
+            au.mainspring.nativeapp.ui.AtelierTextField(
                 value = serverUrl,
                 onValueChange = { serverUrl = it },
                 label = { Text("Server Base URL") },
@@ -80,7 +80,7 @@ fun LoginScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(
+        au.mainspring.nativeapp.ui.AtelierTextField(
             value = slug,
             onValueChange = { slug = it },
             label = { Text("Shop ID (optional)") },
@@ -90,7 +90,7 @@ fun LoginScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        au.mainspring.nativeapp.ui.AtelierTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
@@ -99,7 +99,7 @@ fun LoginScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        au.mainspring.nativeapp.ui.AtelierTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },

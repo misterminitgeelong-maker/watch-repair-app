@@ -59,7 +59,7 @@ private data class WorkspaceGroup(val key: String, val title: String, val subtit
     LazyColumn(Modifier.fillMaxSize().testTag("more-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { LargeHeader((shop ?: "Your shop") + " · Every tool in reach", "Your workspace") }
         item {
-            OutlinedTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool or workflow") }, shape = MaterialTheme.shapes.medium,
+            au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool or workflow") }, shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                 colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary))

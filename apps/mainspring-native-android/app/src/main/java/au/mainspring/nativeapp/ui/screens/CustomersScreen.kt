@@ -29,7 +29,7 @@ fun CustomersScreen(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { LargeHeader("Customers · Accounts · Team", "People", onAdd = onNewCustomer, addDescription = "New customer") }
         item {
-            OutlinedTextField(
+            au.mainspring.nativeapp.ui.AtelierTextField(
                 value = state.query, onValueChange = viewModel::setQuery, singleLine = true,
                 placeholder = { Text("Search customers") }, shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),

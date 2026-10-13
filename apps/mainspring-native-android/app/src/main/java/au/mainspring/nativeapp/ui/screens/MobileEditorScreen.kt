@@ -17,14 +17,14 @@ import au.mainspring.nativeapp.*
  var teamOpen by remember { mutableStateOf(false) }
  var accountOpen by remember { mutableStateOf(false) }
  androidx.activity.compose.BackHandler(state.busy) {}
- Scaffold(topBar = { TopAppBar(title = { Text("Edit mobile job", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+ Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Edit mobile job", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; if(state.saved) Text("Job changes saved.")
    listOf("title" to "Job title *", "description" to "Requested work", "job_address" to "Job address", "scheduled_at" to "Booking (DD/MM/YYYY HH:mm)",
     "vehicle_make" to "Vehicle make", "vehicle_model" to "Vehicle model", "vehicle_year" to "Vehicle year", "registration_plate" to "Registration plate", "vin" to "VIN",
     "key_type" to "Key type", "blade_code" to "Blade code", "chip_type" to "Chip type", "key_quantity" to "Key quantity", "tech_notes" to "Technician notes").forEach { (key, label) ->
-    OutlinedTextField(state.fields[key].orEmpty(), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = !state.loading && !state.busy)
+    au.mainspring.nativeapp.ui.AtelierTextField(state.fields[key].orEmpty(), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = !state.loading && !state.busy)
    }
    Text("Booking timezone: ${TokenStore.calendarTimezone()}")
    Text("Billing account", style = MaterialTheme.typography.titleMedium)

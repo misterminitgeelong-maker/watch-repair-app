@@ -45,7 +45,7 @@ fun QuoteDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            au.mainspring.nativeapp.ui.AtelierTopAppBar(
                 title = { Text("Quote", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
                 actions = { TextButton(onClick = vm::load, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },

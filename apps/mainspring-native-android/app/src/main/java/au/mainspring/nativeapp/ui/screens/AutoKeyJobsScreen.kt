@@ -61,7 +61,7 @@ fun AutoKeyJobsScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
-                OutlinedTextField(state.query, viewModel::query, label = { Text("Search jobs, customers or registration") }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), singleLine = true)
+                au.mainspring.nativeapp.ui.AtelierTextField(state.query, viewModel::query, label = { Text("Search jobs, customers or registration") }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), singleLine = true)
                 au.mainspring.nativeapp.ui.FilterRow(listOf("active" to "Active", "completed" to "Completed", "all" to "All").map { (k, v) -> k as String? to v }, if(state.focus == null) state.directory else null, { viewModel.directory(it ?: "active") })
                 au.mainspring.nativeapp.ui.FilterRow(listOf("today" to "Today", "unscheduled" to "Unscheduled", "unassigned" to "Unassigned", "needs_quote" to "Needs quote", "completed_unpaid" to "Completed, unpaid").map { (k, v) -> k as String? to v },
                     state.focus, { viewModel.focus(if(state.focus == it) null else it) })

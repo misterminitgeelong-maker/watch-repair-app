@@ -61,12 +61,12 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
             finally { exportBusy = false }
         }
     }
-    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) TopAppBar(title = { Text("Reports", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack) }) }) { padding ->
+    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Reports", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack) }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("period-report-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("day", "week", "month", "quarter").forEach { period ->
-                        FilterChip(state.period == period, { model.select(period = period) }, label = { Text(period.replaceFirstChar { it.uppercase() }) })
+                        au.mainspring.nativeapp.ui.AtelierChip(state.period == period, { model.select(period = period) }, label = { Text(period.replaceFirstChar { it.uppercase() }) })
                     }
                 }
                 Spacer(Modifier.height(8.dp))

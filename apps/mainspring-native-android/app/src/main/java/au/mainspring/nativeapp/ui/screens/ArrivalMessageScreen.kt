@@ -25,7 +25,7 @@ fun ArrivalMessageScreen(id: String, onBack: () -> Unit, vm: ArrivalMessageViewM
     var confirm by remember { mutableStateOf(false) }
     var dialError by remember { mutableStateOf<String?>(null) }
     BackHandler { if(!state.busy) onBack() }
-    Scaffold(topBar = { TopAppBar(title = { Text("Arrival message", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Arrival message", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; dialError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; state.info?.let { Text(it) }
@@ -44,7 +44,7 @@ fun ArrivalMessageScreen(id: String, onBack: () -> Unit, vm: ArrivalMessageViewM
                 Text("The last arrival request was accepted.")
                 OutlinedButton(onClick = vm::startUpdatedWindow, enabled = !state.busy) { Text("Send an updated arrival window") }
             }
-            OutlinedTextField(state.draft.window, vm::window, label = { Text("Arrival window, e.g. 9–11 am") }, enabled = !state.busy && !state.uncertain && !state.draft.accepted, modifier = Modifier.fillMaxWidth())
+            au.mainspring.nativeapp.ui.AtelierTextField(state.draft.window, vm::window, label = { Text("Arrival window, e.g. 9–11 am") }, enabled = !state.busy && !state.uncertain && !state.draft.accepted, modifier = Modifier.fillMaxWidth())
             Text("Your technician is on the way and will arrive between ${state.draft.window.ifBlank { "[arrival window]" }}. Please ensure someone is available at the vehicle.")
             Button(onClick = { confirm = true }, enabled = !state.loading && !state.busy && !state.uncertain && !state.draft.accepted && state.draft.window.isNotBlank() && !state.customer?.phone.isNullOrBlank() && TokenStore.canWorkJobs()) { Text("Send arrival SMS") }
             androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading && !state.busy) { Text("Refresh") }

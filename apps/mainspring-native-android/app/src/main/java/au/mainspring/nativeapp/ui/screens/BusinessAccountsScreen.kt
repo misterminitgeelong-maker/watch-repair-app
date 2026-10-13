@@ -22,14 +22,14 @@ fun BusinessAccountsScreen(onBack: () -> Unit, onOpenAccount: (String) -> Unit, 
     val state by vm.state.collectAsStateWithLifecycle()
     var search by rememberSaveable { mutableStateOf("") }
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { TopAppBar(title = { Text("Business accounts", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Business accounts", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                 androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh") }
                 if(TokenStore.canManageInvoices()) Button(onClick = onCreate) { Text("New business account") }
-                OutlinedTextField(search, { search = it }, label = { Text("Find an account") }, modifier = Modifier.fillMaxWidth())
+                au.mainspring.nativeapp.ui.AtelierTextField(search, { search = it }, label = { Text("Find an account") }, modifier = Modifier.fillMaxWidth())
                 if(!state.loading && state.accounts.isEmpty() && state.error == null) Text("No business accounts yet.")
             }
             items(state.accounts.filter { "${it.name} ${it.code.orEmpty()}".contains(search, true) }, key = { it.id }) { account ->
@@ -58,7 +58,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
     val manager = TokenStore.canManageInvoices()
     val enabled = !state.loading && !state.busy
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { TopAppBar(title = { Text(state.account?.name ?: "Business account") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(state.account?.name ?: "Business account") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -82,7 +82,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
             }
             if(manager) {
                 item {
-                    OutlinedTextField(search, { search = it }, label = { Text("Customer name, email or phone") }, modifier = Modifier.fillMaxWidth(), enabled = enabled)
+                    au.mainspring.nativeapp.ui.AtelierTextField(search, { search = it }, label = { Text("Customer name, email or phone") }, modifier = Modifier.fillMaxWidth(), enabled = enabled)
                     OutlinedButton(onClick = { vm.searchCustomers(search) }, enabled = enabled && !state.searching) { Text("Search customers") }
                     if(state.searching) LinearProgressIndicator(Modifier.fillMaxWidth())
                     if(state.customers.size == 30) Text("Showing 30 matches. Refine your search to find another customer.")
@@ -94,7 +94,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
             item {
                 HorizontalDivider(); Text("Monthly statement", style = MaterialTheme.typography.titleLarge)
                 Text("The statement includes completed billable jobs that have not already been invoiced to this account.")
-                OutlinedTextField(state.period, vm::setPeriod, label = { Text("Billing month MM/YYYY") }, enabled = enabled && !state.uncertain, modifier = Modifier.fillMaxWidth())
+                au.mainspring.nativeapp.ui.AtelierTextField(state.period, vm::setPeriod, label = { Text("Billing month MM/YYYY") }, enabled = enabled && !state.uncertain, modifier = Modifier.fillMaxWidth())
                 OutlinedButton(onClick = vm::preview, enabled = enabled) { Text("Preview statement") }
                 if(state.uncertain) {
                     Text("The last invoice result is unknown. Refresh and review the invoices before repeating it.")
@@ -108,7 +108,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
                 item {
                     Text("Statement subtotal ${formatCents(statement.subtotal, "AUD")}")
                     if(manager) {
-                        OutlinedTextField(state.tax, vm::setTax, label = { Text("GST amount (AUD)") }, enabled = enabled, modifier = Modifier.fillMaxWidth())
+                        au.mainspring.nativeapp.ui.AtelierTextField(state.tax, vm::setTax, label = { Text("GST amount (AUD)") }, enabled = enabled, modifier = Modifier.fillMaxWidth())
                         Button(onClick = { confirmInvoice = true }, enabled = enabled && !state.uncertain && statement.lines.isNotEmpty() && state.invoices.none { it.year == statement.year && it.month == statement.month }) { Text("Generate monthly invoice") }
                     }
                 }

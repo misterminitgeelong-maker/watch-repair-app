@@ -173,7 +173,7 @@ fun MainspringAppShell(
                 }
                 composable("jobs") { jobsContent() }
                 composable("watch_jobs") {
-                    Scaffold(topBar = { TopAppBar(title = { Text("Watch repairs", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton({ navController.popBackStack() }) }) },
+                    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Watch repairs", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton({ navController.popBackStack() }) }) },
                         containerColor = MaterialTheme.colorScheme.background) { pad ->
                         androidx.compose.foundation.layout.Box(Modifier.padding(pad)) {
                             JobsScreen(onOpenJob = { id -> navController.navigate("watchJob/$id") }, onNewJob = { navController.navigate("watch_intake") })

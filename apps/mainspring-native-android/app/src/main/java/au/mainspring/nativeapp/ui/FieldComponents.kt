@@ -263,3 +263,43 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         }
     }
 }
+
+/** Top bar for sub-screens: transparent over the Atelier background, same slots as [TopAppBar]. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun AtelierTopAppBar(
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
+) = TopAppBar(title = title, modifier = modifier, navigationIcon = navigationIcon, actions = actions, windowInsets = windowInsets, colors = colors)
+
+/** Drop-in replacement for FilterChip with the Atelier look: dark pill when selected, white pill otherwise. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun AtelierChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Surface(onClick, modifier.heightIn(min = 44.dp), enabled = enabled, shape = MaterialTheme.shapes.small,
+        color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
+        contentColor = (if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f)) {
+        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+            ProvideTextStyle(MaterialTheme.typography.labelLarge) { label() }
+        }
+    }
+}
+
+/** OutlinedTextField with Atelier defaults: white field, 14dp corners, quiet outline, blue focus. */
+@Composable fun AtelierTextField(
+    value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, readOnly: Boolean = false,
+    textStyle: androidx.compose.ui.text.TextStyle = LocalTextStyle.current, label: (@Composable () -> Unit)? = null, placeholder: (@Composable () -> Unit)? = null,
+    leadingIcon: (@Composable () -> Unit)? = null, trailingIcon: (@Composable () -> Unit)? = null, prefix: (@Composable () -> Unit)? = null, suffix: (@Composable () -> Unit)? = null,
+    supportingText: (@Composable () -> Unit)? = null, isError: Boolean = false,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
+    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
+    keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
+    singleLine: Boolean = false, maxLines: Int = if(singleLine) 1 else Int.MAX_VALUE, minLines: Int = 1,
+    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.small,
+    colors: TextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface, disabledContainerColor = MaterialTheme.colorScheme.surface,
+        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary),
+) = OutlinedTextField(value, onValueChange, modifier, enabled, readOnly, textStyle, label, placeholder, leadingIcon, trailingIcon, prefix, suffix, supportingText,
+    isError, visualTransformation, keyboardOptions, keyboardActions, singleLine, maxLines, minLines, null, shape, colors)

@@ -1,0 +1,111 @@
+package au.mainspring.nativeapp.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+
+/** One entry in the "..." overflow menu of an [AtelierDetail]. */
+data class DetailAction(val label: String, val enabled: Boolean = true, val onClick: () -> Unit)
+
+/**
+ * Atelier job detail frame: blue "‹ Back" link and "…" menu, big bold title, reference line, dark status
+ * banner, segmented Summary/Activity/Messages tabs, scrolling cards, and one blue primary action pinned
+ * to the bottom with a small footnote.
+ */
+@Composable
+fun AtelierDetail(
+    backLabel: String,
+    title: String,
+    reference: String?,
+    banner: String?,
+    tabs: List<Pair<String, String>>,
+    selectedTab: String,
+    onTab: (String) -> Unit,
+    onBack: () -> Unit,
+    primaryLabel: String?,
+    onPrimary: () -> Unit,
+    modifier: Modifier = Modifier,
+    primaryEnabled: Boolean = true,
+    footnote: String? = null,
+    backEnabled: Boolean = true,
+    menu: List<DetailAction> = emptyList(),
+    scrollBody: Boolean = true,
+    content: @Composable ColumnScope.(String) -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Column(Modifier.weight(1f)) {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semanticsBack()) {
+                    Text("‹ $backLabel", style = MaterialTheme.typography.titleSmall)
+                }
+                Spacer(Modifier.weight(1f))
+                if(menu.isNotEmpty()) Box {
+                    TextButton(onClick = { menuOpen = true }, modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("detail-menu")) {
+                        Text("•••", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                    DropdownMenu(menuOpen, { menuOpen = false }) {
+                        menu.forEach { action -> DropdownMenuItem(text = { Text(action.label) }, enabled = action.enabled, onClick = { menuOpen = false; action.onClick() }) }
+                    }
+                }
+            }
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
+                reference?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                banner?.let {
+                    Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.small) {
+                        Text(it, Modifier.padding(horizontal = 16.dp, vertical = 14.dp), style = MaterialTheme.typography.titleSmall)
+                    }
+                }
+                if(tabs.size > 1) SegmentedPills(tabs, selectedTab, onTab)
+            }
+            val body = if(scrollBody) Modifier.weight(1f).verticalScroll(rememberScrollState()) else Modifier.weight(1f)
+            Column(body.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content(selectedTab) }
+        }
+        if(primaryLabel != null) Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            AccentAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).testTag("detail-primary")) {
+                Text(primaryLabel, style = MaterialTheme.typography.titleMedium)
+            }
+            footnote?.let { Text(it, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+    }
+}
+
+private fun Modifier.semanticsBack(): Modifier = this.then(Modifier.semantics { contentDescription = "Back" })
+
+/** White tappable summary card: bold title with chevron, subtitle, blue hint line (Atelier "Customer & contact ›"). */
+@Composable
+fun SummaryCard(title: String, subtitle: String?, hint: String?, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+    val content: @Composable ColumnScope.() -> Unit = {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            if(onClick != null) Text("›", style = MaterialTheme.typography.titleLarge)
+        }
+        subtitle?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        hint?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) }
+    }
+    if(onClick != null) ListCard(onClick, modifier, content) else FlatPanel(modifier, content)
+}
+
+/** Timeline-style event card used on the Activity tab: bold line, grey detail, caption timestamp. */
+@Composable
+fun ActivityCard(title: String, detail: String?, time: String?, modifier: Modifier = Modifier) {
+    FlatPanel(modifier) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        detail?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        time?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}

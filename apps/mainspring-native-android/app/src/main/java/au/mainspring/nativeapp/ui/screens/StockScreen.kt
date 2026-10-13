@@ -23,16 +23,16 @@ private fun quantityText(value: Double) = if(value % 1.0 == 0.0) value.toLong().
 @Composable fun StockScreen(onBack: () -> Unit, model: StockViewModel = viewModel()) {
     val state by model.state.collectAsStateWithLifecycle()
     val currency = TokenStore.shopValue("currency") ?: "AUD"
-    Scaffold(topBar = { TopAppBar(title = { Text("Inventory", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Inventory", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(state.search, model::search, singleLine = true, label = { Text("Search items") }, modifier = Modifier.weight(2f),
+                    au.mainspring.nativeapp.ui.AtelierTextField(state.search, model::search, singleLine = true, label = { Text("Search items") }, modifier = Modifier.weight(2f),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))
-                    OutlinedTextField(state.group, model::group, singleLine = true, label = { Text("Group") }, modifier = Modifier.weight(1f))
+                    au.mainspring.nativeapp.ui.AtelierTextField(state.group, model::group, singleLine = true, label = { Text("Group") }, modifier = Modifier.weight(1f))
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    FilterChip(state.hideZero, { model.hideZero(!state.hideZero) }, label = { Text("Hide out of stock") })
+                    au.mainspring.nativeapp.ui.AtelierChip(state.hideZero, { model.hideZero(!state.hideZero) }, label = { Text("Hide out of stock") })
                     TextButton(model::refresh, enabled = !state.loading) { Text("Refresh") }
                 }
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())

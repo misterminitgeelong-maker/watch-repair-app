@@ -29,7 +29,7 @@ import java.time.format.DateTimeFormatter
  var stage by rememberSaveable { mutableStateOf("") }; var editing by rememberSaveable { mutableStateOf<String?>(null) }
  val enabled = !state.loading && !state.busy
  LaunchedEffect(state.categories) { if(category.isBlank()) category = state.categories.firstOrNull()?.key.orEmpty() }
- Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) TopAppBar(title = { Text("Mobile prospects", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+ Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Mobile prospects", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize()) {
    TabRow(tab) { Tab(tab == 0, { tab = 0 }, text = { Text("Prospect board") }); Tab(tab == 1, { tab = 1 }, text = { Text("Find businesses") }) }
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -42,10 +42,10 @@ import java.time.format.DateTimeFormatter
     if(tab == 0) {
      item {
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }; Text("${state.leads.size} prospects") }
-      OutlinedTextField(query, { query = it }, label = { Text("Search name, contact or notes") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+      au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, label = { Text("Search name, contact or notes") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
        (listOf("") + listOf("new", "contacted", "visited", "onboarded") + state.leads.map { it.status }).distinct().forEach { value ->
-        FilterChip(stage == value, { stage = value }, label = { Text(if(value.isBlank()) "All stages" else au.mainspring.nativeapp.ui.statusLabel(value)) })
+        au.mainspring.nativeapp.ui.AtelierChip(stage == value, { stage = value }, label = { Text(if(value.isBlank()) "All stages" else au.mainspring.nativeapp.ui.statusLabel(value)) })
        }
       }
      }
@@ -62,10 +62,10 @@ import java.time.format.DateTimeFormatter
      item {
       Text("Search your stored business directory or request fresh results.")
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-       listOf("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA").forEach { value -> FilterChip(region == value, { region = value }, label = { Text(value) }) }
+       listOf("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(region == value, { region = value }, label = { Text(value) }) }
       }
       state.categories.forEach { option -> Row { RadioButton(category == option.key, { category = option.key }, enabled = enabled); Text(option.label) } }
-      OutlinedTextField(suburbs, { suburbs = it }, label = { Text("Suburbs, separated by commas") }, modifier = Modifier.fillMaxWidth())
+      au.mainspring.nativeapp.ui.AtelierTextField(suburbs, { suburbs = it }, label = { Text("Suburbs, separated by commas") }, modifier = Modifier.fillMaxWidth())
       Row { Checkbox(live, { live = it }, enabled = enabled); Text("Request fresh search (up to five suburbs)") }
       Button(onClick = { vm.search(category, region, suburbs, live) }, enabled = enabled && category.isNotBlank()) { Text("Search businesses") }
       state.source?.let { Text(if(it == "stored") "Results from the saved directory" else "Fresh search results") }
@@ -102,10 +102,10 @@ import java.time.format.DateTimeFormatter
    state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
    if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    Text("Stage: ${lead.status}")
-   OutlinedTextField(name, { name = it; persist() }, label = { Text("Contact name") }, enabled = enabled)
-   OutlinedTextField(email, { email = it; persist() }, label = { Text("Contact email") }, enabled = enabled)
-   OutlinedTextField(notes, { notes = it; persist() }, label = { Text("Notes") }, enabled = enabled)
-   OutlinedTextField(visit, { visit = it; persist() }, label = { Text("Visit (DD/MM/YYYY HH:mm)") }, enabled = enabled)
+   au.mainspring.nativeapp.ui.AtelierTextField(name, { name = it; persist() }, label = { Text("Contact name") }, enabled = enabled)
+   au.mainspring.nativeapp.ui.AtelierTextField(email, { email = it; persist() }, label = { Text("Contact email") }, enabled = enabled)
+   au.mainspring.nativeapp.ui.AtelierTextField(notes, { notes = it; persist() }, label = { Text("Notes") }, enabled = enabled)
+   au.mainspring.nativeapp.ui.AtelierTextField(visit, { visit = it; persist() }, label = { Text("Visit (DD/MM/YYYY HH:mm)") }, enabled = enabled)
    Text("Visits use ${TokenStore.calendarTimezone()}. Leaving the visit blank clears it.")
    if(lead.status in listOf("new", "contacted", "visited", "quote_needed", "follow_up_due")) OutlinedButton(onClick = { confirmAdvance = true }, enabled = enabled && state.uncertainLead.isBlank()) { Text("Save and advance stage") }
    Text("Your draft is retained on this device until saved.")

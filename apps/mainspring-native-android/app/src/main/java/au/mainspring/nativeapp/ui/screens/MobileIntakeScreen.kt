@@ -25,7 +25,7 @@ import au.mainspring.nativeapp.ui.SectionLabel
     var leave by remember {mutableStateOf(false)};var discard by remember {mutableStateOf(false)};var reconcile by remember {mutableStateOf(false)}
     BackHandler {if(!state.busy) leave=true}
     LaunchedEffect(Unit) {if(preselectedCustomerId!=null && state.fields.isEmpty()) {vm.set("customerId",preselectedCustomerId);vm.set("customerMode","existing")};vm.search()}
-    Scaffold(topBar={TopAppBar(title={Text("New job",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton({leave=true},enabled=!state.busy)},actions={TextButton({discard=true},enabled=!state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank()) {Text("Discard")}})},
+    Scaffold(topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("New job",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton({leave=true},enabled=!state.busy)},actions={TextButton({discard=true},enabled=!state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank()) {Text("Discard")}})},
         bottomBar={if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton({leave=true},enabled=!state.busy,modifier=Modifier.weight(1f)) {Text("Cancel")}
             Button(vm::submit,enabled=!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs(),modifier=Modifier.weight(1f)) {Text("Create job")}
@@ -38,12 +38,12 @@ import au.mainspring.nativeapp.ui.SectionLabel
             if(vm.field("uncertain").isNotBlank()) OutlinedButton({reconcile=true}) {Text("I checked shop records")}
             if(vm.field("jobId").isNotBlank()) Button({val id=vm.field("jobId");vm.finish();onOpenJob(id)}) {Text("Job saved · open job")}
             @Composable fun field(key: String,label: String,modifier: Modifier=Modifier.fillMaxWidth()) {
-                OutlinedTextField(vm.field(key),{vm.set(key,it)},label={Text(label)},modifier=modifier,enabled=!locked)
+                au.mainspring.nativeapp.ui.AtelierTextField(vm.field(key),{vm.set(key,it)},label={Text(label)},modifier=modifier,enabled=!locked)
             }
             SectionLabel("Job type")
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 listOf("Key Cutting (in-store)","Lockout \u2013 Car","Lockout \u2013 Boot/Trunk","Lockout \u2013 Roadside","All Keys Lost","Duplicate Key","Transponder Programming","Remote / Fob Sync","Ignition Repair","Ignition Replace","Broken Key Extraction","Door Lock Change","Diagnostic").forEach {type ->
-                    FilterChip(vm.field("jobType")==type,{
+                    au.mainspring.nativeapp.ui.AtelierChip(vm.field("jobType")==type,{
                         val old=vm.field("jobType");vm.set("jobType",type)
                         if(vm.field("title").isBlank() || vm.field("title")==old) vm.set("title",type)
                     },enabled=!locked,label={Text(type)})
@@ -53,12 +53,12 @@ import au.mainspring.nativeapp.ui.SectionLabel
             SectionLabel("Customer")
                     val new = vm.field("customerMode") == "new"
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = !new, onClick = { vm.set("customerMode", "existing") }, enabled = !locked, label = { Text("Existing") })
-                        FilterChip(selected = new, onClick = { vm.set("customerMode", "new"); vm.set("customerId", "") }, enabled = !locked, label = { Text("New customer") })
+                        au.mainspring.nativeapp.ui.AtelierChip(selected = !new, onClick = { vm.set("customerMode", "existing") }, enabled = !locked, label = { Text("Existing") })
+                        au.mainspring.nativeapp.ui.AtelierChip(selected = new, onClick = { vm.set("customerMode", "new"); vm.set("customerId", "") }, enabled = !locked, label = { Text("New customer") })
                     }
                     if(new) { field("name", "Name *"); field("phone", "Phone"); field("email", "Email") }
                     else {
-                        OutlinedTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
+                        au.mainspring.nativeapp.ui.AtelierTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.search() }))
                         state.customers.forEach { c ->
@@ -72,8 +72,8 @@ import au.mainspring.nativeapp.ui.SectionLabel
                         val accounts = state.accounts.filter { it.active && vm.field("customerId") in it.customerIds }
                         if(accounts.isNotEmpty() || vm.field("accountId").isNotBlank()) {
                             Text("Billing account (optional)")
-                            FilterChip(vm.field("accountId").isBlank(),{ vm.set("accountId","") },enabled = !locked,label = { Text("No account") })
-                            accounts.forEach { account -> FilterChip(vm.field("accountId") == account.id,{ vm.set("accountId",account.id) },enabled = !locked,label = { Text(account.name) }) }
+                            au.mainspring.nativeapp.ui.AtelierChip(vm.field("accountId").isBlank(),{ vm.set("accountId","") },enabled = !locked,label = { Text("No account") })
+                            accounts.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(vm.field("accountId") == account.id,{ vm.set("accountId",account.id) },enabled = !locked,label = { Text(account.name) }) }
                         }
                     }
             SectionLabel("Vehicle")
@@ -85,15 +85,15 @@ import au.mainspring.nativeapp.ui.SectionLabel
             field("scheduled","Booking (DD/MM/YYYY HH:mm)")
             Text("Times use ${TokenStore.calendarTimezone()}",style=MaterialTheme.typography.bodySmall)
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                FilterChip(vm.field("technician").isBlank(),{vm.set("technician","")},enabled=!locked,label={Text("Unassigned")})
-                state.technicians.filter {it.active && it.role in listOf("tech","manager","owner")}.forEach {user->FilterChip(vm.field("technician")==user.id,{vm.set("technician",user.id)},enabled=!locked,label={Text(user.name)})}
+                au.mainspring.nativeapp.ui.AtelierChip(vm.field("technician").isBlank(),{vm.set("technician","")},enabled=!locked,label={Text("Unassigned")})
+                state.technicians.filter {it.active && it.role in listOf("tech","manager","owner")}.forEach {user->au.mainspring.nativeapp.ui.AtelierChip(vm.field("technician")==user.id,{vm.set("technician",user.id)},enabled=!locked,label={Text(user.name)})}
             }
             SectionLabel("Priority")
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("low","normal","high","urgent").forEach {value->FilterChip(vm.field("priority").ifBlank {"normal"}==value,{vm.set("priority",value)},enabled=!locked,label={Text(value.replaceFirstChar {it.uppercase()})})}}
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("low","normal","high","urgent").forEach {value->au.mainspring.nativeapp.ui.AtelierChip(vm.field("priority").ifBlank {"normal"}==value,{vm.set("priority",value)},enabled=!locked,label={Text(value.replaceFirstChar {it.uppercase()})})}}
             SectionLabel("Work details")
             field("description","Requested work");field("keyType","Key type");field("quantity","Key quantity (default 1)");field("notes","Technician notes");field("deposit","Deposit ($)")
             SectionLabel("Initial status")
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("awaiting_quote","go_ahead","pending_booking","booked").forEach {value->FilterChip(vm.field("status").ifBlank {"awaiting_quote"}==value,{vm.set("status",value)},enabled=!locked,label={Text(au.mainspring.nativeapp.ui.statusLabel(value))})}}
+            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("awaiting_quote","go_ahead","pending_booking","booked").forEach {value->au.mainspring.nativeapp.ui.AtelierChip(vm.field("status").ifBlank {"awaiting_quote"}==value,{vm.set("status",value)},enabled=!locked,label={Text(au.mainspring.nativeapp.ui.statusLabel(value))})}}
             Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {Checkbox(vm.field("bookingSms")=="true",{vm.set("bookingSms",it.toString())},enabled=!locked);Text("Send booking SMS to customer")}
             Text("Creation may also send the customer's tracking message according to shop settings.",style=MaterialTheme.typography.bodySmall)
         }

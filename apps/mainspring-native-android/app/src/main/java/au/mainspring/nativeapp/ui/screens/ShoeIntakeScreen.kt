@@ -46,7 +46,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
     }
     LaunchedEffect(Unit) { if(preselectedCustomerId != null && state.fields.isEmpty()) { vm.set("customerId",preselectedCustomerId); vm.set("customerMode","existing"); vm.set("step","1") }; vm.search() }
     val valid = step != 0 || vm.field("customerId").isNotBlank() || (vm.field("customerMode") == "new" && vm.field("name").isNotBlank())
-    Scaffold(topBar = { TopAppBar(title = { Text("New shoe repair", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = { leave = true }, enabled = !state.busy) },
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("New shoe repair", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = { leave = true }, enabled = !state.busy) },
         actions = { TextButton(onClick = { discard = true }, enabled = !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") } }) },
         bottomBar = {
             if(!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Pairs and services", "Job details", "Photos")[step],
@@ -70,18 +70,18 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                 if(!state.complete || state.photoFailures.isNotEmpty()) OutlinedButton(onClick = { vm.submit(context.applicationContext) }, enabled = !state.busy) { Text("Finish intake / retry photos") }
             }
             @Composable fun field(key: String, label: String) {
-                OutlinedTextField(vm.field(key), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = !locked)
+                au.mainspring.nativeapp.ui.AtelierTextField(vm.field(key), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = !locked)
             }
             if(!state.complete) when(step) {
                 0 -> {
                     val new = vm.field("customerMode") == "new"
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = !new, onClick = { vm.set("customerMode", "existing") }, enabled = !locked, label = { Text("Existing") })
-                        FilterChip(selected = new, onClick = { vm.set("customerMode", "new"); vm.set("customerId", "") }, enabled = !locked, label = { Text("New customer") })
+                        au.mainspring.nativeapp.ui.AtelierChip(selected = !new, onClick = { vm.set("customerMode", "existing") }, enabled = !locked, label = { Text("Existing") })
+                        au.mainspring.nativeapp.ui.AtelierChip(selected = new, onClick = { vm.set("customerMode", "new"); vm.set("customerId", "") }, enabled = !locked, label = { Text("New customer") })
                     }
                     if(new) { field("name", "Name *"); field("phone", "Phone"); field("email", "Email") }
                     else {
-                        OutlinedTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
+                        au.mainspring.nativeapp.ui.AtelierTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.search() }))
                         state.customers.forEach { c -> au.mainspring.nativeapp.ui.SelectableCard(selected = vm.field("customerId") == c.id, onClick = { vm.set("customerId", c.id); vm.set("accountId", "") }, enabled = !locked) {
@@ -96,7 +96,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                         OutlinedButton(onClick = { vm.set("count", "${vm.count() + 1}") }, enabled = !locked && vm.count() < 15) { Text("Add pair") }
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        (0 until vm.count()).forEach { i -> FilterChip(selected = pair == i, onClick = { pair = i }, label = { Text("Pair ${i + 1}") }) }
+                        (0 until vm.count()).forEach { i -> au.mainspring.nativeapp.ui.AtelierChip(selected = pair == i, onClick = { pair = i }, label = { Text("Pair ${i + 1}") }) }
                     }
                     field("pair.$pair.type", "Shoe type"); field("pair.$pair.brand", "Brand"); field("pair.$pair.color", "Colour"); field("pair.$pair.condition", "Condition notes")
                     field("serviceQuery", "Search repair catalogue")
@@ -117,18 +117,18 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     field("title", "Job title (or use selected services)"); field("description", "Instructions / fault description")
                     Text("Initial status")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { value -> FilterChip(selected = vm.field("status").ifBlank { "awaiting_go_ahead" } == value, onClick = { vm.set("status", value) }, enabled = !locked, label = { Text(au.mainspring.nativeapp.ui.statusLabel(value)) }) }
+                        listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("status").ifBlank { "awaiting_go_ahead" } == value, onClick = { vm.set("status", value) }, enabled = !locked, label = { Text(au.mainspring.nativeapp.ui.statusLabel(value)) }) }
                     }
                     Text("Priority")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("low", "normal", "high", "urgent").forEach { value -> FilterChip(selected = vm.field("priority").ifBlank { "normal" } == value, onClick = { vm.set("priority", value) }, enabled = !locked, label = { Text(value.replaceFirstChar { it.uppercase() }) }) }
+                        listOf("low", "normal", "high", "urgent").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("priority").ifBlank { "normal" } == value, onClick = { vm.set("priority", value) }, enabled = !locked, label = { Text(value.replaceFirstChar { it.uppercase() }) }) }
                     }
                     field("salesperson", "Salesperson"); field("collection", "Collection date (DD/MM/YYYY)"); field("deposit", "Deposit ($, entire job)")
                     val accounts = state.accounts.filter { it.active && (vm.field("customerId").isBlank() || vm.field("customerId") in it.customerIds) }
                     if(accounts.isNotEmpty()) {
                         Text("Customer account")
-                        FilterChip(selected = vm.field("accountId").isBlank(), onClick = { vm.set("accountId", "") }, enabled = !locked, label = { Text("No account") })
-                        accounts.forEach { a -> FilterChip(selected = vm.field("accountId") == a.id, onClick = { vm.set("accountId", a.id) }, enabled = !locked, label = { Text(a.name) }) }
+                        au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId").isBlank(), onClick = { vm.set("accountId", "") }, enabled = !locked, label = { Text("No account") })
+                        accounts.forEach { a -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId") == a.id, onClick = { vm.set("accountId", a.id) }, enabled = !locked, label = { Text(a.name) }) }
                     }
                 }
                 3 -> {
