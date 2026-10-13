@@ -1,0 +1,38 @@
+package au.mainspring.nativeapp.ui.screens
+
+import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import au.mainspring.nativeapp.QuoteSignatureViewModel
+import au.mainspring.nativeapp.ui.formatShopDate
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuoteSignatureScreen(jobId: String, quoteId: String, onBack: () -> Unit,
+    model: QuoteSignatureViewModel = viewModel(factory = QuoteSignatureViewModel.factory(jobId,quoteId))) {
+    val state by model.state.collectAsStateWithLifecycle()
+    Scaffold(topBar = { TopAppBar(title = { Text("Customer signature", style = MaterialTheme.typography.headlineSmall) }, navigationIcon = { TextButton(onBack) { Text("Back") } }) }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if(state.loading) CircularProgressIndicator()
+            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.quote?.let { quote ->
+                Text("Quote status: ${quote.status}")
+                quote.signer?.let { Text("Signed by $it", style = MaterialTheme.typography.titleMedium) }
+                quote.signedAt?.let { Text("Signed ${formatShopDate(it)}") }
+            }
+            state.bitmap?.let { bitmap -> Image(bitmap.asImageBitmap(), contentDescription = "Customer's recorded quote signature", modifier = Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat()/bitmap.height).background(Color.White)) }
+            OutlinedButton(model::load, enabled = !state.loading) { Text("Refresh signature") }
+        }
+    }
+}

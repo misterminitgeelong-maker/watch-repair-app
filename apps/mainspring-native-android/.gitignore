@@ -1,0 +1,9 @@
+/.gradle/
+/.kotlin/
+/build/
+**/build/
+local.properties
+*.iml
+.idea/
+.DS_Store
+native-validation.log
