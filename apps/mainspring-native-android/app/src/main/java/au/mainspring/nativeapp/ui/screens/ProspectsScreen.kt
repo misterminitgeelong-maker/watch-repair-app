@@ -29,7 +29,7 @@ import java.time.format.DateTimeFormatter
  var stage by rememberSaveable { mutableStateOf("") }; var editing by rememberSaveable { mutableStateOf<String?>(null) }
  val enabled = !state.loading && !state.busy
  LaunchedEffect(state.categories) { if(category.isBlank()) category = state.categories.firstOrNull()?.key.orEmpty() }
- Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Mobile prospects", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+ Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Mobile prospects") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize()) {
    TabRow(tab) { Tab(tab == 0, { tab = 0 }, text = { Text("Prospect board") }); Tab(tab == 1, { tab = 1 }, text = { Text("Find businesses") }) }
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -42,8 +42,10 @@ import java.time.format.DateTimeFormatter
     if(tab == 0) {
      item {
       val todayKey = LocalDate.now().toString()
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
       au.mainspring.nativeapp.ui.MetricStrip(listOf("New prospects" to state.leads.count { it.status == "new" }.toString(), "Follow-ups today" to state.leads.count { it.visit?.take(10) == todayKey || it.status == "follow_up_due" }.toString()))
       au.mainspring.nativeapp.ui.PrimaryAction(onClick = { tab = 1 }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Add prospect", style = MaterialTheme.typography.titleMedium) }
+      }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }; Text("${state.leads.size} prospects") }
       au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, label = { Text("Search name, contact or notes") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

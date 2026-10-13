@@ -55,7 +55,7 @@ fun InvoiceDetailScreen(
     Scaffold(
         topBar = {
             au.mainspring.nativeapp.ui.AtelierTopAppBar(
-                title = { Text(inv?.invoiceNumber ?: "Invoice", style = MaterialTheme.typography.titleLarge) },
+                title = { Text(inv?.invoiceNumber ?: "Invoice") },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
                 actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.paymentBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },
             )

@@ -74,8 +74,8 @@ import au.mainspring.nativeapp.ui.*
         catch(_: android.content.ActivityNotFoundException) { attachmentOpenError = "No compatible app is available on this device." }
     }
     Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
-            Text(j?.title ?: "Job",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+            Text(j?.title ?: "Job",style=if(compactHeader) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineMedium,maxLines=2,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         }},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
         actions={TextButton(vm::load,enabled=!state.loading && !state.statusBusy,modifier=Modifier.heightIn(min=48.dp)) { Text("Refresh") };TextButton(onEdit,enabled=!state.loading && !state.statusBusy && !state.offlineSnapshot) {Text("Edit")}}) },
         bottomBar = {
@@ -85,7 +85,7 @@ import au.mainspring.nativeapp.ui.*
                     Column(Modifier.fillMaxWidth().then(if(embedded) Modifier else Modifier.navigationBarsPadding()).padding(horizontal=16.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                         if(!compactHeader) Text(activeJourney.title,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         Button({ if(activeJourney.targetStatus!=null) pendingStep=activeJourney.targetStatus else tab="finance" },
-                            modifier=Modifier.fillMaxWidth().heightIn(min=48.dp).testTag("job-next-action"),shape=RoundedCornerShape(6.dp),
+                            modifier=Modifier.fillMaxWidth().heightIn(min=52.dp).testTag("job-next-action"),
                             enabled=!state.loading && !state.statusBusy && !state.statusReviewRequired && !state.offlineSnapshot && TokenStore.canWorkJobs()) {
                             Text(if(state.statusBusy) "Saving…" else activeJourney.action)
                         }
@@ -108,7 +108,9 @@ import au.mainspring.nativeapp.ui.*
                 Column(Modifier.padding(horizontal=16.dp,vertical=if(compactHeader) 0.dp else 8.dp),verticalArrangement=Arrangement.spacedBy(if(compactHeader) 0.dp else 6.dp)) {
                     if(!compactHeader) Text(listOf(listOfNotNull(j.vehicleMake,j.vehicleModel,j.vehicleYear?.toString()).joinToString(" "),j.customerName.orEmpty()).filter {it.isNotBlank()}.joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                        StatusPill(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status)
+                        Surface(color=MaterialTheme.colorScheme.secondary,contentColor=MaterialTheme.colorScheme.onSecondary,shape=MaterialTheme.shapes.small) {
+                            Text(statusLabel(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status),Modifier.padding(horizontal=16.dp,vertical=12.dp),style=MaterialTheme.typography.titleSmall)
+                        }
                         Row {
                             if(!j.customerPhone.isNullOrBlank()) OutlinedButton({open(Uri.fromParts("tel",j.customerPhone,null),true)},Modifier.heightIn(min=48.dp)) {Text("Call")}
                             Spacer(Modifier.width(8.dp))
@@ -118,8 +120,8 @@ import au.mainspring.nativeapp.ui.*
                     if(!compactHeader) JourneyProgress((journey ?: fieldJourney(j.status)).step)
                 }
                 val sections=listOf("info" to "Info","vehicle" to "Vehicle & Key","finance" to "Financial","photos" to "Photos","messages" to "Messages")
-                ScrollableTabRow(selectedTabIndex=sections.indexOfFirst {it.first==tab}.coerceAtLeast(0),edgePadding=8.dp,containerColor=MaterialTheme.colorScheme.surface,divider={HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)}) {
-                    sections.forEach {(key,label)->Tab(selected=tab==key,onClick={tab=key},selectedContentColor=MaterialTheme.colorScheme.primary,unselectedContentColor=MaterialTheme.colorScheme.onSurfaceVariant,text={Text(label,style=MaterialTheme.typography.labelLarge)})}
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    sections.forEach {(key,label)->PillChip(label,tab==key,{tab=key})}
                 }
                 AnimatedContent(targetState=tab,modifier=Modifier.weight(1f).testTag("job-detail-body"),label="job-section") { activeTab ->
                     if(state.offlineSnapshot && activeTab in listOf("finance","photos","messages")) Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {

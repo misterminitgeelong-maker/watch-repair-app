@@ -25,7 +25,7 @@ fun ArrivalMessageScreen(id: String, onBack: () -> Unit, vm: ArrivalMessageViewM
     var confirm by remember { mutableStateOf(false) }
     var dialError by remember { mutableStateOf<String?>(null) }
     BackHandler { if(!state.busy) onBack() }
-    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Arrival message", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Arrival message") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; dialError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; state.info?.let { Text(it) }

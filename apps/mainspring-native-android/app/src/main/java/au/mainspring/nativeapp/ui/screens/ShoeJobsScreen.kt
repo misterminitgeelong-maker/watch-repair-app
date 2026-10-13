@@ -43,13 +43,13 @@ fun ShoeJobsScreen(
     Scaffold(
         topBar = {
             au.mainspring.nativeapp.ui.AtelierTopAppBar(
-                title = { Text("Shoe repairs", style = MaterialTheme.typography.titleLarge) },
+                title = { Text("Shoe repairs") },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
-                actions = { TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },
+                actions = {
+                    TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
+                    au.mainspring.nativeapp.ui.RoundPlusButton(onNewJob, "New repair", Modifier.padding(end = 12.dp))
+                },
             )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = onNewJob, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) { Text("New repair", style = MaterialTheme.typography.labelLarge) }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {

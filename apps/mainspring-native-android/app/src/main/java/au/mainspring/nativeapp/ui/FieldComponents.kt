@@ -10,6 +10,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
@@ -273,7 +274,18 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
-) = TopAppBar(title = title, modifier = modifier, navigationIcon = navigationIcon, actions = actions, windowInsets = windowInsets, colors = colors)
+) {
+    Column(modifier.fillMaxWidth().background(colors.containerColor)) {
+        Row(Modifier.fillMaxWidth().windowInsetsPadding(windowInsets).padding(horizontal = 4.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+            navigationIcon()
+            Spacer(Modifier.weight(1f))
+            actions()
+        }
+        Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 10.dp)) {
+            CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurface)) { title() }
+        }
+    }
+}
 
 /** Drop-in replacement for FilterChip with the Atelier look: dark pill when selected, white pill otherwise. */
 @OptIn(ExperimentalMaterial3Api::class)

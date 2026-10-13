@@ -19,7 +19,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
 @Composable fun ToolkitScreen(onBack: () -> Unit, vm: ToolkitViewModel = viewModel()) {
  val state by vm.state.collectAsStateWithLifecycle(); var search by rememberSaveable { mutableStateOf("") }
  val dirty = state.selected != state.saved
- Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Shop toolkit", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
+ Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Shop toolkit") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
    actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } }) },
   bottomBar = { if(dirty) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

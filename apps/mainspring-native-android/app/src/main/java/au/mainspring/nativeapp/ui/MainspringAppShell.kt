@@ -115,7 +115,8 @@ fun MainspringAppShell(
             onOpenJob = { navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(it)) },
             onViewAll = { navController.navigate("jobs") { launchSingleTop = true } },
             onOpenQuotes = { navController.navigate("quotes") { launchSingleTop = true } },
-            onOpenInvoices = { navController.navigate("invoices") { launchSingleTop = true } })
+            onOpenInvoices = { navController.navigate("invoices") { launchSingleTop = true } },
+            onOpenRoute = { navController.navigate(it) { launchSingleTop = true } })
     }
     val jobsContent: @Composable () -> Unit = {
         au.mainspring.nativeapp.ui.screens.AtelierJobsScreen(features, selectedSite?.name,
@@ -178,7 +179,8 @@ fun MainspringAppShell(
                 }
                 composable("jobs") { jobsContent() }
                 composable("watch_jobs") {
-                    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Watch repairs", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton({ navController.popBackStack() }) }) },
+                    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Watch repairs") }, navigationIcon = { BackButton({ navController.popBackStack() }) },
+                        actions = { au.mainspring.nativeapp.ui.RoundPlusButton({ navController.navigate("watch_intake") }, "New repair", Modifier.padding(end = 12.dp)) }) },
                         containerColor = MaterialTheme.colorScheme.background) { pad ->
                         androidx.compose.foundation.layout.Box(Modifier.padding(pad)) {
                             JobsScreen(onOpenJob = { id -> navController.navigate("watchJob/$id") }, onNewJob = { navController.navigate("watch_intake") })

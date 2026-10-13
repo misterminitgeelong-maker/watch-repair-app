@@ -1,5 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +33,7 @@ fun TodayHubScreen(
     onViewAll: () -> Unit,
     onOpenQuotes: () -> Unit,
     onOpenInvoices: () -> Unit,
+    onOpenRoute: (String) -> Unit = {},
     jobs: JobsHubViewModel = viewModel(factory = JobsHubFactory(features)),
     dashboard: DashboardViewModel = viewModel(),
 ) {
@@ -57,6 +60,24 @@ fun TodayHubScreen(
             }
         }
         item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
+        item {
+            val tiles = buildList {
+                if("watch" in features) add(Triple("Watch jobs", "Bench and counter", "watch_jobs"))
+                if("shoe" in features) add(Triple("Shoe jobs", "Repairs and collections", "shoe_jobs"))
+                if("auto_key" in features) { add(Triple("Mobile jobs", "On the road", "auto_jobs")); add(Triple("Dispatch", "Today's route", "dispatch")) }
+            }
+            if(tiles.isNotEmpty()) {
+                Text("Your workspaces", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    tiles.forEach { (title, sub, route) ->
+                        ListCard({ onOpenRoute(route) }, Modifier.width(156.dp)) {
+                            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
         if(hub.error != null) item { ErrorBanner(hub.error.orEmpty(), Modifier.padding(horizontal = 20.dp), onRetry = jobs::refresh) }
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {

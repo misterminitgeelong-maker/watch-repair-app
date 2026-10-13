@@ -26,9 +26,9 @@ import java.time.*
     var mode by rememberSaveable {mutableStateOf("list")}
     var selected by rememberSaveable {mutableStateOf<String?>(null)}
     Scaffold(
-        topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Mobile services",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
-            actions={TextButton({onNavigate("route")},modifier=Modifier.heightIn(min=48.dp)) {Text("Map")}})},
-        floatingActionButton={if(TokenStore.canWorkJobs()) ExtendedFloatingActionButton(onClick=onNewJob,containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary) {Text("New job",style=MaterialTheme.typography.labelLarge)}},
+        topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Mobile services")},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
+            actions={TextButton({onNavigate("route")},modifier=Modifier.heightIn(min=48.dp)) {Text("Map")}
+                if(TokenStore.canWorkJobs()) au.mainspring.nativeapp.ui.RoundPlusButton(onNewJob,"New job",Modifier.padding(end=12.dp))})},
     ) {padding->
     Column(Modifier.fillMaxSize().padding(padding)) {
         FilterRow(listOf("list" to "List","board" to "Kanban","planner" to "Planner"),mode,{mode=it ?: "list"})

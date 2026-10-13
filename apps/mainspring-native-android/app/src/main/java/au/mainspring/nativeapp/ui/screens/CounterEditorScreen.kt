@@ -16,7 +16,7 @@ import au.mainspring.nativeapp.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun CounterEditorScreen(resource: String, id: String, onBack: () -> Unit) {
  val vm: CounterEditorViewModel = viewModel(key = "$resource/$id", factory = CounterEditorViewModel.factory(resource,id)); val state by vm.state.collectAsStateWithLifecycle()
- Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Edit repair details", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
+ Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Edit repair details") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; if(state.saved) Text("Repair details saved.")
    val labels = listOf("job_number" to "Ticket number", "title" to "Job title *", "description" to "Requested work", "salesperson" to "Salesperson",

@@ -93,7 +93,5 @@ fun JobsScreen(
             }
         }
     }
-    androidx.compose.material3.ExtendedFloatingActionButton(onClick = onNewJob, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-        containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) { Text("New repair", style = MaterialTheme.typography.labelLarge) }
     }
 }

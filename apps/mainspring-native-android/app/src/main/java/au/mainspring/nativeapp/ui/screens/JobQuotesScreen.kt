@@ -19,7 +19,7 @@ import au.mainspring.nativeapp.ui.formatCents
 fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> Unit) {
     val vm: JobQuotesViewModel = viewModel(key = jobId, factory = JobQuotesViewModel.factory(jobId))
     val state by vm.state.collectAsStateWithLifecycle()
-    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Job quotes", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Job quotes") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             state.job?.let { Text("${it.jobNumber} · ${it.title}", style = MaterialTheme.typography.titleMedium) }
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())

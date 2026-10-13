@@ -22,7 +22,7 @@ fun BusinessAccountsScreen(onBack: () -> Unit, onOpenAccount: (String) -> Unit, 
     val state by vm.state.collectAsStateWithLifecycle()
     var search by rememberSaveable { mutableStateOf("") }
     RefreshOnResume(vm::refresh)
-    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Business accounts", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Business accounts") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
