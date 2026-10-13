@@ -31,7 +31,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
     Text("This selection is shared by the shop. Check the tools in your vehicle before taking a job.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
-    Text("${state.selected.size} tools selected${if(dirty) " · unsaved changes" else ""}", style = MaterialTheme.typography.titleMedium)
+    Text("${state.selected.size} tools selected${if(dirty) " · unsaved draft" else " · saved selection"}", style = MaterialTheme.typography.titleMedium)
     OutlinedTextField(search, { search = it }, label = { Text("Find a tool") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
    }
    item { au.mainspring.nativeapp.ui.SectionLabel("What's the job?")

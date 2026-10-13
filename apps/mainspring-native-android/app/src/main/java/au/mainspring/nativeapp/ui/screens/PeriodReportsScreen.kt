@@ -150,16 +150,16 @@ private fun RevenueComparison(current: Long,previous: Long?) {
         Text("Revenue comparison",style=MaterialTheme.typography.titleMedium)
         if(current == 0L && (previous ?: 0L) == 0L) {
             Text("No revenue recorded in either period yet.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            return@FlatPanel
-        }
-        val maximum=maxOf(current,previous ?: 0,1).toFloat()
-        Row(Modifier.fillMaxWidth().height(130.dp),horizontalArrangement=Arrangement.spacedBy(16.dp),verticalAlignment=androidx.compose.ui.Alignment.Bottom) {
-            listOf("Previous period" to previous,"Current period" to current).forEach {(label,value)->Column(Modifier.weight(1f),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally) {
-                Text(value?.let(::reportAmount) ?: "Unavailable",style=MaterialTheme.typography.labelSmall)
-                Spacer(Modifier.height(4.dp))
-                Box(Modifier.fillMaxWidth().height((maxOf(value ?: 0,0).toFloat()/maximum*80).dp).background(if(label=="Current period") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface))
-                Text(label,style=MaterialTheme.typography.labelSmall)
-            } }
+        } else {
+            val maximum=maxOf(current,previous ?: 0,1).toFloat()
+            Row(Modifier.fillMaxWidth().height(130.dp),horizontalArrangement=Arrangement.spacedBy(16.dp),verticalAlignment=androidx.compose.ui.Alignment.Bottom) {
+                listOf("Previous period" to previous,"Current period" to current).forEach {(label,value)->Column(Modifier.weight(1f),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally) {
+                    Text(value?.let(::reportAmount) ?: "Unavailable",style=MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.height(4.dp))
+                    Box(Modifier.fillMaxWidth().height((maxOf(value ?: 0,0).toFloat()/maximum*80).dp).background(if(label=="Current period") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface))
+                    Text(label,style=MaterialTheme.typography.labelSmall)
+                } }
+            }
         }
         Text("The current period may still be in progress.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }
