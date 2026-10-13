@@ -1,5 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,32 +33,32 @@ fun QuotesScreen(
     viewModel: QuotesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.End) {
-            Button(onClick = { viewModel.refresh() }, enabled = !state.loading) { Text("Refresh") }
-        }
-        if (state.loading && state.quotes.isEmpty()) {
-            CircularProgressIndicator(Modifier.padding(24.dp))
-        }
-        state.error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-        }
+    var filter by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    val shown = state.quotes.filter { filter == null || it.status == filter }
+    Column(Modifier.fillMaxSize()) {
+        au.mainspring.nativeapp.ui.FilterRow(listOf(null to "All", "draft" to "Draft", "sent" to "Sent", "approved" to "Approved", "declined" to "Declined"), filter, { filter = it }, Modifier.padding(top = 4.dp))
+        if (state.loading && state.quotes.isEmpty()) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+        state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = viewModel::refresh) }
+        if (!state.loading && state.error == null && shown.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No quotes", if(filter == null) "Quotes you create from a job will show up here." else "No $filter quotes right now.")
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize().weight(1f, fill = true),
         ) {
-            items(state.quotes, key = { it.id }) { q ->
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenQuote(q.id) }
-                        .padding(16.dp),
-                ) {
-                    Text("${q.status.uppercase()} · ${formatCents(q.totalCents, q.currency)}", style = MaterialTheme.typography.titleMedium)
-                    Text("Job ${q.repairJobId}", style = MaterialTheme.typography.bodySmall)
-                    Text(q.createdAt, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            items(shown, key = { it.id }) { q ->
+                val job = state.jobs[q.repairJobId]
+                au.mainspring.nativeapp.ui.ListCard({ onOpenQuote(q.id) }) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(job?.jobNumber ?: "Quote", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        au.mainspring.nativeapp.ui.StatusPill(q.status)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(job?.title ?: "Repair quote", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        Text(formatCents(q.totalCents, q.currency), style = MaterialTheme.typography.titleMedium)
+                    }
+                    Text(listOfNotNull(job?.customerName, au.mainspring.nativeapp.ui.formatShopDate(q.createdAt).substringBefore(' ')).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                HorizontalDivider()
             }
         }
     }

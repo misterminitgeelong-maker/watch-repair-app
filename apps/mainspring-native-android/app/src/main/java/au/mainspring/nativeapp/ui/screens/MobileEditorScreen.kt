@@ -39,7 +39,7 @@ import au.mainspring.nativeapp.*
    OutlinedButton(onClick = { teamOpen = true }, enabled = !state.loading && !state.busy && TokenStore.canWorkJobs()) { Text("Change technician") }
    Text("Programming status", style = MaterialTheme.typography.titleMedium)
    listOf("pending", "in_progress", "programmed", "failed", "not_required").forEach { value ->
-    Row { RadioButton(state.fields["programming_status"] == value, { vm.set("programming_status", value) }, enabled = !state.loading && !state.busy); Text(value.replace('_', ' ')) }
+    Row { RadioButton(state.fields["programming_status"] == value, { vm.set("programming_status", value) }, enabled = !state.loading && !state.busy); Text(au.mainspring.nativeapp.ui.statusLabel(value)) }
    }
    Text("Your unsaved edits are saved on this device for this account.")
    OutlinedButton(onClick = vm::discardDraft, enabled = !state.loading && !state.busy) { Text("Discard edits and use loaded job") }

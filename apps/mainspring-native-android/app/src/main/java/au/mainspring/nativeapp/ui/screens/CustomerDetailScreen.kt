@@ -74,7 +74,7 @@ private fun LazyListScope.historySection(title: String, section: String, rows: L
         state.historyErrors[section]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if(rows.isEmpty() && section !in state.historyErrors) Text("No ${title.lowercase()} for this customer.") }
     items(rows,key = { "$section/job/${it.id}" }) { row -> Column(Modifier.fillMaxWidth().clickable { onOpen(row.id) }.padding(vertical = 8.dp)) {
-        Text("${row.number} · ${row.status.replace('_',' ')}", style = MaterialTheme.typography.titleSmall); Text(row.title)
+        Text("${row.number} · ${au.mainspring.nativeapp.ui.statusLabel(row.status)}", style = MaterialTheme.typography.titleSmall); Text(row.title)
     } }
     if(section in state.more) item { OutlinedButton(onClick = { vm.loadMore(section) },enabled = !state.loading && state.paging == null) { Text("Load older $section jobs") } }
 }

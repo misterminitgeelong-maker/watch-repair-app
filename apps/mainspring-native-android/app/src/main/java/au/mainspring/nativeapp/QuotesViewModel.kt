@@ -15,6 +15,7 @@ data class QuotesUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val quotes: List<QuoteRead> = emptyList(),
+    val jobs: Map<String, au.mainspring.nativeapp.api.RepairJobRead> = emptyMap(),
 )
 
 class QuotesViewModel : ViewModel() {
@@ -34,6 +35,7 @@ class QuotesViewModel : ViewModel() {
                 val list = api.listQuotes()
                 QuoteNavCache.putAll(list,generation)
                 _state.update { it.copy(loading = false, quotes = list) }
+                runCatching { api.listRepairJobs(limit = 200) }.getOrNull()?.let { jobs -> _state.update { it.copy(jobs = jobs.associateBy { job -> job.id }) } }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.userMessage()) }
             }

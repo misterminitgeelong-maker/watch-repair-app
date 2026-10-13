@@ -1,5 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.material3.*
+import androidx.compose.foundation.layout.*
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,40 +43,34 @@ fun ShoeJobsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Shoe repairs", style = MaterialTheme.typography.headlineSmall) },
+                title = { Text("Shoe repairs", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
+                actions = { TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },
             )
         },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(onClick = onNewJob, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) { Text("New repair", style = MaterialTheme.typography.labelLarge) }
+        },
     ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Button(onClick = onNewJob) { Text("New repair") }
-                Button(onClick = { viewModel.refresh() }, enabled = !state.loading) { Text("Refresh") }
-            }
-            if (state.loading && state.jobs.isEmpty()) CircularProgressIndicator(Modifier.padding(24.dp))
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            if (state.loading && state.jobs.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(16.dp), onRetry = { viewModel.refresh() }) }
+            if (!state.loading && state.error == null && state.jobs.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No shoe repairs yet", "Tap New repair to book in a pair.")
             LazyColumn(
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize().weight(1f, fill = true),
             ) {
                 items(state.jobs, key = { it.id }) { j ->
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenJob(j.id) }
-                            .padding(16.dp),
-                    ) {
-                        Text("${j.jobNumber} · ${j.status}", style = MaterialTheme.typography.titleMedium)
-                        Text(j.title, style = MaterialTheme.typography.bodyMedium)
+                    au.mainspring.nativeapp.ui.ListCard({ onOpenJob(j.id) }) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(j.jobNumber, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            au.mainspring.nativeapp.ui.StatusPill(j.status)
+                        }
+                        Text(j.title, style = MaterialTheme.typography.titleMedium)
                     }
-                    HorizontalDivider()
                 }
-                if(state.canLoadMore) item { Button(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.padding(16.dp)) { Text("Load more repairs") } }
+                if(state.canLoadMore) item { OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more repairs") } }
             }
         }
     }

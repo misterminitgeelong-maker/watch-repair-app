@@ -1,5 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,33 +33,35 @@ fun InvoicesScreen(
     viewModel: InvoicesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.End) {
-            Button(onClick = { viewModel.refresh() }, enabled = !state.loading) { Text("Refresh") }
-        }
-        if (state.loading && state.invoices.isEmpty()) {
-            CircularProgressIndicator(Modifier.padding(24.dp))
-        }
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp)) }
+    var filter by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    val shown = state.invoices.filter { filter == null || it.status == filter }
+    Column(Modifier.fillMaxSize()) {
+        au.mainspring.nativeapp.ui.FilterRow(listOf(null to "All", "unpaid" to "Unpaid", "paid" to "Paid"), filter, { filter = it }, Modifier.padding(top = 4.dp))
+        if (state.loading && state.invoices.isEmpty()) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+        state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = viewModel::refresh) }
+        if (!state.loading && state.error == null && shown.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No invoices yet", "Invoices appear here once a quote is approved and invoiced.")
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize().weight(1f, fill = true),
         ) {
-            if(!state.loading && state.invoices.isEmpty() && state.error == null) item { Text("No invoices yet", modifier = Modifier.padding(16.dp)) }
-            items(state.invoices, key = { it.id }) { inv ->
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenInvoice(inv.id) }
-                        .padding(16.dp),
-                ) {
-                    Text("${inv.invoiceNumber} · ${inv.status}", style = MaterialTheme.typography.titleMedium)
-                    Text(formatCents(inv.totalCents, inv.currency), style = MaterialTheme.typography.bodyLarge)
+            items(shown, key = { it.id }) { inv ->
+                val job = state.jobs[inv.repairJobId]
+                au.mainspring.nativeapp.ui.ListCard({ onOpenInvoice(inv.id) }) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(inv.invoiceNumber, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        au.mainspring.nativeapp.ui.StatusPill(inv.status)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(job?.title ?: "Repair invoice", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        Text(formatCents(inv.totalCents, inv.currency), style = MaterialTheme.typography.titleMedium)
+                    }
+                    Text(listOfNotNull(job?.customerName, au.mainspring.nativeapp.ui.formatShopDate(inv.createdAt).substringBefore(' ')).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                HorizontalDivider()
             }
             if(state.invoices.size < state.total) item {
-                Button(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.padding(16.dp)) { Text(if(state.loading) "Loading…" else "Load more invoices") }
+                androidx.compose.material3.OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text(if(state.loading) "Loading…" else "Load more invoices") }
             }
         }
     }

@@ -63,7 +63,7 @@ fun InboxScreen(
             ) {
                 items(state.events, key = { it.id }) { ev ->
                     Column(Modifier.padding(vertical = 10.dp)) {
-                        Text(ev.eventType.replace('_', ' '), style = MaterialTheme.typography.titleSmall)
+                        Text(au.mainspring.nativeapp.ui.statusLabel(ev.eventType), style = MaterialTheme.typography.titleSmall)
                         Text(ev.eventSummary, style = MaterialTheme.typography.bodyMedium)
                         Text(ev.createdAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

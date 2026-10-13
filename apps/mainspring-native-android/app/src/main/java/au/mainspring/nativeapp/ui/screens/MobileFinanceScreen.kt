@@ -81,10 +81,10 @@ import au.mainspring.nativeapp.ui.formatCents
    state.invoices.forEach { invoice -> Surface(Modifier.fillMaxWidth(),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(invoice.number,style=MaterialTheme.typography.titleSmall);StatusPill(invoice.status)}
     Text(formatCents(invoice.total,invoice.currency),style=MaterialTheme.typography.titleLarge)
-    invoice.paymentMethod?.let { Text("Payment: ${it.replace('_', ' ')}") }
+    invoice.paymentMethod?.let { Text("Payment: ${au.mainspring.nativeapp.ui.statusLabel(it)}") }
     OutlinedButton(onClick = { try {
      printInvoiceSummary(context,InvoiceSummary(invoice.number,invoice.status,
-      details = listOfNotNull(invoice.customerName?.let { "Customer: $it" },invoice.jobNumber?.let { "Job: $it" },invoice.createdAt?.let { "Created ${au.mainspring.nativeapp.ui.formatShopDate(it)}" },invoice.paymentMethod?.let { "Payment method: ${it.replace('_',' ')}" }),
+      details = listOfNotNull(invoice.customerName?.let { "Customer: $it" },invoice.jobNumber?.let { "Job: $it" },invoice.createdAt?.let { "Created ${au.mainspring.nativeapp.ui.formatShopDate(it)}" },invoice.paymentMethod?.let { "Payment method: ${au.mainspring.nativeapp.ui.statusLabel(it)}" }),
       totals = listOfNotNull(invoice.subtotal?.let { "Subtotal" to formatCents(it,invoice.currency) },invoice.tax?.let { "Tax / GST" to formatCents(it,invoice.currency) },"Total" to formatCents(invoice.total,invoice.currency))))
     } catch(e: Exception) { printError = e.userMessage() } },enabled = !state.loading && !state.busy) { Text("Print / save invoice summary") }
     OutlinedButton(onClick = { confirm = "sendInvoice" to invoice.id }, enabled = enabled) { Text("Send invoice") }
@@ -113,7 +113,7 @@ import au.mainspring.nativeapp.ui.formatCents
     Text("Record payment",style=MaterialTheme.typography.titleLarge)
     invoice?.let {Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(it.number);Text(formatCents(it.total,it.currency),style=MaterialTheme.typography.titleLarge)}}
     Text("Record this only after receiving the full invoice amount.",style=MaterialTheme.typography.bodySmall)
-    Column {listOf("card","cash","bank_transfer").forEach {option->Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {RadioButton(method==option,{method=option},enabled=enabled);Text(option.replace('_',' ').replaceFirstChar {it.uppercase()})}}}
+    Column {listOf("card","cash","bank_transfer").forEach {option->Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {RadioButton(method==option,{method=option},enabled=enabled);Text(au.mainspring.nativeapp.ui.statusLabel(option).replaceFirstChar {it.uppercase()})}}}
     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
      OutlinedButton({confirm=null},modifier=Modifier.weight(1f)) {Text("Cancel")}
      Button({confirm=null;vm.markPaid(action.second,method)},enabled=enabled && invoice!=null && state.paymentReviewId==null,modifier=Modifier.weight(1f)) {Text("Record payment")}
@@ -125,7 +125,7 @@ import au.mainspring.nativeapp.ui.formatCents
  confirm?.takeIf {it.first!="paid"}?.let { action -> AlertDialog(onDismissRequest = { confirm = null }, title = { Text(when(action.first) { "quote" -> "Send quote?"; "invoice" -> "Create invoice?"; "paid" -> "Confirm payment received"; else -> "Send invoice?" }) },
   text = { Column { if(action.first == "paid") {
    Text("Record this only after receiving the full invoice amount.")
-   listOf("cash", "card", "bank_transfer").forEach { option -> Row { RadioButton(method == option, { method = option }); Text(option.replace('_', ' ')) } }
+   listOf("cash", "card", "bank_transfer").forEach { option -> Row { RadioButton(method == option, { method = option }); Text(au.mainspring.nativeapp.ui.statusLabel(option)) } }
   } else Text("${if(action.first == "invoice") "Create the invoice using this quote's totals." else "Send this document using the customer's saved contact details."}") } },
   confirmButton = { Button(onClick = { confirm = null; when(action.first) { "quote" -> vm.sendQuote(action.second); "invoice" -> vm.createInvoice(action.second); "paid" -> vm.markPaid(action.second, method); else -> vm.sendInvoice(action.second) } }) { Text("Confirm") } },
   dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } }) }

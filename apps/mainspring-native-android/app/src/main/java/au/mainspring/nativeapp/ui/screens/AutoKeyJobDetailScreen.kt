@@ -137,7 +137,7 @@ import au.mainspring.nativeapp.ui.*
                                 attachmentOpenError?.let {Text(it,color=MaterialTheme.colorScheme.error)}
                                 if(state.statusReviewRequired) FlatPanel {
                                     Text("Review the current job status before repeating the last change.")
-                                    state.requestedStatus?.let {Text("Previously requested: ${it.replace('_',' ')}")}
+                                    state.requestedStatus?.let {Text("Previously requested: ${au.mainspring.nativeapp.ui.statusLabel(it)}")}
                                     state.requestedNote?.let {Text("Previous note: $it")}
                                     OutlinedButton(vm::reviewedStatus,enabled=!state.loading && !state.statusBusy && state.historyChecked) {Text("I have reviewed the current status")}
                                 }
@@ -145,7 +145,7 @@ import au.mainspring.nativeapp.ui.*
                                     SectionLabel("Vehicle")
                                     FlatPanel {DetailRow("Make / model",listOfNotNull(j.vehicleMake,j.vehicleModel).joinToString(" "));DetailRow("Year",j.vehicleYear?.toString().orEmpty());DetailRow("Registration",j.registrationPlate.orEmpty());DetailRow("VIN",j.vin.orEmpty())}
                                     SectionLabel("Key details")
-                                    FlatPanel {DetailRow("Key type",j.keyType.orEmpty());DetailRow("Blade",j.bladeCode.orEmpty());DetailRow("Transponder",j.chipType.orEmpty());DetailRow("Keys to make",j.keyQuantity.toString());DetailRow("Programming",j.programmingStatus.replace('_',' '))}
+                                    FlatPanel {DetailRow("Key type",j.keyType.orEmpty());DetailRow("Blade",j.bladeCode.orEmpty());DetailRow("Transponder",j.chipType.orEmpty());DetailRow("Keys to make",j.keyQuantity.toString());DetailRow("Programming",au.mainspring.nativeapp.ui.statusLabel(j.programmingStatus))}
                                     state.vehicleContext?.let {knowledge ->
                                         contextText(knowledge,"complexity")?.let {DetailRow("AKL complexity",it)}
                                         knowledge.getAsJsonArray("known_issues")?.takeIf {it.size()>0}?.let {issues ->
@@ -204,11 +204,11 @@ import au.mainspring.nativeapp.ui.*
         AlertDialog(onDismissRequest={if(!state.statusBusy) pendingStep=null},
             title={Text(when(target) {"en_route"->"Ready to leave?";"on_site"->"Arrived at the job?";else->"Finish this job?"})},
             text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                Text(if(completion) "Confirm the work is finished. This can create an invoice and notify the customer through your shop settings. Payment is recorded separately." else "Update the job to ${target.replace('_',' ')}. Customer notifications follow your shop settings.")
+                Text(if(completion) "Confirm the work is finished. This can create an invoice and notify the customer through your shop settings. Payment is recorded separately." else "Update the job to ${au.mainspring.nativeapp.ui.statusLabel(target)}. Customer notifications follow your shop settings.")
                 if(completion) OutlinedTextField(statusChangeNote,{statusChangeNote=it},label={Text("Completion note (optional)")},modifier=Modifier.fillMaxWidth(),maxLines=3)
             }},
             confirmButton={Button({pendingStep=null;finishing=completion;vm.setStatus(target,if(completion) statusChangeNote.trim().takeIf {it.isNotEmpty()} else null);statusChangeNote=""},
-                enabled=!state.loading && !state.statusBusy && !state.statusReviewRequired && !state.offlineSnapshot && TokenStore.canWorkJobs()) {Text(if(completion) "Confirm completion" else "Confirm ${target.replace('_',' ')}")}},
+                enabled=!state.loading && !state.statusBusy && !state.statusReviewRequired && !state.offlineSnapshot && TokenStore.canWorkJobs()) {Text(if(completion) "Confirm completion" else "Confirm ${au.mainspring.nativeapp.ui.statusLabel(target)}")}},
             dismissButton={TextButton({pendingStep=null}) {Text("Cancel")}})
     }
 

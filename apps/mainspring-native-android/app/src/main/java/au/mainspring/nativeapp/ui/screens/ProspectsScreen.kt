@@ -45,14 +45,14 @@ import java.time.format.DateTimeFormatter
       OutlinedTextField(query, { query = it }, label = { Text("Search name, contact or notes") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
        (listOf("") + listOf("new", "contacted", "visited", "onboarded") + state.leads.map { it.status }).distinct().forEach { value ->
-        FilterChip(stage == value, { stage = value }, label = { Text(if(value.isBlank()) "All stages" else value.replace('_', ' ')) })
+        FilterChip(stage == value, { stage = value }, label = { Text(if(value.isBlank()) "All stages" else au.mainspring.nativeapp.ui.statusLabel(value)) })
        }
       }
      }
      val leads = state.leads.filter { (stage.isBlank() || it.status == stage) && (query.isBlank() || "${it.name} ${it.contactName.orEmpty()} ${it.notes.orEmpty()} ${it.phone.orEmpty()}".contains(query, true)) }
      if(enabled && leads.isEmpty()) item { Text("No prospects match this view") }
      items(leads, key = { it.id }) { lead -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-      Text(lead.name, style = MaterialTheme.typography.titleMedium); Text(lead.status.replace('_', ' '))
+      Text(lead.name, style = MaterialTheme.typography.titleMedium); Text(au.mainspring.nativeapp.ui.statusLabel(lead.status))
       lead.address?.let { Text(it) }; lead.contactName?.let { Text("Contact: $it") }; lead.contactEmail?.let { Text(it) }; lead.phone?.let { Text(it) }
       lead.visit?.let { Text("Visit ${au.mainspring.nativeapp.ui.formatShopDate(it, TokenStore.calendarTimezone())}") }
       lead.notes?.let { Text(it) }; if(lead.accountId != null) Text("Linked to a customer account")

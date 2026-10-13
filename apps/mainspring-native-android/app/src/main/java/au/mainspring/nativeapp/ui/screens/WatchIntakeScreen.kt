@@ -149,7 +149,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { status ->
                             FilterChip(selected = vm.field("status").ifBlank { "awaiting_quote" } == status, onClick = { vm.setField("status", status) }, enabled = !locked && !quoteRequired,
-                                label = { Text(status.replace('_', ' ')) })
+                                label = { Text(au.mainspring.nativeapp.ui.statusLabel(status)) })
                         }
                     }
                     Text("Priority")

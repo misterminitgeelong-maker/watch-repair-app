@@ -15,6 +15,7 @@ data class InvoicesUiState(
     val error: String? = null,
     val invoices: List<InvoiceRead> = emptyList(),
     val total: Int = 0,
+    val jobs: Map<String, au.mainspring.nativeapp.api.RepairJobRead> = emptyMap(),
 )
 
 class InvoicesViewModel : ViewModel() {
@@ -42,6 +43,7 @@ class InvoicesViewModel : ViewModel() {
             try {
                 val page = api.listInvoices(offset = if(append) _state.value.invoices.size else 0)
                 _state.update { it.copy(loading = false, invoices = if(append) (it.invoices + page.items).distinctBy { row -> row.id } else page.items, total = page.total) }
+                runCatching { api.listRepairJobs(limit = 200) }.getOrNull()?.let { jobs -> _state.update { it.copy(jobs = jobs.associateBy { job -> job.id }) } }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.userMessage()) }
             }

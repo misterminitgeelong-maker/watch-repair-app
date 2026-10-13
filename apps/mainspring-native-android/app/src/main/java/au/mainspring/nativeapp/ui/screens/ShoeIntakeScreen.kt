@@ -103,7 +103,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     field("title", "Job title (or use selected services)"); field("description", "Instructions / fault description")
                     Text("Initial status")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { value -> FilterChip(selected = vm.field("status").ifBlank { "awaiting_go_ahead" } == value, onClick = { vm.set("status", value) }, enabled = !locked, label = { Text(value.replace('_',' ')) }) }
+                        listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { value -> FilterChip(selected = vm.field("status").ifBlank { "awaiting_go_ahead" } == value, onClick = { vm.set("status", value) }, enabled = !locked, label = { Text(au.mainspring.nativeapp.ui.statusLabel(value)) }) }
                     }
                     Text("Priority")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

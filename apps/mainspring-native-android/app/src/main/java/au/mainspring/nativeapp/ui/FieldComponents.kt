@@ -3,6 +3,7 @@ package au.mainspring.nativeapp.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -49,7 +50,7 @@ import androidx.compose.ui.unit.dp
     val (background, foreground) = when(status) {
         "booked", "booking_confirmed", "booking_scheduled", "go_ahead", "working_on", "en_route", "on_site", "service" -> blue
         "work_completed", "invoice_paid", "paid", "completed", "collected", "booking_completed", "approved" -> green
-        "awaiting_go_ahead", "quote_sent", "awaiting_confirmation", "awaiting_quote", "awaiting_parts", "parts_to_order", "awaiting_collection", "awaiting_customer_details", "booking_on_hold", "pending_booking" -> amber
+        "unpaid", "awaiting_go_ahead", "quote_sent", "awaiting_confirmation", "awaiting_quote", "awaiting_parts", "parts_to_order", "awaiting_collection", "awaiting_customer_details", "booking_on_hold", "pending_booking" -> amber
         "no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent" -> red
         else -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     }
@@ -123,3 +124,21 @@ import androidx.compose.ui.unit.dp
         if(actionLabel != null && onAction != null) androidx.compose.material3.OutlinedButton(onClick = onAction) { Text(actionLabel) }
     }
 }
+
+/** Tappable card used by every directory list so rows share one look. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun ListCard(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Surface(onClick, modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
+    }
+}
+
+/** Horizontally scrolling filter chips. `options` maps a stored key (null = all) to its label. */
+@Composable fun FilterRow(options: List<Pair<String?, String>>, selected: String?, onSelect: (String?) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (key, label) -> FilterChip(selected = selected == key, onClick = { onSelect(key) }, label = { Text(label) }) }
+    }
+}
+
+/** "awaiting_go_ahead" -> "Awaiting go ahead". */
+fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstChar { it.uppercase() }

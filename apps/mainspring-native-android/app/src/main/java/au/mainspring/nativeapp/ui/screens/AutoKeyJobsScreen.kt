@@ -121,7 +121,7 @@ fun AutoKeyJobsScreen(
                                 j.jobAddress?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
-                                        Text(j.status.replace('_', ' ').replaceFirstChar { it.uppercase() }, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall)
+                                        Text(au.mainspring.nativeapp.ui.statusLabel(j.status).replaceFirstChar { it.uppercase() }, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall)
                                     }
                                     if(j.priority == "high" || j.priority == "urgent") Text(j.priority.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 3.dp))
                                 }

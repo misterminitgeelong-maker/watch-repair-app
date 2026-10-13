@@ -27,7 +27,7 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
             OutlinedButton(onClick = vm::load, enabled = !state.loading && !state.busy) { Text("Refresh quotes") }
             if(state.unknownSave) OutlinedButton(onClick = vm::acknowledgeHistory, enabled = !state.loading && state.historyChecked) { Text("I checked for the saved quote") }
             state.quotes.forEach { q ->
-                OutlinedButton(onClick = { onOpenQuote(q.id) }, modifier = Modifier.fillMaxWidth()) { Text("${q.status.replace('_',' ')} · ${formatCents(q.totalCents, q.currency)}") }
+                OutlinedButton(onClick = { onOpenQuote(q.id) }, modifier = Modifier.fillMaxWidth()) { Text("${au.mainspring.nativeapp.ui.statusLabel(q.status)} · ${formatCents(q.totalCents, q.currency)}") }
             }
             if (state.created != null) { Text("Quote saved as a draft. Open it to review totals and send it to the customer."); OutlinedButton(onClick = vm::startAnotherQuote) { Text("Create another quote") } }
             else if (!state.unknownSave && state.job != null) {

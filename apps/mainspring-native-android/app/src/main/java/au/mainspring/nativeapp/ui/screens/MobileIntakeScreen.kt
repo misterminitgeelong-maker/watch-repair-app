@@ -84,7 +84,7 @@ import au.mainspring.nativeapp.ui.SectionLabel
             SectionLabel("Work details")
             field("description","Requested work");field("keyType","Key type");field("quantity","Key quantity (default 1)");field("notes","Technician notes");field("deposit","Deposit ($)")
             SectionLabel("Initial status")
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("awaiting_quote","go_ahead","pending_booking","booked").forEach {value->FilterChip(vm.field("status").ifBlank {"awaiting_quote"}==value,{vm.set("status",value)},enabled=!locked,label={Text(value.replace('_',' '))})}}
+            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("awaiting_quote","go_ahead","pending_booking","booked").forEach {value->FilterChip(vm.field("status").ifBlank {"awaiting_quote"}==value,{vm.set("status",value)},enabled=!locked,label={Text(au.mainspring.nativeapp.ui.statusLabel(value))})}}
             Row {Checkbox(vm.field("bookingSms")=="true",{vm.set("bookingSms",it.toString())},enabled=!locked);Text("Send booking SMS to customer")}
             Text("Creation may also send the customer's tracking message according to shop settings.",style=MaterialTheme.typography.bodySmall)
         }
