@@ -66,7 +66,8 @@ fun AutoKeyJobsScreen(
                 au.mainspring.nativeapp.ui.FilterRow(listOf("today" to "Today", "unscheduled" to "Unscheduled", "unassigned" to "Unassigned", "needs_quote" to "Needs quote", "completed_unpaid" to "Completed, unpaid").map { (k, v) -> k as String? to v },
                     state.focus, { viewModel.focus(if(state.focus == it) null else it) })
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { dateOpen = true }, modifier = Modifier.heightIn(min = 48.dp)) { Text(state.day?.let { au.mainspring.nativeapp.ui.formatShopDate(it) } ?: "Pick a day") }
+                    TextButton(onClick = { dateOpen = true }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Schedule by day") }
+                    state.day?.let { Text(au.mainspring.nativeapp.ui.formatShopDate(it), style = MaterialTheme.typography.titleMedium) }
                     TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
                 }
                 state.day?.let {

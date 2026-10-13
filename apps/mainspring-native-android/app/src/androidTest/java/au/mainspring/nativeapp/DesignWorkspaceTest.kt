@@ -168,7 +168,8 @@ class DesignWorkspaceTest {
     @Test fun ownerDashboardLoadsNativePeriodMetricsAndComparisons() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
         compose.onNodeWithTag("nav-home").performClick()
-        compose.onNodeWithText("Operations overview").assertExists()
+        compose.onNodeWithText("Start something").assertExists()
+        compose.onNodeWithTag("nav-reports").performClick()
         compose.onNodeWithTag("period-report-list").performScrollToNode(hasText("Revenue comparison"))
         compose.onNodeWithText("Revenue comparison").assertIsDisplayed()
         saveNativeQaImage(compose.onRoot(),"design-owner-dashboard.png")

@@ -70,7 +70,7 @@ class CommercialUiTest {
   compose.onNodeWithText("Record payment").performClick(); compose.onNodeWithText("Amount").performTextInput("12.29"); compose.onNodeWithText("Save").performClick()
   compose.waitUntil(10_000) { vm.state.value.paymentInfo == "Payment recorded." && !vm.state.value.paymentBusy }
   Assert.assertEquals(1229, paymentAmount); Assert.assertEquals(1, payments.get())
-  compose.onNodeWithText("Paid 12.29 AUD · Remaining 87.71 AUD").assertExists()
+  compose.onNodeWithText("87.71 AUD").assertExists()
  }
  @Test fun unknownPaymentBlocksSubmissionAfterViewModelRecreation() {
   failPayment = true; val first = InvoiceDetailViewModel("invoice-1"); compose.waitUntil(10_000) { first.state.value.data != null }

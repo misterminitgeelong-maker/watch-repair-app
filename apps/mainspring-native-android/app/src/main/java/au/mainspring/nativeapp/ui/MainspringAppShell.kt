@@ -43,7 +43,6 @@ import au.mainspring.nativeapp.ui.screens.AutoKeyJobDetailScreen
 import au.mainspring.nativeapp.ui.screens.AutoKeyJobsScreen
 import au.mainspring.nativeapp.ui.screens.CustomerDetailScreen
 import au.mainspring.nativeapp.ui.screens.CustomersScreen
-import au.mainspring.nativeapp.ui.screens.DashboardScreen
 import au.mainspring.nativeapp.ui.screens.InboxScreen
 import au.mainspring.nativeapp.ui.screens.InvoiceDetailScreen
 import au.mainspring.nativeapp.ui.screens.InvoicesScreen
@@ -148,22 +147,19 @@ fun MainspringAppShell(
                 composable("team") { au.mainspring.nativeapp.ui.screens.TeamScreen({navController.popBackStack()}) }
                 composable("leads") { au.mainspring.nativeapp.ui.screens.LeadHubScreen({navController.popBackStack()},{navController.navigate(it)}) }
                 composable("home") {
-                    DashboardScreen(
-                        sessionSummary = sessionSummary,
-                        apiBaseUrl = apiBaseUrl,
-                        onLogout = onLogout,
+                    au.mainspring.nativeapp.ui.screens.HomeScreen(
                         features = features,
+                        shopName = selectedSite?.name,
+                        onNewWatch = { navController.navigate("watch_intake") },
                         onNewMobileJob = { navController.navigate("mobile_intake") },
+                        onNewShoe = { navController.navigate("shoe_intake") },
+                        onCounterSale = { navController.navigate("counterSale") },
                         onOpenWatchJobs = { navController.navigate("jobs") { launchSingleTop = true } },
                         onOpenQuotes = { navController.navigate("quotes") { launchSingleTop = true } },
                         onOpenInvoices = { navController.navigate("invoices") { launchSingleTop = true } },
-                        onOpenShoeJobs = {
-                            navController.navigate("shoe_jobs") { launchSingleTop = true }
-                        },
-                        onOpenAutoJobs = {
-                            navController.navigate("auto_jobs") { launchSingleTop = true }
-                        },
-                        onOpenAutoJob = { jobId -> navController.navigate("autoKeyJob/$jobId") },
+                        onOpenAutoJobs = { navController.navigate("auto_jobs") { launchSingleTop = true } },
+                        onOpenShoeJobs = { navController.navigate("shoe_jobs") { launchSingleTop = true } },
+                        onOpenReports = { navController.navigate("reports") { launchSingleTop = true } },
                     )
                 }
                 composable("reports") { au.mainspring.nativeapp.ui.screens.PeriodReportsScreen({ navController.popBackStack() }) }
