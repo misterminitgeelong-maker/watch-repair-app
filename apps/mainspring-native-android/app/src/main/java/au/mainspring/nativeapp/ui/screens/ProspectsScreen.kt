@@ -41,6 +41,9 @@ import java.time.format.DateTimeFormatter
    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
     if(tab == 0) {
      item {
+      val todayKey = LocalDate.now().toString()
+      au.mainspring.nativeapp.ui.MetricStrip(listOf("New prospects" to state.leads.count { it.status == "new" }.toString(), "Follow-ups today" to state.leads.count { it.visit?.take(10) == todayKey || it.status == "follow_up_due" }.toString()))
+      au.mainspring.nativeapp.ui.PrimaryAction(onClick = { tab = 1 }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Add prospect", style = MaterialTheme.typography.titleMedium) }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }; Text("${state.leads.size} prospects") }
       au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, label = { Text("Search name, contact or notes") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
