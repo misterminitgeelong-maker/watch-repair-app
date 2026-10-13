@@ -59,7 +59,6 @@ fun AtelierJobsScreen(
         if("shoe" in features) add("shoe" to "Shoe")
         if("auto_key" in features) add("auto_key" to "Mobile")
     }
-    var serviceMenu by remember { mutableStateOf(false) }
     val shown = state.visible
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { LargeHeader((shopName ?: "Your shop") + " · All services", "Jobs", onAdd = onNew, addDescription = "New job") }
@@ -75,18 +74,7 @@ fun AtelierJobsScreen(
                 state.segment, viewModel::setSegment, Modifier.padding(horizontal = 20.dp))
         }
         if(services.size > 1) item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Box {
-                    TextButton(onClick = { serviceMenu = true }, modifier = Modifier.heightIn(min = 44.dp)) {
-                        Text((if(state.service == "all") "All services" else serviceLabel(state.service)) + " ▾", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    }
-                    DropdownMenu(serviceMenu, { serviceMenu = false }) {
-                        DropdownMenuItem(text = { Text("All services") }, onClick = { viewModel.setService("all"); serviceMenu = false })
-                        services.forEach { (key, label) -> DropdownMenuItem(text = { Text(label) }, onClick = { viewModel.setService(key); serviceMenu = false }) }
-                    }
-                }
-                Text("Due date ↓", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            }
+            SegmentedPills(listOf("all" to "All") + services, state.service, viewModel::setService, Modifier.padding(horizontal = 20.dp))
         }
         if(state.loading && state.jobs.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = viewModel::refresh) } }
