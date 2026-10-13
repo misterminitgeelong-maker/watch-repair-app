@@ -89,17 +89,21 @@ fun HomeScreen(
         dash.error?.let { item { ErrorBanner(it, onRetry = dashboard::refresh) } }
         if (actions.isNotEmpty()) {
             item { SectionLabel("Start something") }
-            items(actions.chunked(2)) { pair ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    pair.forEach { action ->
-                        Surface(onClick = action.onClick, modifier = Modifier.weight(1f).heightIn(min = 88.dp), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(action.label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                                Text(action.hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    actions.chunked(2).forEach { pair ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            pair.forEach { action ->
+                                Surface(onClick = action.onClick, modifier = Modifier.weight(1f).heightIn(min = 88.dp), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+                                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(action.label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                        Text(action.hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                             }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
                         }
                     }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
@@ -124,8 +128,8 @@ fun HomeScreen(
             item { SectionLabel("Business snapshot") }
             item {
                 MetricStrip(listOf(
-                    "Revenue" to formatCents(s.financials.revenueCents, currency),
-                    "Outstanding" to formatCents(s.financials.outstandingCents, currency),
+                    "Revenue" to formatCents(@Suppress("USELESS_ELVIS") (s.financials?.revenueCents ?: 0), currency),
+                    "Outstanding" to formatCents(@Suppress("USELESS_ELVIS") (s.financials?.outstandingCents ?: 0), currency),
                 ))
             }
             item { OutlinedButton(onClick = onOpenReports, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("See full reports") } }
