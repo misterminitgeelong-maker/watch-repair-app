@@ -28,7 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: WatchIntakeViewModel = viewModel(), preselectedCustomerId: String? = null) {
+fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: WatchIntakeViewModel = viewModel(), preselectedCustomerId: String? = null, onSwitchService: ((String) -> Unit)? = null, services: List<Pair<String, String>> = emptyList()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
@@ -62,9 +62,8 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
         vm.searchCustomers(vm.field("customerQuery"))
     }
     val valid = when(step) { 0 -> if(newCustomer) vm.field("name").isNotBlank() else vm.field("customerId").isNotBlank(); 2 -> vm.field("title").isNotBlank(); else -> true }
-    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("New watch repair", style = MaterialTheme.typography.titleLarge) }, navigationIcon = {
-        au.mainspring.nativeapp.ui.BackButton(onClick = ::close, enabled = !state.busy)
-    }, actions = { TextButton(onClick = { discardDialog = true }, enabled = !state.busy && vm.field("uncertainWrite").isBlank() && state.savedJobIds.isEmpty(), modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") } }) },
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("watch", ::close, !state.busy, { discardDialog = true }, !state.busy && vm.field("uncertainWrite").isBlank() && state.savedJobIds.isEmpty(), services, onSwitchService) },
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Watches", "Job details", "Photos")[step],
                 if(step == 3) "Create / finish intake" else "Continue",

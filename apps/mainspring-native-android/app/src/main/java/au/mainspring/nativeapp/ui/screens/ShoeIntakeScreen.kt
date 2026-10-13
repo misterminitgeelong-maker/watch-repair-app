@@ -26,7 +26,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIntakeViewModel = viewModel(), preselectedCustomerId: String? = null) {
+fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIntakeViewModel = viewModel(), preselectedCustomerId: String? = null, onSwitchService: ((String) -> Unit)? = null, services: List<Pair<String, String>> = emptyList()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val step = vm.field("step").toIntOrNull()?.coerceIn(0,3) ?: 0
@@ -46,8 +46,8 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
     }
     LaunchedEffect(Unit) { if(preselectedCustomerId != null && state.fields.isEmpty()) { vm.set("customerId",preselectedCustomerId); vm.set("customerMode","existing"); vm.set("step","1") }; vm.search() }
     val valid = step != 0 || vm.field("customerId").isNotBlank() || (vm.field("customerMode") == "new" && vm.field("name").isNotBlank())
-    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("New shoe repair", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = { leave = true }, enabled = !state.busy) },
-        actions = { TextButton(onClick = { discard = true }, enabled = !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") } }) },
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("shoe", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if(!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Pairs and services", "Job details", "Photos")[step],
                 if(step == 3) "Create / finish repair" else "Continue",

@@ -19,13 +19,14 @@ import au.mainspring.nativeapp.*
 import au.mainspring.nativeapp.ui.SectionLabel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable fun MobileIntakeScreen(onBack: () -> Unit,onOpenJob: (String) -> Unit,vm: MobileIntakeViewModel = viewModel(),preselectedCustomerId: String? = null) {
+@Composable fun MobileIntakeScreen(onBack: () -> Unit,onOpenJob: (String) -> Unit,vm: MobileIntakeViewModel = viewModel(),preselectedCustomerId: String? = null, onSwitchService: ((String) -> Unit)? = null, services: List<Pair<String, String>> = emptyList()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val locked = state.busy || vm.field("uncertain").isNotBlank() || vm.field("jobId").isNotBlank() || vm.field("hasAcknowledgement") == "true"
     var leave by remember {mutableStateOf(false)};var discard by remember {mutableStateOf(false)};var reconcile by remember {mutableStateOf(false)}
     BackHandler {if(!state.busy) leave=true}
     LaunchedEffect(Unit) {if(preselectedCustomerId!=null && state.fields.isEmpty()) {vm.set("customerId",preselectedCustomerId);vm.set("customerMode","existing")};vm.search()}
-    Scaffold(topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("New job",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton({leave=true},enabled=!state.busy)},actions={TextButton({discard=true},enabled=!state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank()) {Text("Discard")}})},
+    Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("auto_key", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar={if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton({leave=true},enabled=!state.busy,modifier=Modifier.weight(1f)) {Text("Cancel")}
             Button(vm::submit,enabled=!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs(),modifier=Modifier.weight(1f)) {Text("Create job")}

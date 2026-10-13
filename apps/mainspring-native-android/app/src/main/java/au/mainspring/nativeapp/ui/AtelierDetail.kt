@@ -109,3 +109,21 @@ fun ActivityCard(title: String, detail: String?, time: String?, modifier: Modifi
         time?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
+
+/** Atelier intake header: "‹ Today", Discard, eyebrow + large "New intake" title and a Watch / Shoe / Mobile switcher. */
+@Composable
+fun IntakeHeader(current: String, onBack: () -> Unit, backEnabled: Boolean, onDiscard: () -> Unit, discardEnabled: Boolean,
+    services: List<Pair<String, String>>, onSwitch: ((String) -> Unit)?) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Back" }) { Text("\u2039 Today", style = MaterialTheme.typography.titleSmall) }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDiscard, enabled = discardEnabled, modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") }
+        }
+        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("DRAFT SAVED ON THIS DEVICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("New intake", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+            if(onSwitch != null && services.size > 1) SegmentedPills(services, current, { if(it != current) onSwitch(it) }, Modifier.padding(top = 6.dp, bottom = 6.dp))
+        }
+    }
+}
