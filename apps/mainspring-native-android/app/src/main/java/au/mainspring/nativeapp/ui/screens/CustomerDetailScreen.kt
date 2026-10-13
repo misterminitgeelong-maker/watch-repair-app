@@ -26,39 +26,57 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
     vm: CustomerDetailViewModel = viewModel(key = customerId, factory = CustomerDetailViewModel.factory(customerId,features))) {
     val state by vm.state.collectAsStateWithLifecycle()
     RefreshOnResume(vm::load)
-    Scaffold(topBar = { TopAppBar(title = { Text(state.customer?.fullName ?: "Customer") },
+    Scaffold(topBar = { TopAppBar(title = { Text(state.customer?.fullName ?: "Customer", style = MaterialTheme.typography.titleLarge) },
         navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
-        actions = { if(state.customer != null) TextButton(onClick = { onEdit(customerId) }) { Text("Edit") } }) }) { padding ->
+        actions = {
+            TextButton(onClick = vm::load, enabled = !state.loading && state.paging == null, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
+            if(state.customer != null) TextButton(onClick = { onEdit(customerId) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit") }
+        }) }) { padding ->
         when {
-            state.loading && state.customer == null -> CircularProgressIndicator(Modifier.padding(padding).padding(24.dp))
-            state.customer == null -> Column(Modifier.padding(padding).padding(16.dp)) {
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                OutlinedButton(onClick = vm::load) { Text("Retry customer") }
+            state.loading && state.customer == null -> LinearProgressIndicator(Modifier.padding(padding).fillMaxWidth())
+            state.customer == null -> Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::load) }
             }
             else -> {
                 val customer = state.customer!!
                 LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
                         if(state.loading || state.paging != null) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                        androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading && state.paging == null) { Text("Refresh") }
-                        listOf("Email" to customer.email, "Phone" to customer.phone, "Address" to customer.address, "Notes" to customer.notes).forEach { (label,value) ->
-                            if(!value.isNullOrBlank()) { Text(label, style = MaterialTheme.typography.labelMedium); Text(value) }
+                        state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::load) }
+                        val contact = listOf("Phone" to customer.phone, "Email" to customer.email, "Address" to customer.address, "Notes" to customer.notes).filter { !it.second.isNullOrBlank() }
+                        au.mainspring.nativeapp.ui.FlatPanel {
+                            if(contact.isEmpty()) Text("No contact details on file.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            contact.forEach { (label, value) -> au.mainspring.nativeapp.ui.DetailRow(label, value.orEmpty()) }
+                            Text("Customer since ${formatShopDate(customer.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("Created ${formatShopDate(customer.createdAt)}", style = MaterialTheme.typography.bodySmall)
-                        if("watch" in features) OutlinedButton(onClick = { onNewRepair(customerId) }) { Text("New watch repair") }
-                        if("shoe" in features) OutlinedButton(onClick = { onNewShoe(customerId) }) { Text("New shoe repair") }
-                        if("auto_key" in features) OutlinedButton(onClick = { onNewMobile(customerId) }) { Text("New mobile job") }
+                    }
+                    item {
+                        au.mainspring.nativeapp.ui.SectionLabel("Start something for ${customer.fullName.substringBefore(' ')}")
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if("watch" in features) OutlinedButton(onClick = { onNewRepair(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("New watch repair") }
+                            if("shoe" in features) OutlinedButton(onClick = { onNewShoe(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("New shoe repair") }
+                            if("auto_key" in features) OutlinedButton(onClick = { onNewMobile(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("New mobile job") }
+                        }
                     }
                     if("watch" in features) {
-                        item { HorizontalDivider(); Text("Watches", style = MaterialTheme.typography.titleMedium)
-                            state.historyErrors["watches"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                            OutlinedButton({ onAddWatch(customerId) }) { Text("Add watch") }
-                            if(state.watches.isEmpty() && "watches" !in state.historyErrors) Text("No watches on file.") }
-                        items(state.watches,key = { "watch/${it.id}" }) { watch ->
-                            Column { Text(listOfNotNull(watch.brand,watch.model).joinToString(" · ").ifBlank { "Watch" }); watch.serialNumber?.let { Text("Serial $it") }; watch.movementType?.let { Text(it) }; OutlinedButton({ onEditWatch(watch.id) }) { Text("Edit ${watch.brand ?: "watch"} ${watch.model.orEmpty()}") } }
+                        item {
+                            au.mainspring.nativeapp.ui.SectionLabel("Watches")
+                            state.historyErrors["watches"]?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
+                            if(state.watches.isEmpty() && "watches" !in state.historyErrors) Text("No watches on file.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if("watches" in state.more) item { OutlinedButton(onClick = { vm.loadMore("watches") },enabled = !state.loading && state.paging == null) { Text("Load older watches") } }
+                        items(state.watches,key = { "watch/${it.id}" }) { watch ->
+                            au.mainspring.nativeapp.ui.FlatPanel {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(listOfNotNull(watch.brand,watch.model).joinToString(" ").ifBlank { "Watch" }, style = MaterialTheme.typography.titleMedium)
+                                        listOfNotNull(watch.serialNumber?.let { "Serial $it" }, watch.movementType).takeIf { it.isNotEmpty() }?.let { Text(it.joinToString(" \u00b7 "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    }
+                                    TextButton({ onEditWatch(watch.id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit") }
+                                }
+                            }
+                        }
+                        item { OutlinedButton({ onAddWatch(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add watch") } }
+                        if("watches" in state.more) item { OutlinedButton(onClick = { vm.loadMore("watches") },enabled = !state.loading && state.paging == null, modifier = Modifier.fillMaxWidth()) { Text("Load older watches") } }
                         historySection("Watch repair jobs","watch",state.watchJobs.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenWatchJob,vm)
                     }
                     if("shoe" in features) historySection("Shoe repair jobs","shoe",state.shoeJobs.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenShoeJob,vm)
@@ -68,13 +86,22 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
         }
     }
 }
+
 private fun LazyListScope.historySection(title: String, section: String, rows: List<CustomerHistoryRow>, state: CustomerDetailUiState,
     onOpen: (String) -> Unit, vm: CustomerDetailViewModel) {
-    item { HorizontalDivider(); Text(title, style = MaterialTheme.typography.titleMedium)
-        state.historyErrors[section]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if(rows.isEmpty() && section !in state.historyErrors) Text("No ${title.lowercase()} for this customer.") }
-    items(rows,key = { "$section/job/${it.id}" }) { row -> Column(Modifier.fillMaxWidth().clickable { onOpen(row.id) }.padding(vertical = 8.dp)) {
-        Text("${row.number} · ${au.mainspring.nativeapp.ui.statusLabel(row.status)}", style = MaterialTheme.typography.titleSmall); Text(row.title)
-    } }
-    if(section in state.more) item { OutlinedButton(onClick = { vm.loadMore(section) },enabled = !state.loading && state.paging == null) { Text("Load older $section jobs") } }
+    item {
+        au.mainspring.nativeapp.ui.SectionLabel(title)
+        state.historyErrors[section]?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
+        if(rows.isEmpty() && section !in state.historyErrors) Text("No ${title.lowercase()} for this customer.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    items(rows,key = { "$section/job/${it.id}" }) { row ->
+        au.mainspring.nativeapp.ui.ListCard({ onOpen(row.id) }) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text(row.number, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                au.mainspring.nativeapp.ui.StatusPill(row.status)
+            }
+            Text(row.title, style = MaterialTheme.typography.titleMedium)
+        }
+    }
+    if(section in state.more) item { OutlinedButton(onClick = { vm.loadMore(section) },enabled = !state.loading && state.paging == null, modifier = Modifier.fillMaxWidth()) { Text("Load older $section jobs") } }
 }
