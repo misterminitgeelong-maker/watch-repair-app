@@ -142,3 +142,30 @@ import androidx.compose.ui.unit.dp
 
 /** "awaiting_go_ahead" -> "Awaiting go ahead". */
 fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstChar { it.uppercase() }
+
+/** A full-width pick-one row for wizards: outlined, tinted and ticked when selected. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun SelectableCard(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+    Surface(onClick, modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled, shape = MaterialTheme.shapes.medium,
+        color = if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(if(selected) 2.dp else 1.dp, if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
+            if(selected) Text("\u2713", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+/** Sticky bottom bar for multi-step forms: a step progress line plus Previous / primary buttons. */
+@Composable fun WizardBar(step: Int, steps: Int, stepTitle: String, primaryLabel: String, onPrimary: () -> Unit, primaryEnabled: Boolean, onPrevious: (() -> Unit)?, previousEnabled: Boolean = true) {
+    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Step ${step + 1} of $steps \u00b7 $stepTitle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LinearProgressIndicator(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if(onPrevious != null) SecondaryAction(onClick = onPrevious, enabled = previousEnabled, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Previous") }
+                PrimaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.weight(if(onPrevious != null) 1.5f else 1f).heightIn(min = 52.dp)) { Text(primaryLabel, style = MaterialTheme.typography.titleMedium) }
+            }
+        }
+    }
+}

@@ -63,14 +63,14 @@ class WatchIntakeUiTest {
         compose.setContent { MainspringTheme { WatchIntakeScreen(onBack = {}, onOpenJob = {}, vm = vm) } }
         compose.onNodeWithText("New customer").performClick()
         compose.onNodeWithText("Customer name *").performTextInput("Avery")
-        compose.onNodeWithText("Continue").performScrollTo().performClick()
+        compose.onNodeWithText("Continue").performClick()
         compose.onNodeWithText("Quick counter job (photos optional)").performScrollTo()
         compose.onAllNodes(isToggleable()).onLast().performClick()
         Assert.assertEquals("true", vm.field("quickJob"))
-        compose.onNodeWithText("Continue").performScrollTo().performClick()
+        compose.onNodeWithText("Continue").performClick()
         compose.onNodeWithText("Job title *").performScrollTo().performTextInput("Battery")
-        compose.onNodeWithText("Continue").performScrollTo().performClick()
-        compose.onNodeWithText("Create / finish intake").performScrollTo().assertIsEnabled()
+        compose.onNodeWithText("Continue").performClick()
+        compose.onNodeWithText("Create / finish intake").assertIsEnabled()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
         compose.waitUntil(15_000) { vm.state.value.complete || (!vm.state.value.busy && vm.state.value.error != null) }
         Assert.assertNull(vm.state.value.error)
@@ -100,7 +100,7 @@ class WatchIntakeUiTest {
         Assert.assertEquals("Battery", restored.field("title"))
         Assert.assertEquals(2, restored.count())
         compose.setContent { MainspringTheme { WatchIntakeScreen(onBack = {}, onOpenJob = {}, vm = restored) } }
-        compose.onNodeWithText("Create / finish intake").performScrollTo().performClick()
+        compose.onNodeWithText("Create / finish intake").performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("Intake complete").fetchSemanticsNodes().isNotEmpty() }
         Assert.assertEquals(2, jobs.get())
         jobBodies.forEach { body -> val json = JsonParser.parseString(body).asJsonObject
@@ -120,7 +120,7 @@ class WatchIntakeUiTest {
         vm.setField("customerId", "customer-1"); vm.setField("title", "Battery")
         vm.setField("quickJob", "true"); vm.setField("step", "3"); vm.setPhoto(0, "front", uri.toString())
         compose.setContent { MainspringTheme { WatchIntakeScreen(onBack = {}, onOpenJob = {}, vm = vm) } }
-        compose.onNodeWithText("Create / finish intake").performScrollTo().performClick()
+        compose.onNodeWithText("Create / finish intake").performClick()
         compose.waitUntil(15_000) { vm.state.value.complete && vm.state.value.uploadFailures.isNotEmpty() }
         compose.onNodeWithText("Continue / retry remaining photos").performScrollTo().performClick()
         compose.waitUntil(15_000) { vm.state.value.complete && !vm.state.value.busy && vm.state.value.uploadFailures.isEmpty() }

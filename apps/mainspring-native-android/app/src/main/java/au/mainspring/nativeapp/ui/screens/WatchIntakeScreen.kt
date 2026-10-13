@@ -61,25 +61,33 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
         if(preselectedCustomerId != null && state.fields.isEmpty()) { vm.selectCustomer(preselectedCustomerId); vm.setField("step", "1") }
         vm.searchCustomers(vm.field("customerQuery"))
     }
+    val valid = when(step) { 0 -> if(newCustomer) vm.field("name").isNotBlank() else vm.field("customerId").isNotBlank(); 2 -> vm.field("title").isNotBlank(); else -> true }
     Scaffold(topBar = { TopAppBar(title = { Text("New watch repair", style = MaterialTheme.typography.titleLarge) }, navigationIcon = {
         au.mainspring.nativeapp.ui.BackButton(onClick = ::close, enabled = !state.busy)
-    }, actions = { TextButton(onClick = { discardDialog = true }, enabled = !state.busy && vm.field("uncertainWrite").isBlank() && state.savedJobIds.isEmpty()) { Text("Discard") } }) }) { padding ->
+    }, actions = { TextButton(onClick = { discardDialog = true }, enabled = !state.busy && vm.field("uncertainWrite").isBlank() && state.savedJobIds.isEmpty(), modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") } }) },
+        bottomBar = {
+            if (!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Watches", "Job details", "Photos")[step],
+                if(step == 3) "Create / finish intake" else "Continue",
+                { focus.clearFocus(); keyboard?.hide(); if(step < 3) vm.setField("step", (step + 1).toString()) else vm.submit(context.applicationContext) },
+                !state.busy && valid,
+                if(step > 0) ({ vm.setField("step", (step - 1).toString()) }) else null, !state.busy)
+        }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("${step + 1} of 4 · ${listOf("Customer", "Watches", "Job details", "Photos")[step]}", style = MaterialTheme.typography.titleMedium)
-            Text("Draft saved on this device", style = MaterialTheme.typography.bodySmall)
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            state.fields.filterKeys { it.startsWith("warning.") }.values.forEach { Text(it, color = MaterialTheme.colorScheme.error) }
+            Text(listOf("Who is the customer?", "Which watches are coming in?", "What needs doing?", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
+            Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
+            state.fields.filterKeys { it.startsWith("warning.") }.values.forEach { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if (vm.field("uncertainWrite").isNotBlank()) {
                 Text("The last save has an unknown result. Check your shop's customer/job records before saving again.")
                 OutlinedButton(onClick = { reconcileDialog = true }) { Text("I checked the records") }
             }
-            photoError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            photoError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             state.progress?.let { Text(it); LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if(vm.field("hasAcknowledgement") == "true" && state.savedJobIds.isEmpty()) Text("Some intake records are already saved. Continue this intake, or discard the device draft and use the saved records in a new intake.")
             if (state.savedJobIds.isNotEmpty()) {
                 Text("${state.savedJobIds.size} of ${vm.count()} tickets saved", style = MaterialTheme.typography.headlineSmall)
-                state.uploadFailures.forEach { Text(it, color = MaterialTheme.colorScheme.error) }
+                state.uploadFailures.forEach { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                 if (state.complete && state.uploadFailures.isEmpty()) Text("Intake complete")
                 if (!state.busy && (!state.complete || state.uploadFailures.isNotEmpty())) Button(onClick = { vm.submit(context.applicationContext) }) { Text("Continue / retry remaining photos") }
                 state.savedJobIds.forEachIndexed { index, id ->
@@ -104,13 +112,18 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                         field("name", "Customer name *"); field("phone", "Phone"); field("email", "Email")
                         field("address", "Address", true); field("customerNotes", "Customer notes", true)
                     } else {
-                        field("customerQuery", "Search name, phone or email")
-                        OutlinedButton(onClick = { vm.searchCustomers(vm.field("customerQuery")) }, enabled = !locked && !state.loading) { Text("Search") }
+                        OutlinedTextField(value = vm.field("customerQuery"), onValueChange = { vm.setField("customerQuery", it); vm.searchCustomers(it) }, label = { Text("Search name, phone or email") },
+                            singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.searchCustomers(vm.field("customerQuery")); keyboard?.hide() }))
+                        if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                         state.customers.forEach { customer ->
-                            FilterChip(selected = vm.field("customerId") == customer.id, onClick = { vm.selectCustomer(customer.id) }, enabled = !locked,
-                                label = { Text(listOfNotNull(customer.fullName, customer.phone).joinToString(" · ")) })
+                            au.mainspring.nativeapp.ui.SelectableCard(selected = vm.field("customerId") == customer.id, onClick = { vm.selectCustomer(customer.id) }, enabled = !locked) {
+                                Text(customer.fullName, style = MaterialTheme.typography.titleMedium)
+                                listOfNotNull(customer.phone, customer.email).takeIf { it.isNotEmpty() }?.let { Text(it.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            }
                         }
-                        if (!state.loading && state.customers.isEmpty()) Text("No matching customers.")
+                        if (!state.loading && state.customers.isEmpty()) Text("No matching customers. Try another search or choose New customer.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 1 -> {
@@ -122,10 +135,12 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                         (0 until vm.count()).forEach { i -> FilterChip(selected = activeWatch == i, onClick = { activeWatch = i }, label = { Text("Watch ${i + 1}") }) }
                     }
                     val prefix = "watch.$activeWatch"
-                    FilterChip(selected = vm.field("$prefix.id").isBlank(), onClick = { vm.setField("$prefix.id", "") }, enabled = !locked, label = { Text("New watch") })
+                    au.mainspring.nativeapp.ui.SelectableCard(selected = vm.field("$prefix.id").isBlank(), onClick = { vm.setField("$prefix.id", "") }, enabled = !locked) { Text("New watch", style = MaterialTheme.typography.titleMedium); Text("Enter its details below", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     if (!newCustomer) state.watches.forEach { watch ->
-                        FilterChip(selected = vm.field("$prefix.id") == watch.id, onClick = { vm.setField("$prefix.id", watch.id) }, enabled = !locked,
-                            label = { Text(listOfNotNull(watch.brand, watch.model, watch.serialNumber).joinToString(" · ").ifBlank { "Existing watch" }) })
+                        au.mainspring.nativeapp.ui.SelectableCard(selected = vm.field("$prefix.id") == watch.id, onClick = { vm.setField("$prefix.id", watch.id) }, enabled = !locked) {
+                            Text(listOfNotNull(watch.brand, watch.model).joinToString(" ").ifBlank { "Existing watch" }, style = MaterialTheme.typography.titleMedium)
+                            watch.serialNumber?.takeIf { it.isNotBlank() }?.let { Text("Serial $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
                     }
                     if (vm.field("$prefix.id").isBlank()) {
                         field("$prefix.brand", "Brand"); field("$prefix.model", "Model"); field("$prefix.serial", "Serial number")
@@ -140,8 +155,10 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     field("serviceQuery", "Search repair catalogue")
                     val query = vm.field("serviceQuery")
                     state.catalogue.filter { it.name.contains(query, true) || it.groupLabel.orEmpty().contains(query, true) }.take(30).forEach { item ->
-                        FilterChip(selected = item.key in vm.selectedServices(), onClick = { vm.toggleService(item.key) }, enabled = !locked,
-                            label = { Text(item.name + " · " + (item.priceCents?.let { formatCents(it, "AUD") } ?: "Quote required")) })
+                        au.mainspring.nativeapp.ui.SelectableCard(selected = item.key in vm.selectedServices(), onClick = { vm.toggleService(item.key) }, enabled = !locked) {
+                            Text(item.name, style = MaterialTheme.typography.titleMedium)
+                            Text(item.priceCents?.let { formatCents(it, "AUD") } ?: "Quote required", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                     field("title", "Job title *"); field("description", "Instructions / fault description", true)
                     val quoteRequired = state.catalogue.any { it.key in vm.selectedServices() && it.pricingType == "quote" }
@@ -155,7 +172,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     Text("Priority")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("low", "normal", "high", "urgent").forEach { priority ->
-                            FilterChip(selected = vm.field("priority").ifBlank { "normal" } == priority, onClick = { vm.setField("priority", priority) }, enabled = !locked, label = { Text(priority) })
+                            FilterChip(selected = vm.field("priority").ifBlank { "normal" } == priority, onClick = { vm.setField("priority", priority) }, enabled = !locked, label = { Text(priority.replaceFirstChar { it.uppercase() }) })
                         }
                     }
                     field("salesperson", "Salesperson"); field("collection", "Collection date (DD/MM/YYYY)")
@@ -197,25 +214,17 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     Text("Creation may send the customer's tracking SMS.")
                 }
             }
-            if (state.loading) CircularProgressIndicator()
-            if (!state.complete) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if(step > 0) OutlinedButton(onClick = { vm.setField("step", (step - 1).toString()) }, enabled = !state.busy) { Text("Previous") }
-                val valid = when(step) { 0 -> if(newCustomer) vm.field("name").isNotBlank() else vm.field("customerId").isNotBlank(); 2 -> vm.field("title").isNotBlank(); else -> true }
-                Button(onClick = { focus.clearFocus(); keyboard?.hide(); if(step < 3) vm.setField("step", (step + 1).toString()) else vm.submit(context.applicationContext) }, enabled = !state.busy && valid) {
-                    Text(if(step == 3) "Create / finish intake" else "Continue")
-                }
-            }
         }
     }
-    if(closeDialog) AlertDialog(onDismissRequest = { closeDialog = false }, title = { Text("Leave intake?", style = MaterialTheme.typography.headlineSmall) },
+    if(closeDialog) AlertDialog(onDismissRequest = { closeDialog = false }, title = { Text("Leave intake?") },
         text = { Text("Your draft and pending photos stay on this device for your next visit.") },
         confirmButton = { TextButton(onClick = { closeDialog = false; onBack() }) { Text("Save and leave") } },
         dismissButton = { TextButton(onClick = { closeDialog = false }) { Text("Keep editing") } })
-    if(discardDialog) AlertDialog(onDismissRequest = { discardDialog = false }, title = { Text("Discard this draft?", style = MaterialTheme.typography.headlineSmall) },
+    if(discardDialog) AlertDialog(onDismissRequest = { discardDialog = false }, title = { Text("Discard this draft?") },
         text = { Text("This clears intake details on this device. It does not delete records already saved to your shop.") },
         confirmButton = { TextButton(onClick = { vm.clearDraft(); discardDialog = false }) { Text("Discard") } },
         dismissButton = { TextButton(onClick = { discardDialog = false }) { Text("Cancel") } })
-    if(reconcileDialog) AlertDialog(onDismissRequest = { reconcileDialog = false }, title = { Text("Confirm no record was saved", style = MaterialTheme.typography.headlineSmall) },
+    if(reconcileDialog) AlertDialog(onDismissRequest = { reconcileDialog = false }, title = { Text("Confirm no record was saved") },
         text = { Text("Continue only if you checked the shop records and the last attempted customer, watch or job was not saved. If it exists, use that record instead; repeating this save can create a duplicate.") },
         confirmButton = { TextButton(onClick = { vm.confirmNoUnknownRecord(); reconcileDialog = false }) { Text("Not saved — allow retry") } },
         dismissButton = { TextButton(onClick = { reconcileDialog = false }) { Text("Cancel") } })
