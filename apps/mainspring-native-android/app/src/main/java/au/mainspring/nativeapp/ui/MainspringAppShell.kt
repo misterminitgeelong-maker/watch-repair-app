@@ -167,8 +167,7 @@ fun MainspringAppShell(
                     )
                 }
                 composable("reports") { au.mainspring.nativeapp.ui.screens.PeriodReportsScreen({ navController.popBackStack() }) }
-                composable("stock") { au.mainspring.nativeapp.ui.screens.StockScreen({ navController.popBackStack() }, { navController.navigate("stocktake/$it") }) }
-                composable("stocktake/{id}") { entry -> au.mainspring.nativeapp.ui.screens.StocktakeScreen(entry.arguments?.getString("id").orEmpty(), { navController.popBackStack() }) }
+                composable("stock") { au.mainspring.nativeapp.ui.screens.StockScreen({ navController.popBackStack() }) }
                 composable("customers") {
                     CustomersScreen(
                         onOpenCustomer = { id -> navController.navigate("customer/$id") },

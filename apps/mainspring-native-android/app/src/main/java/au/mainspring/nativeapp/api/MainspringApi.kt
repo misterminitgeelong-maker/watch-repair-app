@@ -11,13 +11,6 @@ import retrofit2.http.Query
 interface MainspringApi {
     @GET("v1/stock/items") suspend fun stockItems(@Query("search") search: String? = null, @Query("group_code") group: String? = null,
         @Query("hide_zero_stock") hideZero: Boolean = false, @Query("limit") limit: Int = 100, @Query("offset") offset: Int = 0): StockPage
-    @GET("v1/stocktakes") suspend fun stocktakes(): List<StocktakeSession>
-    @POST("v1/stocktakes") suspend fun createStocktake(@Body body: com.google.gson.JsonObject): StocktakeSession
-    @GET("v1/stocktakes/{id}") suspend fun stocktake(@Path("id") id: String): StocktakeSession
-    @GET("v1/stocktakes/{id}/report") suspend fun stocktakeReport(@Path("id") id: String): StocktakeReport
-    @POST("v1/stocktakes/{id}/complete") suspend fun completeStocktake(@Path("id") id: String): StocktakeReport
-    @retrofit2.http.PATCH("v1/stocktakes/{id}/lines/{lineId}") suspend fun stocktakeCount(@Path("id") id: String,
-        @Path("lineId") lineId: String, @Body body: com.google.gson.JsonObject): StocktakeLine
     @GET("v1/reports/period-summary") suspend fun periodReport(@Query("period") period: String, @Query("reference_date") referenceDate: String): PeriodReport
     @retrofit2.http.Streaming @GET("v1/reports/export/period-summary") suspend fun exportPeriodReport(@Query("period") period: String, @Query("reference_date") referenceDate: String): ResponseBody
     @POST("v1/auth/multi-site-login") suspend fun multiSiteLogin(@Body body: MultiSiteLoginRequest): TokenResponse

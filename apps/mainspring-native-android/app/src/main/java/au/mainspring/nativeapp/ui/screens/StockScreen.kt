@@ -1,87 +1,65 @@
 package au.mainspring.nativeapp.ui.screens
 
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
-import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.StockViewModel
-import au.mainspring.nativeapp.ui.formatShopDate
+import au.mainspring.nativeapp.TokenStore
+import au.mainspring.nativeapp.ui.*
+
+private fun quantityText(value: Double) = if(value % 1.0 == 0.0) value.toLong().toString() else "%.2f".format(value)
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun StockScreen(onBack: () -> Unit, onOpenStocktake: (String) -> Unit, model: StockViewModel = viewModel()) {
+@Composable fun StockScreen(onBack: () -> Unit, model: StockViewModel = viewModel()) {
     val state by model.state.collectAsStateWithLifecycle()
-    var createOpen by remember { mutableStateOf(false) }
-    var reviewOpen by remember { mutableStateOf(false) }
-    var existingId by remember { mutableStateOf<String?>(null) }
-    androidx.activity.compose.BackHandler(state.creating) {}
-    Scaffold(topBar = { TopAppBar(title = { Text("Inventory", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack, enabled = !state.creating) }) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val currency = TokenStore.shopValue("currency") ?: "AUD"
+    Scaffold(topBar = { TopAppBar(title = { Text("Inventory", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(state.search, model::search, enabled = !state.creating && !state.unknownCreate, singleLine = true, label = { Text("Search items") }, modifier = Modifier.weight(2f))
-                    OutlinedTextField(state.group, model::group, enabled = !state.creating && !state.unknownCreate, singleLine = true, label = { Text("Group") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(state.search, model::search, singleLine = true, label = { Text("Search items") }, modifier = Modifier.weight(2f),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))
+                    OutlinedTextField(state.group, model::group, singleLine = true, label = { Text("Group") }, modifier = Modifier.weight(1f))
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    FilterChip(state.hideZero, { model.hideZero(!state.hideZero) }, enabled = !state.creating && !state.unknownCreate, label = { Text("Hide zero stock") })
-                    TextButton(model::refresh, enabled = !state.loading && !state.creating) { Text("Refresh") }
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(state.hideZero, { model.hideZero(!state.hideZero) }, label = { Text("Hide out of stock") })
+                    TextButton(model::refresh, enabled = !state.loading) { Text("Refresh") }
                 }
-                if(state.createdId != null) {
-                    Button({ onOpenStocktake(state.createdId!!) }) { Text("Open created stocktake") }
-                    TextButton(model::another) { Text("Start another stocktake") }
-                } else {
-                    Button({ createOpen = true }, modifier = Modifier.fillMaxWidth(), enabled = !state.loading && !state.creating && !state.unknownCreate) { Text(if(state.creating) "Creating stocktake…" else "Start stocktake from these filters") }
-                }
-                if(state.unknownCreate) {
-                    Text("Creation has no confirmed result. Refresh and review the stocktake directory before creating another.")
-                    TextButton({ reviewOpen = true }, enabled = state.directoryReviewed) { Text("Reviewed directory; no stocktake was created") }
-                }
+                if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             }
-            item { Text("Stocktake sessions", style = MaterialTheme.typography.titleLarge); if(state.sessions.isEmpty() && state.sessionsError == null) Text("No stocktakes yet. Start one from the filters above.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            state.sessionsError?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = model::refresh) } }
-            items(state.sessions, key = { "session/${it.id}" }) { session ->
-                OutlinedCard(onClick = { onOpenStocktake(session.id) }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(session.name, style = MaterialTheme.typography.titleMedium)
-                        Text("${session.status} · ${session.progress?.counted ?: 0}/${session.progress?.total ?: 0} counted")
-                        Text(formatShopDate(session.createdAt), style = MaterialTheme.typography.bodySmall)
-                        if(state.unknownCreate && state.directoryReviewed) TextButton({ existingId = session.id }) { Text("Use this as the created stocktake") }
+            state.error?.let { item { ErrorBanner(it, onRetry = model::refresh) } }
+            if(!state.loading && state.error == null) item {
+                Text(if(state.items.isEmpty()) "" else "${state.items.size} of ${state.total} items", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if(state.items.isEmpty()) EmptyState("No inventory matches", "Try a different search or clear the filters.")
+            }
+            items(state.items, key = { it.id }) { item ->
+                Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(item.code, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(item.fullDescription ?: item.description ?: "No description", style = MaterialTheme.typography.titleMedium)
+                            Text(listOfNotNull("Group ${item.group}", item.groupName?.takeIf { it.isNotBlank() }).joinToString(" · ") + " · " + formatCents(item.retail.toInt(), currency),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(quantityText(item.quantity), style = MaterialTheme.typography.headlineSmall,
+                                color = if(item.quantity <= 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                            Text(item.unit?.takeIf { it.isNotBlank() } ?: "in stock", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
-            item { Text("Inventory · ${state.items.size} of ${state.total}", style = MaterialTheme.typography.titleLarge) }
-            if(state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            state.error?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = model::refresh) } }
-            items(state.items, key = { "item/${it.id}" }) { item ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(item.code, style = MaterialTheme.typography.titleMedium)
-                        Text(item.fullDescription ?: item.description ?: "Description unavailable")
-                        Text("Group ${item.group} ${item.groupName.orEmpty()}")
-                        Text("System stock: ${item.quantity} ${item.unit.orEmpty()}")
-                        Text("Pack: ${item.packQuantity} ${item.pack.orEmpty()}", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-            if(!state.loading && state.items.isEmpty() && state.error == null) item { Text("No inventory matches these filters.") }
-            if(state.items.size < state.total) item { Button(model::more, enabled = !state.loading) { Text("Load more inventory") } }
+            if(state.items.size < state.total) item { OutlinedButton(model::more, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more") } }
         }
     }
-    if(createOpen) AlertDialog(onDismissRequest = { createOpen = false }, title = { Text("Create a stocktake?", style = MaterialTheme.typography.headlineSmall) }, text = {
-        Column {
-            OutlinedTextField(state.name, model::name, label = { Text("Stocktake name") })
-            Text("This snapshots all inventory matching search '${state.search.ifBlank { "All" }}', group '${state.group.ifBlank { "All" }}', hide zero stock: ${state.hideZero}. Matching items beyond the loaded page are included.")
-        }
-    }, confirmButton = { TextButton({ createOpen = false; model.create() }) { Text("Confirm creation") } }, dismissButton = { TextButton({ createOpen = false }) { Text("Cancel") } })
-    if(reviewOpen || existingId != null) AlertDialog(onDismissRequest = { reviewOpen = false; existingId = null }, title = { Text("Confirm directory review", style = MaterialTheme.typography.headlineSmall) },
-        text = { Text(if(existingId != null) "Use the selected existing stocktake and clear the interrupted creation checkpoint?" else "I checked the refreshed directory and confirmed the previous creation did not save. A new creation can now be attempted.") },
-        confirmButton = { TextButton({ existingId?.let(model::useExisting) ?: model.reviewedNotCreated(); existingId = null; reviewOpen = false }) { Text("Confirm review") } },
-        dismissButton = { TextButton({ reviewOpen = false; existingId = null }) { Text("Cancel") } })
 }

@@ -57,7 +57,7 @@ import au.mainspring.nativeapp.ui.*
                 SectionLabel("Business")
                 MoreGroup {
                     if("customer_accounts" in features) MoreLink("Business accounts",{onNavigate("businessAccounts")})
-                    MoreLink("Inventory and stocktakes",{onNavigate("stock")})
+                    MoreLink("Inventory",{onNavigate("stock")})
                     if(TokenStore.canManageInvoices()) { MoreLink("Reports",{onNavigate("reports")});MoreLink("Team & commission",{onNavigate("team")}) }
                 }
             }

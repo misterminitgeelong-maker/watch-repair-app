@@ -74,12 +74,7 @@ class LocalBackendSmokeTest {
             Assert.assertTrue(report.jobs >= 2)
             api.exportPeriodReport("quarter", "2026-10-09").use { Assert.assertTrue(it.string().contains("revenue_cents")) }
             val stock = api.stockItems(search = "NATIVE-QA-BAT").items.single()
-            val count = api.createStocktake(JsonObject().apply { addProperty("name", "Native API QA count"); addProperty("search", "NATIVE-QA-BAT") })
-            val line = api.stocktake(count.id).lines!!.single()
-            val counted = api.stocktakeCount(count.id, line.id, JsonObject().apply { addProperty("counted_qty", 3.5); addProperty("notes", "Local QA shelf count") })
-            Assert.assertEquals(3.5, counted.counted!!, 0.0)
-            Assert.assertEquals("completed", api.completeStocktake(count.id).session.status)
-            Assert.assertEquals(3.5, api.stockItems(search = stock.code).items.single().quantity, 0.0)
+            Assert.assertEquals(5.0, stock.quantity, 0.0)
         } finally { if(!demoOnly) TokenStore.clear() }
     }
 }
