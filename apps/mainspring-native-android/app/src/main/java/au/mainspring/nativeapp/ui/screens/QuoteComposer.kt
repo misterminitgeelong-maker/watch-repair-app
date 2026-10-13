@@ -61,7 +61,6 @@ import au.mainspring.nativeapp.ui.formatCents
    Text("CART TOTAL",style=MaterialTheme.typography.labelSmall)
    Text(formatCents(total.total.toInt(),currency!!),style=MaterialTheme.typography.headlineLarge)
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(if(draft.inclusive) "Included GST" else "GST",style=MaterialTheme.typography.bodySmall);Text(formatCents(total.tax.toInt(),currency!!),style=MaterialTheme.typography.bodySmall)}
-   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text("Total",style=MaterialTheme.typography.titleMedium);Text(formatCents(total.total.toInt(),currency!!),style=MaterialTheme.typography.titleMedium)}
   } }
 
   Button(onClick = { try { onSave(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)) { Text(buttonLabel) }
