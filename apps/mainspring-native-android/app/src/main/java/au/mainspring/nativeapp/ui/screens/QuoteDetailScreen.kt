@@ -44,12 +44,12 @@ fun QuoteDetailScreen(
     val canSend = q?.status == "draft"
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            au.mainspring.nativeapp.ui.AtelierTopAppBar(
-                title = { Text("Quote", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
-                actions = { TextButton(onClick = vm::load, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },
-            )
+            Column {
+                au.mainspring.nativeapp.ui.BackLargeHeader("Quotes", "Quote approval", "Quote", onBack)
+                TextButton(onClick = vm::load, enabled = !state.loading, modifier = Modifier.padding(start = 12.dp).heightIn(min = 48.dp)) { Text("Refresh") }
+            }
         },
         bottomBar = {
             val showSend = q != null && canSend

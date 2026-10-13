@@ -26,8 +26,10 @@ import com.google.gson.JsonParser
     var editorOpen by remember {mutableStateOf(false)}
     LaunchedEffect(state.info) {if(state.info=="Account saved.") editorOpen=false}
     RefreshOnResume(model::refresh)
-    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar={if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Team",style=MaterialTheme.typography.titleLarge)},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack,enabled=!state.busy)},
-        actions={if(TokenStore.canManageTeam()) TextButton({editing=null;editorOpen=true},enabled=!state.busy && !state.loading && !state.uncertain) {Text("Add account")}})}) {padding ->
+    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,containerColor=MaterialTheme.colorScheme.background,topBar={if(!embedded) Column {
+        au.mainspring.nativeapp.ui.BackLargeHeader("More","People & network","Team",onBack)
+        if(TokenStore.canManageTeam()) TextButton({editing=null;editorOpen=true},enabled=!state.busy && !state.loading && !state.uncertain,modifier=Modifier.padding(start=12.dp)) {Text("Add account")}
+    }}) {padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {

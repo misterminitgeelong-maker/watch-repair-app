@@ -73,7 +73,7 @@ import au.mainspring.nativeapp.ui.*
         try { context.startActivity(Intent(if(dial) Intent.ACTION_DIAL else Intent.ACTION_VIEW,uri)) }
         catch(_: android.content.ActivityNotFoundException) { attachmentOpenError = "No compatible app is available on this device." }
     }
-    Scaffold(containerColor=MaterialTheme.colorScheme.surface,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
+    Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
             Text(j?.title ?: "Job",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold,maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         }},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
