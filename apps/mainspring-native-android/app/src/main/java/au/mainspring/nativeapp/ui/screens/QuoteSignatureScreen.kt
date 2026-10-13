@@ -25,7 +25,7 @@ fun QuoteSignatureScreen(jobId: String, quoteId: String, onBack: () -> Unit,
     Scaffold(topBar = { TopAppBar(title = { Text("Customer signature", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack) }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading) CircularProgressIndicator()
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             state.quote?.let { quote ->
                 Text("Quote status: ${quote.status}")
                 quote.signer?.let { Text("Signed by $it", style = MaterialTheme.typography.titleMedium) }

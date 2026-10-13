@@ -27,7 +27,7 @@ fun BusinessAccountEditorScreen(id: String, onBack: () -> Unit, onOpenAccount: (
     Scaffold(topBar = { TopAppBar(title = { Text(if(id.isBlank()) "New business account" else "Edit business account") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if(state.saved) Text("Account saved.")
             state.createdId?.let { created ->
                 Button(onClick = { onOpenAccount(created) }) { Text("Open saved account") }

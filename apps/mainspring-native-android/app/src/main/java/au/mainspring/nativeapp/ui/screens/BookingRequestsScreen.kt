@@ -24,7 +24,7 @@ import au.mainspring.nativeapp.*
   LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    item {
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }
+    state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; state.info?.let { Text(it) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
      androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }
      if(canRequest) Button(onClick = { creating = !creating }, enabled = enabled) { Text(if(creating) "Hide form" else "New request") }
@@ -57,7 +57,7 @@ import au.mainspring.nativeapp.*
     Text("${row.customer} · ${row.status}", style = MaterialTheme.typography.titleMedium)
     Text("${row.shop} → ${row.operator}"); Text(row.address)
     row.schedule?.let { Text("Preferred ${au.mainspring.nativeapp.ui.formatShopDate(it, TokenStore.calendarTimezone())}") }
-    row.notes?.let { Text(it) }; row.declineReason?.let { Text("Declined: $it") }; row.conflict?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    row.notes?.let { Text(it) }; row.declineReason?.let { Text("Declined: $it") }; row.conflict?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
     if(row.status == "pending") {
      if(row.requestingTenant == tenant) OutlinedButton(onClick = { confirm = "cancel" to row.id }, enabled = enabled) { Text("Cancel request") }
      if(row.targetTenant == tenant) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

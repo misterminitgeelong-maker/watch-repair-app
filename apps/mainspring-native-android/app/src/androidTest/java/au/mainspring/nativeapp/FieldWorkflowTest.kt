@@ -68,7 +68,7 @@ class FieldWorkflowTest {
   Assert.assertEquals("programmer", JsonParser.parseString(recommendBody).asJsonObject["tool_keys"].asJsonArray[0].asString)
   val restored = ToolkitViewModel(); compose.waitUntil(10_000) { !restored.state.value.loading }
   Assert.assertTrue("programmer" in restored.state.value.selected); Assert.assertTrue(restored.state.value.saved.isEmpty())
-  compose.onNodeWithText("Save selection").performScrollTo().performClick()
+  compose.onNodeWithText("Save selection").performClick()
   compose.waitUntil(10_000) { vm.state.value.saved.contains("programmer") }
   Assert.assertEquals("", TokenStore.loadMessageDraft("toolkit"))
  }

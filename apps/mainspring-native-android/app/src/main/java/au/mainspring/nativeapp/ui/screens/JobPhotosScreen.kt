@@ -49,7 +49,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 if(state.busy || state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; localError?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }
+                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; localError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; state.info?.let { Text(it) }
                 androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.busy && !state.loading) { Text("Refresh") }
                 if(state.uncertain) {
                     Text("Refresh to look for the previously uploaded photo. Review the files before repeating the upload.")
@@ -96,7 +96,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
             if(state.hasMore) item { OutlinedButton(onClick = vm::loadMore, enabled = !state.busy && !state.loading) { Text("Load older files") } }
         }
     }
-    if(confirmUpload) AlertDialog(onDismissRequest = { confirmUpload = false }, title = { Text("Upload this photo?", style = MaterialTheme.typography.headlineSmall) },
+    if(confirmUpload) AlertDialog(onDismissRequest = { confirmUpload = false }, title = { Text("Upload this photo?") },
         text = { Text("Save the selected photo on this job with the label '${state.draft.label}'.") },
         confirmButton = { TextButton(onClick = { confirmUpload = false; vm.upload(context.applicationContext) }) { Text("Confirm upload") } },
         dismissButton = { TextButton(onClick = { confirmUpload = false }) { Text("Cancel") } })

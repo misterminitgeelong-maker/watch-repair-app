@@ -18,7 +18,7 @@ import au.mainspring.nativeapp.*
  val vm: CounterEditorViewModel = viewModel(key = "$resource/$id", factory = CounterEditorViewModel.factory(resource,id)); val state by vm.state.collectAsStateWithLifecycle()
  Scaffold(topBar = { TopAppBar(title = { Text("Edit repair details", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-   if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; if(state.saved) Text("Repair details saved.")
+   if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; if(state.saved) Text("Repair details saved.")
    val labels = listOf("job_number" to "Ticket number", "title" to "Job title *", "description" to "Requested work", "salesperson" to "Salesperson",
     "collection_date" to "Collection date (DD/MM/YYYY)", "deposit_cents" to "Deposit ($)", "pre_quote_cents" to "Pre-quote ($)", "cost_cents" to "Job cost ($)",
     "internal_notes" to "Internal shop notes", "parts_eta" to "Parts ETA (DD/MM/YYYY)")

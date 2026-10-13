@@ -28,7 +28,7 @@ fun ArrivalMessageScreen(id: String, onBack: () -> Unit, vm: ArrivalMessageViewM
     Scaffold(topBar = { TopAppBar(title = { Text("Arrival message", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; dialError?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; dialError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; state.info?.let { Text(it) }
             state.customer?.let { customer ->
                 Text(customer.fullName, style = MaterialTheme.typography.titleMedium)
                 customer.phone?.takeIf { it.isNotBlank() }?.let { phone ->
@@ -50,7 +50,7 @@ fun ArrivalMessageScreen(id: String, onBack: () -> Unit, vm: ArrivalMessageViewM
             androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading && !state.busy) { Text("Refresh") }
         }
     }
-    if(confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Send arrival SMS?", style = MaterialTheme.typography.headlineSmall) }, text = { Text("Request an arrival SMS to ${state.customer?.phone} for ${state.draft.window}.") },
+    if(confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Send arrival SMS?") }, text = { Text("Request an arrival SMS to ${state.customer?.phone} for ${state.draft.window}.") },
         confirmButton = { TextButton(onClick = { confirm = false; vm.send() }) { Text("Confirm arrival message") } },
         dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } })
 }

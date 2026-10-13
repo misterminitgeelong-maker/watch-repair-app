@@ -36,7 +36,7 @@ import com.google.gson.JsonParser
                 Text("${state.users.count {it.active}} active accounts · ${state.users.size} total",style=MaterialTheme.typography.labelSmall)
                 androidx.compose.material3.TextButton(model::refresh,enabled=!state.busy && !state.loading) { Text("Refresh") }
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let {Text(it,color=MaterialTheme.colorScheme.error)};state.info?.let {Text(it)}
+                state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)};state.info?.let {Text(it)}
                 if(state.uncertain) OutlinedButton(model::reviewedWrite,enabled=state.reviewed && !state.loading && !state.busy) {Text("I have reviewed the account records")}
                 SectionLabel("Accounts")
             }
@@ -83,7 +83,7 @@ private fun commissionAmount(value: com.google.gson.JsonObject,key: String) = ja
             Text("Bonus is commission above the retainer. Existing eligibility and custom rate tiers are retained.",style=MaterialTheme.typography.bodySmall)
             listOf("Retainer per period" to Pair(retainer,{v:String->retainer=v}),"Shop referred (%)" to Pair(shop,{v:String->shop=v}),"Tech sourced (%)" to Pair(self,{v:String->self=v}),"Minit sourced (%)" to Pair(minit,{v:String->minit=v})).forEach {(label,input)->OutlinedTextField(input.first,input.second,enabled=!busy,label={Text(label)},singleLine=true)}
         }
-        (error ?: serverError)?.let {Text(it,color=MaterialTheme.colorScheme.error)}
+        (error ?: serverError)?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
         if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         Text("Saving changes account access and commission settings. Review the role and active state before confirming.",style=MaterialTheme.typography.bodySmall)
     }},confirmButton={TextButton({try {

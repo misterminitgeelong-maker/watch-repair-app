@@ -49,7 +49,7 @@ import java.util.Locale
             LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 item {SectionLabel("Where to go · ${stops.size} stops");Text("Stops follow saved visit order, then booking time.",style=MaterialTheme.typography.bodySmall)}
                 if(state.loading) item {LinearProgressIndicator(Modifier.fillMaxWidth())}
-                (error ?: state.error)?.let {item {Text(it,color=MaterialTheme.colorScheme.error)}}
+                (error ?: state.error)?.let {item {au.mainspring.nativeapp.ui.ErrorBanner(it)}}
                 if(state.jobs.size>stops.size) item {Text("${state.jobs.size-stops.size} jobs have no address. Add an address in the job before navigating.",style=MaterialTheme.typography.bodySmall)}
                 itemsIndexed(stops,key={_,job->job.id}) {index,job -> FlatPanel {
                     Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {

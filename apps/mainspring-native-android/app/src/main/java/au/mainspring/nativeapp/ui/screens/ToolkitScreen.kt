@@ -1,4 +1,5 @@
 package au.mainspring.nativeapp.ui.screens
+import androidx.compose.foundation.clickable
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
@@ -18,18 +19,19 @@ import au.mainspring.nativeapp.ToolkitViewModel
 @Composable fun ToolkitScreen(onBack: () -> Unit, vm: ToolkitViewModel = viewModel()) {
  val state by vm.state.collectAsStateWithLifecycle(); var search by rememberSaveable { mutableStateOf("") }
  val dirty = state.selected != state.saved
- Scaffold(topBar = { TopAppBar(title = { Text("Shop toolkit", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
+ Scaffold(topBar = { TopAppBar(title = { Text("Shop toolkit", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
+   actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } }) },
+  bottomBar = { if(dirty) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+   Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    OutlinedButton(onClick = vm::discard, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Discard draft") }
+    Button(onClick = vm::save, enabled = !state.loading && !state.busy, modifier = Modifier.weight(1.5f).heightIn(min = 52.dp)) { Text("Save selection") }
+   } } }) { padding ->
   LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
    item {
-    Text("This selection is shared by the shop. Check the tools in your vehicle before taking a job.")
+    Text("This selection is shared by the shop. Check the tools in your vehicle before taking a job.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    Text("${state.selected.size} tools selected${if(dirty) " · unsaved draft" else " · saved selection"}")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-     Button(onClick = vm::save, enabled = dirty && !state.loading && !state.busy) { Text("Save selection") }
-     OutlinedButton(onClick = vm::discard, enabled = dirty && !state.busy) { Text("Discard draft") }
-    }
-    androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading && !state.busy) { Text("Refresh") }
+    state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
+    Text("${state.selected.size} tools selected${if(dirty) " · unsaved changes" else ""}", style = MaterialTheme.typography.titleMedium)
     OutlinedTextField(search, { search = it }, label = { Text("Find a tool") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
    }
    item { au.mainspring.nativeapp.ui.SectionLabel("What's the job?")
@@ -48,9 +50,11 @@ import au.mainspring.nativeapp.ToolkitViewModel
     val tools = group.tools.filter { search.isBlank() || "${it.name} ${it.notes.orEmpty()}".contains(search, true) }
     if(tools.isNotEmpty()) {
      item { au.mainspring.nativeapp.ui.SectionLabel("${group.label} · ${group.tools.count {it.key in state.selected}} of ${group.tools.size}") }
-     items(tools, key = { it.key }) { tool -> Row { Checkbox(tool.key in state.selected, { vm.toggle(tool.key) }, enabled = !state.busy)
-      Column(Modifier.weight(1f).padding(vertical = 8.dp)) { Text(tool.name); tool.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall) } }
-     } }
+     items(tools, key = { it.key }) { tool -> Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+      Row(Modifier.fillMaxWidth().clickable(enabled = !state.busy) { vm.toggle(tool.key) }.heightIn(min = 56.dp).padding(end = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+       Checkbox(tool.key in state.selected, { vm.toggle(tool.key) }, enabled = !state.busy)
+       Column(Modifier.weight(1f).padding(vertical = 8.dp)) { Text(tool.name, style = MaterialTheme.typography.bodyLarge); tool.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+      } } }
     }
    }
   }

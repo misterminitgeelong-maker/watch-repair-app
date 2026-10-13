@@ -99,7 +99,7 @@ import java.time.format.DateTimeFormatter
  fun persist() { val json = JsonObject().apply { addProperty("name", name); addProperty("email", email); addProperty("notes", notes); addProperty("visit", visit) }; drafts.saveMessageDraft("prospect-edit/${lead.id}", json.toString()) }
  AlertDialog(onDismissRequest = { if(enabled) onClose() }, title = { Text(lead.name) }, text = {
   Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-   state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+   state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
    if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    Text("Stage: ${lead.status}")
    OutlinedTextField(name, { name = it; persist() }, label = { Text("Contact name") }, enabled = enabled)
@@ -112,6 +112,6 @@ import java.time.format.DateTimeFormatter
   }
  }, confirmButton = { Button(onClick = { vm.update(lead.id, name, email, notes, visit, false, onClose) }, enabled = enabled) { Text("Save details") } },
  dismissButton = { TextButton(onClick = onClose, enabled = enabled) { Text("Close") } })
- if(confirmAdvance) AlertDialog(onDismissRequest = { confirmAdvance = false }, title = { Text("Advance prospect?", style = MaterialTheme.typography.headlineSmall) }, text = { Text(if(lead.status == "visited") "Save these contact details and create a customer account for this prospect." else "Save these contact details and move this prospect to the next stage.") },
+ if(confirmAdvance) AlertDialog(onDismissRequest = { confirmAdvance = false }, title = { Text("Advance prospect?") }, text = { Text(if(lead.status == "visited") "Save these contact details and create a customer account for this prospect." else "Save these contact details and move this prospect to the next stage.") },
   confirmButton = { Button(onClick = { confirmAdvance = false; vm.update(lead.id, name, email, notes, visit, true, onClose) }, enabled = enabled) { Text("Save and advance") } }, dismissButton = { TextButton(onClick = { confirmAdvance = false }) { Text("Cancel") } })
 }

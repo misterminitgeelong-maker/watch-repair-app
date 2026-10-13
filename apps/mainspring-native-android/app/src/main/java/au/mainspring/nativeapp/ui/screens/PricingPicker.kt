@@ -30,7 +30,7 @@ import au.mainspring.nativeapp.api.PricingRow
     }
    }
    OutlinedTextField(search, { search = it }, label = { Text("Find model or service") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-   if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+   if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
    LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp)) {
     val rows = state.rows.filter { search.isBlank() || "${it.label()} ${it.description.orEmpty()} ${it.notes.orEmpty()}".contains(search,true) }
     if(rows.isEmpty() && !state.loading) item { Text("No catalogue prices match this view") }

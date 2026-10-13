@@ -26,7 +26,7 @@ fun BusinessAccountsScreen(onBack: () -> Unit, onOpenAccount: (String) -> Unit, 
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                 androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh") }
                 if(TokenStore.canManageInvoices()) Button(onClick = onCreate) { Text("New business account") }
                 OutlinedTextField(search, { search = it }, label = { Text("Find an account") }, modifier = Modifier.fillMaxWidth())
@@ -62,8 +62,8 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; state.info?.let { Text(it) }
-                printError?.let { Text(it,color = MaterialTheme.colorScheme.error) }
+                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; state.info?.let { Text(it) }
+                printError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                 androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }
                 if(manager) OutlinedButton(onClick = onEdit, enabled = enabled) { Text("Edit account details") }
                 state.account?.let { account ->
@@ -131,7 +131,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
             }
         }
     }
-    if(confirmInvoice) AlertDialog(onDismissRequest = { confirmInvoice = false }, title = { Text("Generate monthly invoice?", style = MaterialTheme.typography.headlineSmall) },
+    if(confirmInvoice) AlertDialog(onDismissRequest = { confirmInvoice = false }, title = { Text("Generate monthly invoice?") },
         text = { Text("Create the account invoice for ${state.period} with GST of AUD ${state.tax}. The server calculates the final billable total.") },
         confirmButton = { TextButton(onClick = { confirmInvoice = false; vm.generate() }) { Text("Confirm invoice") } },
         dismissButton = { TextButton(onClick = { confirmInvoice = false }) { Text("Cancel") } })

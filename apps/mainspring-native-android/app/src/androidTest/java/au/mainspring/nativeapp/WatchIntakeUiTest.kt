@@ -131,7 +131,7 @@ class WatchIntakeUiTest {
         val vm = ShoeIntakeViewModel(SavedStateHandle())
         vm.set("customerId", "customer-1"); vm.set("count", "2"); vm.set("title", "Heel repairs"); vm.set("step", "3")
         compose.setContent { MainspringTheme { ShoeIntakeScreen(onBack = {}, onOpenJob = {}, vm = vm) } }
-        compose.onNodeWithText("Create / finish repair").performScrollTo().performClick()
+        compose.onNodeWithText("Create / finish repair").performClick()
         compose.waitUntil(15_000) { vm.state.value.complete && !vm.state.value.busy }
         Assert.assertEquals(1, shoeJobs.get()); Assert.assertEquals(1, shoeLinks.get())
         compose.onNodeWithText("Open repair job").assertExists()

@@ -13,7 +13,7 @@ fun CounterStatusReview(unknown: Boolean, request: String, reviewed: Boolean, lo
         OutlinedButton(onRefresh, enabled = !loading) { Text("Refresh status and history") }
         OutlinedButton({ confirm = true }, enabled = reviewed && !loading) { Text("Reviewed status and history") }
     }
-    if(confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Confirm status review", style = MaterialTheme.typography.headlineSmall) },
+    if(confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Confirm status review") },
         text = { Text("I checked the current job and status history. Clear the interrupted request so I can make a new status change if needed? Status changes may notify the customer.") },
         confirmButton = { TextButton({ confirm = false; onReviewed() }) { Text("Confirm review") } }, dismissButton = { TextButton({ confirm = false }) { Text("Cancel") } })
 }

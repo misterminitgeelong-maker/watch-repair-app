@@ -39,7 +39,7 @@ fun CustomerEditorScreen(customerId: String, onBack: () -> Unit, onOpenCustomer:
     Scaffold(topBar = { TopAppBar(title = { Text(if(customerId.isBlank()) "New customer" else "Edit customer") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.saving) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.saving) LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if(customerId.isNotBlank()) OutlinedButton(onClick = { vm.load(discard = true) }, enabled = !state.loading && !state.saving) { Text("Discard edits and load latest customer") }
             if(state.saved) { Text(if(customerId.isBlank()) "Customer created" else "Customer updated"); state.customer?.let { OutlinedButton(onClick = { onOpenCustomer(it.id) }) { Text("Open customer profile") } }; if(customerId.isBlank()) TextButton(vm::startAnother) { Text("Start another customer") } }
             if(state.unknown) {

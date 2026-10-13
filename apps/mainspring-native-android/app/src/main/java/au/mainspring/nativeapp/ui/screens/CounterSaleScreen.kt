@@ -21,7 +21,7 @@ import au.mainspring.nativeapp.*
  Scaffold(topBar = { TopAppBar(title = { Text("Counter sale or quote", style = MaterialTheme.typography.titleLarge) },navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack,enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.busy || state.customerLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-   (localError ?: state.error)?.let { Text(it,color = MaterialTheme.colorScheme.error) }
+   (localError ?: state.error)?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
    if(done) {
     Text(if(f("mode").ifBlank { "sale" } == "sale") "Sale and unpaid invoice created" else "Draft quote created",style = MaterialTheme.typography.titleLarge)
     Text("Record payment from the invoice after receiving the funds.")

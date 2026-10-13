@@ -20,7 +20,7 @@ import au.mainspring.nativeapp.*
  Scaffold(topBar = { TopAppBar(title = { Text("Edit mobile job", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-   state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; if(state.saved) Text("Job changes saved.")
+   state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; if(state.saved) Text("Job changes saved.")
    listOf("title" to "Job title *", "description" to "Requested work", "job_address" to "Job address", "scheduled_at" to "Booking (DD/MM/YYYY HH:mm)",
     "vehicle_make" to "Vehicle make", "vehicle_model" to "Vehicle model", "vehicle_year" to "Vehicle year", "registration_plate" to "Registration plate", "vin" to "VIN",
     "key_type" to "Key type", "blade_code" to "Blade code", "chip_type" to "Chip type", "key_quantity" to "Key quantity", "tech_notes" to "Technician notes").forEach { (key, label) ->
@@ -46,13 +46,13 @@ import au.mainspring.nativeapp.*
    Button(onClick = vm::save, enabled = !state.loading && !state.busy && TokenStore.canWorkJobs(), modifier = Modifier.fillMaxWidth()) { Text("Save job changes") }
   }
  }
- if(accountOpen) AlertDialog(onDismissRequest = { accountOpen = false }, title = { Text("Choose billing account", style = MaterialTheme.typography.headlineSmall) }, text = {
+ if(accountOpen) AlertDialog(onDismissRequest = { accountOpen = false }, title = { Text("Choose billing account") }, text = {
   Column(Modifier.verticalScroll(rememberScrollState())) {
    TextButton({ vm.set("customer_account_id", ""); accountOpen = false }) { Text("No billing account") }
    state.accounts.filter { it.active }.forEach { account -> TextButton({ vm.set("customer_account_id", account.id); accountOpen = false }) { Text(account.name) } }
   }
  }, confirmButton = { TextButton({ accountOpen = false }) { Text("Done") } })
- if(teamOpen) AlertDialog(onDismissRequest = { teamOpen = false }, title = { Text("Choose technician", style = MaterialTheme.typography.headlineSmall) }, text = {
+ if(teamOpen) AlertDialog(onDismissRequest = { teamOpen = false }, title = { Text("Choose technician") }, text = {
   Column(Modifier.verticalScroll(rememberScrollState())) {
    TextButton(onClick = { vm.set("assigned_user_id", ""); teamOpen = false }) { Text("Unassigned") }
    state.users.filter { it.active }.forEach { user -> TextButton(onClick = { vm.set("assigned_user_id", user.id); teamOpen = false }) { Text(user.name) } }

@@ -45,18 +45,26 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
         if(success) vm.set("pair.$photoPair.photo", cameraUri) else photoError = "Photo not captured. Try again or choose a photo."
     }
     LaunchedEffect(Unit) { if(preselectedCustomerId != null && state.fields.isEmpty()) { vm.set("customerId",preselectedCustomerId); vm.set("customerMode","existing"); vm.set("step","1") }; vm.search() }
+    val valid = step != 0 || vm.field("customerId").isNotBlank() || (vm.field("customerMode") == "new" && vm.field("name").isNotBlank())
     Scaffold(topBar = { TopAppBar(title = { Text("New shoe repair", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = { leave = true }, enabled = !state.busy) },
-        actions = { TextButton(onClick = { discard = true }, enabled = !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank()) { Text("Discard") } }) }) { padding ->
+        actions = { TextButton(onClick = { discard = true }, enabled = !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") } }) },
+        bottomBar = {
+            if(!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Pairs and services", "Job details", "Photos")[step],
+                if(step == 3) "Create / finish repair" else "Continue",
+                { if(step < 3) vm.set("step", "${step + 1}") else vm.submit(context.applicationContext) },
+                !state.busy && valid,
+                if(step > 0) ({ vm.set("step", "${step - 1}") }) else null, !state.busy)
+        }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("${step + 1} of 4 · ${listOf("Customer", "Pairs and services", "Job details", "Photos")[step]}", style = MaterialTheme.typography.titleMedium)
-            Text("Draft saved on this device", style = MaterialTheme.typography.bodySmall)
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }; photoError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            vm.field("trackingWarning").takeIf(String::isNotBlank)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            Text(listOf("Who is the customer?", "What are we repairing?", "Job details", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
+            Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; photoError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
+            vm.field("trackingWarning").takeIf(String::isNotBlank)?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if(vm.field("uncertain").isNotBlank()) OutlinedButton(onClick = { reconcile = true }) { Text("I checked the shop records") }
             if(vm.field("jobId").isNotBlank()) {
                 Text("Job saved", style = MaterialTheme.typography.titleLarge)
-                state.photoFailures.forEach { Text(it, color = MaterialTheme.colorScheme.error) }
+                state.photoFailures.forEach { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                 if(state.complete && state.photoFailures.isEmpty()) Text("Intake complete")
                 Button(onClick = { if(state.complete && state.photoFailures.isEmpty()) vm.finish(); onOpenJob(vm.field("jobId")) }, enabled = !state.busy) { Text("Open repair job") }
                 if(!state.complete || state.photoFailures.isNotEmpty()) OutlinedButton(onClick = { vm.submit(context.applicationContext) }, enabled = !state.busy) { Text("Finish intake / retry photos") }
@@ -73,7 +81,9 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     }
                     if(new) { field("name", "Name *"); field("phone", "Phone"); field("email", "Email") }
                     else {
-                        field("query", "Search customers"); OutlinedButton(onClick = vm::search, enabled = !locked) { Text("Search") }
+                        OutlinedTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.search() }))
                         state.customers.forEach { c -> au.mainspring.nativeapp.ui.SelectableCard(selected = vm.field("customerId") == c.id, onClick = { vm.set("customerId", c.id); vm.set("accountId", "") }, enabled = !locked) {
                             Text(c.fullName, style = MaterialTheme.typography.titleMedium)
                             c.phone?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
@@ -92,8 +102,10 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     field("serviceQuery", "Search repair catalogue")
                     val selected = vm.field("pair.$pair.services").split('|').toSet()
                     state.catalogue.filter { it.name.contains(vm.field("serviceQuery"), true) || it.key in selected }.take(40).forEach { item ->
-                        FilterChip(selected = item.key in selected, onClick = { vm.toggle(pair, item.key) }, enabled = !locked,
-                            label = { Text(item.name + " · " + (item.priceCents?.let { formatCents(it, "AUD") } ?: "Inspection quote")) })
+                        au.mainspring.nativeapp.ui.SelectableCard(selected = item.key in selected, onClick = { vm.toggle(pair, item.key) }, enabled = !locked) {
+                            Text(item.name, style = MaterialTheme.typography.titleMedium)
+                            Text(item.priceCents?.let { formatCents(it, "AUD") } ?: "Inspection quote", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         if(item.key in selected) {
                             field("pair.$pair.quantity.${item.key}", "Quantity (default 1)")
                             field("pair.$pair.price.${item.key}", "Agreed unit price ($, optional override)")
@@ -109,7 +121,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     }
                     Text("Priority")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("low", "normal", "high", "urgent").forEach { value -> FilterChip(selected = vm.field("priority").ifBlank { "normal" } == value, onClick = { vm.set("priority", value) }, enabled = !locked, label = { Text(value) }) }
+                        listOf("low", "normal", "high", "urgent").forEach { value -> FilterChip(selected = vm.field("priority").ifBlank { "normal" } == value, onClick = { vm.set("priority", value) }, enabled = !locked, label = { Text(value.replaceFirstChar { it.uppercase() }) }) }
                     }
                     field("salesperson", "Salesperson"); field("collection", "Collection date (DD/MM/YYYY)"); field("deposit", "Deposit ($, entire job)")
                     val accounts = state.accounts.filter { it.active && (vm.field("customerId").isBlank() || vm.field("customerId") in it.customerIds) }
@@ -138,11 +150,6 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     }
                     Text("Creating this repair may send a tracking SMS to the customer.")
                 }
-            }
-            if(!state.complete) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if(step > 0) OutlinedButton(onClick = { vm.set("step", "${step - 1}") }, enabled = !state.busy) { Text("Previous") }
-                val valid = step != 0 || vm.field("customerId").isNotBlank() || (vm.field("customerMode") == "new" && vm.field("name").isNotBlank())
-                Button(onClick = { if(step < 3) vm.set("step", "${step + 1}") else vm.submit(context.applicationContext) }, enabled = !state.busy && valid) { Text(if(step == 3) "Create / finish repair" else "Continue") }
             }
         }
     }

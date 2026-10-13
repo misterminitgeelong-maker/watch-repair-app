@@ -132,9 +132,9 @@ import au.mainspring.nativeapp.ui.*
                         else -> LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                             item {
                                 if(state.loading || state.statusBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                                state.error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
+                                state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
                                 state.statusInfo?.let {Text(it)}
-                                attachmentOpenError?.let {Text(it,color=MaterialTheme.colorScheme.error)}
+                                attachmentOpenError?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
                                 if(state.statusReviewRequired) FlatPanel {
                                     Text("Review the current job status before repeating the last change.")
                                     state.requestedStatus?.let {Text("Previously requested: ${it.replace('_',' ')}")}
@@ -218,7 +218,7 @@ import au.mainspring.nativeapp.ui.*
     if (statusPicker) {
         AlertDialog(
             onDismissRequest = { statusPicker = false },
-            title = { Text("Choose status", style = MaterialTheme.typography.headlineSmall) },
+            title = { Text("Choose status") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     Text("Completing work can create an invoice and notify the customer. Review the job before choosing a completion status.")

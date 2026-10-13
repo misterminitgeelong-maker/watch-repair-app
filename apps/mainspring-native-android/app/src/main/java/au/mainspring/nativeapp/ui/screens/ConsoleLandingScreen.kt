@@ -17,7 +17,7 @@ fun ConsoleLandingScreen(state: AuthUiState, onSwitchSite: (String) -> Unit, onO
         Text("Choose a shop",style = MaterialTheme.typography.headlineMedium)
         state.sessionSummary?.let { Text(it) }
         Text("Open a shop for native counter and field workflows. HQ and platform controls are available in the web console.")
-        state.error?.let { Text(it,color = MaterialTheme.colorScheme.error) }
+        state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
         state.sites.filter { it.tenantId != state.activeSiteId }.forEach { site ->
             OutlinedButton(onClick = { onSwitchSite(site.tenantId) },enabled = !state.loading,modifier = Modifier.fillMaxWidth()) { Text("Open ${site.name}") }
         }

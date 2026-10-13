@@ -31,7 +31,7 @@ fun MessageThreadScreen(resource: String, jobId: String, onBack: () -> Unit,
         actions = { TextButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh") } }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if(state.loading && state.messages.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if(state.uncertain) OutlinedButton(onClick = vm::acknowledgeHistory, enabled = !state.loading && state.historyChecked) { Text("I checked the conversation") }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if(state.messages.isEmpty() && !state.loading) item { Text("No messages yet") }

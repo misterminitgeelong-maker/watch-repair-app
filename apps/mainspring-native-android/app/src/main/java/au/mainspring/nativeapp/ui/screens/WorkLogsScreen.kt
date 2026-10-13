@@ -19,7 +19,7 @@ import au.mainspring.nativeapp.*
  Scaffold(topBar = { TopAppBar(title = { Text("Work logs", style = MaterialTheme.typography.titleLarge) }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    item {
-    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
     androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading && !state.busy) { Text("Refresh") }
     if(state.uncertain) OutlinedButton(onClick = vm::checkedHistory, enabled = !state.loading && state.historyChecked) { Text("I checked for this work log") }
     Text("${state.rows.sumOf { it.minutes }} minutes logged", style = MaterialTheme.typography.titleMedium)

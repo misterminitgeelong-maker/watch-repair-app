@@ -24,7 +24,7 @@ fun WatchEditorScreen(customerId: String, id: String, onBack: () -> Unit, onCust
     Scaffold(topBar = { TopAppBar(title = { Text(if(id.isBlank()) "Add watch" else "Edit watch") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onBack, enabled = !state.busy) }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if(state.saved) {
                 Text(if(id.isBlank()) "Watch ready" else "Watch updated")
                 OutlinedButton(onCustomer) { Text("Return to customer watches") }
@@ -43,6 +43,6 @@ fun WatchEditorScreen(customerId: String, id: String, onBack: () -> Unit, onCust
             Button(model::save, enabled = !state.loading && !state.busy && !state.uncertain && !state.conflict && state.createdId == null) { Text(if(id.isBlank()) "Save new watch" else "Save watch changes") }
         }
     }
-    if(review) AlertDialog(onDismissRequest = { review = false }, title = { Text("Confirm watch review", style = MaterialTheme.typography.headlineSmall) }, text = { Text("I checked all refreshed watches for this customer and confirmed the previous creation did not save. Allow another attempt?") },
+    if(review) AlertDialog(onDismissRequest = { review = false }, title = { Text("Confirm watch review") }, text = { Text("I checked all refreshed watches for this customer and confirmed the previous creation did not save. Allow another attempt?") },
         confirmButton = { TextButton({ review = false; model.reviewedNotCreated() }) { Text("Confirm review") } }, dismissButton = { TextButton({ review = false }) { Text("Cancel") } })
 }

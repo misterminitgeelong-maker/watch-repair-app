@@ -67,7 +67,7 @@ import au.mainspring.nativeapp.ui.formatCents
  Column(modifier) {
  Column(if(sheetLayout) Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=16.dp) else Modifier,verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
-  error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+  error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
   if(catalogue && currency == "AUD") {
    SectionLabel(if(quickSale) "Quick items" else "One-tap bundles")
    if(!sheetLayout || showBundles || quickSale) Text("Editable retail presets · AUD",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
