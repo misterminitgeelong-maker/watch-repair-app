@@ -36,7 +36,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import au.mainspring.nativeapp.AuthUiState
+import au.mainspring.nativeapp.LoginPrefs
 import au.mainspring.nativeapp.TokenStore
+import androidx.compose.material3.Checkbox
 import au.mainspring.nativeapp.api.ApiClient
 
 @Composable
@@ -45,12 +47,14 @@ fun LoginScreen(
     apiBaseUrl: String,
     onLogin: (String, String, String, String) -> Unit,
 ) {
-    var slug by rememberSaveable { mutableStateOf("") }
+    var slug by rememberSaveable { mutableStateOf(LoginPrefs.rememberedShopId()) }
+    var rememberShop by rememberSaveable { mutableStateOf(LoginPrefs.rememberEnabled()) }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var serverUrl by remember { mutableStateOf(ApiClient.getEffectiveBaseUrl()) }
     var showServerConfig by remember { mutableStateOf(false) }
     var showPassword by remember { mutableStateOf(false) }
+    val submit = { LoginPrefs.save(slug, rememberShop); onLogin(slug, email, password, serverUrl) }
 
     Column(
         Modifier
@@ -90,6 +94,10 @@ fun LoginScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = rememberShop, onCheckedChange = { rememberShop = it }, enabled = !state.loading)
+            Text("Remember shop ID", style = MaterialTheme.typography.bodyMedium)
+        }
         au.mainspring.nativeapp.ui.AtelierTextField(
             value = email,
             onValueChange = { email = it },
@@ -105,7 +113,7 @@ fun LoginScreen(
             label = { Text("Password") },
             enabled = !state.loading,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { if(!state.loading && email.isNotBlank() && password.isNotBlank()) onLogin(slug,email,password,serverUrl) }),
+            keyboardActions = KeyboardActions(onDone = { if(!state.loading && email.isNotBlank() && password.isNotBlank()) submit() }),
             singleLine = true,
             visualTransformation = if(showPassword) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = { TextButton(onClick = { showPassword = !showPassword }) { Text(if(showPassword) "Hide" else "Show") } },
@@ -115,7 +123,7 @@ fun LoginScreen(
             au.mainspring.nativeapp.ui.ErrorBanner(it)
         }
         Button(
-            onClick = { onLogin(slug, email, password, serverUrl) },
+            onClick = { submit() },
             enabled = !state.loading && email.isNotBlank() && password.isNotBlank(),
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {

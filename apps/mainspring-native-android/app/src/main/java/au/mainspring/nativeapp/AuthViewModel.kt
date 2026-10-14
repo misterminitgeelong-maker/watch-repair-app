@@ -28,6 +28,10 @@ data class AuthUiState(
     val sites: List<SessionSite> = emptyList(),
     val activeSiteId: String? = null,
     val consoleOnly: Boolean = false,
+    val signupPaymentPending: Boolean = false,
+    val subscriptionStatus: String? = null,
+    val trialEnd: String? = null,
+    val role: String? = null,
 )
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
@@ -109,6 +113,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     sites = s.sites.orEmpty(),
                     activeSiteId = s.activeSiteId ?: s.tenantId,
                     consoleOnly = s.hqConsole || s.platformConsole,
+                    signupPaymentPending = s.signupPaymentPending && s.user.role != "platform_admin",
+                    subscriptionStatus = s.subscriptionStatus,
+                    trialEnd = s.trialEnd,
+                    role = s.user.role,
                 )
             }
         } catch (e: Exception) {
@@ -127,7 +135,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
+        // Capture credentials first: the server-side revoke runs after the local session is gone.
+        val access = TokenStore.getAccessToken()
+        val baseUrl = ApiClient.getEffectiveBaseUrl()
+        val device = TokenStore.deviceToken()
         TokenStore.clear()
+        if(access != null) au.mainspring.nativeapp.api.SignOutClient.revokeInBackground(baseUrl, access, device)
         _state.value = AuthUiState()
     }
     fun switchSite(tenantId: String) {
