@@ -48,6 +48,11 @@ fun ShoeJobDetailScreen(
     androidx.activity.compose.BackHandler(state.statusBusy) {}
     var newNoteDraft by remember { mutableStateOf("") }
     var confirmQuote by remember { mutableStateOf(false) }
+    var statusCustomerNote by remember { mutableStateOf("") }
+    var pickServices by remember { mutableStateOf(false) }
+    var addPair by remember { mutableStateOf(false) }
+    var removeItem by remember { mutableStateOf<String?>(null) }
+    var removePairId by remember { mutableStateOf<String?>(null) }
     var attachmentOpenError by remember { mutableStateOf<String?>(null) }
 
     var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("overview") }
@@ -64,7 +69,7 @@ fun ShoeJobDetailScreen(
         onBack = onBack, backEnabled = !state.statusBusy,
         primaryLabel = if (state.statusBusy) "Updating\u2026" else "Update repair status",
         primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
-        onPrimary = { statusChangeNote = ""; statusPicker = true },
+        onPrimary = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
         footnote = j.depositCents.takeIf { it > 0 }?.let { "Deposit ${formatCents(it, currency)}" },
         menu = listOfNotNull(
             DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
@@ -102,8 +107,18 @@ fun ShoeJobDetailScreen(
             }
             "messages" -> MessageThreadScreen("shoe-repair-jobs", jobId, { tab = "overview" }, embedded = true)
             else -> {
-                if (j.items.isNotEmpty()) SummaryCard("Requested work", j.items.joinToString(" \u00b7 ") { it.name }, null)
-                else j.description?.takeIf { it.isNotBlank() }?.let { SummaryCard("Requested work", it, null) }
+                j.description?.takeIf { it.isNotBlank() }?.let { SummaryCard("Requested work", it, null) }
+                j.customerNote?.takeIf { it.isNotBlank() }?.let { SummaryCard("Note shown to customer", it, null) }
+                val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
+                SectionLabel("Shoes")
+                ShoePairCard(1, j.shoe, null, canEdit)
+                j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }
+                if(j.shoe?.customerId != null) SecondaryAction(onClick = { addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add pair") }
+                SectionLabel("Services")
+                if(j.items.isEmpty()) Text("No services added yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                j.items.forEach { item -> ShoeServiceRow(item, currency, { removeItem = item.id }, canEdit) }
+                SecondaryAction(onClick = { vm.loadCatalogue(); pickServices = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add services") }
+                j.estimatedReadyBy?.takeIf { it.isNotBlank() }?.let { SummaryCard("Estimated ready", formatShopDate(it), null) }
                 SummaryCard(statusLabel(j.status), listOfNotNull(j.claimedByName?.let { "Assigned to $it" }, "Created ${formatShopDate(j.createdAt)}").joinToString(" \u00b7 "), null)
                 SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
                     "View services, pricing and payment")
@@ -125,6 +140,16 @@ fun ShoeJobDetailScreen(
         text = { Text("Send the saved repair quote to the customer's phone for approval.") },
         confirmButton = { TextButton(onClick = { confirmQuote = false; vm.sendQuote() }) { Text("Send") } },
         dismissButton = { TextButton(onClick = { confirmQuote = false }) { Text("Cancel") } })
+    if(pickServices) ShoeServicePickerDialog(state.catalogue, currency, state.editBusy, { pickServices = false }) { vm.addServices(it); pickServices = false }
+    if(addPair) AddPairDialog(state.editBusy, { addPair = false }) { type, brand, colour, notes -> vm.addPair(type, brand, colour, notes) }
+    removeItem?.let { id -> AlertDialog(onDismissRequest = { removeItem = null }, title = { Text("Remove service?") },
+        text = { Text("This removes ${j?.items?.firstOrNull { it.id == id }?.name ?: "the service"} from the job and its quote.") },
+        confirmButton = { TextButton(onClick = { removeItem = null; vm.removeService(id) }) { Text("Remove") } },
+        dismissButton = { TextButton(onClick = { removeItem = null }) { Text("Cancel") } }) }
+    removePairId?.let { id -> AlertDialog(onDismissRequest = { removePairId = null }, title = { Text("Remove pair?") },
+        text = { Text("This removes the pair from the job. Services already added stay on the job.") },
+        confirmButton = { TextButton(onClick = { removePairId = null; vm.removePair(id) }) { Text("Remove") } },
+        dismissButton = { TextButton(onClick = { removePairId = null }) { Text("Cancel") } }) }
     if (statusPicker) {
         AlertDialog(
             onDismissRequest = { statusPicker = false },
@@ -140,12 +165,22 @@ fun ShoeJobDetailScreen(
                         maxLines = 3,
                     )
                     Spacer(Modifier.height(8.dp))
+                    au.mainspring.nativeapp.ui.AtelierTextField(
+                        value = statusCustomerNote,
+                        onValueChange = { statusCustomerNote = it.take(ShoeJobDetailViewModel.SHOE_CUSTOMER_NOTE_MAX) },
+                        label = { Text("Message for customer (optional)") },
+                        supportingText = { Text("Shown on their status page \u00b7 ${statusCustomerNote.length}/${ShoeJobDetailViewModel.SHOE_CUSTOMER_NOTE_MAX}") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3,
+                    )
+                    Spacer(Modifier.height(8.dp))
                     SHOE_JOB_STATUS_OPTIONS.forEach { s ->
                         val current = s == j?.status
                         TextButton(
                             onClick = {
-                                vm.setStatus(s, statusChangeNote.trim().takeIf { it.isNotEmpty() })
-                                statusChangeNote = ""
+                                vm.setStatus(s, statusChangeNote.trim().takeIf { it.isNotEmpty() }, statusCustomerNote)
+                                statusChangeNote = ""; statusCustomerNote = ""
                                 statusPicker = false
                             },
                             enabled = !current,

@@ -6,7 +6,12 @@ import androidx.lifecycle.viewModelScope
 import au.mainspring.nativeapp.api.ApiClient
 import au.mainspring.nativeapp.api.AttachmentRead
 import au.mainspring.nativeapp.api.JobNotePayload
-import au.mainspring.nativeapp.api.RepairJobStatusUpdate
+import au.mainspring.nativeapp.api.ShoeCatalogueItem
+import au.mainspring.nativeapp.api.ShoeCreate
+import au.mainspring.nativeapp.api.ShoeItemCreate
+import au.mainspring.nativeapp.api.ShoeItemsAppend
+import au.mainspring.nativeapp.api.ShoeLink
+import au.mainspring.nativeapp.api.ShoeStatusUpdate
 import au.mainspring.nativeapp.api.ShoeJobStatusHistoryRead
 import au.mainspring.nativeapp.api.ShoeRepairJobRead
 import au.mainspring.nativeapp.api.absolutizeApiUrl
@@ -28,6 +33,8 @@ data class ShoeJobDetailUiState(
     val noteBusy: Boolean = false,
     val claimBusy: Boolean = false,
     val quoteBusy: Boolean = false,
+    val editBusy: Boolean = false,
+    val catalogue: List<ShoeCatalogueItem> = emptyList(),
     val statusUnknown: Boolean = false, val statusReviewed: Boolean = false, val statusRequest: String = "",
 )
 
@@ -70,12 +77,13 @@ class ShoeJobDetailViewModel(
         return absolutizeApiUrl(apiBaseUrl, link.downloadUrl)
     }
 
-    fun setStatus(newStatus: String, note: String? = null) {
+    fun setStatus(newStatus: String, note: String? = null, customerNote: String? = null) {
         val snapshot = _state.value
         val current = snapshot.job ?: return
         if(snapshot.loading || snapshot.statusBusy || snapshot.statusUnknown || !TokenStore.canWorkJobs() || newStatus !in SHOE_JOB_STATUS_OPTIONS) return
         val message = note?.trim()?.takeIf { it.isNotEmpty() }
-        if(newStatus == current.status && message == null) return
+        val visibleNote = customerNote?.trim()?.takeIf { it.isNotEmpty() }?.take(SHOE_CUSTOMER_NOTE_MAX)
+        if(newStatus == current.status && message == null && visibleNote == null) return
         _state.update { it.copy(statusBusy = true, error = null) }
         viewModelScope.launch {
             var submitted = false
@@ -86,7 +94,7 @@ class ShoeJobDetailViewModel(
                 }
                 statusCheckpoint.start(newStatus, message); submitted = true
                 _state.update { it.copy(statusRequest = statusCheckpoint.description) }
-                val j = api.postShoeRepairJobStatus(jobId, RepairJobStatusUpdate(newStatus, message))
+                val j = api.postShoeRepairJobStatus(jobId, ShoeStatusUpdate(newStatus, message, visibleNote))
                 statusCheckpoint.clear()
                 _state.update { it.copy(statusBusy = false, job = j, statusUnknown = false, statusRequest = "") }
                 load()
@@ -151,7 +159,42 @@ class ShoeJobDetailViewModel(
         }
     }
 
+    fun loadCatalogue() {
+        if(_state.value.catalogue.isNotEmpty()) return
+        viewModelScope.launch {
+            try {
+                val base = api.shoeCatalogue()
+                _state.update { it.copy(catalogue = base) }
+                val custom = try { api.customShoeServices() } catch(e: CancellationException) { throw e } catch(_: Exception) { emptyList() }
+                if(custom.isNotEmpty()) _state.update { it.copy(catalogue = (it.catalogue + custom).distinctBy { row -> row.key }) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(error = e.userMessage()) } }
+        }
+    }
+
+    /** Runs a job edit that returns the refreshed job; one edit at a time. */
+    private fun edit(block: suspend () -> au.mainspring.nativeapp.api.ShoeRepairJobRead) {
+        if(_state.value.editBusy || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(editBusy = true, error = null) }
+        viewModelScope.launch {
+            try { val j = block(); _state.update { it.copy(editBusy = false, job = j) } }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(editBusy = false, error = e.userMessage()) } }
+        }
+    }
+    fun addServices(items: List<ShoeItemCreate>) { if(items.isNotEmpty()) edit { api.appendShoeItems(jobId, ShoeItemsAppend(items)) } }
+    fun removeService(itemId: String) = edit { api.removeShoeItem(jobId, itemId) }
+    fun removePair(entryId: String) = edit { api.removeShoeFromJob(jobId, entryId) }
+    fun addPair(type: String, brand: String, colour: String, notes: String) {
+        val customerId = _state.value.job?.shoe?.customerId ?: return
+        edit {
+            val shoe = api.createShoe(ShoeCreate(customerId, type.trim().ifBlank { null }, brand.trim().ifBlank { null }, colour.trim().ifBlank { null }, notes.trim().ifBlank { null }))
+            api.linkShoe(jobId, ShoeLink(shoe.id))
+        }
+    }
+
     companion object {
+        const val SHOE_CUSTOMER_NOTE_MAX = 280
         fun factory(jobId: String, apiBaseUrl: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {

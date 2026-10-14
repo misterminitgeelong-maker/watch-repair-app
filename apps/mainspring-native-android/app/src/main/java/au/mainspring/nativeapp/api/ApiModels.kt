@@ -181,7 +181,14 @@ data class InvoiceFromQuoteResponse(val invoice: InvoiceRead)
 data class ShoeCreate(@SerializedName("customer_id") val customerId: String,
     @SerializedName("shoe_type") val shoeType: String?, val brand: String?, val color: String?,
     @SerializedName("description_notes") val notes: String?)
-data class ShoeRead(val id: String)
+data class ShoeRead(val id: String,
+    @SerializedName("customer_id") val customerId: String? = null,
+    @SerializedName("shoe_type") val shoeType: String? = null, val brand: String? = null, val color: String? = null,
+    @SerializedName("description_notes") val notes: String? = null)
+data class ShoeJobShoeEntry(val id: String, @SerializedName("shoe_id") val shoeId: String, val shoe: ShoeRead? = null,
+    @SerializedName("sort_order") val sortOrder: Int = 0)
+data class ShoeStatusUpdate(val status: String, val note: String? = null,
+    @SerializedName("customer_note") val customerNote: String? = null)
 data class ShoeCatalogueItem(val key: String, val name: String,
     @SerializedName("group_id") val groupId: String,
     @SerializedName("price_cents") val priceCents: Int?,
@@ -306,8 +313,9 @@ data class ShoeRepairJobRead(
     @SerializedName("quote_status") val quoteStatus: String,
     @SerializedName("created_at") val createdAt: String,
     val items: List<ShoeJobItemRead> = emptyList(),
-    val shoe: JsonElement? = null,
-    @SerializedName("extra_shoes") val extraShoes: JsonElement? = null,
+    val shoe: ShoeRead? = null,
+    @SerializedName("extra_shoes") val extraShoes: List<ShoeJobShoeEntry>? = null,
+    @SerializedName("customer_note") val customerNote: String? = null,
     val complexity: String? = null,
     @SerializedName("estimated_days_min") val estimatedDaysMin: Int? = null,
     @SerializedName("estimated_days_max") val estimatedDaysMax: Int? = null,

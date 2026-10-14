@@ -15,7 +15,28 @@ data class ShoeJobsUiState(
     val error: String? = null,
     val jobs: List<ShoeRepairJobRead> = emptyList(),
     val canLoadMore: Boolean = false,
-)
+    val query: String = "",
+    val statusFilter: String = "all",
+    val showCompleted: Boolean = false,
+    val customerNames: Map<String, String> = emptyMap(),
+) {
+    fun customerName(j: ShoeRepairJobRead): String? = j.shoe?.customerId?.let { customerNames[it] }
+    val activeCount: Int get() = jobs.count { it.status in SHOE_ACTIVE_STATUSES }
+    val completedCount: Int get() = jobs.count { it.status in SHOE_CLOSED_STATUSES }
+    val visible: List<ShoeRepairJobRead> get() {
+        val q = query.trim().lowercase()
+        return jobs.filter { j ->
+            (if(showCompleted) j.status in SHOE_CLOSED_STATUSES else j.status in SHOE_ACTIVE_STATUSES) &&
+                (statusFilter == "all" || j.status == statusFilter) &&
+                (q.isEmpty() || j.jobNumber.lowercase().contains(q) || j.title.lowercase().contains(q) ||
+                    (j.description ?: "").lowercase().contains(q) || j.items.any { it.name.lowercase().contains(q) } ||
+                    (customerName(j) ?: "").lowercase().contains(q))
+        }
+    }
+}
+
+val SHOE_ACTIVE_STATUSES: List<String> = listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on")
+val SHOE_CLOSED_STATUSES: List<String> = listOf("completed", "awaiting_collection", "collected", "no_go")
 
 class ShoeJobsViewModel : ViewModel() {
     private val api = au.mainspring.nativeapp.api.ApiClient.api
@@ -24,11 +45,31 @@ class ShoeJobsViewModel : ViewModel() {
 
     init {
         refresh()
+        loadCustomerNames()
     }
 
     fun refresh() {
         if(_state.value.loading) return
         fetch(false)
+    }
+    fun setQuery(value: String) { _state.update { it.copy(query = value) } }
+    fun setStatusFilter(value: String) { _state.update { it.copy(statusFilter = value) } }
+    fun setShowCompleted(value: Boolean) { _state.update { it.copy(showCompleted = value, statusFilter = "all") } }
+    private fun loadCustomerNames() {
+        viewModelScope.launch {
+            try {
+                val names = mutableMapOf<String, String>()
+                var offset = 0
+                while(offset < 2000) {
+                    val page = api.listCustomers(limit = 200, offset = offset)
+                    page.forEach { names[it.id] = it.fullName }
+                    if(page.size < 200) break
+                    offset += 200
+                }
+                _state.update { it.copy(customerNames = names) }
+            } catch(e: kotlinx.coroutines.CancellationException) { throw e }
+            catch(_: Exception) { /* names are decoration; rows still work without them */ }
+        }
     }
     fun loadMore() { if(!_state.value.loading && _state.value.canLoadMore) fetch(true) }
     private fun fetch(append: Boolean) {
