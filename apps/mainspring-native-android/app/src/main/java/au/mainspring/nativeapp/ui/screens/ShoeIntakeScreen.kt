@@ -56,8 +56,15 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                 if(step > 0) ({ vm.set("step", "${step - 1}") }) else null, !state.busy)
         }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(listOf("Who is the customer?", "What are we repairing?", "Job details", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
-            Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
+                au.mainspring.nativeapp.ui.MonoLabel("Step ${step + 1} of 4")
+                Text(listOf("Who is the customer?", "What are we repairing?", "Job details", "Add photos")[step], style = MaterialTheme.typography.headlineMedium)
+                au.mainspring.nativeapp.ui.MonoLabel("Your progress is saved on this device as you go.")
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            } else {
+                Text(listOf("Who is the customer?", "What are we repairing?", "Job details", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
+                Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; photoError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             vm.field("trackingWarning").takeIf(String::isNotBlank)?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -115,18 +122,18 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                 }
                 2 -> {
                     field("title", "Job title (or use selected services)"); field("description", "Instructions / fault description")
-                    Text("Initial status")
+                    FieldCaption("Initial status")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("status").ifBlank { "awaiting_go_ahead" } == value, onClick = { vm.set("status", value) }, enabled = !locked, label = { Text(au.mainspring.nativeapp.ui.statusLabel(value)) }) }
                     }
-                    Text("Priority")
+                    FieldCaption("Priority")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("low", "normal", "high", "urgent").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("priority").ifBlank { "normal" } == value, onClick = { vm.set("priority", value) }, enabled = !locked, label = { Text(value.replaceFirstChar { it.uppercase() }) }) }
                     }
                     field("salesperson", "Salesperson"); field("collection", "Collection date (DD/MM/YYYY)"); field("deposit", "Deposit ($, entire job)")
                     val accounts = state.accounts.filter { it.active && (vm.field("customerId").isBlank() || vm.field("customerId") in it.customerIds) }
                     if(accounts.isNotEmpty()) {
-                        Text("Customer account")
+                        FieldCaption("Customer account")
                         au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId").isBlank(), onClick = { vm.set("accountId", "") }, enabled = !locked, label = { Text("No account") })
                         accounts.forEach { a -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId") == a.id, onClick = { vm.set("accountId", a.id) }, enabled = !locked, label = { Text(a.name) }) }
                     }
@@ -161,3 +168,8 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
         confirmButton = { TextButton(onClick = { vm.set("uncertain", ""); reconcile = false }) { Text("Not saved — allow retry") } }, dismissButton = { TextButton(onClick = { reconcile = false }) { Text("Cancel") } })
 }
 
+
+/** Calibre: small mono field caption; Atelier: the original plain text. */
+@Composable private fun FieldCaption(text: String) {
+    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel(text, Modifier.padding(top = 6.dp)) else Text(text)
+}

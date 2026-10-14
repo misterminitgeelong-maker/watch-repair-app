@@ -73,8 +73,15 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
         }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(listOf("Who is the customer?", "Which watches are coming in?", "What needs doing?", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
-            Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
+                au.mainspring.nativeapp.ui.MonoLabel("Step ${step + 1} of 4")
+                Text(listOf("Who is the customer?", "Which watches are coming in?", "What needs doing?", "Add photos")[step], style = MaterialTheme.typography.headlineMedium)
+                au.mainspring.nativeapp.ui.MonoLabel("Your progress is saved on this device as you go.")
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            } else {
+                Text(listOf("Who is the customer?", "Which watches are coming in?", "What needs doing?", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
+                Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             state.fields.filterKeys { it.startsWith("warning.") }.values.forEach { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if (vm.field("uncertainWrite").isNotBlank()) {
@@ -126,7 +133,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     }
                 }
                 1 -> {
-                    Text("Number of watches")
+                    FieldCaption("Number of watches")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         (1..5).forEach { n -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.count() == n, onClick = { vm.changeCount(n); activeWatch = activeWatch.coerceAtMost(n - 1) }, enabled = !locked, label = { Text("$n") }) }
                     }
@@ -161,14 +168,14 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     }
                     field("title", "Job title *"); field("description", "Instructions / fault description", true)
                     val quoteRequired = state.catalogue.any { it.key in vm.selectedServices() && it.pricingType == "quote" }
-                    Text("Initial status")
+                    FieldCaption("Initial status")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { status ->
                             au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("status").ifBlank { "awaiting_quote" } == status, onClick = { vm.setField("status", status) }, enabled = !locked && !quoteRequired,
                                 label = { Text(au.mainspring.nativeapp.ui.statusLabel(status)) })
                         }
                     }
-                    Text("Priority")
+                    FieldCaption("Priority")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("low", "normal", "high", "urgent").forEach { priority ->
                             au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("priority").ifBlank { "normal" } == priority, onClick = { vm.setField("priority", priority) }, enabled = !locked, label = { Text(priority.replaceFirstChar { it.uppercase() }) })
@@ -180,7 +187,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     if(vm.count() == 1) field("ticketOverride", "Ticket number override (optional)")
                     val accounts = state.accounts.filter { it.active && (vm.field("customerId").isBlank() || vm.field("customerId") in it.customerIds) }
                     if(accounts.isNotEmpty()) {
-                        Text("Bill to customer account")
+                        FieldCaption("Bill to customer account")
                         au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId").isBlank(), onClick = { vm.setField("accountId", "") }, enabled = !locked, label = { Text("No account") })
                         accounts.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId") == account.id, onClick = { vm.setField("accountId", account.id) }, enabled = !locked, label = { Text(account.name) }) }
                     }
@@ -227,4 +234,9 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
         text = { Text("Continue only if you checked the shop records and the last attempted customer, watch or job was not saved. If it exists, use that record instead; repeating this save can create a duplicate.") },
         confirmButton = { TextButton(onClick = { vm.confirmNoUnknownRecord(); reconcileDialog = false }) { Text("Not saved — allow retry") } },
         dismissButton = { TextButton(onClick = { reconcileDialog = false }) { Text("Cancel") } })
+}
+
+/** Calibre: small mono field caption; Atelier: the original plain text. */
+@Composable private fun FieldCaption(text: String) {
+    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel(text, Modifier.padding(top = 6.dp)) else Text(text)
 }

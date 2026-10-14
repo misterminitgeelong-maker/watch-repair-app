@@ -22,7 +22,7 @@ import au.mainspring.nativeapp.*
     Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
       TextButton(onClick = onBack, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("‹ Jobs", style = MaterialTheme.typography.titleSmall) }
     }
-    au.mainspring.nativeapp.ui.LargeHeader("Mobile services · Sale or quote", "Point of sale", insets = false)
+    au.mainspring.nativeapp.ui.LargeHeader(if(au.mainspring.nativeapp.ui.LocalCalibre.current) "POS / Mobile services" else "Mobile services · Sale or quote", "Point of sale", insets = false)
   } }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.busy || state.customerLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -43,6 +43,7 @@ import au.mainspring.nativeapp.*
     OutlinedButton(onClick = { confirmReset = true }, enabled = !state.busy && (f("uncertain").isBlank() || state.reviewed)) { Text("Discard checkout draft") }
    } else {
     au.mainspring.nativeapp.ui.SegmentedPills(listOf("sale" to "Counter sale","quote" to "Quote only"),f("mode").ifBlank { "sale" },{ if(!locked) vm.set("mode",it) })
+    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Customer / job",Modifier.padding(top = 6.dp))
     au.mainspring.nativeapp.ui.SegmentedPills(listOf("existing" to "Existing customer","new" to "New customer"),f("customerMode").ifBlank { "existing" },{ if(!locked) vm.set("customerMode",it) })
     if(f("customerMode") == "new") listOf("name" to "Customer name *","phone" to "Phone","email" to "Email").forEach { (key,label) -> au.mainspring.nativeapp.ui.AtelierTextField(f(key),{ vm.set(key,it) },label = { Text(label) },modifier = Modifier.fillMaxWidth(),enabled = !locked) }
     else {
@@ -53,7 +54,7 @@ import au.mainspring.nativeapp.*
         customer.phone?.takeIf { it.isNotBlank() }?.let { Text(it,style = MaterialTheme.typography.bodyMedium,color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
      state.accounts.filter { it.active && f("customerId") in it.customerIds }.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(f("accountId") == account.id,{ vm.set("accountId",if(f("accountId") == account.id) "" else account.id) },enabled = !locked,label = { Text("Account: ${account.name}") }) }
     }
-    HorizontalDivider(); Text("Items",style = MaterialTheme.typography.titleLarge)
+    if(au.mainspring.nativeapp.ui.LocalCalibre.current) { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant); au.mainspring.nativeapp.ui.MonoLabel("Cart",Modifier.padding(top = 6.dp)) } else { HorizontalDivider(); Text("Items",style = MaterialTheme.typography.titleLarge) }
     QuoteComposer("quote-composer/pos",f("accountId").isNotBlank(),!locked && TokenStore.canWorkJobs(),catalogue = true,quickSale = true,buttonLabel = if(f("mode").ifBlank { "sale" } == "sale") "Review counter sale" else "Review quote",onSave = { lines,gst,inclusive ->
      try { confirmation = vm.prepare(lines,gst,inclusive); localError = null } catch(e: Exception) { localError = e.userMessage() }
     })

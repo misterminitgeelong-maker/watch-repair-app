@@ -20,6 +20,40 @@ fun NewIntakeScreen(features: Set<String>, onBack: () -> Unit, onStart: (String)
     }
     var selected by rememberSaveable { mutableStateOf(services.firstOrNull()?.first ?: "watch") }
     val current = services.firstOrNull { it.first == selected }
+    if(LocalCalibre.current) {
+        Column(Modifier.fillMaxSize().verticalScrollCompat(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(Modifier.padding(horizontal = 12.dp).statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 44.dp)) { Text("‹ Back", style = MaterialTheme.typography.labelLarge) }
+            }
+            LargeHeader("Intake / Step 1 of 3", "New intake", insets = false)
+            if(services.size > 1) SegmentedPills(services.map { it.first to it.second }, selected, { selected = it }, Modifier.padding(horizontal = 20.dp))
+            HeroCard(Modifier.padding(horizontal = 20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    WatchArt()
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MonoLabel("Capture")
+                        Text(when(selected) { "shoe" -> "Book in a pair"; "auto_key" -> "Start a mobile job"; else -> "Capture the details" }, style = MaterialTheme.typography.titleMedium)
+                        Text(when(selected) { "shoe" -> "Customer, pairs, services and photos"; "auto_key" -> "Customer, vehicle, location and booking"; else -> "Customer, watches, work and photos" }, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            Column(Modifier.padding(horizontal = 20.dp)) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    MonoLabel("Step 1 of 3")
+                    MonoLabel("Customer → Item → Work", color = Calibre.Forest)
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+            PrimaryAction(onClick = { current?.let { onStart(it.third) } }, enabled = current != null,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
+                Text("Continue", style = MaterialTheme.typography.titleMedium)
+            }
+            MonoLabel("You can save a draft at any step", Modifier.padding(horizontal = 20.dp))
+            Spacer(Modifier.height(120.dp))
+        }
+        return
+    }
     Column(Modifier.fillMaxSize().verticalScrollCompat(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LargeHeader("Today", "New intake")
         Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {

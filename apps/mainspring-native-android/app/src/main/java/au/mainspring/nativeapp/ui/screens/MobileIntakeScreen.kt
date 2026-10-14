@@ -27,12 +27,16 @@ import au.mainspring.nativeapp.ui.SectionLabel
     LaunchedEffect(Unit) {if(preselectedCustomerId!=null && state.fields.isEmpty()) {vm.set("customerId",preselectedCustomerId);vm.set("customerMode","existing")};vm.search()}
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("auto_key", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar={if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        bottomBar={if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Column {if(au.mainspring.nativeapp.ui.LocalCalibre.current) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant);Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton({leave=true},enabled=!state.busy,modifier=Modifier.weight(1f)) {Text("Cancel")}
             Button(vm::submit,enabled=!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs(),modifier=Modifier.weight(1f)) {Text("Create job")}
-        } } }) {padding ->
+        } } } }) {padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Text("Draft saved on this device",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
+                au.mainspring.nativeapp.ui.MonoLabel("Mobile intake / draft saved on this device")
+                Text("Start a mobile job",style=MaterialTheme.typography.headlineMedium)
+                HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+            } else Text("Draft saved on this device",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             state.error?.let {ErrorBanner(it)}
             vm.field("trackingWarning").takeIf(String::isNotBlank)?.let {ErrorBanner(it)}
             if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
