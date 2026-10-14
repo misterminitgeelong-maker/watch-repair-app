@@ -196,12 +196,16 @@ fun TodayHubScreen(
     }
 }
 
+@Suppress("USELESS_CAST", "SENSELESS_COMPARISON")
 @Composable private fun RevenueKpis(s: au.mainspring.nativeapp.api.ReportsSummaryResponse, modifier: Modifier = Modifier) {
     fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
+    val f = s.financials as au.mainspring.nativeapp.api.ReportsFinancials?
+    if(f == null) return
+    val approval = (s.salesFunnel as au.mainspring.nativeapp.api.SalesFunnelSummary?)?.approvalRatePercent?.toInt() ?: 0
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         MonoLabel("Business this period")
-        MetricStrip(listOf("Revenue" to money(s.financials.revenueCents), "Gross profit" to money(s.financials.grossProfitCents), "Approval rate" to "${s.salesFunnel.approvalRatePercent.toInt()}%"))
-        MetricStrip(listOf("Outstanding" to money(s.financials.outstandingCents), "Billed" to money(s.financials.billedCents)))
+        MetricStrip(listOf("Revenue" to money(f.revenueCents), "Gross profit" to money(f.grossProfitCents), "Approval rate" to "$approval%"))
+        MetricStrip(listOf("Outstanding" to money(f.outstandingCents), "Billed" to money(f.billedCents)))
     }
 }
 

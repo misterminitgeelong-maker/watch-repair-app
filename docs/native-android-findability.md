@@ -33,3 +33,14 @@ Taps are counted from any screen with the bottom bar visible. "Before" is the At
 | Global search | none | Today search box (open jobs, link to Customers) |
 
 Not in the native app yet: Parent Account, Database (customer import/export), Revenue control follow-up editing, Accounts management (team users, plan changes, Stripe/Xero setup, which stay on the web), Stocktake (dropped on purpose).
+
+## Phase 1, batch 1 (parity with the web, from the audits in docs/audit-*.md)
+
+| Item | Where in the app | Status |
+|---|---|---|
+| Revenue KPIs, "Action needed", inbox alert card | Dashboard tab | done |
+| Inbox: tap through to the job/invoice/thread, delete, paging, alert badge on the Inbox tab, card-payment actions | Inbox tab | done (badge counts alerts; the web has no read state) |
+| Watch jobs: third-party statuses, customer-visible status note, watch details and tappable contact, assign technician, resend quote, copy approval link, sort and filters | Jobs > Watch Repairs and job detail | done |
+| Shoe jobs: details per pair, priced services, add/remove services and pairs, customer-visible note, list search and filters | Jobs > Shoe Repairs and job detail | done (ready-by date edit is not possible on the backend) |
+| Invoices: watch and mobile together, type filter, search; quotes sort, search and age filter | More > Invoices, Quotes | done |
+| Push notifications | n/a | blocked: no google-services.json in the repo |

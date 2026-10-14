@@ -107,7 +107,7 @@ class WatchJobActionsTest {
 
     @Test fun claimAlsoAssignsTheJobToTheSignedInUser() {
         val model = model(); model.claimJob()
-        compose.waitUntil(10_000) { !model.state.value.claimBusy }
+        compose.waitUntil(10_000) { bodiesFor("/job-1", "PATCH").isNotEmpty() && !model.state.value.claimBusy }
         Assert.assertEquals("user-1", bodiesFor("/job-1", "PATCH").single()["assigned_user_id"].asString)
     }
 

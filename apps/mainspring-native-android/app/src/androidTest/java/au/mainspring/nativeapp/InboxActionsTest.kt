@@ -53,7 +53,7 @@ class InboxActionsTest {
     @Test fun pagingAndDeleteUpdateListAndCount() {
         val model = InboxViewModel(); compose.waitUntil(10_000) { !model.state.value.loading && model.state.value.events.isNotEmpty() }
         Assert.assertTrue(model.state.value.canLoadMore)
-        model.loadMore(); compose.waitUntil(10_000) { !model.state.value.loadingMore }
+        model.loadMore(); compose.waitUntil(10_000) { model.state.value.events.size > InboxViewModel.PAGE_SIZE && !model.state.value.loadingMore }
         Assert.assertEquals(InboxViewModel.PAGE_SIZE + 1, model.state.value.events.size)
         Assert.assertFalse(model.state.value.canLoadMore)
         model.delete("older"); compose.waitUntil(10_000) { model.state.value.events.none { it.id == "older" } }
