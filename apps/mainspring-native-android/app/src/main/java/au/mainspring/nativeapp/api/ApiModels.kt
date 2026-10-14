@@ -283,6 +283,8 @@ data class TenantEventLogRead(
     @SerializedName("event_type") val eventType: String,
     @SerializedName("event_summary") val eventSummary: String,
     @SerializedName("created_at") val createdAt: String,
+    @SerializedName("entity_type") val entityType: String? = null,
+    @SerializedName("entity_id") val entityId: String? = null,
 )
 
 data class ShoeRepairJobRead(
