@@ -166,6 +166,7 @@ interface MainspringApi {
         @Query("q") q: String? = null,
         @Query("customer_id") customerId: String? = null,
         @Query("status") status: String? = null,
+        @Query("assigned_user_id") assignedUserId: String? = null,
     ): List<RepairJobRead>
 
     @GET("v1/repair-jobs/{jobId}")
@@ -230,6 +231,9 @@ interface MainspringApi {
 
     @GET("v1/quotes/{quoteId}/line-items")
     suspend fun getQuoteLineItems(@Path("quoteId") quoteId: String): List<QuoteLineItemRead>
+
+    @POST("v1/quotes/{quoteId}/resend")
+    suspend fun postQuoteResend(@Path("quoteId") quoteId: String): QuoteSendResponse
 
     @POST("v1/quotes/{quoteId}/send")
     suspend fun postQuoteSend(@Path("quoteId") quoteId: String): QuoteSendResponse

@@ -19,6 +19,8 @@ import au.mainspring.nativeapp.ui.formatCents
 fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> Unit) {
     val vm: JobQuotesViewModel = viewModel(key = jobId, factory = JobQuotesViewModel.factory(jobId))
     val state by vm.state.collectAsStateWithLifecycle()
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    var copiedQuote by remember { mutableStateOf<String?>(null) }
     Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Job quotes") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             state.job?.let { if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Quotes / ${state.quotes.size}"); Text("${it.jobNumber} · ${it.title}", style = MaterialTheme.typography.titleMedium) }
@@ -33,6 +35,11 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
                         Text(formatCents(q.totalCents, q.currency), style = MaterialTheme.typography.titleMedium)
                     }
                     Text(au.mainspring.nativeapp.ui.formatShopDate(q.createdAt).substringBefore(' '), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val token = q.approvalToken?.takeIf { it.isNotBlank() }
+                    if (token != null && (q.status == "sent" || q.status == "expired")) androidx.compose.material3.TextButton(onClick = {
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(au.mainspring.nativeapp.api.quoteApprovalLink(au.mainspring.nativeapp.api.ApiClient.getEffectiveBaseUrl(), token)))
+                        copiedQuote = q.id
+                    }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (copiedQuote == q.id) "Approval link copied" else "Copy approval link") }
                 }
             }
             if (state.created != null) { if(au.mainspring.nativeapp.ui.LocalCalibre.current) CalibreNotice("Quote saved as a draft. Open it to review totals and send it to the customer.") else Text("Quote saved as a draft. Open it to review totals and send it to the customer."); OutlinedButton(onClick = vm::startAnotherQuote) { Text("Create another quote") } }

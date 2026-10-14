@@ -97,6 +97,14 @@ data class RepairJobRead(
     @SerializedName("claimed_by_name") val claimedByName: String? = null,
     @SerializedName("customer_account_id") val customerAccountId: String? = null,
     @SerializedName("tracking_sms_skipped_reason") val trackingSmsSkippedReason: String? = null,
+    @SerializedName("assigned_user_id") val assignedUserId: String? = null,
+    @SerializedName("status_token") val statusToken: String? = null,
+    @SerializedName("customer_phone") val customerPhone: String? = null,
+    @SerializedName("customer_email") val customerEmail: String? = null,
+    @SerializedName("watch_brand") val watchBrand: String? = null,
+    @SerializedName("watch_model") val watchModel: String? = null,
+    @SerializedName("status_changed_at") val statusChangedAt: String? = null,
+    @SerializedName("customer_note") val customerNote: String? = null,
 )
 
 data class AttachmentRead(
@@ -122,6 +130,8 @@ data class AttachmentDownloadLinkResponse(
 data class RepairJobStatusUpdate(
     val status: String,
     val note: String? = null,
+    /** Shown to the customer on their status page; backend max length 280. */
+    @SerializedName("customer_note") val customerNote: String? = null,
 )
 
 data class JobNotePayload(

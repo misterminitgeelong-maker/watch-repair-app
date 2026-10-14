@@ -11,6 +11,9 @@ import au.mainspring.nativeapp.api.RepairJobRead
 import au.mainspring.nativeapp.api.RepairJobStatusUpdate
 import au.mainspring.nativeapp.api.ResendNotificationRequest
 import au.mainspring.nativeapp.api.SmsLogRead
+import au.mainspring.nativeapp.api.TeamUser
+import au.mainspring.nativeapp.api.WatchRead
+import com.google.gson.JsonObject
 import au.mainspring.nativeapp.api.absolutizeApiUrl
 import au.mainspring.nativeapp.api.requireSuccessEmptyBody
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +30,10 @@ data class JobDetailUiState(
     val history: List<JobStatusHistoryRead> = emptyList(),
     val attachments: List<AttachmentRead> = emptyList(),
     val smsLog: List<SmsLogRead> = emptyList(),
+    val watch: WatchRead? = null,
+    val users: List<TeamUser> = emptyList(),
+    val usersLoading: Boolean = false,
+    val assignBusy: Boolean = false,
     val statusBusy: Boolean = false,
     val noteBusy: Boolean = false,
     val claimBusy: Boolean = false,
@@ -66,8 +73,9 @@ class JobDetailViewModel(
                 } catch (_: Exception) {
                     emptyList()
                 }
+                val watch = if(job.watchId.isNullOrBlank()) null else try { api.getWatch(job.watchId) } catch (e: CancellationException) { throw e } catch (_: Exception) { _state.value.watch }
                 _state.update {
-                    it.copy(loading = false, job = job, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true)
+                    it.copy(loading = false, job = job, watch = watch, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true)
                 }
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -81,11 +89,12 @@ class JobDetailViewModel(
         return absolutizeApiUrl(apiBaseUrl, link.downloadUrl)
     }
 
-    fun setStatus(newStatus: String, note: String? = null) {
+    fun setStatus(newStatus: String, note: String? = null, customerNote: String? = null) {
         val snapshot = _state.value
         val current = snapshot.job ?: return
         if(snapshot.loading || snapshot.statusBusy || snapshot.statusUnknown || !TokenStore.canWorkJobs() || newStatus !in WATCH_JOB_STATUS_OPTIONS) return
         val message = note?.trim()?.takeIf { it.isNotEmpty() }
+        val visibleNote = customerNote?.trim()?.takeIf { it.isNotEmpty() }?.take(CUSTOMER_NOTE_MAX)
         if(newStatus == current.status && message == null) return
         _state.update { it.copy(statusBusy = true, error = null, resendInfo = null) }
         viewModelScope.launch {
@@ -97,7 +106,7 @@ class JobDetailViewModel(
                 }
                 statusCheckpoint.start(newStatus, message); submitted = true
                 _state.update { it.copy(statusRequest = statusCheckpoint.description) }
-                val job = api.postRepairJobStatus(jobId, RepairJobStatusUpdate(newStatus, message))
+                val job = api.postRepairJobStatus(jobId, RepairJobStatusUpdate(newStatus, message, visibleNote))
                 statusCheckpoint.clear()
                 _state.update { it.copy(statusBusy = false, job = job, statusUnknown = false, statusRequest = "") }
                 load()
@@ -134,27 +143,65 @@ class JobDetailViewModel(
         }
     }
 
+    /** Claim also assigns the job to the signed-in user, so the web "assignee" filter and claim agree. */
     fun claimJob() {
+        val me = TokenStore.currentUserId()
         viewModelScope.launch {
             _state.update { it.copy(claimBusy = true, error = null, resendInfo = null) }
             try {
-                val job = api.postRepairJobClaim(jobId)
-                _state.update { it.copy(claimBusy = false, job = job) }
-            } catch (e: Exception) {
+                api.postRepairJobClaim(jobId)
+                if(me.isNotBlank()) api.updateCounterWatch(jobId, JsonObject().apply { addProperty("assigned_user_id", me) })
+                _state.update { it.copy(claimBusy = false, job = api.getRepairJob(jobId)) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
                 _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
             }
         }
     }
 
     fun releaseJob() {
+        val me = TokenStore.currentUserId()
         viewModelScope.launch {
             _state.update { it.copy(claimBusy = true, error = null, resendInfo = null) }
             try {
-                val job = api.postRepairJobRelease(jobId)
-                _state.update { it.copy(claimBusy = false, job = job) }
-            } catch (e: Exception) {
+                api.postRepairJobRelease(jobId)
+                val current = _state.value.job
+                if(current?.assignedUserId != null && current.assignedUserId == me) {
+                    api.updateCounterWatch(jobId, JsonObject().apply { addProperty("clear_assigned_user", true) })
+                }
+                _state.update { it.copy(claimBusy = false, job = api.getRepairJob(jobId)) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
                 _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
             }
+        }
+    }
+
+    fun loadUsers() {
+        if(_state.value.usersLoading || _state.value.users.isNotEmpty()) return
+        _state.update { it.copy(usersLoading = true) }
+        viewModelScope.launch {
+            try {
+                val users = api.teamUsers().filter { it.active }.sortedBy { it.name.lowercase() }
+                _state.update { it.copy(usersLoading = false, users = users) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _state.update { it.copy(usersLoading = false, error = e.userMessage()) } }
+        }
+    }
+
+    /** Assign the job to [userId] (web `assigned_user_id`), or clear the assignment when null. */
+    fun assignTechnician(userId: String?) {
+        val snapshot = _state.value
+        if(snapshot.job == null || snapshot.assignBusy || snapshot.loading || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(assignBusy = true, error = null, resendInfo = null) }
+        viewModelScope.launch {
+            try {
+                val fields = JsonObject()
+                if(userId == null) fields.addProperty("clear_assigned_user", true) else fields.addProperty("assigned_user_id", userId)
+                api.updateCounterWatch(jobId, fields)
+                _state.update { it.copy(assignBusy = false, job = api.getRepairJob(jobId)) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _state.update { it.copy(assignBusy = false, error = e.userMessage()) } }
         }
     }
 
@@ -185,6 +232,7 @@ class JobDetailViewModel(
     }
 
     companion object {
+        const val CUSTOMER_NOTE_MAX = 280
         fun factory(jobId: String, apiBaseUrl: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
