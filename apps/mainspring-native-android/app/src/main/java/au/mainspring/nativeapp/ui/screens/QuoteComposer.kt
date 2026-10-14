@@ -57,7 +57,15 @@ import au.mainspring.nativeapp.ui.formatCents
   val preview=try {currency?.let {quotePreview(draft,it)}} catch(_: Exception) {null}
   if(sheetLayout && preview==null) Text("Enter an item and price to see the total.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
   val validLines=try {validateQuoteAmountRange(quoteLinesFromDraft(draft.lines));true} catch(_: Exception) {false}
-  preview?.let {total->au.mainspring.nativeapp.ui.HeroCard {
+  if(au.mainspring.nativeapp.ui.LocalCalibre.current) preview?.let {total->Column(Modifier.fillMaxWidth()) {
+   HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+   Column(Modifier.padding(vertical=14.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+    au.mainspring.nativeapp.ui.MonoLabel("Cart total")
+    Text(formatCents(total.total.toInt(),currency!!),style=MaterialTheme.typography.headlineLarge.copy(fontWeight=androidx.compose.ui.text.font.FontWeight.Normal))
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {au.mainspring.nativeapp.ui.MonoLabel(if(draft.inclusive) "Included GST" else "GST");au.mainspring.nativeapp.ui.MonoLabel(formatCents(total.tax.toInt(),currency!!))}
+   }
+   HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+  } } else preview?.let {total->au.mainspring.nativeapp.ui.HeroCard {
    Text("CART TOTAL",style=MaterialTheme.typography.labelSmall)
    Text(formatCents(total.total.toInt(),currency!!),style=MaterialTheme.typography.headlineLarge)
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(if(draft.inclusive) "Included GST" else "GST",style=MaterialTheme.typography.bodySmall);Text(formatCents(total.tax.toInt(),currency!!),style=MaterialTheme.typography.bodySmall)}
@@ -103,6 +111,7 @@ import au.mainspring.nativeapp.ui.formatCents
     au.mainspring.nativeapp.ui.AtelierTextField(line.quantity, { change(index, line.copy(quantity = it)) }, label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
     au.mainspring.nativeapp.ui.AtelierTextField(line.price, { change(index, line.copy(price = it)) }, label = { Text("Unit price ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
    }
+   if((pricingOptions || line.discountType!="none") && au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Discount")
    if(pricingOptions || line.discountType!="none") Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
     listOf("none" to "No discount", "percent" to "% discount", "amount" to "$ discount").forEach { (key,label) -> au.mainspring.nativeapp.ui.AtelierChip(line.discountType == key, { change(index, line.copy(discountType = key)) }, enabled = enabled, label = { Text(label) }) }
    }
