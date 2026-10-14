@@ -30,9 +30,12 @@ Taps are counted from any screen with the bottom bar visible. "Before" is the At
 | New intake | Today +, 2 | Today +, 2; Today quick action, 1 |
 | New customer | Customers +, 2 | Today quick action, 1 |
 | Point of sale / counter sale | More > group > item, 3 | More > POS / quick sale, 2; Today quick action, 1 |
-| Global search | none | Today search box (open jobs, link to Customers) |
+| Global search | none | Today search box opens Search (jobs, customers, invoices via the search API) |
+| Send booking request | none | Today quick action, More > Send booking request |
+| Finance report (mobile) | none | More > Finance report (owner) |
+| Database (GST, CSV export/import) | none | More > Database (owner) |
 
-Not in the native app yet: Parent Account, Database (customer import/export), Revenue control follow-up editing, Accounts management (team users, plan changes, Stripe/Xero setup, which stay on the web), Stocktake (dropped on purpose).
+Not in the native app yet: Parent Account, Accounts management (team users, plan changes, Stripe/Xero setup, which stay on the web), Stocktake (dropped on purpose).
 
 ## Phase 1, batch 1 (parity with the web, from the audits in docs/audit-*.md)
 
@@ -44,3 +47,22 @@ Not in the native app yet: Parent Account, Database (customer import/export), Re
 | Shoe jobs: details per pair, priced services, add/remove services and pairs, customer-visible note, list search and filters | Jobs > Shoe Repairs and job detail | done (ready-by date edit is not possible on the backend) |
 | Invoices: watch and mobile together, type filter, search; quotes sort, search and age filter | More > Invoices, Quotes | done |
 | Push notifications | n/a | blocked: no google-services.json in the repo |
+
+## Phase 1, batches 2 and 3
+
+| Item | Where in the app | Status |
+|---|---|---|
+| Global search | Today search box | done |
+| Send booking request | Today quick action, More | done |
+| Lead inbox board | More > Lead inbox | done |
+| Mobile Finance report and Operations cockpit | More > Finance report (owner) | done |
+| Database: GST, CSV export, import | More > Database (owner) | done |
+| Toolkit settings, Revenue control follow-up | More > Mobile toolkit, Revenue control | done |
+| Customer parity: loyalty, merge, order edit/delete | Customers | done |
+| Account safety: remember shop ID, sign-out, delete request, subscription banner and blocking screen | Login, shell | done |
+| Intake ticket printing with QR | Job detail menu | done |
+| Watch/shoe admin: delete, duplicate, edit customer/watch, create-and-send quote | Job detail | done |
+| Mobile job admin: 12 statuses, editor fields, duplicate/delete, Activity, key lookup | Mobile job detail | done |
+| Connectivity banner | Top of the app | done (offline write queue not built yet) |
+| Offline write queue | n/a | not started |
+| Push notifications | n/a | blocked: no google-services.json |
