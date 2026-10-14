@@ -50,6 +50,10 @@ fun InvoiceDetailScreen(
     var sendOpen by remember { mutableStateOf(false) }
     var amountDraft by remember { mutableStateOf("") }
     var refDraft by remember { mutableStateOf("") }
+    var xero by remember(invoiceId) { mutableStateOf<au.mainspring.nativeapp.api.InvoiceXeroInfo?>(null) }
+    androidx.compose.runtime.LaunchedEffect(invoiceId, state.data?.invoice?.status) {
+        xero = runCatching { au.mainspring.nativeapp.api.ApiClient.service(au.mainspring.nativeapp.api.InvoiceExtrasApi::class.java).invoiceXero(invoiceId).invoice }.getOrNull()
+    }
 
     val paidCents = state.data?.payments?.sumOf { it.amountCents } ?: 0
     val remainingCents = (inv?.totalCents ?: 0) - paidCents
@@ -92,6 +96,18 @@ fun InvoiceDetailScreen(
                     state.error?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it) } }
                     state.sendInfo?.let { item { if(calibre) CalibreNotice(it) else Text(it, style = MaterialTheme.typography.bodyMedium) } }
                     printError?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it) } }
+                    xero?.takeIf { !it.onlineUrl.isNullOrBlank() || !it.syncStatus.isNullOrBlank() }?.let { x ->
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                x.syncStatus?.takeIf { it.isNotBlank() }?.let {
+                                    Text("Xero: ${it.replace('_', ' ')}" + (x.syncError?.takeIf { e -> e.isNotBlank() && it == "failed" }?.let { e -> " - $e" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                x.onlineUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                                    OutlinedButton(onClick = { runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))) } }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Pay online") }
+                                }
+                            }
+                        }
+                    }
                     if(state.paymentUnknown) item { OutlinedButton(onClick = vm::acknowledgePaymentHistory, enabled = !state.loading && state.historyChecked, modifier = Modifier.fillMaxWidth()) { Text("I checked the payment history") } }
                     item {
                         val printAction: () -> Unit = {
