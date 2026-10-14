@@ -14,10 +14,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import au.mainspring.nativeapp.CUSTOMER_ORDER_PRIORITIES
 import au.mainspring.nativeapp.CUSTOMER_ORDER_STATUSES
 import au.mainspring.nativeapp.CustomerOrdersViewModel
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.api.CustomerOrderRead
+import au.mainspring.nativeapp.api.CustomerRead
 import au.mainspring.nativeapp.ui.*
 
 @Composable fun CustomerOrdersScreen(onBack: () -> Unit, viewModel: CustomerOrdersViewModel = viewModel()) {
@@ -66,12 +68,17 @@ import au.mainspring.nativeapp.ui.*
             },
             confirmButton = { TextButton({ selected = null }) { Text("Close") } })
     }
-    if(creating) NewCustomerOrderDialog(state.saving, state.error, { creating = false }) { title, supplier, cents, notes ->
-        viewModel.create(title, supplier, cents, notes) { creating = false }
+    if(creating) NewCustomerOrderDialog(state.saving, state.error, state.customerResults, state.customerSearching, state.customerError,
+        viewModel::searchCustomers, { creating = false; viewModel.clearCustomerSearch() }) { title, supplier, cents, notes, priority, customerId ->
+        viewModel.create(title, supplier, cents, notes, priority, customerId) { creating = false; viewModel.clearCustomerSearch() }
     }
 }
 
-@Composable private fun NewCustomerOrderDialog(saving: Boolean, error: String?, onDismiss: () -> Unit, onSave: (String, String, Int, String) -> Unit) {
+@Composable private fun NewCustomerOrderDialog(saving: Boolean, error: String?, results: List<CustomerRead>, searching: Boolean, searchError: String?,
+    onSearch: (String) -> Unit, onDismiss: () -> Unit, onSave: (String, String, Int, String, String, String?) -> Unit) {
+    var priority by remember { mutableStateOf("normal") }
+    var customer by remember { mutableStateOf<CustomerRead?>(null) }
+    var customerQuery by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
     var supplier by remember { mutableStateOf("") }
     var cost by remember { mutableStateOf("") }
@@ -85,9 +92,30 @@ import au.mainspring.nativeapp.ui.*
                 AtelierTextField(cost, { cost = it }, singleLine = true, label = { Text("Estimated cost") }, isError = cents == null, modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                 AtelierTextField(notes, { notes = it }, label = { Text("Notes") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                MonoLabel("Priority")
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    CUSTOMER_ORDER_PRIORITIES.forEach { p -> TabChip(priority == p, { priority = p }, { Text(statusLabel(p)) }) }
+                }
+                MonoLabel("Customer (optional)")
+                val picked = customer
+                if(picked != null) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(picked.fullName, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        TextButton({ customer = null }) { Text("Change") }
+                    }
+                } else {
+                    AtelierTextField(customerQuery, { customerQuery = it; onSearch(it) }, singleLine = true, label = { Text("Search customers") }, modifier = Modifier.fillMaxWidth())
+                    if(searching) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    searchError?.let { ErrorBanner(it) }
+                    results.take(5).forEach { c ->
+                        TextButton({ customer = c; customerQuery = ""; onSearch("") }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text(listOfNotNull(c.fullName, c.phone?.takeIf { it.isNotBlank() }).joinToString(" · "), Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
+                        }
+                    }
+                }
                 error?.let { ErrorBanner(it) }
             }
         },
-        confirmButton = { PrimaryAction({ onSave(title, supplier, cents ?: 0, notes) }, enabled = !saving && title.isNotBlank() && cents != null) { Text("Create") } },
+        confirmButton = { PrimaryAction({ onSave(title, supplier, cents ?: 0, notes, priority, customer?.id) }, enabled = !saving && title.isNotBlank() && cents != null) { Text("Create") } },
         dismissButton = { SecondaryAction(onDismiss) { Text("Cancel") } })
 }
