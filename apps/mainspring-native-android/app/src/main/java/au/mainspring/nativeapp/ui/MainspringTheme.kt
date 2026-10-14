@@ -42,6 +42,18 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
         surfaceContainer = Color(0xFFF1F4F9), surfaceContainerHigh = Color(0xFFE8EDF5), surfaceContainerHighest = Color.White,
         outline = Color(0xFF8793A6), outlineVariant = Color(0xFFDDE3EE),
         error = Color(0xFFB3261E), errorContainer = Color(0xFFFCE4E1), onErrorContainer = Color(0xFF601410))
+    val calibre = !night && appearance == AppAppearance.CALIBRE
+    if(calibre) colors = lightColorScheme(
+        primary = Calibre.Forest, onPrimary = Color.White,
+        background = Color.White, surface = Color.White, onSurface = Calibre.Ink,
+        onBackground = Calibre.Ink, secondary = Calibre.Forest, onSecondary = Color.White,
+        primaryContainer = Calibre.ForestMint, onPrimaryContainer = Calibre.Forest,
+        secondaryContainer = Calibre.Grey, onSecondaryContainer = Calibre.Ink,
+        surfaceVariant = Calibre.Grey, onSurfaceVariant = Calibre.Muted,
+        surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF8F8F8),
+        surfaceContainer = Calibre.Grey, surfaceContainerHigh = Color(0xFFEDEDED), surfaceContainerHighest = Color(0xFFE6E6E6),
+        outline = Color(0xFF8A8A8A), outlineVariant = Calibre.Hairline,
+        error = Color(0xFFB3261E), errorContainer = Color(0xFFFCE4E1), onErrorContainer = Color(0xFF601410))
     if(!night) colors = when(appearance) {
         AppAppearance.STEEL -> colors.copy(primary = Color(0xFFB67519), background = Color(0xFFF2F3F3), secondaryContainer = Color(0xFFE1E5E7))
         AppAppearance.MINIT -> colors.copy(primary = Color(0xFFE9143C), background = Color(0xFFF5F5F6), secondary = Color(0xFF26368E))
@@ -50,27 +62,29 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
     val baseline = Typography()
     fun style(base: TextStyle, size: Int, line: Int, weight: FontWeight, spacing: Double = 0.0) =
         base.copy(fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = spacing.sp)
+    androidx.compose.runtime.CompositionLocalProvider(LocalCalibre provides calibre) {
     MaterialTheme(
         colorScheme = colors,
         typography = baseline.copy(
-            headlineLarge = style(baseline.headlineLarge, 34, 41, FontWeight.Bold),
-            headlineMedium = style(baseline.headlineMedium, 28, 34, FontWeight.Bold),
+            headlineLarge = style(baseline.headlineLarge, 34, 41, if(calibre) FontWeight.SemiBold else FontWeight.Bold, if(calibre) -0.5 else 0.0),
+            headlineMedium = style(baseline.headlineMedium, 28, 34, if(calibre) FontWeight.SemiBold else FontWeight.Bold, if(calibre) -0.4 else 0.0),
             headlineSmall = style(baseline.headlineSmall, 24, 29, FontWeight.SemiBold),
             titleLarge = style(baseline.titleLarge, 22, 28, FontWeight.SemiBold),
-            titleMedium = style(baseline.titleMedium, 17, 22, FontWeight.SemiBold),
+            titleMedium = style(baseline.titleMedium, 17, 22, if(calibre) FontWeight.Medium else FontWeight.SemiBold),
             titleSmall = style(baseline.titleSmall, 15, 20, FontWeight.SemiBold),
             bodyLarge = style(baseline.bodyLarge, 16, 22, FontWeight.Normal),
             bodyMedium = style(baseline.bodyMedium, 15, 21, FontWeight.Normal),
             bodySmall = style(baseline.bodySmall, 13, 18, FontWeight.Normal),
-            labelLarge = style(baseline.labelLarge, 15, 20, FontWeight.SemiBold),
+            labelLarge = style(baseline.labelLarge, 15, 20, if(calibre) FontWeight.Medium else FontWeight.SemiBold),
             labelMedium = style(baseline.labelMedium, 12, 17, FontWeight.Medium),
             labelSmall = style(baseline.labelSmall, 11, 15, FontWeight.Medium, 0.6),
         ),
-        shapes = Shapes(
+        shapes = if(calibre) Shapes(extraSmall = RoundedCornerShape(2.dp), small = RoundedCornerShape(3.dp), medium = RoundedCornerShape(3.dp), large = RoundedCornerShape(4.dp), extraLarge = RoundedCornerShape(6.dp)) else Shapes(
             extraSmall = RoundedCornerShape(10.dp), small = RoundedCornerShape(14.dp),
             medium = RoundedCornerShape(24.dp), large = RoundedCornerShape(24.dp),
             extraLarge = RoundedCornerShape(28.dp),
         ),
         content = content,
     )
+    }
 }

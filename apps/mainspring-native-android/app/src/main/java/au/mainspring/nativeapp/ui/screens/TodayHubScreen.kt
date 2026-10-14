@@ -45,34 +45,72 @@ fun TodayHubScreen(
     val canWork = TokenStore.canWorkJobs()
     val attention = hub.jobs.filter { it.needsAttention && it.active }.sortedBy { it.sortKey }.take(4)
     val widgets = dash.widgets?.takeIf { "watch" in features }
+    val calibre = LocalCalibre.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { LargeHeader((shopName ?: TokenStore.shopValue("name") ?: "Your shop") + " · Shop workspace", "Today", onAdd = if(canWork) onNewIntake else null, addDescription = "New intake") }
-        item {
-            HeroCard(Modifier.padding(horizontal = 20.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(date.uppercase(), style = MaterialTheme.typography.labelSmall)
-                        Text("A good day\nfor good work.", style = MaterialTheme.typography.headlineSmall)
-                        Text(when(hub.readyCount) { 0 -> "Nothing waiting for collection"; 1 -> "1 customer ready to collect"; else -> "${hub.readyCount} customers ready to collect" }, style = MaterialTheme.typography.bodyMedium)
+        if(calibre) {
+            item {
+                Column {
+                    CalibreWordmark(shopName ?: TokenStore.shopValue("name"))
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MonoLabel(LocalDate.now(zone).format(DateTimeFormatter.ofPattern("EEEE / d MMMM", Locale.forLanguageTag("en-AU"))))
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text("Today, at the bench.", Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge)
+                            if(canWork) RoundPlusButton(onNewIntake, "New intake")
+                        }
                     }
-                    WatchArt()
                 }
             }
-        }
-        item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
-        item {
-            val tiles = buildList {
-                if("watch" in features) add(Triple("Watch jobs", "Bench and counter", "watch_jobs"))
-                if("shoe" in features) add(Triple("Shoe jobs", "Repairs", "shoe_jobs"))
-                if("auto_key" in features) { add(Triple("Mobile jobs", "On the road", "auto_jobs")); add(Triple("Dispatch", "Today's route", "dispatch")) }
-            }
-            if(tiles.isNotEmpty()) {
-                Text("Your workspaces", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium)
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Mine" to hub.mineCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
+            item {
+                val tiles = buildList {
+                    if("watch" in features) add(Triple("Watch jobs", "Bench and counter", "watch_jobs"))
+                    if("shoe" in features) add(Triple("Shoe jobs", "Repairs and collections", "shoe_jobs"))
+                    if("auto_key" in features) { add(Triple("Mobile jobs", "On the road", "auto_jobs")); add(Triple("Dispatch", "Today's route", "dispatch")) }
+                }
+                if(tiles.isNotEmpty()) Column(Modifier.padding(horizontal = 20.dp)) {
+                    SectionLabel("Your workspaces")
                     tiles.forEach { (title, sub, route) ->
-                        ListCard({ onOpenRoute(route) }, Modifier.width(172.dp)) {
-                            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        ListCard({ onOpenRoute(route) }) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                                    Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                }
+                                Text("\u2197", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+        item { LargeHeader((shopName ?: TokenStore.shopValue("name") ?: "Your shop") + " · Shop workspace", "Today", onAdd = if(canWork) onNewIntake else null, addDescription = "New intake") }
+            item {
+                HeroCard(Modifier.padding(horizontal = 20.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(date.uppercase(), style = MaterialTheme.typography.labelSmall)
+                            Text("A good day\nfor good work.", style = MaterialTheme.typography.headlineSmall)
+                            Text(when(hub.readyCount) { 0 -> "Nothing waiting for collection"; 1 -> "1 customer ready to collect"; else -> "${hub.readyCount} customers ready to collect" }, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        WatchArt()
+                    }
+                }
+            }
+            item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
+            item {
+                val tiles = buildList {
+                    if("watch" in features) add(Triple("Watch jobs", "Bench and counter", "watch_jobs"))
+                    if("shoe" in features) add(Triple("Shoe jobs", "Repairs", "shoe_jobs"))
+                    if("auto_key" in features) { add(Triple("Mobile jobs", "On the road", "auto_jobs")); add(Triple("Dispatch", "Today's route", "dispatch")) }
+                }
+                if(tiles.isNotEmpty()) {
+                    Text("Your workspaces", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        tiles.forEach { (title, sub, route) ->
+                            ListCard({ onOpenRoute(route) }, Modifier.width(172.dp)) {
+                                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            }
                         }
                     }
                 }
@@ -80,8 +118,8 @@ fun TodayHubScreen(
         }
         if(hub.error != null) item { ErrorBanner(hub.error.orEmpty(), Modifier.padding(horizontal = 20.dp), onRetry = jobs::refresh) }
         item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Needs your attention", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Row(Modifier.fillMaxWidth().padding(horizontal = if(calibre) 20.dp else 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                if(calibre) MonoLabel("Needs your attention", Modifier.weight(1f)) else Text("Needs your attention", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                 TextButton(onClick = onViewAll, modifier = Modifier.heightIn(min = 44.dp)) { Text("View all", style = MaterialTheme.typography.labelLarge) }
             }
         }

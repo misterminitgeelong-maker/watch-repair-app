@@ -25,11 +25,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) { MonoLabel(text, modifier.padding(top = 18.dp, bottom = 4.dp)); return }
     Text(text, modifier = modifier.padding(top = 8.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurface)
 }
 
 @Composable fun FlatPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    if(LocalCalibre.current) {
+        Column(modifier.fillMaxWidth()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+        }
+        return
+    }
     Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
     }
@@ -47,11 +55,33 @@ import androidx.compose.ui.unit.dp
 /** Atelier status line: one blue caption, red only for things that went wrong. */
 @Composable fun StatusPill(status: String, modifier: Modifier = Modifier) {
     val negative = status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent")
+    if(LocalCalibre.current) {
+        Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(6.dp).background(if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
+            Text(statusLabel(status), style = MaterialTheme.typography.labelMedium, color = if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+        }
+        return
+    }
     Text(statusLabel(status), modifier, style = MaterialTheme.typography.labelMedium,
         color = if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
 }
 
 @Composable fun MetricStrip(values: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) {
+        Column(modifier.fillMaxWidth()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                values.forEach { (label, value) ->
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(value, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal), color = MaterialTheme.colorScheme.onSurface)
+                        MonoLabel(label)
+                    }
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        return
+    }
     Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         values.forEach { (label, value) ->
             Surface(Modifier.weight(1f).fillMaxHeight(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
@@ -119,6 +149,15 @@ import androidx.compose.ui.unit.dp
 /** Tappable card used by every directory list so rows share one look. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ListCard(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    if(LocalCalibre.current) {
+        Column(modifier.fillMaxWidth()) {
+            Surface(onClick, Modifier.fillMaxWidth(), color = Color.Transparent, shape = androidx.compose.ui.graphics.RectangleShape) {
+                Column(Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        return
+    }
     Surface(onClick, modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
     }
@@ -126,6 +165,15 @@ import androidx.compose.ui.unit.dp
 
 /** Horizontally scrolling filter chips. `options` maps a stored key (null = all) to its label. */
 @Composable fun FilterRow(options: List<Pair<String?, String>>, selected: String?, onSelect: (String?) -> Unit, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) {
+        Column(modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
+            }
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        return
+    }
     Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
     }
@@ -139,7 +187,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @Composable fun SelectableCard(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     Surface(onClick, modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled, shape = MaterialTheme.shapes.medium,
         color = if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        border = if(selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
+        border = if(selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else if(LocalCalibre.current) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
             if(selected) Text("\u2713", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
@@ -149,8 +197,9 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 
 /** Sticky bottom bar for multi-step forms: a step progress line plus Previous / primary buttons. */
 @Composable fun WizardBar(step: Int, steps: Int, stepTitle: String, primaryLabel: String, onPrimary: () -> Unit, primaryEnabled: Boolean, onPrevious: (() -> Unit)?, previousEnabled: Boolean = true) {
-    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = if(LocalCalibre.current) 0.dp else 2.dp) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if(LocalCalibre.current) HorizontalDivider(Modifier.offset(y = (-10).dp), color = MaterialTheme.colorScheme.outlineVariant)
             Text("Step ${step + 1} of $steps \u00b7 $stepTitle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -164,6 +213,17 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Dark/white pill used for segmented filters (Active / Mine / Ready, Watch / Shoe / Mobile). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun PillChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    if(LocalCalibre.current) {
+        Column(modifier.heightIn(min = 44.dp).semantics { this.selected = selected }
+            .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick), horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.Bottom) {
+            Box(Modifier.heightIn(min = 40.dp).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
+                Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal),
+                    color = (if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = if(enabled) 1f else 0.5f), maxLines = 1)
+            }
+            Box(Modifier.fillMaxWidth().height(2.dp).background(if(selected) MaterialTheme.colorScheme.primary else Color.Transparent))
+        }
+        return
+    }
     Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface) {
@@ -175,6 +235,15 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 
 /** Equal-width segmented control built from [PillChip]s. */
 @Composable fun SegmentedPills(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) {
+        Column(modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        return
+    }
     if(androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.25f && options.size > 2) {
         Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
@@ -188,7 +257,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @Composable fun LargeHeader(eyebrow: String?, title: String, modifier: Modifier = Modifier, onAdd: (() -> Unit)? = null, addDescription: String = "New", trailing: (@Composable () -> Unit)? = null, insets: Boolean = true) {
     Row(modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
-            if(eyebrow != null) Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if(eyebrow != null) { if(LocalCalibre.current) MonoLabel(eyebrow) else Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Text(title, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
         }
         trailing?.invoke()
@@ -199,6 +268,17 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** White circle with a blue plus, the Atelier "new" affordance. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun RoundPlusButton(onClick: () -> Unit, description: String = "New", modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) {
+        Surface(onClick, modifier.size(48.dp).semantics { contentDescription = description }, shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primary) {
+            val color = MaterialTheme.colorScheme.onPrimary
+            Canvas(Modifier.padding(15.dp)) {
+                val w = 2.2f * density
+                drawLine(color, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), w, cap = StrokeCap.Square)
+                drawLine(color, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), w, cap = StrokeCap.Square)
+            }
+        }
+        return
+    }
     Surface(onClick, modifier.size(48.dp).semantics { contentDescription = description }, shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.surface) {
         val color = MaterialTheme.colorScheme.primary
         Canvas(Modifier.padding(14.dp)) {
@@ -211,7 +291,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 
 /** Dark hero card used on Today and for key totals (e.g. outstanding balance). */
 @Composable fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.medium) {
+    val calibre = LocalCalibre.current
+    Surface(modifier.fillMaxWidth(), color = if(calibre) Calibre.Grey else MaterialTheme.colorScheme.secondary, contentColor = if(calibre) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
     }
 }
@@ -251,6 +332,24 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Floating rounded tab bar. `destinations` are (route, label); selected entry is tinted with the accent. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun FloatingTabBar(destinations: List<Pair<String, String>>, isSelected: (String) -> Boolean, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) {
+        Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.fillMaxWidth().widthIn(max = 640.dp).align(Alignment.CenterHorizontally).padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                destinations.forEach { (route, label) ->
+                    val chosen = isSelected(route)
+                    val tint = if(chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    Column(Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = chosen }.testTag("nav-$route")
+                        .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = { onSelect(route) }),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        AtelierIcon(label, tint)
+                        Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if(chosen) FontWeight.SemiBold else FontWeight.Normal), color = tint)
+                    }
+                }
+            }
+        }
+        return
+    }
     Box(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
         Surface(Modifier.fillMaxWidth().widthIn(max = 560.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
             Row(Modifier.padding(horizontal = 6.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -294,6 +393,17 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Drop-in replacement for FilterChip with the Atelier look: dark pill when selected, white pill otherwise. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AtelierChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    if(LocalCalibre.current) {
+        Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
+            color = if(selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+            contentColor = (if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f),
+            border = BorderStroke(if(selected) 1.5.dp else 1.dp, if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
+            Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+                ProvideTextStyle(MaterialTheme.typography.labelLarge) { label() }
+            }
+        }
+        return
+    }
     Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = (if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f)) {
@@ -315,8 +425,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     singleLine: Boolean = false, maxLines: Int = if(singleLine) 1 else Int.MAX_VALUE, minLines: Int = 1,
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.small,
     colors: TextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface, disabledContainerColor = MaterialTheme.colorScheme.surface,
-        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary),
+        focusedContainerColor = if(LocalCalibre.current) Calibre.Grey else MaterialTheme.colorScheme.surface, unfocusedContainerColor = if(LocalCalibre.current) Calibre.Grey else MaterialTheme.colorScheme.surface, disabledContainerColor = if(LocalCalibre.current) Calibre.Grey else MaterialTheme.colorScheme.surface,
+        unfocusedBorderColor = if(LocalCalibre.current) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary),
 ) = OutlinedTextField(value, onValueChange, modifier, enabled, readOnly, textStyle, label, placeholder, leadingIcon, trailingIcon, prefix, suffix, supportingText,
     isError, visualTransformation, keyboardOptions, keyboardActions, singleLine, maxLines, minLines, null, shape, colors)
 
