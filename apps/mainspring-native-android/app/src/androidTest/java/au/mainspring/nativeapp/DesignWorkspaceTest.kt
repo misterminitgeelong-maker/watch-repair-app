@@ -171,6 +171,7 @@ class DesignWorkspaceTest {
         compose.onNodeWithTag("nav-today").performClick()
         compose.onNodeWithText("Needs your attention").assertExists()
         compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithTag("more-list").performScrollToNode(hasText("Reports"))
         compose.onNodeWithText("Reports").performClick()
         compose.onNodeWithTag("period-report-list").performScrollToNode(hasText("Revenue comparison"))
         compose.onNodeWithText("Revenue comparison").assertIsDisplayed()
