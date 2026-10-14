@@ -29,6 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.ShoeJobsViewModel
+import au.mainspring.nativeapp.SHOE_ACTIVE_STATUSES
+import au.mainspring.nativeapp.SHOE_CLOSED_STATUSES
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,14 +60,32 @@ fun ShoeJobsScreen(
             if (state.loading && state.jobs.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(16.dp), onRetry = { viewModel.refresh() }) }
             if (!state.loading && state.error == null && state.jobs.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No shoe repairs yet", "Tap New repair to book in a pair.")
+            val horizontal = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp
+            au.mainspring.nativeapp.ui.AtelierTextField(
+                value = state.query, onValueChange = viewModel::setQuery,
+                label = { Text("Search job, customer or service") },
+                modifier = Modifier.fillMaxWidth().padding(start = horizontal, end = horizontal, top = 8.dp), singleLine = true,
+            )
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = horizontal, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                au.mainspring.nativeapp.ui.AtelierChip(!state.showCompleted, { viewModel.setShowCompleted(false) }, label = { Text("Active (${state.activeCount})") })
+                au.mainspring.nativeapp.ui.AtelierChip(state.showCompleted, { viewModel.setShowCompleted(true) }, label = { Text("Completed (${state.completedCount})") })
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = horizontal), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                au.mainspring.nativeapp.ui.AtelierChip(state.statusFilter == "all", { viewModel.setStatusFilter("all") }, label = { Text("All") })
+                (if(state.showCompleted) SHOE_CLOSED_STATUSES else SHOE_ACTIVE_STATUSES).forEach { s ->
+                    au.mainspring.nativeapp.ui.AtelierChip(state.statusFilter == s, { viewModel.setStatusFilter(s) }, label = { Text(au.mainspring.nativeapp.ui.statusLabel(s)) })
+                }
+            }
+            val rows = state.visible
+            if(!state.loading && state.error == null && state.jobs.isNotEmpty() && rows.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No repairs match", "Try a different search or filter.")
             LazyColumn(
                 contentPadding = PaddingValues(start = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, end = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, top = 12.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
                 modifier = Modifier.fillMaxSize().weight(1f, fill = true),
             ) {
-                items(state.jobs, key = { it.id }) { j ->
+                items(rows, key = { it.id }) { j ->
                     if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                        CalibreRow({ onOpenJob(j.id) }, j.title, j.jobNumber, au.mainspring.nativeapp.ui.statusLabel(j.status), j.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
+                        CalibreRow({ onOpenJob(j.id) }, j.title, listOfNotNull(j.jobNumber, state.customerName(j)).joinToString(" · "), au.mainspring.nativeapp.ui.statusLabel(j.status), j.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
                         return@items
                     }
                     au.mainspring.nativeapp.ui.ListCard({ onOpenJob(j.id) }) {
@@ -72,6 +94,7 @@ fun ShoeJobsScreen(
                             au.mainspring.nativeapp.ui.StatusPill(j.status)
                         }
                         Text(j.title, style = MaterialTheme.typography.titleMedium)
+                        state.customerName(j)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
                 if(state.canLoadMore) item {

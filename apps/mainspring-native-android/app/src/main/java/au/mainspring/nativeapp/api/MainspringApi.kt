@@ -78,6 +78,8 @@ interface MainspringApi {
     @POST("v1/shoe-repair-jobs") suspend fun createShoeJob(@Body body: ShoeJobCreate): ShoeRepairJobRead
     @POST("v1/shoe-repair-jobs/{id}/shoes") suspend fun linkShoe(@Path("id") id: String, @Body body: ShoeLink): ShoeRepairJobRead
     @POST("v1/shoe-repair-jobs/{id}/items") suspend fun appendShoeItems(@Path("id") id: String, @Body body: ShoeItemsAppend): ShoeRepairJobRead
+    @retrofit2.http.DELETE("v1/shoe-repair-jobs/{id}/items/{itemId}") suspend fun removeShoeItem(@Path("id") id: String, @Path("itemId") itemId: String): ShoeRepairJobRead
+    @retrofit2.http.DELETE("v1/shoe-repair-jobs/{id}/shoes/{entryId}") suspend fun removeShoeFromJob(@Path("id") id: String, @Path("entryId") entryId: String): ShoeRepairJobRead
     @POST("v1/shoe-repair-jobs/{id}/send-quote") suspend fun sendShoeQuote(@Path("id") id: String): ShoeRepairJobRead
     @retrofit2.http.Multipart @POST("v1/attachments") suspend fun uploadShoePhoto(
         @Query("shoe_repair_job_id") id: String, @retrofit2.http.Part file: okhttp3.MultipartBody.Part,
@@ -273,7 +275,7 @@ interface MainspringApi {
     @POST("v1/shoe-repair-jobs/{jobId}/status")
     suspend fun postShoeRepairJobStatus(
         @Path("jobId") jobId: String,
-        @Body body: RepairJobStatusUpdate,
+        @Body body: ShoeStatusUpdate,
     ): ShoeRepairJobRead
 
     @POST("v1/shoe-repair-jobs/{jobId}/note")
