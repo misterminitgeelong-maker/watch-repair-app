@@ -548,3 +548,33 @@ data class PricingRow(val id: String, val make: String? = null, @SerializedName(
     @SerializedName("retail_price") val price: java.math.BigDecimal? = null, @SerializedName("callout_inclusive") val callout: Boolean = false) {
     fun label(): String = service ?: listOfNotNull(make, model, jobType, keyType).filter { it.isNotBlank() }.joinToString(" · ")
 }
+
+data class CustomerOrderRead(
+    val id: String,
+    @SerializedName("customer_id") val customerId: String? = null,
+    @SerializedName("customer_name") val customerName: String? = null,
+    val title: String,
+    val description: String? = null,
+    val supplier: String? = null,
+    val status: String,
+    val priority: String = "normal",
+    @SerializedName("estimated_cost_cents") val estimatedCostCents: Int = 0,
+    val notes: String? = null,
+)
+data class CustomerOrderCreate(
+    val title: String,
+    val description: String? = null,
+    val supplier: String? = null,
+    @SerializedName("customer_id") val customerId: String? = null,
+    val priority: String = "normal",
+    @SerializedName("estimated_cost_cents") val estimatedCostCents: Int = 0,
+    val notes: String? = null,
+)
+data class CustomerOrderUpdate(
+    val status: String? = null,
+    val title: String? = null,
+    val supplier: String? = null,
+    val priority: String? = null,
+    @SerializedName("estimated_cost_cents") val estimatedCostCents: Int? = null,
+    val notes: String? = null,
+)

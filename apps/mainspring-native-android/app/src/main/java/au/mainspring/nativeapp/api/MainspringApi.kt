@@ -307,4 +307,13 @@ interface MainspringApi {
         @Body body: RepairJobStatusUpdate,
         @retrofit2.http.Header("X-Expected-Updated-At") updatedAt: String? = null,
     ): AutoKeyJobRead
+
+    @GET("v1/customer-orders")
+    suspend fun listCustomerOrders(@Query("status") status: String? = null): List<CustomerOrderRead>
+
+    @POST("v1/customer-orders")
+    suspend fun createCustomerOrder(@Body body: CustomerOrderCreate): CustomerOrderRead
+
+    @retrofit2.http.PATCH("v1/customer-orders/{id}")
+    suspend fun updateCustomerOrder(@Path("id") id: String, @Body body: CustomerOrderUpdate): CustomerOrderRead
 }
