@@ -77,6 +77,20 @@ fun ShoeJobDetailScreen(
             DetailAction("Photos & files", true, onPhotos),
             if (j.quoteStatus != "approved") DetailAction("Send quote to customer", !state.quoteBusy) { confirmQuote = true } else null,
             DetailAction("Add note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
+            DetailAction("Print intake ticket", true) {
+                try {
+                    val pairs = listOfNotNull(j.shoe) + j.extraShoes.orEmpty().mapNotNull { it.shoe }
+                    au.mainspring.nativeapp.ui.printIntakeTicket(context, au.mainspring.nativeapp.ui.IntakeTicket(
+                        jobNumber = j.jobNumber, customerName = null, customerPhone = null,
+                        itemSummary = pairs.joinToString("; ") { listOfNotNull(it.brand, it.shoeType, it.color).joinToString(" ") }.ifBlank { j.title },
+                        workSummary = (j.items.map { it.name } + listOfNotNull(j.description?.takeIf { it.isNotBlank() })).joinToString("\n").ifBlank { j.title },
+                        dueDate = (j.collectionDate ?: j.estimatedReadyBy)?.takeIf { it.isNotBlank() }?.let { formatShopDate(it) },
+                        deposit = j.depositCents.takeIf { it > 0 }?.let { formatCents(it, currency) },
+                        statusUrl = au.mainspring.nativeapp.ui.intakeStatusUrl(apiBaseUrl, au.mainspring.nativeapp.ui.IntakeTicketKind.SHOE, j.statusToken),
+                        shopName = TokenStore.shopValue("name"), shopPhone = TokenStore.shopValue("phone"),
+                        kind = au.mainspring.nativeapp.ui.IntakeTicketKind.SHOE))
+                } catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "Could not print", android.widget.Toast.LENGTH_LONG).show() }
+            },
         ),
         scrollBody = tab != "messages",
     ) { active ->
