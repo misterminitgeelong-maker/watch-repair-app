@@ -66,7 +66,7 @@ class JobsHubViewModel(private val services: Set<String> = setOf("watch", "shoe"
                     val w = watch.await(); val s = shoe.await(); val m = mobile.await()
                     if(w == null && s == null && m == null) throw java.io.IOException("jobs unavailable")
                     (w.orEmpty().map { HubJob(it.id, "watch", it.jobNumber, it.title, it.customerName, it.status, it.priority in listOf("urgent", "high"), it.collectionDate,
-                        me.isNotBlank() && it.claimedByUserId == me, (it.collectionDate ?: "9999") + it.jobNumber) } +
+                        me.isNotBlank() && (it.claimedByUserId == me || it.assignedUserId == me), (it.collectionDate ?: "9999") + it.jobNumber) } +
                     s.orEmpty().map { HubJob(it.id, "shoe", it.jobNumber, it.title, null, it.status, it.priority in listOf("urgent", "high"), it.collectionDate,
                         me.isNotBlank() && it.assignedUserId == me, (it.collectionDate ?: "9999") + it.jobNumber) } +
                     m.orEmpty().map { HubJob(it.id, "auto_key", it.jobNumber, it.title, it.customerName, it.status, it.priority in listOf("urgent", "high"), it.scheduledAt?.take(10),

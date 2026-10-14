@@ -10,6 +10,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     if(LocalCalibre.current) { MonoLabel(text, modifier.padding(top = 18.dp, bottom = 4.dp)); return }
@@ -350,7 +352,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
                     Column(Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = chosen }.testTag("nav-$route")
                         .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = { onSelect(route) }),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        AtelierIcon(label, tint)
+                        NavIcon(route, label, tint)
                         Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if(chosen) FontWeight.SemiBold else FontWeight.Normal), color = tint)
                     }
                 }
@@ -367,7 +369,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
                     Column(Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = chosen }.testTag("nav-$route")
                         .clickable(role = androidx.compose.ui.semantics.Role.Tab, onClick = { onSelect(route) }),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        AtelierIcon(label, tint)
+                        NavIcon(route, label, tint)
                         Text(label, style = MaterialTheme.typography.labelMedium, color = tint)
                     }
                 }
@@ -459,5 +461,17 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
             }
         }
         Box(Modifier.fillMaxWidth().height(2.dp).background(if(selected) MaterialTheme.colorScheme.primary else Color.Transparent))
+    }
+}
+
+/** Tab icon with the alert-count badge on Inbox. */
+@Composable fun NavIcon(route: String, label: String, tint: Color) {
+    val count = if(route == "inbox") au.mainspring.nativeapp.InboxCountStore.count.collectAsState().value else 0
+    Box {
+        AtelierIcon(label, tint)
+        if(count > 0) Box(Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp).defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+            .background(MaterialTheme.colorScheme.error, androidx.compose.foundation.shape.CircleShape).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
+            Text(if(count > 99) "99+" else count.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = MaterialTheme.colorScheme.onError)
+        }
     }
 }

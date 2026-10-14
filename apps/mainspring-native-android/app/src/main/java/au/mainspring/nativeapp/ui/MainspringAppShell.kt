@@ -108,6 +108,7 @@ fun MainspringAppShell(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomDestinations
+    androidx.compose.runtime.DisposableEffect(Unit) { au.mainspring.nativeapp.InboxCountStore.start(); onDispose { au.mainspring.nativeapp.InboxCountStore.stop() } }
     val routeArgId = navBackStackEntry?.arguments?.getString("jobId")
     androidx.compose.runtime.LaunchedEffect(currentRoute, routeArgId) {
         val base = currentRoute?.substringBefore("/{")
@@ -250,6 +251,7 @@ fun MainspringAppShell(
                 composable("invoices") {
                     InvoicesScreen(
                         onOpenInvoice = { id -> navController.navigate("invoice/$id") },
+                        onOpenMobileInvoice = { jobId -> navController.navigate("mobileFinance/$jobId") },
                         onBack = { navController.popBackStack() },
                     )
                 }
@@ -322,7 +324,7 @@ fun MainspringAppShell(
                     InvoiceDetailScreen(invoiceId = id, onBack = { navController.popBackStack() })
                 }
                 composable("inbox") {
-                    InboxScreen(onBack = { navController.popBackStack() })
+                    InboxScreen(onBack = { navController.popBackStack() }, onOpenEntity = { navController.navigate(it) })
                 }
                 composable("toolkit") { ToolkitScreen(onBack = { navController.popBackStack() }) }
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
