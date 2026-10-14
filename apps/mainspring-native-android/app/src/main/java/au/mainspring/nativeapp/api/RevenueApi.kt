@@ -1,10 +1,14 @@
 package au.mainspring.nativeapp.api
 
 import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonObject
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PUT
+import retrofit2.http.Path
 import retrofit2.http.Query
 
-/** Mobile services "Revenue control" queue (read-only). Obtain via ApiClient.service(RevenueApi::class.java). */
+/** Mobile services "Revenue control" queue and follow-up. Obtain via ApiClient.service(RevenueApi::class.java). */
 interface RevenueApi {
     @GET("v1/revenue-control") suspend fun revenueControl(
         @Query("state") state: String = "due",
@@ -14,6 +18,8 @@ interface RevenueApi {
         @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0,
     ): RevenueResponse
+    /** Body is a JsonObject so owner / next_follow_up_at can be sent as explicit nulls. */
+    @PUT("v1/revenue-control/{key}/follow-up") suspend fun saveFollowUp(@Path("key") key: String, @Body body: JsonObject): RevenueItem
 }
 
 data class RevenueItem(
@@ -33,7 +39,12 @@ data class RevenueItem(
     val priority: String = "normal",
     @SerializedName("next_action") val nextAction: String = "",
     val note: String? = null,
+    @SerializedName("owner_user_id") val ownerUserId: String? = null,
+    @SerializedName("last_contact_at") val lastContactAt: String? = null,
+    val version: Int = 0,
 )
+
+data class RevenueOwner(val id: String, val name: String = "")
 
 data class RevenueBucket(
     val kind: String,
@@ -51,4 +62,5 @@ data class RevenueResponse(
     val buckets: List<RevenueBucket> = emptyList(),
     val timezone: String? = null,
     val warnings: List<String> = emptyList(),
+    val owners: List<RevenueOwner> = emptyList(),
 )

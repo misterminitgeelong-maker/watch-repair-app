@@ -17,9 +17,43 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.ToolkitViewModel
+@Composable private fun ShopSettingsSection(s: au.mainspring.nativeapp.ToolkitSettingsState, vm: ToolkitViewModel) {
+ Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+  au.mainspring.nativeapp.ui.SectionLabel("Settings")
+  if(s.loading || s.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+  s.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = if(!s.loaded) vm::loadSettings else null) }
+  if(!s.loaded) return@Column
+  if(!s.canEditNotifications) Text("Only an owner or manager can change these settings.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+  au.mainspring.nativeapp.ui.FlatPanel {
+   Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+    Column(Modifier.weight(1f)) {
+     Text("Customer SMS", style = MaterialTheme.typography.bodyLarge)
+     Text("Text customers when a technician is on the way or has arrived.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Switch(s.smsEnabled, { vm.setSms(it) }, enabled = s.canEditNotifications && !s.busy, modifier = Modifier.semantics { contentDescription = "Customer SMS" })
+   }
+   au.mainspring.nativeapp.ui.AtelierTextField(s.phoneDraft, vm::phoneDraft, label = { Text("Dispatch phone") }, singleLine = true, readOnly = !s.canEditNotifications,
+    enabled = !s.busy, supportingText = { Text("Receives shop booking alerts.") },
+    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
+   if(s.canEditNotifications) Button(onClick = vm::saveDispatchPhone, enabled = !s.busy && s.phoneDraft.trim() != s.dispatchPhone, modifier = Modifier.heightIn(min = 48.dp)) { Text("Save dispatch phone") }
+  }
+  au.mainspring.nativeapp.ui.SectionLabel("POS catalogue categories")
+  if(!s.canEditCatalogue) Text("Only the owner can change the catalogue categories.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+  s.availableCategories.forEach { category ->
+   Row(Modifier.fillMaxWidth().clickable(enabled = s.canEditCatalogue && !s.busy) { vm.toggleCategory(category.key) }.heightIn(min = 56.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+    Checkbox(category.key in s.enabledCategories, { vm.toggleCategory(category.key) }, enabled = s.canEditCatalogue && !s.busy, modifier = Modifier.semantics { contentDescription = category.label })
+    Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+     Text(category.label.ifBlank { category.key }, style = MaterialTheme.typography.bodyLarge)
+     if(category.description.isNotBlank()) Text(category.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+   }
+  }
+ }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ToolkitScreen(onBack: () -> Unit, vm: ToolkitViewModel = viewModel()) {
- val state by vm.state.collectAsStateWithLifecycle(); var search by rememberSaveable { mutableStateOf("") }
+ val state by vm.state.collectAsStateWithLifecycle(); val settings by vm.settings.collectAsStateWithLifecycle(); var search by rememberSaveable { mutableStateOf("") }
  val dirty = state.selected != state.saved
  Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Shop toolkit") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
    actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } }) },
@@ -50,6 +84,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
     result.nice.forEach {Text("Optional: ${it.name}",style=MaterialTheme.typography.bodySmall)}
     result.tips?.let {Text(it,style=MaterialTheme.typography.bodySmall)}
    } } }
+   item { ShopSettingsSection(settings, vm) }
    state.catalog?.groups?.forEach { group ->
     val tools = group.tools.filter { search.isBlank() || "${it.name} ${it.notes.orEmpty()}".contains(search, true) }
     if(tools.isNotEmpty()) {
