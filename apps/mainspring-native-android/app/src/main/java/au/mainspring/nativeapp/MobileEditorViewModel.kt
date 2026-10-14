@@ -34,7 +34,9 @@ class MobileEditorViewModel(private val id: String): ViewModel() {
    "vehicle_year" to job.vehicleYear?.toString().orEmpty(), "registration_plate" to job.registrationPlate.orEmpty(), "vin" to job.vin.orEmpty(),
    "key_type" to job.keyType.orEmpty(), "blade_code" to job.bladeCode.orEmpty(), "chip_type" to job.chipType.orEmpty(),
    "key_quantity" to job.keyQuantity.toString(), "tech_notes" to job.techNotes.orEmpty(), "programming_status" to job.programmingStatus,
-   "assigned_user_id" to job.assignedUserId.orEmpty(), "customer_account_id" to job.customerAccountId.orEmpty())
+   "assigned_user_id" to job.assignedUserId.orEmpty(), "customer_account_id" to job.customerAccountId.orEmpty(),
+   "job_type" to job.jobType.orEmpty(), "priority" to job.priority, "commission_lead_source" to job.commissionLeadSource,
+   "deposit" to if(job.depositCents > 0) String.format(java.util.Locale.US, "%d.%02d", job.depositCents / 100, job.depositCents % 100) else "")
   serverFields = original; serverUpdatedAt = updatedAt
   val draft = drafts.loadMessageDraft(draftKey)
   val restored = try { if(draft.isBlank()) null else Gson().fromJson(draft, EditorDraft::class.java) } catch(_: Exception) { null }
@@ -54,6 +56,7 @@ class MobileEditorViewModel(private val id: String): ViewModel() {
    require(fields["title"].orEmpty().isNotBlank()) { "A job title is required." }
    val quantity = fields["key_quantity"]?.toIntOrNull(); require(quantity != null && quantity in 1..10000) { "Enter a valid key quantity." }
    if(!fields["vehicle_year"].isNullOrBlank()) require(fields["vehicle_year"]?.toIntOrNull() != null) { "Enter a valid vehicle year." }
+   val deposit = try { dollarsToCentsChecked(fields["deposit"].orEmpty()) } catch(e: IllegalArgumentException) { throw IllegalArgumentException("Deposit: ${e.message}") }
    val assigned = fields["assigned_user_id"].orEmpty()
    val account = fields["customer_account_id"].orEmpty()
    if(account != original["customer_account_id"] && account.isNotBlank()) require(mutable.value.accounts.any { it.id == account && it.active }) { "Choose an active billing account linked to this customer." }
@@ -63,6 +66,8 @@ class MobileEditorViewModel(private val id: String): ViewModel() {
     when(key) {
      "scheduled_at" -> if(value.isBlank()) body.add(key, JsonNull.INSTANCE) else body.addProperty(key, scheduledTimeIso(value, TokenStore.calendarTimezone()))
      "vehicle_year", "key_quantity" -> if(value.isBlank()) body.add(key, JsonNull.INSTANCE) else body.addProperty(key, value.toInt())
+     "deposit" -> body.addProperty("deposit_cents", deposit)
+     "priority", "commission_lead_source" -> if(value.isNotBlank()) body.addProperty(key, value)
      "assigned_user_id", "customer_account_id" -> if(value.isBlank()) body.add(key, JsonNull.INSTANCE) else body.addProperty(key, value)
      else -> body.addProperty(key, value.trim())
     }
