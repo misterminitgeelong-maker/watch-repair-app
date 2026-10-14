@@ -29,6 +29,7 @@ import au.mainspring.nativeapp.ui.formatCents
  var composing by rememberSaveable { mutableStateOf(false) }
  LaunchedEffect(state.lastCreatedQuoteId,state.unknownQuote) { if(state.lastCreatedQuoteId != null || state.unknownQuote) composing=false }
  var confirm by remember { mutableStateOf<Pair<String, String>?>(null) }; var method by rememberSaveable { mutableStateOf("card") }
+ val calibre = LocalCalibre.current
  val enabled = !state.busy && !state.loading && state.historyChecked && TokenStore.canWorkJobs()
  Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Mobile quotes and invoices") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -43,7 +44,7 @@ import au.mainspring.nativeapp.ui.formatCents
    val due=state.invoices.firstOrNull {it.status=="unpaid"}
    val draftQuote=state.quotes.firstOrNull {it.status=="draft"}
    val uninvoiced=state.quotes.firstOrNull {quote->state.invoices.none {it.quoteId==quote.id}}
-   if(!state.loading && state.historyChecked) Surface(Modifier.fillMaxWidth().testTag("job-financial-next"),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {
+   if(!state.loading && state.historyChecked) Surface(Modifier.fillMaxWidth().testTag("job-financial-next"),shape=if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium,color=if(calibre) Calibre.Grey else MaterialTheme.colorScheme.surface) {
     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
      SectionLabel(when {due!=null->"Payment to record";draftQuote!=null->"Ready for customer review";state.invoices.isNotEmpty() && state.invoices.all {it.status=="paid"}->"Payment recorded";else->"Quote & approval"})
      Text(when {due!=null->formatCents(due.total,due.currency);draftQuote!=null->formatCents(draftQuote.total,draftQuote.currency);state.invoices.isNotEmpty() && state.invoices.all {it.status=="paid"}->"All settled";else->"Agree the work first"},style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
@@ -66,7 +67,8 @@ import au.mainspring.nativeapp.ui.formatCents
    }
    au.mainspring.nativeapp.ui.SectionLabel("Quotes")
    if(state.quotes.isEmpty() && !state.loading) Text("No quotes yet.",style=MaterialTheme.typography.bodySmall)
-   state.quotes.forEach { q -> Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+   state.quotes.forEach { q -> Surface(Modifier.fillMaxWidth(),shape=if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium,color=if(calibre) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface) { Column(Modifier.padding(if(calibre) PaddingValues(vertical=14.dp) else PaddingValues(16.dp)), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    if(calibre) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {StatusPill(q.status);Text(formatCents(q.total,q.currency),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
     Text("Subtotal ${formatCents(q.subtotal, q.currency)} · GST ${formatCents(q.tax, q.currency)}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     q.lines.forEach { Text("${it.description}: ${it.quantity} × ${formatCents(it.unitCents, q.currency)}") }
@@ -78,7 +80,8 @@ import au.mainspring.nativeapp.ui.formatCents
    } } }
    au.mainspring.nativeapp.ui.SectionLabel("Invoices")
    if(state.invoices.isEmpty() && !state.loading) Text("No invoices yet.",style=MaterialTheme.typography.bodySmall)
-   state.invoices.forEach { invoice -> Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+   state.invoices.forEach { invoice -> Surface(Modifier.fillMaxWidth(),shape=if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium,color=if(calibre) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface) { Column(Modifier.padding(if(calibre) PaddingValues(vertical=14.dp) else PaddingValues(16.dp)), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    if(calibre) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(invoice.number,style=MaterialTheme.typography.titleSmall);StatusPill(invoice.status)}
     Text(formatCents(invoice.total,invoice.currency),style=MaterialTheme.typography.titleLarge)
     invoice.paymentMethod?.let { Text("Payment: ${au.mainspring.nativeapp.ui.statusLabel(it)}") }
