@@ -326,7 +326,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         fun p(x: Float, y: Float) = Offset(x * s, y * s)
         fun ln(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(color, p(x1, y1), p(x2, y2), 1.6f * s, cap = StrokeCap.Round)
         when(name) {
-            "Today" -> for(cx in listOf(7f, 17f)) for(cy in listOf(7f, 17f)) drawCircle(color, 3.4f * s, p(cx, cy), style = st)
+            "Today", "Dashboard" -> for(cx in listOf(7f, 17f)) for(cy in listOf(7f, 17f)) drawCircle(color, 3.4f * s, p(cx, cy), style = st)
             "Jobs" -> { ln(4f, 20f, 14f, 10f); drawCircle(color, 3.4f * s, p(17f, 7f), style = st); ln(15f, 4f, 20f, 9f); ln(5f, 5f, 10f, 10f); ln(10f, 14f, 20f, 20f).also { } }
             "People", "Customers" -> { drawCircle(color, 3.4f * s, p(9f, 8f), style = st); drawArc(color, 200f, 140f, false, p(3f, 14f), Size(12f * s, 12f * s), style = st)
                 drawCircle(color, 2.8f * s, p(17f, 9f), style = st); drawArc(color, 200f, 140f, false, p(12.5f, 14.5f), Size(9f * s, 9f * s), style = st) }

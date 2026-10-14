@@ -108,6 +108,11 @@ fun MainspringAppShell(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomDestinations
+    val routeArgId = navBackStackEntry?.arguments?.getString("jobId")
+    androidx.compose.runtime.LaunchedEffect(currentRoute, routeArgId) {
+        val base = currentRoute?.substringBefore("/{")
+        if(routeArgId != null && base != null) au.mainspring.nativeapp.ui.RecentItems.record("$base/$routeArgId")
+    }
     val fieldPreference by DesignPreferences.fieldNavigation.collectAsState()
     val fieldMode = "auto_key" in features && (fieldPreference || !au.mainspring.nativeapp.TokenStore.canManageInvoices())
     val startRoute = "today"
@@ -166,7 +171,7 @@ fun MainspringAppShell(
                 if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
-                        listOf("today" to "Today", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
+                        listOf("today" to "Dashboard", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
                             au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute) == route, { navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$route"))
                         }
                     }
@@ -176,7 +181,7 @@ fun MainspringAppShell(
             bottomBar = {
                 if (showBottomBar && !wide) {
                     FloatingTabBar(
-                        destinations = listOf("today" to "Today", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More"),
+                        destinations = listOf("today" to "Dashboard", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More"),
                         isSelected = { it == tabFor(currentRoute) },
                         onSelect = { route -> navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     )

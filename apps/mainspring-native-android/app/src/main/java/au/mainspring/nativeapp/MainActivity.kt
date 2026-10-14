@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         TokenStore.init(applicationContext)
         au.mainspring.nativeapp.ui.DesignPreferences.init(applicationContext)
+        au.mainspring.nativeapp.ui.RecentItems.init(applicationContext)
         setContent {
             MainspringTheme {
                 Surface(Modifier.fillMaxSize()) {

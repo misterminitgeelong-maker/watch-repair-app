@@ -88,6 +88,14 @@ fun TodayHubScreen(
                     }
                 }
             }
+            item {
+                val recent by RecentItems.items.collectAsStateWithLifecycle()
+                val resolved = recent.mapNotNull { key -> hub.jobs.firstOrNull { "${it.service}/${it.id}" == key } }.take(3)
+                if(resolved.isNotEmpty()) Column(Modifier.padding(horizontal = 20.dp)) {
+                    SectionLabel("Recent")
+                    resolved.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
+                }
+            }
             item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Mine" to hub.mineCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
             item {
                 val tiles = buildList {
