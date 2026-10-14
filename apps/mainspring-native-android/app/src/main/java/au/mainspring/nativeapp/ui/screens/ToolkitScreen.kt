@@ -1,6 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 import androidx.compose.foundation.clickable
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
@@ -23,7 +23,8 @@ import au.mainspring.nativeapp.ToolkitViewModel
  val dirty = state.selected != state.saved
  Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Shop toolkit") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
    actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } }) },
-  bottomBar = { if(dirty) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+  bottomBar = { if(dirty) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 2.dp) {
+   if(au.mainspring.nativeapp.ui.LocalCalibre.current) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     OutlinedButton(onClick = vm::discard, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Discard draft") }
     Button(onClick = vm::save, enabled = !state.loading && !state.busy, modifier = Modifier.weight(1.5f).heightIn(min = 52.dp)) { Text("Save selection") }
@@ -33,7 +34,8 @@ import au.mainspring.nativeapp.ToolkitViewModel
     Text("This selection is shared by the shop. Check the tools in your vehicle before taking a job.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
-    Text("${state.selected.size} tools selected${if(dirty) " · unsaved draft" else " · saved selection"}", style = MaterialTheme.typography.titleMedium)
+    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Shop toolkit")
+    Text("${state.selected.size} tools selected${if(dirty) " · unsaved draft" else " · saved selection"}", style = if(au.mainspring.nativeapp.ui.LocalCalibre.current) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium)
     au.mainspring.nativeapp.ui.AtelierTextField(search, { search = it }, label = { Text("Find a tool") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
    }
    item { au.mainspring.nativeapp.ui.SectionLabel("What's the job?")
@@ -52,11 +54,14 @@ import au.mainspring.nativeapp.ToolkitViewModel
     val tools = group.tools.filter { search.isBlank() || "${it.name} ${it.notes.orEmpty()}".contains(search, true) }
     if(tools.isNotEmpty()) {
      item { au.mainspring.nativeapp.ui.SectionLabel("${group.label} · ${group.tools.count {it.key in state.selected}} of ${group.tools.size}") }
-     items(tools, key = { it.key }) { tool -> Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+     items(tools, key = { it.key }) { tool -> val calibre = au.mainspring.nativeapp.ui.LocalCalibre.current
+      val body: @Composable () -> Unit = {
       Row(Modifier.fillMaxWidth().clickable(enabled = !state.busy) { vm.toggle(tool.key) }.heightIn(min = 56.dp).padding(end = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
        Checkbox(tool.key in state.selected, { vm.toggle(tool.key) }, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = tool.name })
        Column(Modifier.weight(1f).padding(vertical = 8.dp)) { Text(tool.name, style = MaterialTheme.typography.bodyLarge); tool.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-      } } }
+      } }
+      if(calibre) Column(Modifier.fillMaxWidth()) { body(); HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+      else Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) { body() } }
     }
    }
   }

@@ -1,6 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.FlatPanel
 import au.mainspring.nativeapp.ui.MetricStrip
 import au.mainspring.nativeapp.ui.SectionLabel
@@ -84,7 +84,8 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
             state.error?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = model::refresh) } }
             state.current?.let { current ->
                 item {
-                    Text("${formatShopDate(current.start)} – ${formatShopDate(current.end)}", style = MaterialTheme.typography.titleLarge)
+                    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel(state.period.replaceFirstChar { it.uppercase() } + " report")
+                    Text("${formatShopDate(current.start)} – ${formatShopDate(current.end)}", style = if(au.mainspring.nativeapp.ui.LocalCalibre.current) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge)
                     state.previous?.let { Text("Compared with ${formatShopDate(it.start)} – ${formatShopDate(it.end)}", style = MaterialTheme.typography.bodySmall) }
                     state.comparisonError?.let { Text("Previous period unavailable: $it", color = MaterialTheme.colorScheme.error) }
                 }

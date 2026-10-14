@@ -1,6 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,13 +28,15 @@ import com.google.gson.JsonParser
     RefreshOnResume(model::refresh)
     Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,containerColor=MaterialTheme.colorScheme.background,topBar={if(!embedded) Column {
         au.mainspring.nativeapp.ui.BackLargeHeader("More","People & network","Team",onBack)
-        if(TokenStore.canManageTeam()) TextButton({editing=null;editorOpen=true},enabled=!state.busy && !state.loading && !state.uncertain,modifier=Modifier.padding(start=12.dp)) {Text("Add account")}
+        if(TokenStore.canManageTeam()) { if(au.mainspring.nativeapp.ui.LocalCalibre.current) OutlinedButton({editing=null;editorOpen=true},enabled=!state.busy && !state.loading && !state.uncertain,modifier=Modifier.padding(start=20.dp)) {Text("Add account")}
+            else TextButton({editing=null;editorOpen=true},enabled=!state.busy && !state.loading && !state.uncertain,modifier=Modifier.padding(start=12.dp)) {Text("Add account")} }
     }}) {padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf("week" to "This week","month" to "This month","90" to "Last 90 days").forEach {(key,label)->au.mainspring.nativeapp.ui.TabChip(state.period==key,{model.period(key)},label={Text(label)})}
                 }
+                if(au.mainspring.nativeapp.ui.LocalCalibre.current) MonoLabel("${state.users.count {it.active}} active accounts · ${state.users.size} total") else
                 Text("${state.users.count {it.active}} active accounts · ${state.users.size} total",style=MaterialTheme.typography.labelSmall)
                 androidx.compose.material3.TextButton(model::refresh,enabled=!state.busy && !state.loading) { Text("Refresh") }
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -46,13 +48,14 @@ import com.google.gson.JsonParser
                 val commission=state.commissions?.getAsJsonArray("technicians")?.firstOrNull {it.asJsonObject.get("user_id")?.asString==user.id}?.asJsonObject
                 FlatPanel {
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(user.name,style=MaterialTheme.typography.titleMedium);StatusPill(if(user.active) "Active" else "Inactive")}
-                    Text("${user.role.replaceFirstChar {it.uppercase()}} · ${user.email.orEmpty()}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${user.role.replaceFirstChar {it.uppercase()}} · ${user.email.orEmpty()}",style=if(au.mainspring.nativeapp.ui.LocalCalibre.current) Calibre.label else MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     commission?.let {c->
                         MetricStrip(listOf("Eligible jobs" to (c.getAsJsonArray("lines")?.size()?.toString() ?: "0"),"Commission" to commissionAmount(c,"raw_commission_cents"),"Bonus" to commissionAmount(c,"bonus_payable_cents")))
                         Text("Retainer ${commissionAmount(c,"retainer_cents")}. Amounts use the shop's commission rules.",style=MaterialTheme.typography.bodySmall)
                     }
                     if(user.commissionRules!=null) Text("Commission rules configured",style=MaterialTheme.typography.labelSmall)
-                    if(TokenStore.canManageTeam()) TextButton({editing=user;editorOpen=true},enabled=!state.busy && !state.uncertain) {Text("Edit account")}
+                    if(TokenStore.canManageTeam()) { if(au.mainspring.nativeapp.ui.LocalCalibre.current) OutlinedButton({editing=user;editorOpen=true},enabled=!state.busy && !state.uncertain) {Text("Edit account")}
+                    else TextButton({editing=user;editorOpen=true},enabled=!state.busy && !state.uncertain) {Text("Edit account")} }
                 }
             }
             item {Text("Commission eligibility follows each account's saved rules and filters jobs by their creation date. The report does not identify currency.",style=MaterialTheme.typography.bodySmall)}

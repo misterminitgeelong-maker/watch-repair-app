@@ -70,10 +70,15 @@ fun JobsScreen(
         }
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
             modifier = Modifier.fillMaxSize().weight(1f, fill = true),
         ) {
             items(state.jobs, key = { it.id }) { job ->
+                if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
+                    CalibreRow({ onOpenJob(job.id) }, job.title, listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }).joinToString(" · "),
+                        au.mainspring.nativeapp.ui.statusLabel(job.status), job.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
+                    return@items
+                }
                 androidx.compose.material3.Surface(Modifier.fillMaxWidth().clickable { onOpenJob(job.id) },
                     color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -89,6 +94,7 @@ fun JobsScreen(
                 }
             }
             if(state.canLoadMore) item {
+                if(au.mainspring.nativeapp.ui.LocalCalibre.current) LinkAction(onClick = viewModel::loadMore, enabled = !state.loading) { Text("Load more repairs") } else
                 androidx.compose.material3.OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more repairs") }
             }
         }

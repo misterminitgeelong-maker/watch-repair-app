@@ -80,7 +80,7 @@ private fun boardColumn(status: String)=when(status) {
                             Text(job.customerName ?: job.jobNumber,style=MaterialTheme.typography.bodySmall)
                             job.scheduledAt?.let {Text(formatShopDate(it),style=MaterialTheme.typography.bodySmall)}
                             StatusPill(job.status)
-                            TextButton({onJob(job.id)}) {Text("Open job")}
+                            if(LocalCalibre.current) LinkAction({onJob(job.id)}) {Text("Open job")} else TextButton({onJob(job.id)}) {Text("Open job")}
                         } } }
                     }
                 }
@@ -145,7 +145,7 @@ private fun boardColumn(status: String)=when(status) {
                                 Text(job.title,style=MaterialTheme.typography.titleSmall)
                                 Text(state.technicians.firstOrNull {it.id==job.assignedUserId}?.name ?: "Unassigned",style=MaterialTheme.typography.bodySmall)
                                 StatusPill(job.status)
-                                Row {TextButton({onJob(job.id)}) {Text("Open")};if(TokenStore.canWorkJobs()) TextButton({selecting=job},enabled=!state.busy && !state.uncertain,modifier=Modifier.testTag("planner-move-${job.id}")) {Text("Move")}}
+                                Row(horizontalArrangement=if(LocalCalibre.current) Arrangement.spacedBy(16.dp) else Arrangement.Start) {TextButton({onJob(job.id)}) {Text("Open")};if(TokenStore.canWorkJobs()) TextButton({selecting=job},enabled=!state.busy && !state.uncertain,modifier=Modifier.testTag("planner-move-${job.id}")) {Text("Move")}}
                             } }
                             if(rows.isEmpty() && selecting==null) Spacer(Modifier.height(64.dp))
                             HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)

@@ -1,6 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,9 +46,12 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
                 au.mainspring.nativeapp.ui.FlatPanel {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Text(job.customerName, style = MaterialTheme.typography.titleMedium)
-                        Text("Ring ${job.ring}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Text("Ring ${job.ring}", style = if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.Calibre.label else MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     }
-                    Text(listOfNotNull(job.make, job.model, job.year?.toString(), job.plate).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    listOfNotNull(job.make, job.model, job.year?.toString(), job.plate).filter { it.isNotBlank() }.joinToString(" · ").let { vehicle ->
+                        if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel(vehicle)
+                        else Text(vehicle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Text(job.address, style = MaterialTheme.typography.bodyMedium)
                     job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     Button(onClick = { confirmingId = job.id }, enabled = !state.busy && !state.loading && state.unresolvedId.isBlank() && state.claimed == null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Claim job") }
