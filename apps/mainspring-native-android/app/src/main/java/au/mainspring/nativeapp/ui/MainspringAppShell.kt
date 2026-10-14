@@ -32,6 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
@@ -129,12 +131,24 @@ fun MainspringAppShell(
         CustomersScreen(onOpenCustomer = { id -> navController.navigate("customer/$id") }, onNewCustomer = { navController.navigate("newCustomer") })
     }
 
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 840 && au.mainspring.nativeapp.ui.LocalCalibre.current
     run {
         Scaffold(
             contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
             containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+                    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
+                        androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
+                        listOf("today" to "Today", "jobs" to "Jobs", "people" to "People", "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
+                            au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute) == route, { navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$route"))
+                        }
+                    }
+                    androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            },
             bottomBar = {
-                if (showBottomBar) {
+                if (showBottomBar && !wide) {
                     FloatingTabBar(
                         destinations = listOf("today" to "Today", "jobs" to "Jobs", "people" to "People", "inbox" to "Inbox", "more" to "More"),
                         isSelected = { it == tabFor(currentRoute) },
@@ -149,7 +163,7 @@ fun MainspringAppShell(
             NavHost(
                 navController = navController,
                 startDestination = startRoute,
-                modifier = Modifier.widthIn(max = 680.dp).fillMaxHeight().fillMaxWidth(),
+                modifier = Modifier.widthIn(max = if(wide) 1040.dp else 680.dp).fillMaxHeight().fillMaxWidth(),
             ) {
                 composable("today") { todayContent() }
                 composable("new_intake") {

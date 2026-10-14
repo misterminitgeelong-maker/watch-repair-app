@@ -50,7 +50,7 @@ fun TodayHubScreen(
         if(calibre) {
             item {
                 Column {
-                    CalibreWordmark(shopName ?: TokenStore.shopValue("name"))
+                    if(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 840) CalibreWordmark(shopName ?: TokenStore.shopValue("name"))
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         MonoLabel(LocalDate.now(zone).format(DateTimeFormatter.ofPattern("EEEE / d MMMM", Locale.forLanguageTag("en-AU"))))
                         Row(verticalAlignment = Alignment.Top) {
