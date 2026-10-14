@@ -18,7 +18,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.JobDetailViewModel
 import au.mainspring.nativeapp.TokenStore
-import au.mainspring.nativeapp.WATCH_JOB_STATUS_OPTIONS
+import au.mainspring.nativeapp.watchPickerOptions
+import au.mainspring.nativeapp.watchStatusLabel
 import au.mainspring.nativeapp.ui.*
 import kotlinx.coroutines.launch
 
@@ -48,6 +49,9 @@ fun JobDetailScreen(
     var newNoteDraft by remember { mutableStateOf("") }
     var attachmentOpenError by remember { mutableStateOf<String?>(null) }
     var resendPicker by remember { mutableStateOf(false) }
+    var statusCustomerNote by remember { mutableStateOf("") }
+    var assignPicker by remember { mutableStateOf(false) }
+    var contactError by remember { mutableStateOf<String?>(null) }
     val job = state.job
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     androidx.activity.compose.BackHandler(state.statusBusy) {}
@@ -62,13 +66,13 @@ fun JobDetailScreen(
     } else AtelierDetail(
         backLabel = "Jobs", title = job.title,
         reference = listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }).joinToString(" \u00b7 "),
-        banner = listOfNotNull(statusLabel(job.status), if (job.priority == "urgent" || job.priority == "high") "Urgent" else null,
+        banner = listOfNotNull(watchStatusLabel(job.status), if (job.priority == "urgent" || job.priority == "high") "Urgent" else null,
             if (job.depositCents < job.preQuoteCents) "Balance outstanding" else null).joinToString(" \u00b7 "),
         tabs = listOf("summary" to "Summary", "activity" to "Activity", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
         primaryLabel = if (state.statusBusy) "Updating\u2026" else "Change status",
         primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
-        onPrimary = { statusChangeNote = ""; statusPicker = true },
+        onPrimary = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
         footnote = listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "Deposit ${formatCents(it, currency)}" }, job.preQuoteCents.takeIf { it > 0 }?.let { "Pre-quote ${formatCents(it, currency)}" }).joinToString(" \u00b7 ").ifBlank { null },
         menu = listOf(
             DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
@@ -76,6 +80,7 @@ fun JobDetailScreen(
             DetailAction("Photos & files", true, onPhotos),
             DetailAction("Log work", true, onWorkLogs),
             DetailAction("Notify customer", !state.resendBusy) { resendPicker = true },
+            DetailAction("Assign technician", !state.assignBusy && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) { vm.loadUsers(); assignPicker = true },
             DetailAction("Add shop note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
         ),
         scrollBody = tab != "messages",
@@ -147,7 +152,29 @@ fun JobDetailScreen(
                     Text(listOfNotNull(job.claimedByName, job.collectionDate?.let { "Due ${formatShopDate(it)}" }, job.partsEta?.let { "Parts ${formatShopDate(it)}" }).joinToString(" \u00b7 ").ifBlank { "Unassigned" },
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                SummaryCard("Customer & contact", job.customerName ?: "No customer recorded", "Contact details and repair history")
+                FlatPanel {
+                    Text("Customer & contact", style = MaterialTheme.typography.titleMedium)
+                    Text(job.customerName ?: "No customer recorded", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val phone = job.customerPhone?.takeIf { it.isNotBlank() }
+                    val email = job.customerEmail?.takeIf { it.isNotBlank() }
+                    if (phone == null && email == null) Text("No phone or email on file", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    phone?.let { p -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + p.filter { c -> c.isDigit() || c == '+' }))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Call $p") } }
+                    email?.let { e -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + Uri.encode(e)))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Email $e") } }
+                    contactError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                }
+                state.watch?.let { w ->
+                    val details = listOf("Brand" to w.brand, "Model" to w.model, "Serial" to w.serialNumber, "Movement" to w.movementType, "Condition" to w.conditionNotes)
+                        .filter { !it.second.isNullOrBlank() }
+                    if (details.isNotEmpty()) FlatPanel {
+                        Text("Watch", style = MaterialTheme.typography.titleMedium)
+                        details.forEach { (label, value) ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(label, Modifier.width(88.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(value.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
                 SummaryCard("Quotes & invoicing", listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} deposit" }, job.preQuoteCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} pre-quote" }).joinToString(" \u00b7 ").ifBlank { "No charges recorded yet" },
                     "View charges or record payment", { onQuotes(jobId) })
                 SummaryCard("Activity & work notes", "Intake and workshop record", "Status changes, approvals and internal notes", { tab = "activity" })
@@ -156,7 +183,8 @@ fun JobDetailScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Assigned to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(job.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.titleMedium)
+                            val assignedName = job.assignedUserId?.let { id -> state.users.firstOrNull { it.id == id }?.name ?: job.claimedByName ?: if (id == TokenStore.currentUserId()) "You" else "Assigned" }
+                            Text(assignedName ?: job.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.titleMedium)
                         }
                         if (job.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Claim for me") }
                         else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Release") }
@@ -181,17 +209,27 @@ fun JobDetailScreen(
                         maxLines = 3,
                     )
                     Spacer(Modifier.height(8.dp))
-                    WATCH_JOB_STATUS_OPTIONS.forEach { s ->
+                    au.mainspring.nativeapp.ui.AtelierTextField(
+                        value = statusCustomerNote,
+                        onValueChange = { statusCustomerNote = it.take(JobDetailViewModel.CUSTOMER_NOTE_MAX) },
+                        label = { Text("Note for customer (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3,
+                    )
+                    Text("Shown on their status page \u00b7 ${statusCustomerNote.length}/${JobDetailViewModel.CUSTOMER_NOTE_MAX}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    watchPickerOptions(job?.status).forEach { s ->
                         val current = s == job?.status
                         TextButton(
                             onClick = {
-                                vm.setStatus(s, statusChangeNote.trim().takeIf { t -> t.isNotEmpty() })
-                                statusChangeNote = ""
+                                vm.setStatus(s, statusChangeNote.trim().takeIf { t -> t.isNotEmpty() }, statusCustomerNote.trim().takeIf { t -> t.isNotEmpty() })
+                                statusChangeNote = ""; statusCustomerNote = ""
                                 statusPicker = false
                             },
                             enabled = !current,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) { Text(statusLabel(s) + if (current) " (current)" else "", Modifier.fillMaxWidth()) }
+                        ) { Text(watchStatusLabel(s) + if (current) " (current)" else "", Modifier.fillMaxWidth()) }
                     }
                 }
             },
@@ -223,6 +261,27 @@ fun JobDetailScreen(
         )
     }
 
+    if (assignPicker) {
+        AlertDialog(
+            onDismissRequest = { assignPicker = false },
+            title = { Text("Assign technician") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (state.usersLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (!state.usersLoading && state.users.isEmpty()) Text("No team members loaded.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    state.users.forEach { u ->
+                        val current = u.id == job?.assignedUserId
+                        TextButton(onClick = { vm.assignTechnician(u.id); assignPicker = false }, enabled = !current, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text(u.name + if (current) " (assigned)" else "", Modifier.fillMaxWidth())
+                        }
+                    }
+                    if (job?.assignedUserId != null) TextButton(onClick = { vm.assignTechnician(null); assignPicker = false }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Unassign", Modifier.fillMaxWidth()) }
+                }
+            },
+            confirmButton = { TextButton(onClick = { assignPicker = false }) { Text("Close") } },
+        )
+    }
+
     if (resendPicker) {
         AlertDialog(
             onDismissRequest = { resendPicker = false },
@@ -244,3 +303,7 @@ fun JobDetailScreen(
         )
     }
 }
+
+/** Starts an external call/email intent; returns an error message when no app can handle it. */
+private fun launchContact(context: android.content.Context, intent: Intent): String? =
+    try { context.startActivity(intent); null } catch (e: android.content.ActivityNotFoundException) { "No app available to handle this." }

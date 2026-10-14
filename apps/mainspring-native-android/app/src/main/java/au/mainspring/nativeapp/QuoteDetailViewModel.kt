@@ -21,6 +21,8 @@ data class QuoteDetailUiState(
     val sendBusy: Boolean = false,
     val invoiceBusy: Boolean = false,
     val invoiceId: String? = null,
+    val resendBusy: Boolean = false,
+    val info: String? = null,
 )
 
 class QuoteDetailViewModel(
@@ -80,6 +82,24 @@ class QuoteDetailViewModel(
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(sendBusy = false, error = e.userMessage()) }
+            }
+        }
+    }
+
+    /** Resend a sent or expired quote (web `POST /quotes/{id}/resend`): refreshes the approval window and re-notifies the customer. */
+    fun resendQuote() {
+        val cur = _state.value.quote ?: return
+        if (_state.value.resendBusy || _state.value.sendBusy || cur.status !in listOf("sent", "expired")) return
+        viewModelScope.launch {
+            _state.update { it.copy(resendBusy = true, error = null, info = null) }
+            try {
+                val resp = api.postQuoteResend(quoteId)
+                val updated = cur.copy(status = resp.status, sentAt = resp.sentAt, approvalToken = resp.approvalToken)
+                QuoteNavCache.put(updated, generation)
+                _state.update { it.copy(resendBusy = false, quote = updated, info = "Quote resent to the customer.") }
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                _state.update { it.copy(resendBusy = false, error = e.userMessage()) }
             }
         }
     }
