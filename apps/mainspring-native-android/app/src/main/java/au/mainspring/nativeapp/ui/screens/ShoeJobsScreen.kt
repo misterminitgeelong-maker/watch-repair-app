@@ -57,11 +57,15 @@ fun ShoeJobsScreen(
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(16.dp), onRetry = { viewModel.refresh() }) }
             if (!state.loading && state.error == null && state.jobs.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No shoe repairs yet", "Tap New repair to book in a pair.")
             LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(start = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, end = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, top = 12.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
                 modifier = Modifier.fillMaxSize().weight(1f, fill = true),
             ) {
                 items(state.jobs, key = { it.id }) { j ->
+                    if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
+                        CalibreRow({ onOpenJob(j.id) }, j.title, j.jobNumber, au.mainspring.nativeapp.ui.statusLabel(j.status), j.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
+                        return@items
+                    }
                     au.mainspring.nativeapp.ui.ListCard({ onOpenJob(j.id) }) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(j.jobNumber, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -70,7 +74,10 @@ fun ShoeJobsScreen(
                         Text(j.title, style = MaterialTheme.typography.titleMedium)
                     }
                 }
-                if(state.canLoadMore) item { OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more repairs") } }
+                if(state.canLoadMore) item {
+                    if(au.mainspring.nativeapp.ui.LocalCalibre.current) LinkAction(onClick = viewModel::loadMore, enabled = !state.loading) { Text("Load more repairs") }
+                    else OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more repairs") }
+                }
             }
         }
     }

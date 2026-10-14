@@ -1,5 +1,5 @@
 package au.mainspring.nativeapp.ui.screens
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -53,7 +53,7 @@ import au.mainspring.nativeapp.*
     }
    }
    if(!creating && state.rows.isEmpty() && enabled) item { Text("No booking requests yet") }
-   items(state.rows, key = { it.id }) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+   items(state.rows, key = { it.id }) { row -> CardOrFlat { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Text("${row.customer} · ${row.status}", style = MaterialTheme.typography.titleMedium)
     Text("${row.shop} → ${row.operator}"); Text(row.address)
     row.schedule?.let { Text("Preferred ${au.mainspring.nativeapp.ui.formatShopDate(it, TokenStore.calendarTimezone())}") }

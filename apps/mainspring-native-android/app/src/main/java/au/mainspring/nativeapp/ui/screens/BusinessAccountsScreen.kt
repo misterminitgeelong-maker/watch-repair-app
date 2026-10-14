@@ -1,6 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,17 +28,15 @@ fun BusinessAccountsScreen(onBack: () -> Unit, onOpenAccount: (String) -> Unit, 
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                 androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh") }
-                if(TokenStore.canManageInvoices()) Button(onClick = onCreate) { Text("New business account") }
+                if(TokenStore.canManageInvoices()) Button(onClick = onCreate, modifier = if(au.mainspring.nativeapp.ui.LocalCalibre.current) Modifier.fillMaxWidth().heightIn(min = 52.dp) else Modifier) { Text("New business account") }
                 au.mainspring.nativeapp.ui.AtelierTextField(search, { search = it }, label = { Text("Find an account") }, modifier = Modifier.fillMaxWidth())
                 if(!state.loading && state.accounts.isEmpty() && state.error == null) Text("No business accounts yet.")
             }
             items(state.accounts.filter { "${it.name} ${it.code.orEmpty()}".contains(search, true) }, key = { it.id }) { account ->
-                Card(onClick = { onOpenAccount(account.id) }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(account.name, style = MaterialTheme.typography.titleMedium)
-                        Text("${if(account.active) "Active" else "Inactive"} · ${account.customerIds.size} linked customers")
-                        account.code?.let { Text(it) }
-                    }
+                CardOrFlat(onClick = { onOpenAccount(account.id) }, padding = 16.dp, spacing = 0.dp) {
+                    Text(account.name, style = MaterialTheme.typography.titleMedium)
+                    Text("${if(account.active) "Active" else "Inactive"} · ${account.customerIds.size} linked customers")
+                    account.code?.let { Text(it) }
                 }
             }
         }
@@ -116,7 +114,7 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
             item { HorizontalDivider(); Text("Account invoices", style = MaterialTheme.typography.titleLarge)
                 if(enabled && state.invoices.isEmpty()) Text("No account invoices saved.") }
             items(state.invoices, key = { it.id }) { invoice ->
-                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                CardOrFlat { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("${invoice.number} · ${invoice.month}/${invoice.year}", style = MaterialTheme.typography.titleMedium)
                     Text("${invoice.status} · ${formatCents(invoice.total, invoice.currency)}")
                     Text("Subtotal ${formatCents(invoice.subtotal, invoice.currency)} · GST ${formatCents(invoice.tax, invoice.currency)}")

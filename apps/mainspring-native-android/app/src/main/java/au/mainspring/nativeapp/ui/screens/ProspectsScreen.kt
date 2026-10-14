@@ -1,5 +1,5 @@
 package au.mainspring.nativeapp.ui.screens
-import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
+import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,7 +31,12 @@ import java.time.format.DateTimeFormatter
  LaunchedEffect(state.categories) { if(category.isBlank()) category = state.categories.firstOrNull()?.key.orEmpty() }
  Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Mobile prospects") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
   Column(Modifier.padding(padding).fillMaxSize()) {
-   TabRow(tab) { Tab(tab == 0, { tab = 0 }, text = { Text("Prospect board") }); Tab(tab == 1, { tab = 1 }, text = { Text("Find businesses") }) }
+   if(au.mainspring.nativeapp.ui.LocalCalibre.current) Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+     au.mainspring.nativeapp.ui.TabChip(tab == 0, { tab = 0 }, label = { Text("Prospect board") }); au.mainspring.nativeapp.ui.TabChip(tab == 1, { tab = 1 }, label = { Text("Find businesses") })
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+   } else TabRow(tab) { Tab(tab == 0, { tab = 0 }, text = { Text("Prospect board") }); Tab(tab == 1, { tab = 1 }, text = { Text("Find businesses") }) }
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp)) }
    if(state.uncertainLead.isNotBlank()) {
@@ -56,8 +61,8 @@ import java.time.format.DateTimeFormatter
      }
      val leads = state.leads.filter { (stage.isBlank() || it.status == stage) && (query.isBlank() || "${it.name} ${it.contactName.orEmpty()} ${it.notes.orEmpty()} ${it.phone.orEmpty()}".contains(query, true)) }
      if(enabled && leads.isEmpty()) item { Text("No prospects match this view") }
-     items(leads, key = { it.id }) { lead -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-      Text(lead.name, style = MaterialTheme.typography.titleMedium); Text(au.mainspring.nativeapp.ui.statusLabel(lead.status))
+     items(leads, key = { it.id }) { lead -> CardOrFlat(spacing = 5.dp) { Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+      Text(lead.name, style = MaterialTheme.typography.titleMedium); if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.StatusPill(lead.status) else Text(au.mainspring.nativeapp.ui.statusLabel(lead.status))
       lead.address?.let { Text(it) }; lead.contactName?.let { Text("Contact: $it") }; lead.contactEmail?.let { Text(it) }; lead.phone?.let { Text(it) }
       lead.visit?.let { Text("Visit ${au.mainspring.nativeapp.ui.formatShopDate(it, TokenStore.calendarTimezone())}") }
       lead.notes?.let { Text(it) }; if(lead.accountId != null) Text("Linked to a customer account")
@@ -75,7 +80,7 @@ import java.time.format.DateTimeFormatter
       Button(onClick = { vm.search(category, region, suburbs, live) }, enabled = enabled && category.isNotBlank()) { Text("Search businesses") }
       state.source?.let { Text(if(it == "stored") "Results from the saved directory" else "Fresh search results") }
      }
-     items(state.results, key = { it.placeId }) { business -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+     items(state.results, key = { it.placeId }) { business -> CardOrFlat { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
       Text(business.name, style = MaterialTheme.typography.titleMedium); Text(business.address)
       business.phone?.let { Text(it) }; business.website?.let { Text(it) }; business.rating?.let { Text("Rating $it · ${business.reviews ?: 0} reviews") }
       val saved = state.leads.firstOrNull { it.placeId == business.placeId }

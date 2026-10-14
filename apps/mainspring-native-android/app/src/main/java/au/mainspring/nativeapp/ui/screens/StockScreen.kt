@@ -43,16 +43,18 @@ private fun quantityText(value: Double) = if(value % 1.0 == 0.0) value.toLong().
                 if(state.items.isEmpty()) EmptyState("No inventory matches", "Try a different search or clear the filters.")
             }
             items(state.items, key = { it.id }) { item ->
-                Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
-                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                val calibre = LocalCalibre.current
+                if(calibre) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Surface(Modifier.fillMaxWidth(), color = if(calibre) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface, shape = if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium) {
+                    Row(if(calibre) Modifier.padding(vertical = 14.dp) else Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(item.code, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(item.code, style = if(calibre) Calibre.label else MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(item.fullDescription ?: item.description ?: "No description", style = MaterialTheme.typography.titleMedium)
                             Text(listOfNotNull("Group ${item.group}", item.groupName?.takeIf { it.isNotBlank() }).joinToString(" · ") + " · " + formatCents(item.retail.toInt(), currency),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(quantityText(item.quantity), style = MaterialTheme.typography.headlineSmall,
+                            Text(quantityText(item.quantity), style = if(calibre) MaterialTheme.typography.headlineMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal) else MaterialTheme.typography.headlineSmall,
                                 color = if(item.quantity <= 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                             Text(item.unit?.takeIf { it.isNotBlank() } ?: "in stock", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

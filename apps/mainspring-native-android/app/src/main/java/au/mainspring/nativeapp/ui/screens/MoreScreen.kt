@@ -57,17 +57,38 @@ private data class WorkspaceGroup(val key: String, val title: String, val subtit
     }
     val q = query.trim()
     val shown = groups.map { g -> if(q.isEmpty()) g else g.copy(items = g.items.filter { it.first.contains(q, true) || g.title.contains(q, true) }) }.filter { it.items.isNotEmpty() }
-    LazyColumn(Modifier.fillMaxSize().testTag("more-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("more-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(if(LocalCalibre.current) 0.dp else 8.dp)) {
         item { LargeHeader((shop ?: "Your shop") + " · Every tool in reach", "Your workspace") }
         item {
             au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool or workflow") }, shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = if(LocalCalibre.current) 8.dp else 0.dp),
                 colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary))
         }
         item { if(LocalCalibre.current) SectionLabel("Operations", Modifier.padding(horizontal = 20.dp)) else Text("Operations", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium) }
         items(shown, key = { it.key }) { g ->
             val expanded = q.isNotEmpty() || open == g.key
+            if(LocalCalibre.current) {
+                Column(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(Modifier.fillMaxWidth().clickable { open = if(open == g.key) null else g.key }.heightIn(min = 64.dp).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(g.title, style = MaterialTheme.typography.titleMedium)
+                            MonoLabel(g.subtitle)
+                        }
+                        Text(if(expanded) "⌃" else "›", style = MaterialTheme.typography.titleLarge)
+                    }
+                    if(expanded) g.items.forEach { (label, route) ->
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { onNavigate(route) }.padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Text("→", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    if(g.key == shown.last().key) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                return@items
+            }
             Surface(Modifier.padding(horizontal = 20.dp).fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
                 Column {
                     if(LocalCalibre.current) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -122,7 +143,7 @@ private data class WorkspaceGroup(val key: String, val title: String, val subtit
                     TokenStore.shopValue("currency")?.let { DetailRow("Currency", it) }
                     DetailRow("Calendar", TokenStore.calendarTimezone())
                     summary?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    if(canSwitch) SecondaryAction(onSwitch, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Switch shop") }
+                    if(canSwitch) LinkAction(onSwitch, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Switch shop") }
                 }
                 TextButton({ signOut = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Sign out") }
             }
