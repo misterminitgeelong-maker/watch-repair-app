@@ -21,6 +21,7 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     var copiedQuote by remember { mutableStateOf<String?>(null) }
+    var pendingSend by remember { mutableStateOf<Triple<List<au.mainspring.nativeapp.api.MobileQuoteLine>, Boolean, Boolean>?>(null) }
     Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Job quotes") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             state.job?.let { if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Quotes / ${state.quotes.size}"); Text("${it.jobNumber} · ${it.title}", style = MaterialTheme.typography.titleMedium) }
@@ -42,12 +43,19 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
                     }, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (copiedQuote == q.id) "Approval link copied" else "Copy approval link") }
                 }
             }
-            if (state.created != null) { if(au.mainspring.nativeapp.ui.LocalCalibre.current) CalibreNotice("Quote saved as a draft. Open it to review totals and send it to the customer.") else Text("Quote saved as a draft. Open it to review totals and send it to the customer."); OutlinedButton(onClick = vm::startAnotherQuote) { Text("Create another quote") } }
+            if (state.created != null) { val savedMsg = if(state.sentToCustomer) "Quote saved and sent to the customer for approval." else "Quote saved as a draft. Open it to review totals and send it to the customer."; if(au.mainspring.nativeapp.ui.LocalCalibre.current) CalibreNotice(savedMsg) else Text(savedMsg);OutlinedButton(onClick = vm::startAnotherQuote) { Text("Create another quote") } }
             else if (!state.unknownSave && state.job != null) {
                 au.mainspring.nativeapp.ui.SectionLabel("Create a new quote")
-                QuoteComposer("quote-composer/watch/$jobId", state.job?.customerAccountId != null, !state.busy && !state.loading, catalogue = false, onSave = vm::createLines)
+                QuoteComposer("quote-composer/watch/$jobId", state.job?.customerAccountId != null, !state.busy && !state.loading, catalogue = false,
+                    secondaryLabel = "Create and send", onSecondary = { lines, gst, inclusive -> pendingSend = Triple(lines, gst, inclusive) }, onSave = vm::createLines)
             }
         }
+    }
+    pendingSend?.let { (lines, gst, inclusive) ->
+        AlertDialog(onDismissRequest = { pendingSend = null }, title = { Text("Create and send quote?") },
+            text = { Text("Saves this quote and sends it to the customer for approval straight away.") },
+            confirmButton = { TextButton(onClick = { pendingSend = null; vm.createAndSendLines(lines, gst, inclusive) }) { Text("Create and send") } },
+            dismissButton = { TextButton(onClick = { pendingSend = null }) { Text("Cancel") } })
     }
 }
 

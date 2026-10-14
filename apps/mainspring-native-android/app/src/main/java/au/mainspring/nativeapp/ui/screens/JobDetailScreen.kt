@@ -34,6 +34,10 @@ fun JobDetailScreen(
     onWorkLogs: () -> Unit,
     onEdit: () -> Unit,
     onPhotos: () -> Unit = {},
+    onDeleted: () -> Unit = {},
+    onDuplicated: (String) -> Unit = {},
+    onEditCustomer: (String) -> Unit = {},
+    onEditWatch: (String, String) -> Unit = { _, _ -> },
 ) {
     val vm: JobDetailViewModel = viewModel(
         key = "$jobId|$apiBaseUrl",
@@ -52,7 +56,13 @@ fun JobDetailScreen(
     var statusCustomerNote by remember { mutableStateOf("") }
     var assignPicker by remember { mutableStateOf(false) }
     var contactError by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var confirmDuplicate by remember { mutableStateOf(false) }
+    var accountPicker by remember { mutableStateOf(false) }
+    LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
+    LaunchedEffect(state.clonedJobId) { state.clonedJobId?.let { vm.consumeClonedJob(); onDuplicated(it) } }
     val job = state.job
+    val adminReady = !state.loading && !state.statusBusy && !state.adminBusy
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     androidx.activity.compose.BackHandler(state.statusBusy) {}
 
@@ -74,7 +84,7 @@ fun JobDetailScreen(
         primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
         onPrimary = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
         footnote = listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "Deposit ${formatCents(it, currency)}" }, job.preQuoteCents.takeIf { it > 0 }?.let { "Pre-quote ${formatCents(it, currency)}" }).joinToString(" \u00b7 ").ifBlank { null },
-        menu = listOf(
+        menu = listOfNotNull(
             DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
             DetailAction("Refresh", !state.loading && !state.statusBusy, vm::load),
             DetailAction("Photos & files", true, onPhotos),
@@ -82,6 +92,11 @@ fun JobDetailScreen(
             DetailAction("Notify customer", !state.resendBusy) { resendPicker = true },
             DetailAction("Assign technician", !state.assignBusy && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) { vm.loadUsers(); assignPicker = true },
             DetailAction("Add shop note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
+            DetailAction("Edit customer", adminReady && state.watch != null) { state.watch?.customerId?.let(onEditCustomer) },
+            DetailAction("Edit watch details", adminReady && state.watch != null) { state.watch?.let { onEditWatch(it.customerId, it.id) } },
+            DetailAction("Business account", adminReady && !state.accountBusy && TokenStore.canWorkJobs()) { vm.loadAccounts(); accountPicker = true },
+            DetailAction("Duplicate job", adminReady && TokenStore.canWorkJobs()) { confirmDuplicate = true },
+            if (TokenStore.canManageInvoices()) DetailAction("Delete job", adminReady) { confirmDelete = true } else null,
         ),
         scrollBody = tab != "messages",
     ) { active ->
@@ -157,6 +172,7 @@ fun JobDetailScreen(
                     Text(job.customerName ?: "No customer recorded", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val phone = job.customerPhone?.takeIf { it.isNotBlank() }
                     val email = job.customerEmail?.takeIf { it.isNotBlank() }
+                    if (job.customerAccountId != null) Text("Business account linked", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (phone == null && email == null) Text("No phone or email on file", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     phone?.let { p -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + p.filter { c -> c.isDigit() || c == '+' }))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Call $p") } }
                     email?.let { e -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + Uri.encode(e)))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Email $e") } }
@@ -193,6 +209,11 @@ fun JobDetailScreen(
             }
         }
     }
+
+    if (confirmDelete) DeleteJobDialog(job?.let { "${it.jobNumber} · ${it.title}" } ?: "this job", { confirmDelete = false; vm.deleteJob() }, { confirmDelete = false })
+    if (confirmDuplicate) DuplicateJobDialog({ confirmDuplicate = false; vm.duplicateJob() }, { confirmDuplicate = false })
+    if (accountPicker) AccountPickerDialog(state.accounts, state.accountsLoading, state.watch?.customerId, job?.customerAccountId,
+        { id -> accountPicker = false; vm.assignAccount(id) }, { accountPicker = false })
 
     if (statusPicker) {
         AlertDialog(

@@ -39,6 +39,12 @@ data class JobDetailUiState(
     val claimBusy: Boolean = false,
     val resendBusy: Boolean = false,
     val resendInfo: String? = null,
+    val adminBusy: Boolean = false,
+    val deleted: Boolean = false,
+    val clonedJobId: String? = null,
+    val accounts: List<au.mainspring.nativeapp.api.CustomerAccountRead> = emptyList(),
+    val accountsLoading: Boolean = false,
+    val accountBusy: Boolean = false,
     val statusUnknown: Boolean = false, val statusReviewed: Boolean = false, val statusRequest: String = "",
 )
 
@@ -228,6 +234,65 @@ class JobDetailViewModel(
             } catch (e: Exception) {
                 _state.update { it.copy(resendBusy = false, error = e.userMessage()) }
             }
+        }
+    }
+
+    private val admin get() = ApiClient.service(au.mainspring.nativeapp.api.JobAdminApi::class.java)
+
+    /** Owner/manager only (web hides delete from other roles). Sets [JobDetailUiState.deleted] on success. */
+    fun deleteJob() {
+        val snapshot = _state.value
+        if(snapshot.job == null || snapshot.adminBusy || snapshot.statusBusy || !TokenStore.canManageInvoices()) return
+        _state.update { it.copy(adminBusy = true, error = null, resendInfo = null) }
+        viewModelScope.launch {
+            try {
+                admin.deleteRepairJob(jobId).let { r -> if(!r.isSuccessful) throw retrofit2.HttpException(r); r.body()?.close() }
+                _state.update { it.copy(adminBusy = false, deleted = true) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(adminBusy = false, error = e.userMessage()) } }
+        }
+    }
+
+    /** Duplicates the job for the same customer and watch; the new id lands in [JobDetailUiState.clonedJobId]. */
+    fun duplicateJob() {
+        val snapshot = _state.value
+        if(snapshot.job == null || snapshot.adminBusy || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(adminBusy = true, error = null, resendInfo = null) }
+        viewModelScope.launch {
+            try {
+                val cloned = admin.cloneRepairJob(jobId)
+                _state.update { it.copy(adminBusy = false, clonedJobId = cloned.id) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(adminBusy = false, error = e.userMessage()) } }
+        }
+    }
+    fun consumeClonedJob() { _state.update { it.copy(clonedJobId = null) } }
+
+    fun loadAccounts() {
+        if(_state.value.accountsLoading) return
+        _state.update { it.copy(accountsLoading = true) }
+        viewModelScope.launch {
+            try {
+                val accounts = api.listCustomerAccounts().filter { it.active }.sortedBy { it.name.lowercase() }
+                _state.update { it.copy(accountsLoading = false, accounts = accounts) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(accountsLoading = false, error = e.userMessage()) } }
+        }
+    }
+
+    /** Sets (or clears when null) the B2B customer account, as web `updateJob(id, { customer_account_id })`. */
+    fun assignAccount(accountId: String?) {
+        val snapshot = _state.value
+        if(snapshot.job == null || snapshot.accountBusy || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(accountBusy = true, error = null, resendInfo = null) }
+        viewModelScope.launch {
+            try {
+                val fields = JsonObject()
+                if(accountId == null) fields.add("customer_account_id", com.google.gson.JsonNull.INSTANCE) else fields.addProperty("customer_account_id", accountId)
+                api.updateCounterWatch(jobId, fields)
+                _state.update { it.copy(accountBusy = false, job = api.getRepairJob(jobId)) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(accountBusy = false, error = e.userMessage()) } }
         }
     }
 

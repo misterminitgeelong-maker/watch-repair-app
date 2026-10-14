@@ -31,6 +31,9 @@ fun ShoeJobDetailScreen(
     onMessages: () -> Unit,
     onEdit: () -> Unit,
     onPhotos: () -> Unit = {},
+    onDeleted: () -> Unit = {},
+    onDuplicated: (String) -> Unit = {},
+    onEditCustomer: (String) -> Unit = {},
 ) {
     val vm: ShoeJobDetailViewModel = viewModel(
         key = "$jobId|$apiBaseUrl",
@@ -54,6 +57,12 @@ fun ShoeJobDetailScreen(
     var removeItem by remember { mutableStateOf<String?>(null) }
     var removePairId by remember { mutableStateOf<String?>(null) }
     var attachmentOpenError by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var confirmDuplicate by remember { mutableStateOf(false) }
+    var accountPicker by remember { mutableStateOf(false) }
+    LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
+    LaunchedEffect(state.clonedJobId) { state.clonedJobId?.let { vm.consumeClonedJob(); onDuplicated(it) } }
+    val adminReady = !state.loading && !state.statusBusy && !state.adminBusy
 
     var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("overview") }
     if (j == null) {
@@ -77,6 +86,10 @@ fun ShoeJobDetailScreen(
             DetailAction("Photos & files", true, onPhotos),
             if (j.quoteStatus != "approved") DetailAction("Send quote to customer", !state.quoteBusy) { confirmQuote = true } else null,
             DetailAction("Add note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
+            DetailAction("Edit customer", adminReady && j.shoe?.customerId != null) { j.shoe?.customerId?.let(onEditCustomer) },
+            DetailAction("Business account", adminReady && !state.accountBusy && TokenStore.canWorkJobs()) { vm.loadAccounts(); accountPicker = true },
+            DetailAction("Duplicate job", adminReady && TokenStore.canWorkJobs()) { confirmDuplicate = true },
+            if (TokenStore.canManageInvoices()) DetailAction("Delete job", adminReady) { confirmDelete = true } else null,
         ),
         scrollBody = tab != "messages",
     ) { active ->
@@ -119,6 +132,7 @@ fun ShoeJobDetailScreen(
                 j.items.forEach { item -> ShoeServiceRow(item, currency, { removeItem = item.id }, canEdit) }
                 SecondaryAction(onClick = { vm.loadCatalogue(); pickServices = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add services") }
                 j.estimatedReadyBy?.takeIf { it.isNotBlank() }?.let { SummaryCard("Estimated ready", formatShopDate(it), null) }
+                if (j.customerAccountId != null) SummaryCard("Business account", "Linked to a customer account", null)
                 SummaryCard(statusLabel(j.status), listOfNotNull(j.claimedByName?.let { "Assigned to $it" }, "Created ${formatShopDate(j.createdAt)}").joinToString(" \u00b7 "), null)
                 SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
                     "View services, pricing and payment")
@@ -140,6 +154,10 @@ fun ShoeJobDetailScreen(
         text = { Text("Send the saved repair quote to the customer's phone for approval.") },
         confirmButton = { TextButton(onClick = { confirmQuote = false; vm.sendQuote() }) { Text("Send") } },
         dismissButton = { TextButton(onClick = { confirmQuote = false }) { Text("Cancel") } })
+    if (confirmDelete) DeleteJobDialog(j?.let { "${it.jobNumber} · ${it.title}" } ?: "this job", { confirmDelete = false; vm.deleteJob() }, { confirmDelete = false })
+    if (confirmDuplicate) DuplicateJobDialog({ confirmDuplicate = false; vm.duplicateJob() }, { confirmDuplicate = false })
+    if (accountPicker) AccountPickerDialog(state.accounts, state.accountsLoading, j?.shoe?.customerId, j?.customerAccountId,
+        { id -> accountPicker = false; vm.assignAccount(id) }, { accountPicker = false })
     if(pickServices) ShoeServicePickerDialog(state.catalogue, currency, state.editBusy, { pickServices = false }) { vm.addServices(it); pickServices = false }
     if(addPair) AddPairDialog(state.editBusy, { addPair = false }) { type, brand, colour, notes -> vm.addPair(type, brand, colour, notes) }
     removeItem?.let { id -> AlertDialog(onDismissRequest = { removeItem = null }, title = { Text("Remove service?") },
