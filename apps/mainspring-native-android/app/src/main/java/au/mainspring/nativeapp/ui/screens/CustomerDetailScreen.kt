@@ -47,9 +47,19 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                         val contact = listOf("Phone" to customer.phone, "Email" to customer.email, "Address" to customer.address, "Notes" to customer.notes).filter { !it.second.isNullOrBlank() }
                         val context = androidx.compose.ui.platform.LocalContext.current
                         au.mainspring.nativeapp.ui.FlatPanel {
-                            Text(customer.fullName.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }.ifBlank { "?" },
-                                style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary)
+                            val initials = customer.fullName.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }.ifBlank { "?" }
+                            if(au.mainspring.nativeapp.ui.LocalCalibre.current) Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Surface(Modifier.size(72.dp), color = au.mainspring.nativeapp.ui.Calibre.Grey, shape = MaterialTheme.shapes.small) {
+                                    androidx.compose.foundation.layout.Box(contentAlignment = androidx.compose.ui.Alignment.Center) { Text(initials, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface) }
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    au.mainspring.nativeapp.ui.MonoLabel("Customer profile")
+                                    Text("Customer since ${formatShopDate(customer.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.titleMedium)
+                                }
+                            } else {
+                            Text(initials, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary)
                             Text("Customer since ${formatShopDate(customer.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.titleMedium)
+                            }
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 if(!customer.phone.isNullOrBlank()) TextButton({ runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.fromParts("tel", customer.phone, null))) } }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Call") }
                                 if(!customer.email.isNullOrBlank()) TextButton({ runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.fromParts("mailto", customer.email, null))) } }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Email") }
