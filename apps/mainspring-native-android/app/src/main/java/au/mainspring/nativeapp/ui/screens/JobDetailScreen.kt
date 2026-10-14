@@ -82,6 +82,19 @@ fun JobDetailScreen(
             DetailAction("Notify customer", !state.resendBusy) { resendPicker = true },
             DetailAction("Assign technician", !state.assignBusy && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) { vm.loadUsers(); assignPicker = true },
             DetailAction("Add shop note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
+            DetailAction("Print intake ticket", job.statusToken != null) {
+                try {
+                    au.mainspring.nativeapp.ui.printIntakeTicket(context, au.mainspring.nativeapp.ui.IntakeTicket(
+                        jobNumber = job.jobNumber, customerName = job.customerName, customerPhone = job.customerPhone,
+                        itemSummary = listOfNotNull(job.watchBrand, job.watchModel).joinToString(" ").ifBlank { "Watch" },
+                        workSummary = listOfNotNull(job.title.takeIf { it.isNotBlank() }, job.description?.takeIf { it.isNotBlank() }).joinToString("\n").ifBlank { null },
+                        dueDate = job.collectionDate?.takeIf { it.isNotBlank() }?.let { formatShopDate(it) },
+                        deposit = job.depositCents.takeIf { it > 0 }?.let { formatCents(it, currency) },
+                        statusUrl = au.mainspring.nativeapp.ui.intakeStatusUrl(apiBaseUrl, au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH, job.statusToken.orEmpty()),
+                        shopName = TokenStore.shopValue("name"), shopPhone = TokenStore.shopValue("phone"),
+                        kind = au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH))
+                } catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "Could not print", android.widget.Toast.LENGTH_LONG).show() }
+            },
         ),
         scrollBody = tab != "messages",
     ) { active ->
