@@ -201,7 +201,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if(LocalCalibre.current) HorizontalDivider(Modifier.offset(y = (-10).dp), color = MaterialTheme.colorScheme.outlineVariant)
             if(LocalCalibre.current) {
-                Text("Step ${step + 1} of $steps \u00b7 $stepTitle", style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("0${step + 1} / 0$steps  ${stepTitle.uppercase()}", style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (0 until steps).forEach { i -> Box(Modifier.weight(1f).height(3.dp).background(if(i <= step) Calibre.Forest else Calibre.Hairline)) }
                 }
