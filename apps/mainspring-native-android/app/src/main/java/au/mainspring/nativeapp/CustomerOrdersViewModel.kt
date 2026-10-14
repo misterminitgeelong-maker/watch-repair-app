@@ -57,6 +57,22 @@ class CustomerOrdersViewModel : ViewModel() {
         save({ api.createCustomerOrder(CustomerOrderCreate(title.trim(), supplier = supplier.trim().ifBlank { null }, customerId = customerId,
             priority = priority, estimatedCostCents = estimatedCostCents, notes = notes.trim().ifBlank { null })) }, onDone)
     }
+    fun edit(order: CustomerOrderRead, title: String, supplier: String, estimatedCostCents: Int, notes: String, priority: String, onDone: () -> Unit = {}) {
+        save({ api.updateCustomerOrder(order.id, CustomerOrderUpdate(title = title.trim(), supplier = supplier.trim(), priority = priority,
+            estimatedCostCents = estimatedCostCents, notes = notes.trim())) }, onDone)
+    }
+    fun delete(order: CustomerOrderRead, onDone: () -> Unit = {}) {
+        if(state.value.saving) return
+        mutable.update { it.copy(saving = true, error = null) }
+        viewModelScope.launch {
+            try {
+                val response = ApiClient.service(CustomerExtrasApi::class.java).deleteCustomerOrder(order.id)
+                if(!response.isSuccessful) throw retrofit2.HttpException(response)
+                mutable.update { it.copy(saving = false) }; refresh(); onDone()
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(saving = false, error = e.userMessage()) } }
+        }
+    }
     private fun save(call: suspend () -> CustomerOrderRead, onDone: () -> Unit) {
         if(state.value.saving) return
         mutable.update { it.copy(saving = true, error = null) }

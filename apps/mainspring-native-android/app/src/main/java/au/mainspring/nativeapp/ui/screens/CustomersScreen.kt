@@ -1,6 +1,10 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.*
+import au.mainspring.nativeapp.CUSTOMER_SORTS
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
@@ -38,6 +42,11 @@ fun CustomersScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { viewModel.refresh() }),
             )
+        }
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                CUSTOMER_SORTS.forEach { (key, label) -> TabChip(state.sort == key, { viewModel.setSort(key) }, { Text(label) }, Modifier.testTag("customer-sort-$key")) }
+            }
         }
         if (state.loading && state.customers.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = { viewModel.refresh() }) } }
