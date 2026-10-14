@@ -33,7 +33,7 @@ import au.mainspring.nativeapp.TokenStore
                 "prospects" -> ProspectsScreen(onBack,embedded=true,initialTab=1)
                 "board" -> ProspectsScreen(onBack,embedded=true,initialTab=0)
                 "team" -> TeamScreen(onBack,embedded=true)
-                else -> InboxScreen(onBack,embedded=true)
+                else -> LeadInboxScreen(onOpenAccount={onNavigate("businessAccount/$it")},embedded=true)
             } } }
         }
     }
