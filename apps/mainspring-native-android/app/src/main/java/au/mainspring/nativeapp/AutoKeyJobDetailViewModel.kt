@@ -11,7 +11,11 @@ import com.google.gson.Gson
 data class AutoKeyJobDetailUiState(val loading: Boolean = false, val error: String? = null, val offlineSnapshot: Boolean = false,
     val job: AutoKeyJobRead? = null, val vehicleContext: com.google.gson.JsonObject? = null, val technicians: List<TeamUser> = emptyList(), val attachments: List<AttachmentRead> = emptyList(),
     val statusBusy: Boolean = false, val statusReviewRequired: Boolean = false, val historyChecked: Boolean = false,
-    val statusInfo: String? = null, val requestedStatus: String? = null, val requestedNote: String? = null)
+    val statusInfo: String? = null, val requestedStatus: String? = null, val requestedNote: String? = null,
+    val activity: List<JobActivityEvent> = emptyList(), val activityLoading: Boolean = false, val activityError: String? = null, val activityLoaded: Boolean = false,
+    val adminBusy: Boolean = false, val adminError: String? = null, val duplicated: AutoKeyJobRead? = null, val deleted: Boolean = false,
+    val keySearchLoading: Boolean = false, val keyMatches: List<KeySpecMatch> = emptyList(), val keySearched: Boolean = false, val keySearchError: String? = null,
+    val keyApplyBusy: Boolean = false, val keyApplied: Boolean = false)
 
 class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUrl: String) : ViewModel() {
     private val api = ApiClient.api
@@ -48,7 +52,7 @@ class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUr
         val snapshot = mutable.value
         if(snapshot.loading || snapshot.statusBusy || snapshot.statusReviewRequired || snapshot.offlineSnapshot || !TokenStore.canWorkJobs()) return
         val current = snapshot.job ?: return
-        if(newStatus !in AUTO_KEY_JOB_STATUS_OPTIONS) { mutable.update { it.copy(error = "Choose a valid mobile job status.") }; return }
+        if(newStatus !in AUTO_KEY_JOB_STATUS_OPTIONS && MOBILE_STATUS_PICKER.none { it.first == newStatus }) { mutable.update { it.copy(error = "Choose a valid mobile job status.") }; return }
         if(newStatus == current.status && note.isNullOrBlank()) return
         val body = RepairJobStatusUpdate(newStatus,note?.trim()?.ifBlank { null })
         drafts.saveMessageDraft("$operation/request",Gson().toJson(body))
@@ -71,6 +75,83 @@ class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUr
                 drafts.setPendingOperation(operation,unknown)
                 mutable.update { it.copy(statusReviewRequired = unknown || conflict, error = "Could not confirm this status change. Refresh and review the job before trying again. ${e.userMessage()}") }
             } finally { mutable.update { it.copy(statusBusy = false) } }
+        }
+    }
+    private val admin get() = ApiClient.service(MobileJobAdminApi::class.java)
+    fun loadActivity() {
+        if(mutable.value.activityLoading || mutable.value.offlineSnapshot) return
+        mutable.update { it.copy(activityLoading = true, activityError = null) }
+        viewModelScope.launch {
+            try { val events = admin.activity(jobId).sortedByDescending { it.createdAt }; mutable.update { it.copy(activity = events, activityLoaded = true) } }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(activityError = "Could not load the activity log. ${e.userMessage()}") } }
+            finally { mutable.update { it.copy(activityLoading = false) } }
+        }
+    }
+    fun dismissAdminMessage() { mutable.update { it.copy(adminError = null, duplicated = null) } }
+    /** Duplicating is not idempotent, so an unconfirmed failure asks the operator to check the job list before retrying. */
+    fun duplicate() {
+        if(mutable.value.adminBusy || mutable.value.offlineSnapshot || !TokenStore.canWorkJobs()) return
+        mutable.update { it.copy(adminBusy = true, adminError = null, duplicated = null) }
+        viewModelScope.launch {
+            try { val copy = admin.cloneJob(jobId); mutable.update { it.copy(duplicated = copy) } }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(adminError = if(e is HttpException && e.code() < 500) "Could not duplicate this job. ${e.userMessage()}" else "Could not confirm the duplicate. Check the job list before trying again. ${e.userMessage()}") } }
+            finally { mutable.update { it.copy(adminBusy = false) } }
+        }
+    }
+    fun deleteJob() {
+        if(mutable.value.adminBusy || mutable.value.offlineSnapshot || !TokenStore.canManageInvoices()) return
+        mutable.update { it.copy(adminBusy = true, adminError = null) }
+        viewModelScope.launch {
+            try {
+                val response = admin.deleteJob(jobId)
+                if(response.isSuccessful || response.code() == 404) { drafts.saveMessageDraft("mobile-job-cache/$jobId",""); mutable.update { it.copy(deleted = true) } }
+                else mutable.update { it.copy(adminError = "Could not delete this job (${response.code()}).") }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(adminError = "Could not confirm the delete. Refresh before trying again. ${e.userMessage()}") } }
+            finally { mutable.update { it.copy(adminBusy = false) } }
+        }
+    }
+    fun searchKeys(make: String, model: String, year: String) {
+        if(mutable.value.keySearchLoading) return
+        if(make.trim().length < 2 && model.trim().length < 2) { mutable.update { it.copy(keySearchError = "Enter at least two letters of the make or model.", keyMatches = emptyList(), keySearched = false) }; return }
+        val y = year.trim().takeIf { it.isNotEmpty() }?.let { it.toIntOrNull() ?: run { mutable.update { s -> s.copy(keySearchError = "Enter a valid year.") }; return } }
+        mutable.update { it.copy(keySearchLoading = true, keySearchError = null, keyApplied = false) }
+        viewModelScope.launch {
+            try { val r = admin.searchKeySpecs(make.trim().ifEmpty { null }, model.trim().ifEmpty { null }, y); mutable.update { it.copy(keyMatches = r.matches, keySearched = true) } }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(keyMatches = emptyList(), keySearched = false, keySearchError = "Could not search the vehicle database. ${e.userMessage()}") } }
+            finally { mutable.update { it.copy(keySearchLoading = false) } }
+        }
+    }
+    fun clearKeySearch() { mutable.update { it.copy(keyMatches = emptyList(), keySearched = false, keySearchError = null, keyApplied = false) } }
+    /** Applies the chosen match like the web: vehicle, key type, chip, blade and notes. Existing technician notes are kept. */
+    fun applyKeyMatch(match: KeySpecMatch, typedYear: String) {
+        val current = mutable.value.job ?: return
+        val snapshot = mutable.value
+        if(snapshot.keyApplyBusy || snapshot.offlineSnapshot || snapshot.loading || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        val body = com.google.gson.JsonObject()
+        body.addProperty("vehicle_make", match.vehicleMake); body.addProperty("vehicle_model", match.vehicleModel)
+        (typedYear.trim().toIntOrNull() ?: match.yearFrom)?.let { body.addProperty("vehicle_year", it) }
+        match.keyType?.takeIf { it.isNotBlank() }?.let { body.addProperty("key_type", it) }
+        match.chipType?.takeIf { it.isNotBlank() }?.let { body.addProperty("chip_type", it) }
+        match.suggestedBladeCode?.takeIf { it.isNotBlank() }?.let { body.addProperty("blade_code", it) }
+        match.techNotes?.takeIf { it.isNotBlank() }?.let { note ->
+            val existing = current.techNotes.orEmpty().trim()
+            if(!existing.contains(note.trim())) body.addProperty("tech_notes", if(existing.isEmpty()) note.trim() else existing + "\n\n" + note.trim())
+        }
+        mutable.update { it.copy(keyApplyBusy = true, keySearchError = null) }
+        viewModelScope.launch {
+            try {
+                val job = api.updateMobileJob(jobId, body, current.updatedAt)
+                snapshots.saveJob(job)
+                mutable.update { it.copy(job = job, keyApplied = true, statusInfo = "Key details applied from the vehicle database.", activityLoaded = false) }
+                val context = try { api.vehicleJobContext(job.vehicleMake, job.vehicleModel, job.vehicleYear, job.jobType, job.bladeCode) } catch(e: CancellationException) { throw e } catch(_: Exception) { null }
+                if(context != null) mutable.update { it.copy(vehicleContext = context) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(keySearchError = if(e is HttpException && e.code() == 409) "This job changed. Refresh it, then apply the match again." else "Could not apply these details. ${e.userMessage()}") } }
+            finally { mutable.update { it.copy(keyApplyBusy = false) } }
         }
     }
     companion object { fun factory(id: String, url: String) = object: ViewModelProvider.Factory {
