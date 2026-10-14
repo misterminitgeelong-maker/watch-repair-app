@@ -22,6 +22,7 @@ private fun limit(n: Int) = if(n <= 0 || n >= 1_000_000) "Unlimited" else n.toSt
 @Composable fun AccountsScreen(onBack: () -> Unit, onSignOut: () -> Unit, viewModel: AccountsViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confirmSignOut by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val session = state.session
     val manager = TokenStore.canManageInvoices()
     Scaffold(topBar = { BackLargeHeader("More", "Account", "Accounts", onBack) }) { padding ->
@@ -68,8 +69,18 @@ private fun limit(n: Int) = if(n <= 0 || n >= 1_000_000) "Unlimited" else n.toSt
                 Spacer(Modifier.height(16.dp))
                 SecondaryAction({ confirmSignOut = true }, Modifier.fillMaxWidth()) { Text("Sign out") }
             }
+            if(session != null && session.user.role == "owner") item {
+                Spacer(Modifier.height(24.dp))
+                SectionLabel("Delete account or shop")
+                FlatPanel {
+                    Text("Ask Mainspring to delete your login, or the whole shop and its data. Only the shop owner can do this.", style = MaterialTheme.typography.bodySmall)
+                    TextButton({ confirmDelete = true }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete account or shop") }
+                }
+            }
         }
     }
+    if(confirmDelete && session != null && session.user.role == "owner")
+        AccountDeletionDialog(session.shopName, session.tenantSlug, session.user.email) { confirmDelete = false }
     if(confirmSignOut) AlertDialog(onDismissRequest = { confirmSignOut = false }, title = { Text("Sign out?") },
         text = { Text("Saved drafts remain tied to this shop and account on this device.") },
         confirmButton = { TextButton({ confirmSignOut = false; onSignOut() }) { Text("Sign out") } },

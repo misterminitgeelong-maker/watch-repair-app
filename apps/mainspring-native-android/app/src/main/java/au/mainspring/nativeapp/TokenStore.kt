@@ -106,6 +106,10 @@ object TokenStore {
     fun shopValue(key: String): String? = if(::prefs.isInitialized) prefs.getString("shop_$key",null) else null
     fun setCalendarTimezone(zone: String) { prefs.edit().putString("calendar_zone", zone).apply() }
     fun calendarTimezone(): String = if(::prefs.isInitialized) prefs.getString("calendar_zone", "Australia/Sydney") ?: "Australia/Sydney" else "Australia/Sydney"
+    /** Push device token, if one was ever registered; removed server-side at sign-out and cleared with [clear]. */
+    fun deviceToken(): String? = if(::prefs.isInitialized) prefs.getString("device_push_token", null)?.takeIf { it.isNotBlank() } else null
+    fun saveDeviceToken(token: String?) { prefs.edit().apply { if(token.isNullOrBlank()) remove("device_push_token") else putString("device_push_token", token) }.apply() }
+    fun isOwner(): Boolean = prefs.getString("session_role", null) == "owner"
     fun setSessionRole(role: String) { prefs.edit().putString("session_role", role).apply() }
     fun canManageTeam(): Boolean = prefs.getString("session_role", null) in listOf("owner", "platform_admin")
     fun canManageInvoices(): Boolean = prefs.getString("session_role", null) in listOf("owner", "manager", "platform_admin")
