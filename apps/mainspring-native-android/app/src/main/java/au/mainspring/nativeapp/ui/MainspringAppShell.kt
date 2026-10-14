@@ -101,6 +101,9 @@ fun MainspringAppShell(
     activeSiteId: String? = null,
     onSwitchSite: (String) -> Unit = {},
     sessionError: String? = null,
+    subscriptionStatus: String? = null,
+    trialEnd: String? = null,
+    sessionRole: String? = null,
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -151,10 +154,13 @@ fun MainspringAppShell(
                     if(sel.first == "watch") au.mainspring.nativeapp.ui.screens.JobDetailScreen(jobId = sel.second, apiBaseUrl = apiBaseUrl, onBack = { selected = null },
                         onQuotes = { navController.navigate("jobQuotes/$it") }, onMessages = { navController.navigate("messages/repair-jobs/${sel.second}") },
                         onWorkLogs = { navController.navigate("workLogs/${sel.second}") }, onEdit = { navController.navigate("counterEdit/repair-jobs/${sel.second}") },
-                        onPhotos = { navController.navigate("jobPhotos/repair-jobs/${sel.second}") })
+                        onPhotos = { navController.navigate("jobPhotos/repair-jobs/${sel.second}") },
+                        onDeleted = { selected = null }, onDuplicated = { navController.navigate("watchJob/$it") }, onEditCustomer = { navController.navigate("editCustomer/$it") },
+                        onEditWatch = { c, w -> navController.navigate("watchEditor/$c?watchId=$w") })
                     else au.mainspring.nativeapp.ui.screens.ShoeJobDetailScreen(jobId = sel.second, apiBaseUrl = apiBaseUrl, onBack = { selected = null },
                         onMessages = { navController.navigate("messages/shoe-repair-jobs/${sel.second}") }, onEdit = { navController.navigate("counterEdit/shoe-repair-jobs/${sel.second}") },
-                        onPhotos = { navController.navigate("jobPhotos/shoe-repair-jobs/${sel.second}") })
+                        onPhotos = { navController.navigate("jobPhotos/shoe-repair-jobs/${sel.second}") },
+                        onDeleted = { selected = null }, onDuplicated = { navController.navigate("shoeJob/$it") }, onEditCustomer = { navController.navigate("editCustomer/$it") })
                 }
             }
         }
@@ -190,6 +196,8 @@ fun MainspringAppShell(
             },
         ) { paddingValues ->
             androidx.compose.foundation.layout.Column(Modifier.padding(paddingValues)) {
+            au.mainspring.nativeapp.ui.ConnectivityBanner()
+            au.mainspring.nativeapp.ui.SubscriptionBanner(subscriptionStatus, trialEnd, sessionRole)
             sessionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
             NavHost(
@@ -297,6 +305,10 @@ fun MainspringAppShell(
                         onWorkLogs = { navController.navigate("workLogs/$id") },
                         onEdit = { navController.navigate("counterEdit/repair-jobs/$id") },
                         onPhotos = { navController.navigate("jobPhotos/repair-jobs/$id") },
+                        onDeleted = { navController.popBackStack() },
+                        onDuplicated = { navController.navigate("watchJob/$it") },
+                        onEditCustomer = { navController.navigate("editCustomer/$it") },
+                        onEditWatch = { c, w -> navController.navigate("watchEditor/$c?watchId=$w") },
                     )
                 }
                 composable("jobQuotes/{jobId}", arguments = listOf(navArgument("jobId") { type = NavType.StringType })) { entry ->
@@ -328,7 +340,11 @@ fun MainspringAppShell(
                 }
                 composable("toolkit") { ToolkitScreen(onBack = { navController.popBackStack() }) }
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
-                composable("revenueControl") { au.mainspring.nativeapp.ui.screens.RevenueControlScreen(onBack = { navController.popBackStack() }) }
+                composable("revenueControl") { au.mainspring.nativeapp.ui.screens.RevenueControlScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
+                composable("search") { au.mainspring.nativeapp.ui.screens.SearchScreen(onBack = { navController.popBackStack() }, onOpenRoute = { navController.navigate(it) }) }
+                composable("sendBookingRequest") { au.mainspring.nativeapp.ui.screens.SendBookingRequestScreen(onBack = { navController.popBackStack() }) }
+                composable("financeReport") { au.mainspring.nativeapp.ui.screens.MobileFinanceReportScreen(onBack = { navController.popBackStack() }) }
+                composable("database") { au.mainspring.nativeapp.ui.screens.DatabaseScreen(onBack = { navController.popBackStack() }) }
                 composable("catalogue") { au.mainspring.nativeapp.ui.screens.CatalogueScreen(onBack = { navController.popBackStack() }) }
                 composable("shoeServices") { au.mainspring.nativeapp.ui.screens.ShoeServicesScreen(onBack = { navController.popBackStack() }) }
                 composable("accounts") { au.mainspring.nativeapp.ui.screens.AccountsScreen(onBack = { navController.popBackStack() }, onSignOut = onLogout) }
@@ -377,6 +393,9 @@ fun MainspringAppShell(
                         onMessages = { navController.navigate("messages/shoe-repair-jobs/$id") },
                         onEdit = { navController.navigate("counterEdit/shoe-repair-jobs/$id") },
                         onPhotos = { navController.navigate("jobPhotos/shoe-repair-jobs/$id") },
+                        onDeleted = { navController.popBackStack() },
+                        onDuplicated = { navController.navigate("shoeJob/$it") },
+                        onEditCustomer = { navController.navigate("editCustomer/$it") },
                     )
                 }
                 composable("auto_jobs") {
@@ -423,6 +442,7 @@ fun MainspringAppShell(
                         onPhotos = { navController.navigate("jobPhotos/auto-key-jobs/$id") },
                         onArrival = { navController.navigate("arrivalMessage/$id") },
                         onSignature = { navController.navigate("quoteSignature/$id/$it") },
+                        onOpenJob = { navController.navigate("autoKeyJob/$it") },
                     )
                 }
             }

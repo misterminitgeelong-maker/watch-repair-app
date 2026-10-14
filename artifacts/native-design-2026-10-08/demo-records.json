@@ -1,0 +1,37 @@
+{
+  "source": "disposable localhost API only",
+  "tenant_id": "764665db-f9c4-4df7-adeb-462be7e9ffac",
+  "day": "2026-10-14",
+  "jobs": [
+    {
+      "id": "a3f319da-4968-47dd-b841-ee054e9d4d5b",
+      "job_number": "AK-00001",
+      "title": "Lockout - Car"
+    },
+    {
+      "id": "2bff4453-6b1c-4ac7-9388-cba2cbb38b68",
+      "job_number": "AK-00002",
+      "title": "All Keys Lost"
+    },
+    {
+      "id": "c74ada29-2749-4927-bff5-eb239747c547",
+      "job_number": "AK-00003",
+      "title": "Remote / Fob Sync"
+    },
+    {
+      "id": "38146477-6d61-4ac2-987b-92278b451348",
+      "job_number": "AK-00004",
+      "title": "Ignition Repair"
+    },
+    {
+      "id": "f31e1bbf-54d8-491e-a17f-224402243783",
+      "job_number": "AK-00005",
+      "title": "Broken Key Extraction"
+    },
+    {
+      "id": "076559c8-63c9-4b15-9d9e-ef722e685a87",
+      "job_number": "AK-00006",
+      "title": "Duplicate Key"
+    }
+  ]
+}

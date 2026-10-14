@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -66,7 +67,10 @@ fun TodayHubScreen(
             item {
                 var q by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
                 Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AtelierTextField(q, { q = it }, singleLine = true, placeholder = { Text("Search jobs, customers or references") }, modifier = Modifier.fillMaxWidth())
+                    Box(Modifier.fillMaxWidth()) {
+                        AtelierTextField("", {}, singleLine = true, readOnly = true, placeholder = { Text("Search jobs, customers or invoices") }, modifier = Modifier.fillMaxWidth())
+                        Box(Modifier.matchParentSize().clickable { onOpenRoute("search") })
+                    }
                     val term = q.trim()
                     if(term.isNotEmpty()) {
                         val hits = hub.jobs.filter { "${it.title} ${it.number} ${it.customer.orEmpty()}".contains(term, true) }.take(5)
@@ -83,6 +87,7 @@ fun TodayHubScreen(
                         if(canWork) AtelierChip(false, onNewIntake, { Text("New intake") })
                         AtelierChip(false, { onOpenRoute("newCustomer") }, { Text("New customer") })
                         if("auto_key" in features) AtelierChip(false, { onOpenRoute("counterSale") }, { Text("Counter sale") })
+                        if("auto_key" in features) AtelierChip(false, { onOpenRoute("sendBookingRequest") }, { Text("Send booking request") })
                         if("auto_key" in features || "shop_mobile_booking" in features) AtelierChip(false, { onOpenRoute("bookingRequests") }, { Text("Book mobile services") })
                         AtelierChip(false, { onOpenRoute("quotes") }, { Text("Quotes") })
                         AtelierChip(false, { onOpenRoute("invoices") }, { Text("Invoices") })

@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         TokenStore.init(applicationContext)
         au.mainspring.nativeapp.ui.DesignPreferences.init(applicationContext)
+        au.mainspring.nativeapp.ConnectivityMonitor.init(applicationContext)
         au.mainspring.nativeapp.ui.RecentItems.init(applicationContext)
         setContent {
             MainspringTheme {
@@ -38,6 +39,11 @@ class MainActivity : ComponentActivity() {
                             try { startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url))) }
                             catch(_: android.content.ActivityNotFoundException) { android.widget.Toast.makeText(this@MainActivity,"No browser is available on this device.",android.widget.Toast.LENGTH_LONG).show() }
                         },onLogout = authVm::logout)
+                        else if(authState.loggedIn && authState.signupPaymentPending) au.mainspring.nativeapp.ui.screens.SubscriptionRequiredScreen(onOpenWeb = {
+                            val url = au.mainspring.nativeapp.api.ApiClient.getEffectiveBaseUrl() + "subscription-required"
+                            try { startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url))) }
+                            catch(_: android.content.ActivityNotFoundException) { android.widget.Toast.makeText(this@MainActivity,"No browser is available on this device.",android.widget.Toast.LENGTH_LONG).show() }
+                        }, onSignOut = authVm::logout)
                         else
                         MainspringAppShell(
                             sessionSummary = authState.sessionSummary,
@@ -48,6 +54,9 @@ class MainActivity : ComponentActivity() {
                             activeSiteId = authState.activeSiteId,
                             onSwitchSite = authVm::switchSite,
                             sessionError = authState.error,
+                            subscriptionStatus = authState.subscriptionStatus,
+                            trialEnd = authState.trialEnd,
+                            sessionRole = authState.role,
                         )
                         }
                         if(authState.loading) androidx.compose.material3.AlertDialog(onDismissRequest = {}, title = { Text("Switching shop…") },
