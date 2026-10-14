@@ -22,7 +22,7 @@ import au.mainspring.nativeapp.ui.SectionLabel
 import au.mainspring.nativeapp.ui.formatCents
 
 @Composable fun QuoteComposer(draftKey: String, businessAccount: Boolean, enabled: Boolean, catalogue: Boolean,
- resetVersion: String? = null, quickSale: Boolean = false, currency: String? = TokenStore.shopValue("currency"), buttonLabel: String = "Save draft quote", modifier: Modifier = Modifier, sheetLayout: Boolean = false, onSave: (List<MobileQuoteLine>, Boolean, Boolean) -> Unit) {
+ resetVersion: String? = null, quickSale: Boolean = false, currency: String? = TokenStore.shopValue("currency"), buttonLabel: String = "Save draft quote", modifier: Modifier = Modifier, sheetLayout: Boolean = false, secondaryLabel: String? = null, onSecondary: ((List<MobileQuoteLine>, Boolean, Boolean) -> Unit)? = null, onSave: (List<MobileQuoteLine>, Boolean, Boolean) -> Unit) {
  val drafts = remember(draftKey) { TokenStore.bindDrafts() }
  val gson = remember { Gson() }
  val initial = remember(draftKey) { try { gson.fromJson(drafts.loadMessageDraft(draftKey), QuoteComposerDraft::class.java) ?: QuoteComposerDraft(inclusive = !businessAccount) } catch(_: Exception) { QuoteComposerDraft(inclusive = !businessAccount) } }
@@ -72,6 +72,7 @@ import au.mainspring.nativeapp.ui.formatCents
   } }
 
   Button(onClick = { try { onSave(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)) { Text(buttonLabel) }
+  if(secondaryLabel != null && onSecondary != null) OutlinedButton(onClick = { try { onSecondary(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(secondaryLabel) }
  }
  Column(modifier) {
  Column(if(sheetLayout) Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=16.dp) else Modifier,verticalArrangement = Arrangement.spacedBy(10.dp)) {

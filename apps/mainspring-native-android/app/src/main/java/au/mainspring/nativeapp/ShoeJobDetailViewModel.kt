@@ -34,6 +34,12 @@ data class ShoeJobDetailUiState(
     val claimBusy: Boolean = false,
     val quoteBusy: Boolean = false,
     val editBusy: Boolean = false,
+    val adminBusy: Boolean = false,
+    val deleted: Boolean = false,
+    val clonedJobId: String? = null,
+    val accounts: List<au.mainspring.nativeapp.api.CustomerAccountRead> = emptyList(),
+    val accountsLoading: Boolean = false,
+    val accountBusy: Boolean = false,
     val catalogue: List<ShoeCatalogueItem> = emptyList(),
     val statusUnknown: Boolean = false, val statusReviewed: Boolean = false, val statusRequest: String = "",
 )
@@ -190,6 +196,65 @@ class ShoeJobDetailViewModel(
         edit {
             val shoe = api.createShoe(ShoeCreate(customerId, type.trim().ifBlank { null }, brand.trim().ifBlank { null }, colour.trim().ifBlank { null }, notes.trim().ifBlank { null }))
             api.linkShoe(jobId, ShoeLink(shoe.id))
+        }
+    }
+
+    private val admin get() = ApiClient.service(au.mainspring.nativeapp.api.JobAdminApi::class.java)
+
+    /** Owner/manager only (web hides delete from other roles). Sets [ShoeJobDetailUiState.deleted] on success. */
+    fun deleteJob() {
+        val snapshot = _state.value
+        if(snapshot.job == null || snapshot.adminBusy || snapshot.statusBusy || !TokenStore.canManageInvoices()) return
+        _state.update { it.copy(adminBusy = true, error = null) }
+        viewModelScope.launch {
+            try {
+                admin.deleteShoeJob(jobId).let { r -> if(!r.isSuccessful) throw retrofit2.HttpException(r); r.body()?.close() }
+                _state.update { it.copy(adminBusy = false, deleted = true) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(adminBusy = false, error = e.userMessage()) } }
+        }
+    }
+
+    /** Duplicates the job (POST /shoe-repair-jobs/{id}/clone); the new id lands in [ShoeJobDetailUiState.clonedJobId]. */
+    fun duplicateJob() {
+        val snapshot = _state.value
+        if(snapshot.job == null || snapshot.adminBusy || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(adminBusy = true, error = null) }
+        viewModelScope.launch {
+            try {
+                val cloned = admin.cloneShoeJob(jobId)
+                _state.update { it.copy(adminBusy = false, clonedJobId = cloned.id) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(adminBusy = false, error = e.userMessage()) } }
+        }
+    }
+    fun consumeClonedJob() { _state.update { it.copy(clonedJobId = null) } }
+
+    fun loadAccounts() {
+        if(_state.value.accountsLoading) return
+        _state.update { it.copy(accountsLoading = true) }
+        viewModelScope.launch {
+            try {
+                val accounts = api.listCustomerAccounts().filter { it.active }.sortedBy { it.name.lowercase() }
+                _state.update { it.copy(accountsLoading = false, accounts = accounts) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(accountsLoading = false, error = e.userMessage()) } }
+        }
+    }
+
+    /** Sets (or clears when null) the B2B customer account. */
+    fun assignAccount(accountId: String?) {
+        val snapshot = _state.value
+        if(snapshot.job == null || snapshot.accountBusy || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(accountBusy = true, error = null) }
+        viewModelScope.launch {
+            try {
+                val fields = com.google.gson.JsonObject()
+                if(accountId == null) fields.add("customer_account_id", com.google.gson.JsonNull.INSTANCE) else fields.addProperty("customer_account_id", accountId)
+                val j = api.updateCounterShoe(jobId, fields)
+                _state.update { it.copy(accountBusy = false, job = j) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(accountBusy = false, error = e.userMessage()) } }
         }
     }
 
