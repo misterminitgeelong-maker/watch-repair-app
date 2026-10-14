@@ -19,6 +19,7 @@ data class DashboardUiState(
     val error: String? = null,
     val summary: ReportsSummaryResponse? = null,
     val widgets: DashboardWidgetsResponse? = null,
+    val inboxCount: Int? = null,
 )
 
 class DashboardViewModel : ViewModel() {
@@ -36,6 +37,7 @@ class DashboardViewModel : ViewModel() {
             try {
                 var summary: ReportsSummaryResponse? = null
                 var widgets: DashboardWidgetsResponse? = null
+                var inbox: Int? = null
                 var err: String? = null
                 coroutineScope {
                     val s = async {
@@ -53,11 +55,19 @@ class DashboardViewModel : ViewModel() {
                             null
                         }
                     }
+                    val i = async {
+                        try {
+                            ApiClient.service(au.mainspring.nativeapp.api.DashboardExtrasApi::class.java).getInboxCount().count
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    inbox = i.await()
                     summary = s.await()
                     widgets = w.await()
                 }
                 _state.update {
-                    it.copy(loading = false, summary = summary, widgets = widgets, error = err)
+                    it.copy(loading = false, summary = summary, widgets = widgets, inboxCount = inbox, error = err)
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.userMessage()) }

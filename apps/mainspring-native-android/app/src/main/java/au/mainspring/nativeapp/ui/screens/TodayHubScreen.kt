@@ -41,12 +41,13 @@ fun TodayHubScreen(
 ) {
     val hub by jobs.state.collectAsStateWithLifecycle()
     val dash by dashboard.state.collectAsStateWithLifecycle()
-    RefreshOnResume { jobs.refresh(); if("watch" in features) dashboard.refresh() }
+    RefreshOnResume { jobs.refresh(); dashboard.refresh() }
     val zone = runCatching { ZoneId.of(TokenStore.calendarTimezone()) }.getOrDefault(ZoneId.systemDefault())
     val date = LocalDate.now(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.forLanguageTag("en-AU")))
     val canWork = TokenStore.canWorkJobs()
     val attention = hub.jobs.filter { it.needsAttention && it.active }.sortedBy { it.sortKey }.take(4)
-    val widgets = dash.widgets?.takeIf { "watch" in features }
+    val widgets = dash.widgets
+    val summary = dash.summary?.takeIf { TokenStore.canManageInvoices() }
     val calibre = LocalCalibre.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if(calibre) {
@@ -96,6 +97,7 @@ fun TodayHubScreen(
                     resolved.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
                 }
             }
+            if(summary != null) item { RevenueKpis(summary, Modifier.padding(horizontal = 20.dp)) }
             item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Mine" to hub.mineCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
             item {
                 val tiles = buildList {
@@ -132,6 +134,7 @@ fun TodayHubScreen(
                     }
                 }
             }
+            if(summary != null) item { RevenueKpis(summary, Modifier.padding(horizontal = 20.dp)) }
             item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
             item {
                 val tiles = buildList {
@@ -159,20 +162,46 @@ fun TodayHubScreen(
                 TextButton(onClick = onViewAll, modifier = Modifier.heightIn(min = 44.dp)) { Text("View all", style = MaterialTheme.typography.labelLarge) }
             }
         }
-        if(attention.isEmpty() && widgets == null) item {
+        val actions = buildList {
+            widgets?.let { w ->
+                if(w.overdueJobsCount > 0) add(Triple("Jobs awaiting go-ahead", "${w.overdueJobsCount} waiting 14+ days", "watch_jobs"))
+                if(w.overdueCollectionCount > 0) add(Triple("Jobs past collection date", "${w.overdueCollectionCount} overdue for collection", "watch_jobs"))
+                if(w.quotesPending7dCount > 0) add(Triple("Quotes waiting for an answer", "${w.quotesPending7dCount} sent more than 7 days ago", "quotes"))
+                if(w.overdueInvoicesCount > 0) add(Triple("Unpaid invoices", "${w.overdueInvoicesCount} outstanding", "invoices"))
+            }
+        }
+        if(attention.isEmpty() && actions.isEmpty()) item {
             if(hub.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp))
             else EmptyState("You're all caught up", "Nothing is overdue or waiting on you right now.")
         }
         items(attention, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
-        widgets?.let { w ->
-            if(w.quotesPending7dCount > 0) item { AttentionCard("Quotes waiting for an answer", "${w.quotesPending7dCount} sent more than 7 days ago", onOpenQuotes) }
-            if(w.overdueInvoicesCount > 0) item { AttentionCard("Unpaid invoices", "${w.overdueInvoicesCount} outstanding", onOpenInvoices) }
+        if(actions.isNotEmpty()) item {
+            Column(Modifier.padding(horizontal = 20.dp)) {
+                if(calibre) SectionLabel("Action needed") else Text("Action needed", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        items(actions, key = { it.first }) { (title, detail, route) ->
+            AttentionCard(title, detail) {
+                when(route) { "quotes" -> onOpenQuotes(); "invoices" -> onOpenInvoices(); else -> onOpenRoute(route) }
+            }
+        }
+        dash.inboxCount?.takeIf { it > 0 }?.let { n ->
+            item { AttentionCard("Inbox", if(n == 1) "1 unread alert" else "$n unread alerts") { onOpenRoute("inbox") } }
         }
         if(canWork) item {
             PrimaryAction(onClick = onNewIntake, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
                 Text("New intake", style = MaterialTheme.typography.titleMedium)
             }
         }
+    }
+}
+
+@Composable private fun RevenueKpis(s: au.mainspring.nativeapp.api.ReportsSummaryResponse, modifier: Modifier = Modifier) {
+    fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MonoLabel("Business this period")
+        MetricStrip(listOf("Revenue" to money(s.financials.revenueCents), "Gross profit" to money(s.financials.grossProfitCents), "Approval rate" to "${s.salesFunnel.approvalRatePercent.toInt()}%"))
+        MetricStrip(listOf("Outstanding" to money(s.financials.outstandingCents), "Billed" to money(s.financials.billedCents)))
     }
 }
 
