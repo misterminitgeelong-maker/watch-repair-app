@@ -17,6 +17,22 @@ object ApiClient {
  }
  private fun clientBuilder() = OkHttpClient.Builder().connectTimeout(30,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS)
  private fun logging() = HttpLoggingInterceptor().apply { level = if(BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE }
+ private val extras = HashMap<Class<*>, Any>(); private var extrasKey = ""
+ /** Additional Retrofit service interfaces share the same authenticated client and base URL as [api]. */
+ @Suppress("UNCHECKED_CAST") fun <T : Any> service(type: Class<T>): T = synchronized(this) {
+  api
+  val key = "${TokenStore.sessionGeneration()}|${getEffectiveBaseUrl()}"
+  if(key != extrasKey) { extras.clear(); extrasKey = key }
+  extras.getOrPut(type) { retrofitFor(type) } as T
+ }
+ private fun <T : Any> retrofitFor(type: Class<T>): T {
+  val generation = TokenStore.sessionGeneration(); val url = getEffectiveBaseUrl()
+  val refresh = Retrofit.Builder().baseUrl(url).client(clientBuilder().addInterceptor(logging()).build())
+   .addConverterFactory(GsonConverterFactory.create(gson)).build().create(RefreshApi::class.java)
+  val main = clientBuilder().addInterceptor(AuthInterceptor(generation)).addInterceptor(logging()).authenticator(TokenAuthenticator(refresh, url)).build()
+  return Retrofit.Builder().baseUrl(url).client(main).addConverterFactory(ExplicitJsonBodyConverter())
+   .addConverterFactory(GsonConverterFactory.create(gson)).build().create(type)
+ }
  val api: MainspringApi get() = synchronized(this) {
   val generation = TokenStore.sessionGeneration(); val url = getEffectiveBaseUrl()
   if(cached != null && cachedGeneration == generation && cachedUrl == url) return@synchronized cached!!
