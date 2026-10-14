@@ -65,11 +65,12 @@ private data class WorkspaceGroup(val key: String, val title: String, val subtit
                 colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary))
         }
-        item { Text("Operations", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium) }
+        item { if(LocalCalibre.current) SectionLabel("Operations", Modifier.padding(horizontal = 20.dp)) else Text("Operations", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium) }
         items(shown, key = { it.key }) { g ->
             val expanded = q.isNotEmpty() || open == g.key
             Surface(Modifier.padding(horizontal = 20.dp).fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
                 Column {
+                    if(LocalCalibre.current) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Column(Modifier.fillMaxWidth().clickable { open = if(open == g.key) null else g.key }.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(g.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
@@ -88,7 +89,7 @@ private data class WorkspaceGroup(val key: String, val title: String, val subtit
                 }
             }
         }
-        item { Text("Settings & support", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium) }
+        item { if(LocalCalibre.current) SectionLabel("Settings & support", Modifier.padding(horizontal = 20.dp)) else Text("Settings & support", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium) }
         item {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if("auto_key" in features && owner) FlatPanel {

@@ -112,6 +112,15 @@ fun JobDetailScreen(
             }
             "messages" -> MessageThreadScreen("repair-jobs", jobId, { tab = "summary" }, embedded = true)
             else -> {
+                if(LocalCalibre.current) {
+                    JobStageStrip(watchStage(job.status))
+                    if(state.history.isNotEmpty()) {
+                        SectionLabel("Repair history / ${state.history.size} ${if(state.history.size == 1) "event" else "events"}")
+                        state.history.take(3).forEach { h ->
+                            ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
+                        }
+                    }
+                }
                 FlatPanel {
                     Text(job.title, style = MaterialTheme.typography.titleMedium)
                     job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }

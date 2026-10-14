@@ -1,6 +1,7 @@
 package au.mainspring.nativeapp.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,4 +52,26 @@ object Calibre {
         if(shop != null) MonoLabel(shop.take(22))
         trailing?.invoke()
     }
+}
+
+/** Four-segment progress strip with mono captions (Intake / Approved / Serviced / Collect). */
+@Composable fun JobStageStrip(stage: Int, labels: List<String> = listOf("Intake", "Approved", "Serviced", "Collect"), modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+            labels.forEachIndexed { i, _ ->
+                Box(Modifier.weight(1f).height(3.dp).background(if(i <= stage) Calibre.Forest else Calibre.Hairline))
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+            labels.forEachIndexed { i, l -> Box(Modifier.weight(1f)) { MonoLabel(l, color = if(i <= stage) Calibre.Forest else Calibre.Muted) } }
+        }
+    }
+}
+
+/** Maps a watch-repair status to its stage on the Calibre strip. */
+fun watchStage(status: String): Int = when(status) {
+    "go_ahead", "third_party_quote_approved" -> 1
+    "working_on", "awaiting_parts", "parts_to_order", "sent_to_labanda", "quoted_by_labanda", "at_third_party_for_quoting", "at_third_party_repairer", "service", "completed" -> 2
+    "awaiting_collection", "collected" -> 3
+    else -> 0
 }
