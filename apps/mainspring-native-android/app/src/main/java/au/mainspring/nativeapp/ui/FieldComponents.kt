@@ -214,7 +214,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun PillChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     if(LocalCalibre.current) {
-        Column(modifier.heightIn(min = 44.dp).semantics { this.selected = selected }
+        Column(modifier.width(IntrinsicSize.Max).heightIn(min = 44.dp).semantics { this.selected = selected }
             .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick), horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.Bottom) {
             Box(Modifier.heightIn(min = 40.dp).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
                 Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal),
@@ -299,7 +299,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 }
 
 /** Line-art watch used on the Today hero card. */
-@Composable fun WatchArt(modifier: Modifier = Modifier, color: Color = Color(0xFFD7F36B)) {
+@Composable fun WatchArt(modifier: Modifier = Modifier, color: Color = if(LocalCalibre.current) Calibre.Forest else Color(0xFFD7F36B)) {
     Canvas(modifier.size(width = 84.dp, height = 112.dp)) {
         val u = size.width / 84f
         val strap = color.copy(alpha = 0.16f)
@@ -438,5 +438,19 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
             TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Back" }) { Text("\u2039 $backLabel", style = MaterialTheme.typography.titleSmall) }
         }
         LargeHeader(eyebrow, title, insets = false)
+    }
+}
+
+/** Filter/tab chip: an underline tab in Calibre, the regular chip elsewhere. */
+@Composable fun TabChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    if(!LocalCalibre.current) { AtelierChip(selected, onClick, label, modifier, enabled); return }
+    Column(modifier.width(IntrinsicSize.Max).heightIn(min = 44.dp).semantics { this.selected = selected }
+        .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick), verticalArrangement = Arrangement.Bottom) {
+        Box(Modifier.heightIn(min = 40.dp).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides (if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = if(enabled) 1f else 0.5f)) {
+                ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal)) { label() }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(if(selected) MaterialTheme.colorScheme.primary else Color.Transparent))
     }
 }

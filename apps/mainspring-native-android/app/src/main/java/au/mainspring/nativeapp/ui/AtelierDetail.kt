@@ -109,7 +109,7 @@ fun ActivityCard(title: String, detail: String?, time: String?, modifier: Modifi
     FlatPanel(modifier) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         detail?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        time?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        time?.let { if(LocalCalibre.current) MonoLabel(it) else Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -124,7 +124,7 @@ fun IntakeHeader(current: String, onBack: () -> Unit, backEnabled: Boolean, onDi
             TextButton(onClick = onDiscard, enabled = discardEnabled, modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") }
         }
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("DRAFT SAVED ON THIS DEVICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if(LocalCalibre.current) MonoLabel("Atelier / Counter · Draft saved on this device") else Text("DRAFT SAVED ON THIS DEVICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("New intake", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
             if(onSwitch != null && services.size > 1) SegmentedPills(services, current, { if(it != current) onSwitch(it) }, Modifier.padding(top = 6.dp, bottom = 6.dp))
         }

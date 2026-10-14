@@ -50,7 +50,7 @@ import java.time.format.DateTimeFormatter
       au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, label = { Text("Search name, contact or notes") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
        (listOf("") + listOf("new", "contacted", "visited", "onboarded") + state.leads.map { it.status }).distinct().forEach { value ->
-        au.mainspring.nativeapp.ui.AtelierChip(stage == value, { stage = value }, label = { Text(if(value.isBlank()) "All stages" else au.mainspring.nativeapp.ui.statusLabel(value)) })
+        au.mainspring.nativeapp.ui.TabChip(stage == value, { stage = value }, label = { Text(if(value.isBlank()) "All stages" else au.mainspring.nativeapp.ui.statusLabel(value)) })
        }
       }
      }

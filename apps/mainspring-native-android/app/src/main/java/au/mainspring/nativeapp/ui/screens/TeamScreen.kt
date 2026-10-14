@@ -33,7 +33,7 @@ import com.google.gson.JsonParser
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    listOf("week" to "This week","month" to "This month","90" to "Last 90 days").forEach {(key,label)->au.mainspring.nativeapp.ui.AtelierChip(state.period==key,{model.period(key)},label={Text(label)})}
+                    listOf("week" to "This week","month" to "This month","90" to "Last 90 days").forEach {(key,label)->au.mainspring.nativeapp.ui.TabChip(state.period==key,{model.period(key)},label={Text(label)})}
                 }
                 Text("${state.users.count {it.active}} active accounts · ${state.users.size} total",style=MaterialTheme.typography.labelSmall)
                 androidx.compose.material3.TextButton(model::refresh,enabled=!state.busy && !state.loading) { Text("Refresh") }

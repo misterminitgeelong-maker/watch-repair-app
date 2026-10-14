@@ -66,7 +66,7 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("day", "week", "month", "quarter").forEach { period ->
-                        au.mainspring.nativeapp.ui.AtelierChip(state.period == period, { model.select(period = period) }, label = { Text(period.replaceFirstChar { it.uppercase() }) })
+                        au.mainspring.nativeapp.ui.TabChip(state.period == period, { model.select(period = period) }, label = { Text(period.replaceFirstChar { it.uppercase() }) })
                     }
                 }
                 Spacer(Modifier.height(8.dp))

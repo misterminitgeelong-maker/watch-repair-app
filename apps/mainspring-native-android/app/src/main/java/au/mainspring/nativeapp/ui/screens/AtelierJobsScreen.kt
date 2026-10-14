@@ -1,6 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -31,6 +32,21 @@ internal fun HubJob.statusLine(): String {
 
 /** One Atelier job card: bold title with chevron, reference line, blue status line. */
 @Composable fun HubJobCard(job: HubJob, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) {
+        ListCard(onClick, modifier) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(job.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Text("\u203a", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            }
+            MonoLabel(job.reference())
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                val tone = if(job.urgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                Box(Modifier.size(6.dp).background(tone, androidx.compose.foundation.shape.CircleShape))
+                Text(job.statusLine(), style = MaterialTheme.typography.labelMedium, color = tone)
+            }
+        }
+        return
+    }
     ListCard(onClick, modifier) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(job.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
