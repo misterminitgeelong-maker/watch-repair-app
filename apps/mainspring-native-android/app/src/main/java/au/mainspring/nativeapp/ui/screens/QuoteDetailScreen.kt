@@ -81,6 +81,16 @@ fun QuoteDetailScreen(
                             q.sentAt?.let { Text("Sent ${formatShopDate(it)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                     }
+                    if (q != null) item {
+                      if (au.mainspring.nativeapp.ui.LocalCalibre.current) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            when(q.status) {
+                                "draft" -> CalibreNotice("Review the scope and totals, then send this quote to the customer for approval.")
+                                "sent" -> CalibreNotice("Waiting for the customer to approve this quote.")
+                                "approved" -> CalibreNotice("The customer approved this quote. You can now create an invoice.")
+                            }
+                            au.mainspring.nativeapp.ui.MonoLabel("Link status / ${q.status}")
+                        }
+                    }
                     state.error?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it) } }
                     if (state.lines.isNotEmpty()) item {
                         au.mainspring.nativeapp.ui.SectionLabel("Line items")

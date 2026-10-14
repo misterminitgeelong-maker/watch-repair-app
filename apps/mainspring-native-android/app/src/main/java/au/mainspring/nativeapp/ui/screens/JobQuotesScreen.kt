@@ -21,7 +21,7 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
     val state by vm.state.collectAsStateWithLifecycle()
     Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Job quotes") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            state.job?.let { Text("${it.jobNumber} · ${it.title}", style = MaterialTheme.typography.titleMedium) }
+            state.job?.let { if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Quotes / ${state.quotes.size}"); Text("${it.jobNumber} · ${it.title}", style = MaterialTheme.typography.titleMedium) }
             if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             androidx.compose.material3.TextButton(onClick = vm::load, enabled = !state.loading && !state.busy) { Text("Refresh") }
@@ -35,7 +35,7 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
                     Text(au.mainspring.nativeapp.ui.formatShopDate(q.createdAt).substringBefore(' '), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (state.created != null) { Text("Quote saved as a draft. Open it to review totals and send it to the customer."); OutlinedButton(onClick = vm::startAnotherQuote) { Text("Create another quote") } }
+            if (state.created != null) { if(au.mainspring.nativeapp.ui.LocalCalibre.current) CalibreNotice("Quote saved as a draft. Open it to review totals and send it to the customer.") else Text("Quote saved as a draft. Open it to review totals and send it to the customer."); OutlinedButton(onClick = vm::startAnotherQuote) { Text("Create another quote") } }
             else if (!state.unknownSave && state.job != null) {
                 au.mainspring.nativeapp.ui.SectionLabel("Create a new quote")
                 QuoteComposer("quote-composer/watch/$jobId", state.job?.customerAccountId != null, !state.busy && !state.loading, catalogue = false, onSave = vm::createLines)

@@ -44,7 +44,7 @@ fun InvoicesScreen(
         if (!state.loading && state.error == null && shown.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No invoices yet", "Invoices appear here once a quote is approved and invoiced.")
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
             modifier = Modifier.fillMaxSize().weight(1f, fill = true),
         ) {
             items(shown, key = { it.id }) { inv ->

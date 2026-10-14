@@ -27,11 +27,13 @@ fun QuoteSignatureScreen(jobId: String, quoteId: String, onBack: () -> Unit,
             if(state.loading) CircularProgressIndicator()
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             state.quote?.let { quote ->
+                if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Signature / ${quote.status}")
                 Text("Quote status: ${quote.status}")
                 quote.signer?.let { Text("Signed by $it", style = MaterialTheme.typography.titleMedium) }
                 quote.signedAt?.let { Text("Signed ${formatShopDate(it)}") }
             }
             state.bitmap?.let { bitmap -> Image(bitmap.asImageBitmap(), contentDescription = "Customer's recorded quote signature", modifier = Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat()/bitmap.height).background(Color.White)) }
+            if(au.mainspring.nativeapp.ui.LocalCalibre.current && state.bitmap != null) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             androidx.compose.material3.TextButton(model::load, enabled = !state.loading) { Text("Refresh") }
         }
     }

@@ -44,7 +44,7 @@ fun QuotesScreen(
         if (!state.loading && state.error == null && shown.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No quotes", if(filter == null) "Quotes you create from a job will show up here." else "No $filter quotes right now.")
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
             modifier = Modifier.fillMaxSize().weight(1f, fill = true),
         ) {
             items(shown, key = { it.id }) { q ->
