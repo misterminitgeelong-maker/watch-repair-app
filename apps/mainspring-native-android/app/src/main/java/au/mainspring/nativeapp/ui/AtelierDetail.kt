@@ -106,10 +106,39 @@ fun SummaryCard(title: String, subtitle: String?, hint: String?, onClick: (() ->
 /** Timeline-style event card used on the Activity tab: bold line, grey detail, caption timestamp. */
 @Composable
 fun ActivityCard(title: String, detail: String?, time: String?, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) {
+        Column(modifier.fillMaxWidth()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                detail?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Calibre.Muted) }
+                time?.let { Text(it.uppercase(), Modifier.padding(top = 3.dp), style = Calibre.label, color = Calibre.Muted, maxLines = 2) }
+            }
+        }
+        return
+    }
     FlatPanel(modifier) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         detail?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        time?.let { if(LocalCalibre.current) MonoLabel(it) else Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        time?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** Calibre check/lock row: mono mark in a hairline box, label and optional grey detail. */
+@Composable
+fun CalibreCheckRow(done: Boolean, title: String, detail: String? = null) {
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(22.dp).background(if(done) Calibre.Forest else Calibre.Grey), contentAlignment = Alignment.Center) {
+                Text(if(done) "✓" else "•", style = Calibre.label, color = if(done) androidx.compose.ui.graphics.Color.White else Calibre.Muted)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Calibre.Muted) }
+            }
+            Text(if(done) "DONE" else "LOCKED", style = Calibre.label, color = if(done) Calibre.Forest else Calibre.Muted)
+        }
     }
 }
 

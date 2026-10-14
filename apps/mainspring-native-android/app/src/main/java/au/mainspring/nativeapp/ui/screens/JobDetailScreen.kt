@@ -109,12 +109,31 @@ fun JobDetailScreen(
                     }
                 }
                 attachmentOpenError?.let { ErrorBanner(it) }
-                Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if(LocalCalibre.current) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Text("Activity includes private workshop notes. Customer-visible conversations are in Messages.", Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = Calibre.Muted)
+                } else Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             "messages" -> MessageThreadScreen("repair-jobs", jobId, { tab = "summary" }, embedded = true)
             else -> {
                 if(LocalCalibre.current) {
                     JobStageStrip(watchStage(job.status))
+                    if(job.status == "awaiting_collection") {
+                        val outstandingCents = (job.preQuoteCents - job.depositCents).coerceAtLeast(0)
+                        val paid = job.depositCents >= job.preQuoteCents
+                        SectionLabel(if(paid) "Payment recorded" else "Check before handing over")
+                        CalibreCheckRow(true, "Service complete", "Repair has reached ${statusLabel(job.status).lowercase()}")
+                        CalibreCheckRow(state.smsLog.isNotEmpty(), if(state.smsLog.isNotEmpty()) "Customer notified" else "Customer not yet notified",
+                            if(state.smsLog.isNotEmpty()) "${state.smsLog.size} ${if(state.smsLog.size == 1) "message" else "messages"} sent" else "No message logged for this job")
+                        CalibreCheckRow(paid, if(paid) "Payment verified" else "Payment not yet verified", if(paid) null else "Balance outstanding")
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            MonoLabel(if(paid) "Payment recorded" else "Outstanding")
+                            Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+                            if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = Calibre.Muted)
+                        }
+                        AccentAction(onClick = { onQuotes(jobId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
+                    }
                     if(state.history.isNotEmpty()) {
                         SectionLabel("Repair history / ${state.history.size} ${if(state.history.size == 1) "event" else "events"}")
                         state.history.take(3).forEach { h ->
