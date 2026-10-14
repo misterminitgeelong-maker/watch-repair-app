@@ -85,6 +85,7 @@ fun JobDetailScreen(
         state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
             "activity" -> {
+                if(LocalCalibre.current) MonoLabel("Repair activity / most recent first")
                 if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No activity recorded yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 state.history.forEach { h ->
                     ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
