@@ -237,7 +237,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @Composable fun SegmentedPills(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
     if(LocalCalibre.current) {
         Column(modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            val roomy = options.size <= 4 && androidx.compose.ui.platform.LocalDensity.current.fontScale <= 1.2f
+            Row(Modifier.fillMaxWidth().then(if(roomy) Modifier else Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState())), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
                 options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
