@@ -27,7 +27,7 @@ fun CustomersScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     RefreshOnResume(viewModel::refresh)
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { LargeHeader("Customers · Accounts · Team", "People", onAdd = onNewCustomer, addDescription = "New customer") }
+        item { LargeHeader("Directory · Accounts", "Customers", onAdd = onNewCustomer, addDescription = "New customer") }
         item {
             au.mainspring.nativeapp.ui.AtelierTextField(
                 value = state.query, onValueChange = viewModel::setQuery, singleLine = true,

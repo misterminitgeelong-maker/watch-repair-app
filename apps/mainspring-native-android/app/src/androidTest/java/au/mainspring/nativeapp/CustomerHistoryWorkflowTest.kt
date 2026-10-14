@@ -66,9 +66,7 @@ class CustomerHistoryWorkflowTest {
     }
     @Test fun nativeCustomerRouteStartsMobileIntakeWithTheSelectedCustomer() {
         compose.setContent { MainspringTheme { MainspringAppShell(null,server.url("/").toString(),{},setOf("auto_key")) } }
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("People & network").performClick()
-        compose.onNodeWithText("Customers").performClick()
+        compose.onNodeWithTag("nav-people").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Avery Customer").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Avery Customer").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("New mobile job").fetchSemanticsNodes().isNotEmpty() }

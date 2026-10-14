@@ -328,7 +328,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         when(name) {
             "Today" -> for(cx in listOf(7f, 17f)) for(cy in listOf(7f, 17f)) drawCircle(color, 3.4f * s, p(cx, cy), style = st)
             "Jobs" -> { ln(4f, 20f, 14f, 10f); drawCircle(color, 3.4f * s, p(17f, 7f), style = st); ln(15f, 4f, 20f, 9f); ln(5f, 5f, 10f, 10f); ln(10f, 14f, 20f, 20f).also { } }
-            "People" -> { drawCircle(color, 3.4f * s, p(9f, 8f), style = st); drawArc(color, 200f, 140f, false, p(3f, 14f), Size(12f * s, 12f * s), style = st)
+            "People", "Customers" -> { drawCircle(color, 3.4f * s, p(9f, 8f), style = st); drawArc(color, 200f, 140f, false, p(3f, 14f), Size(12f * s, 12f * s), style = st)
                 drawCircle(color, 2.8f * s, p(17f, 9f), style = st); drawArc(color, 200f, 140f, false, p(12.5f, 14.5f), Size(9f * s, 9f * s), style = st) }
             "Inbox" -> { val path = Path(); path.moveTo(3f * s, 13f * s); path.lineTo(6f * s, 5f * s); path.lineTo(18f * s, 5f * s); path.lineTo(21f * s, 13f * s); path.lineTo(21f * s, 19f * s); path.lineTo(3f * s, 19f * s); path.close()
                 drawPath(path, color, style = st); ln(3f, 13f, 8f, 13f); ln(16f, 13f, 21f, 13f); drawArc(color, 0f, 180f, false, p(8f, 10f), Size(8f * s, 6f * s), style = st) }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** Atelier "Today": hero card, two key counts, what needs attention, and one dark call to action. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun TodayHubScreen(
     features: Set<String>,
@@ -57,6 +59,32 @@ fun TodayHubScreen(
                             Text("Today, at the bench.", Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge)
                             if(canWork) RoundPlusButton(onNewIntake, "New intake")
                         }
+                    }
+                }
+            }
+            item {
+                var q by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AtelierTextField(q, { q = it }, singleLine = true, placeholder = { Text("Search jobs, customers or references") }, modifier = Modifier.fillMaxWidth())
+                    val term = q.trim()
+                    if(term.isNotEmpty()) {
+                        val hits = hub.jobs.filter { "${it.title} ${it.number} ${it.customer.orEmpty()}".contains(term, true) }.take(5)
+                        hits.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
+                        if(hits.isEmpty()) Text("No open jobs match \"$term\".", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        ListCard({ onOpenRoute("people") }) { Text("Look for \"$term\" in Customers", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary) }
+                    }
+                }
+            }
+            item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MonoLabel("Quick actions")
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if(canWork) AtelierChip(false, onNewIntake, { Text("New intake") })
+                        AtelierChip(false, { onOpenRoute("newCustomer") }, { Text("New customer") })
+                        if("auto_key" in features) AtelierChip(false, { onOpenRoute("counterSale") }, { Text("Counter sale") })
+                        if("auto_key" in features || "shop_mobile_booking" in features) AtelierChip(false, { onOpenRoute("bookingRequests") }, { Text("Book mobile services") })
+                        AtelierChip(false, { onOpenRoute("quotes") }, { Text("Quotes") })
+                        AtelierChip(false, { onOpenRoute("invoices") }, { Text("Invoices") })
                     }
                 }
             }

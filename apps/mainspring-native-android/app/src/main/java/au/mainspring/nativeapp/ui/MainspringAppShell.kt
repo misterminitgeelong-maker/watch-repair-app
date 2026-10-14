@@ -166,7 +166,7 @@ fun MainspringAppShell(
                 if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
-                        listOf("today" to "Today", "jobs" to "Jobs", "people" to "People", "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
+                        listOf("today" to "Today", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
                             au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute) == route, { navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$route"))
                         }
                     }
@@ -176,7 +176,7 @@ fun MainspringAppShell(
             bottomBar = {
                 if (showBottomBar && !wide) {
                     FloatingTabBar(
-                        destinations = listOf("today" to "Today", "jobs" to "Jobs", "people" to "People", "inbox" to "Inbox", "more" to "More"),
+                        destinations = listOf("today" to "Today", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More"),
                         isSelected = { it == tabFor(currentRoute) },
                         onSelect = { route -> navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     )
@@ -321,6 +321,7 @@ fun MainspringAppShell(
                 }
                 composable("toolkit") { ToolkitScreen(onBack = { navController.popBackStack() }) }
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
+                composable("customerOrders") { au.mainspring.nativeapp.ui.screens.CustomerOrdersScreen(onBack = { navController.popBackStack() }) }
                 composable("bookingRequests") { BookingRequestsScreen(canRequest = "shop_mobile_booking" in features,
                     onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
                 composable("messages/{resource}/{id}", arguments = listOf(navArgument("resource") { type = NavType.StringType }, navArgument("id") { type = NavType.StringType })) { entry ->

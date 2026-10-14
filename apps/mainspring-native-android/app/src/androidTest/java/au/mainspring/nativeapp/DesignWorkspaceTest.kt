@@ -112,9 +112,9 @@ class DesignWorkspaceTest {
     @Test fun technicianNavigationHasMapPoolPosAndHidesTeamManagement() {
         TokenStore.setSessionRole("tech")
         compose.setContent {MainspringTheme {MainspringAppShell("Technician",server.url("/").toString(),{},setOf("auto_key"))}}
-        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithText("Repairs & customer orders").performClick()
+        compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithText("Map and today's route").assertExists();compose.onNodeWithText("Dispatch pool").assertExists();compose.onNodeWithText("POS / quick sale").assertExists()
-        compose.onNodeWithTag("more-list").performScrollToNode(hasText("People & network"));compose.onNodeWithText("People & network").performClick();compose.onNodeWithText("Team & commission").assertDoesNotExist()
+        compose.onNodeWithText("Team").assertDoesNotExist()
     }
     @Test fun weekMoveOnlyPatchesBookingWithVersionAndUsesShopOffset() {
         val vm=WeekPlannerViewModel();compose.waitUntil(10_000) {!vm.state.value.loading}
@@ -171,7 +171,6 @@ class DesignWorkspaceTest {
         compose.onNodeWithTag("nav-today").performClick()
         compose.onNodeWithText("Needs your attention").assertExists()
         compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("Money & performance").performClick()
         compose.onNodeWithText("Reports").performClick()
         compose.onNodeWithTag("period-report-list").performScrollToNode(hasText("Revenue comparison"))
         compose.onNodeWithText("Revenue comparison").assertIsDisplayed()

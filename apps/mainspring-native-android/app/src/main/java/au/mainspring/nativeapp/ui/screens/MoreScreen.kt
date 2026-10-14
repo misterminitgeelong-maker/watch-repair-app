@@ -19,9 +19,9 @@ import androidx.compose.ui.unit.dp
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.ui.*
 
-private data class WorkspaceGroup(val key: String, val title: String, val subtitle: String, val hint: String, val items: List<Pair<String, String>>)
+private data class WorkspaceSection(val key: String, val title: String, val items: List<Pair<String, String>>)
 
-/** More tab: Atelier "Your workspace" — grouped tool cards that expand to their destinations, plus settings. */
+/** More tab: every tool, grouped and named like the web app's menu, always visible (two taps from anywhere), plus settings. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun MoreScreen(shop: String?, summary: String?, features: Set<String>, canSwitch: Boolean,
     onSwitch: () -> Unit, onNavigate: (String) -> Unit, onLogout: () -> Unit) {
@@ -29,86 +29,50 @@ private data class WorkspaceGroup(val key: String, val title: String, val subtit
     val appearance by DesignPreferences.appearance.collectAsState()
     var signOut by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
-    var open by rememberSaveable { mutableStateOf<String?>(null) }
     val owner = TokenStore.canManageInvoices()
-    val groups = buildList {
-        add(WorkspaceGroup("repairs", "Repairs & customer orders",
-            listOfNotNull(if("watch" in features) "Watch" else null, if("shoe" in features) "Shoe" else null, if("auto_key" in features) "Mobile services" else null).joinToString(" · ").ifBlank { "All services" },
-            "Bookings, dispatch and toolkit",
-            buildList {
-                if("watch" in features) add("Watch repair jobs" to "watch_jobs")
-                if("shoe" in features) add("Shoe repair jobs" to "shoe_jobs")
-                if("auto_key" in features) {
-                    add("Mobile services jobs" to "auto_jobs"); add("Dispatch" to "dispatch"); add("Map and today's route" to "route"); add("Dispatch pool" to "dispatchPool")
-                    add("POS / quick sale" to "counterSale"); add("Mobile toolkit" to "toolkit")
-                }
-                if("auto_key" in features || "shop_mobile_booking" in features) add("Mobile booking requests" to "bookingRequests")
-            }))
-        add(WorkspaceGroup("money", "Money & performance", "Quotes · Invoices · Revenue control", "Reports, scorecards and exports",
-            buildList { add("Quotes" to "quotes"); add("Invoices" to "invoices"); if(owner) add("Reports" to "reports") }))
-        add(WorkspaceGroup("people", "People & network", "Customers · Accounts · Team", "Prospects, shops and regions",
-            buildList {
-                add("Customers" to "people")
-                if("customer_accounts" in features) add("Business accounts" to "businessAccounts")
-                if("auto_key" in features) add("Lead inbox & prospects" to "leads")
-                if(owner) add("Team & commission" to "team")
-            }))
-        add(WorkspaceGroup("stock", "Stock & data", "Inventory · Catalogue", "Search and check stock levels", listOf("Inventory" to "stock")))
+    val mobile = "auto_key" in features
+    val sections = buildList {
+        add(WorkspaceSection("workshop", "Workshop", buildList {
+            if(mobile || "shop_mobile_booking" in features) add("Book mobile services" to "bookingRequests")
+            if("watch" in features) add("Watch Repairs" to "watch_jobs")
+            if("shoe" in features) add("Shoe Repairs" to "shoe_jobs")
+            add("Customer Orders" to "customerOrders")
+        }))
+        if(mobile) add(WorkspaceSection("mobile", "Mobile services", buildList {
+            add("Jobs & dispatch" to "auto_jobs"); add("Dispatch" to "dispatch"); add("Map and today's route" to "route"); add("Dispatch pool" to "dispatchPool")
+            add("POS / quick sale" to "counterSale"); add("Lead inbox" to "leads"); add("Prospects" to "prospects")
+            if(owner) add("Team" to "team")
+            add("Mobile toolkit" to "toolkit")
+        }))
+        add(WorkspaceSection("business", "Business", buildList {
+            if("customer_accounts" in features) add("Customer Accounts" to "businessAccounts")
+            add("Quotes" to "quotes"); add("Invoices" to "invoices")
+            if(owner) add("Reports" to "reports")
+            add("Inventory" to "stock")
+        }))
     }
     val q = query.trim()
-    val shown = groups.map { g -> if(q.isEmpty()) g else g.copy(items = g.items.filter { it.first.contains(q, true) || g.title.contains(q, true) }) }.filter { it.items.isNotEmpty() }
-    LazyColumn(Modifier.fillMaxSize().testTag("more-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(if(LocalCalibre.current) 0.dp else 8.dp)) {
-        item { LargeHeader((shop ?: "Your shop") + " · Every tool in reach", "Your workspace") }
+    val shown = sections.map { g -> if(q.isEmpty()) g else g.copy(items = g.items.filter { it.first.contains(q, true) }) }.filter { it.items.isNotEmpty() }
+    LazyColumn(Modifier.fillMaxSize().testTag("more-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        item { LargeHeader((shop ?: "Your shop") + " · Every tool in reach", "More") }
         item {
             au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool or workflow") }, shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = if(LocalCalibre.current) 8.dp else 0.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 8.dp),
                 colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary))
         }
-        item { if(LocalCalibre.current) SectionLabel("Operations", Modifier.padding(horizontal = 20.dp)) else Text("Operations", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium) }
-        items(shown, key = { it.key }) { g ->
-            val expanded = q.isNotEmpty() || open == g.key
-            if(LocalCalibre.current) {
+        shown.forEach { g ->
+            item(key = "h-${g.key}") { SectionLabel(g.title, Modifier.padding(horizontal = 20.dp)) }
+            items(g.items, key = { "${g.key}/${it.second}" }) { (label, route) ->
                 Column(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Row(Modifier.fillMaxWidth().clickable { open = if(open == g.key) null else g.key }.heightIn(min = 64.dp).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(g.title, style = MaterialTheme.typography.titleMedium)
-                            MonoLabel(g.subtitle)
-                        }
-                        Text(if(expanded) "⌃" else "›", style = MaterialTheme.typography.titleLarge)
-                    }
-                    if(expanded) g.items.forEach { (label, route) ->
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { onNavigate(route) }.padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                            Text("→", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    if(g.key == shown.last().key) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                }
-                return@items
-            }
-            Surface(Modifier.padding(horizontal = 20.dp).fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
-                Column {
-                    if(LocalCalibre.current) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Column(Modifier.fillMaxWidth().clickable { open = if(open == g.key) null else g.key }.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(g.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                            Text(if(expanded) "⌃" else "›", style = MaterialTheme.typography.titleLarge)
-                        }
-                        Text(g.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(g.hint, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                    }
-                    if(expanded) g.items.forEach { (label, route) ->
-                        HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable { onNavigate(route) }.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                            Text("›", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onNavigate(route) }, verticalAlignment = Alignment.CenterVertically) {
+                        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                        Text("\u2192", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
+            item(key = "e-${g.key}") { HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant) }
         }
         item { if(LocalCalibre.current) SectionLabel("Settings & support", Modifier.padding(horizontal = 20.dp)) else Text("Settings & support", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium) }
         item {
