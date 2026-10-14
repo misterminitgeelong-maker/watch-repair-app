@@ -2,6 +2,7 @@ package au.mainspring.nativeapp.ui
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -123,9 +124,34 @@ fun MainspringAppShell(
             onOpenRoute = { navController.navigate(it) { launchSingleTop = true } })
     }
     val jobsContent: @Composable () -> Unit = {
-        au.mainspring.nativeapp.ui.screens.AtelierJobsScreen(features, selectedSite?.name,
+        val paneWide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 840 && au.mainspring.nativeapp.ui.LocalCalibre.current
+        var selected by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<Pair<String, String>?>(null) }
+        if(!paneWide) au.mainspring.nativeapp.ui.screens.AtelierJobsScreen(features, selectedSite?.name,
             onOpenJob = { navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(it)) },
             onNew = { navController.navigate("new_intake") })
+        else androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Box(Modifier.weight(0.42f)) {
+                au.mainspring.nativeapp.ui.screens.AtelierJobsScreen(features, selectedSite?.name,
+                    onOpenJob = { job -> if(job.service == "watch" || job.service == "shoe") selected = job.service to job.id else navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(job)) },
+                    onNew = { navController.navigate("new_intake") })
+            }
+            androidx.compose.material3.VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            androidx.compose.foundation.layout.Box(Modifier.weight(0.58f)) {
+                val sel = selected
+                if(sel == null) androidx.compose.foundation.layout.Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center, horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                    au.mainspring.nativeapp.ui.MonoLabel("Select a job")
+                    Text("Choose a repair from the list to see its record here.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else androidx.compose.runtime.key(sel) {
+                    if(sel.first == "watch") au.mainspring.nativeapp.ui.screens.JobDetailScreen(jobId = sel.second, apiBaseUrl = apiBaseUrl, onBack = { selected = null },
+                        onQuotes = { navController.navigate("jobQuotes/$it") }, onMessages = { navController.navigate("messages/repair-jobs/${sel.second}") },
+                        onWorkLogs = { navController.navigate("workLogs/${sel.second}") }, onEdit = { navController.navigate("counterEdit/repair-jobs/${sel.second}") },
+                        onPhotos = { navController.navigate("jobPhotos/repair-jobs/${sel.second}") })
+                    else au.mainspring.nativeapp.ui.screens.ShoeJobDetailScreen(jobId = sel.second, apiBaseUrl = apiBaseUrl, onBack = { selected = null },
+                        onMessages = { navController.navigate("messages/shoe-repair-jobs/${sel.second}") }, onEdit = { navController.navigate("counterEdit/shoe-repair-jobs/${sel.second}") },
+                        onPhotos = { navController.navigate("jobPhotos/shoe-repair-jobs/${sel.second}") })
+                }
+            }
+        }
     }
     val peopleContent: @Composable () -> Unit = {
         CustomersScreen(onOpenCustomer = { id -> navController.navigate("customer/$id") }, onNewCustomer = { navController.navigate("newCustomer") })
@@ -163,7 +189,7 @@ fun MainspringAppShell(
             NavHost(
                 navController = navController,
                 startDestination = startRoute,
-                modifier = Modifier.widthIn(max = if(wide) 1040.dp else 680.dp).fillMaxHeight().fillMaxWidth(),
+                modifier = Modifier.widthIn(max = if(wide) 1280.dp else 680.dp).fillMaxHeight().fillMaxWidth(),
             ) {
                 composable("today") { todayContent() }
                 composable("new_intake") {
