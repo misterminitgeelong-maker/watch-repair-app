@@ -37,9 +37,11 @@ private data class WorkspaceSection(val key: String, val title: String, val item
             if("watch" in features) add("Watch Repairs" to "watch_jobs")
             if("shoe" in features) add("Shoe Repairs" to "shoe_jobs")
             add("Customer Orders" to "customerOrders")
+            if("watch" in features) add("Catalogue" to "catalogue")
+            if("shoe" in features) add("Shoe services" to "shoeServices")
         }))
         if(mobile) add(WorkspaceSection("mobile", "Mobile services", buildList {
-            add("Jobs & dispatch" to "auto_jobs"); add("Dispatch" to "dispatch"); add("Map and today's route" to "route"); add("Dispatch pool" to "dispatchPool")
+            add("Jobs & dispatch" to "auto_jobs"); add("Revenue control" to "revenueControl"); add("Dispatch" to "dispatch"); add("Map and today's route" to "route"); add("Dispatch pool" to "dispatchPool")
             add("POS / quick sale" to "counterSale"); add("Lead inbox" to "leads"); add("Prospects" to "prospects")
             if(owner) add("Team" to "team")
             add("Mobile toolkit" to "toolkit")
@@ -49,6 +51,7 @@ private data class WorkspaceSection(val key: String, val title: String, val item
             add("Quotes" to "quotes"); add("Invoices" to "invoices")
             if(owner) add("Reports" to "reports")
             add("Inventory" to "stock")
+            add("Accounts" to "accounts")
         }))
     }
     val q = query.trim()

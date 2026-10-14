@@ -326,6 +326,10 @@ fun MainspringAppShell(
                 }
                 composable("toolkit") { ToolkitScreen(onBack = { navController.popBackStack() }) }
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
+                composable("revenueControl") { au.mainspring.nativeapp.ui.screens.RevenueControlScreen(onBack = { navController.popBackStack() }) }
+                composable("catalogue") { au.mainspring.nativeapp.ui.screens.CatalogueScreen(onBack = { navController.popBackStack() }) }
+                composable("shoeServices") { au.mainspring.nativeapp.ui.screens.ShoeServicesScreen(onBack = { navController.popBackStack() }) }
+                composable("accounts") { au.mainspring.nativeapp.ui.screens.AccountsScreen(onBack = { navController.popBackStack() }, onSignOut = onLogout) }
                 composable("customerOrders") { au.mainspring.nativeapp.ui.screens.CustomerOrdersScreen(onBack = { navController.popBackStack() }) }
                 composable("bookingRequests") { BookingRequestsScreen(canRequest = "shop_mobile_booking" in features,
                     onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
