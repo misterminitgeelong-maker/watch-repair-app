@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -25,12 +26,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.*
 import au.mainspring.nativeapp.ui.*
+import au.mainspring.nativeapp.api.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AutoKeyJobDetailScreen(
     jobId: String, apiBaseUrl: String, onBack: () -> Unit, onMessages: () -> Unit,
     onFinance: (Boolean) -> Unit, onEdit: () -> Unit, onPhotos: () -> Unit = {}, onArrival: () -> Unit = {},
-    onSignature: (String) -> Unit = {}, initialStatus: String? = null, embedded: Boolean = false,
+    onSignature: (String) -> Unit = {}, initialStatus: String? = null, embedded: Boolean = false, onOpenJob: ((String) -> Unit)? = null,
     vm: AutoKeyJobDetailViewModel = viewModel(key = "$jobId|$apiBaseUrl", factory = AutoKeyJobDetailViewModel.factory(jobId,apiBaseUrl)),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -59,6 +61,11 @@ import au.mainspring.nativeapp.ui.*
         if(lastSeenStatus!=null && j?.status!=lastSeenStatus && !state.offlineSnapshot) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
         lastSeenStatus=j?.status
     }
+    var confirmDuplicate by rememberSaveable(jobId) {mutableStateOf(false)}
+    var confirmDelete by rememberSaveable(jobId) {mutableStateOf(false)}
+    var keyLookup by rememberSaveable(jobId) {mutableStateOf(false)}
+    LaunchedEffect(tab,state.offlineSnapshot) {if(tab=="activity" && !state.activityLoaded && !state.offlineSnapshot) vm.loadActivity()}
+    LaunchedEffect(state.deleted) {if(state.deleted) onBack()}
     var moreActions by rememberSaveable(jobId) {mutableStateOf(false)}
     var statusPicker by remember(jobId) { mutableStateOf(false) }
     var pendingStep by rememberSaveable(jobId) { mutableStateOf<String?>(null) }
@@ -120,18 +127,19 @@ import au.mainspring.nativeapp.ui.*
                     }
                     if(!compactHeader) JourneyProgress((journey ?: fieldJourney(j.status)).step)
                 }
-                val sections=listOf("info" to "Info","vehicle" to "Vehicle & Key","finance" to "Financial","photos" to "Photos","messages" to "Messages")
+                val sections=listOf("info" to "Info","vehicle" to "Vehicle & Key","finance" to "Financial","photos" to "Photos","messages" to "Messages","activity" to "Activity")
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     sections.forEach {(key,label)->PillChip(label,tab==key,{tab=key})}
                 }
                 AnimatedContent(targetState=tab,modifier=Modifier.weight(1f).testTag("job-detail-body"),label="job-section") { activeTab ->
-                    if(state.offlineSnapshot && activeTab in listOf("finance","photos","messages")) Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Text("Reconnect to load current ${when(activeTab) {"finance"->"quotes, invoices and payments";else->activeTab}}.")
+                    if(state.offlineSnapshot && activeTab in listOf("finance","photos","messages","activity")) Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Text("Reconnect to load current ${when(activeTab) {"finance"->"quotes, invoices and payments";"activity"->"the activity log";else->activeTab}}.")
                         OutlinedButton(vm::load,enabled=!state.loading) {Text("Retry connection")}
                     } else when(activeTab) {
                         "finance" -> MobileFinanceScreen(jobId,{tab="info"},businessAccount=j.customerAccountId!=null,onSignature=onSignature,embedded=true)
                         "photos" -> JobPhotosScreen("auto-key-jobs",jobId,{tab="info"},embedded=true)
                         "messages" -> MessageThreadScreen("auto-key-jobs",jobId,{tab="info"},embedded=true)
+                        "activity" -> JobActivityList(state.activity,state.activityLoading,state.activityError,onRetry=vm::loadActivity)
                         else -> LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                             item {
                                 if(state.loading || state.statusBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -177,6 +185,8 @@ import au.mainspring.nativeapp.ui.*
                                             } }
                                         }
                                     }
+                                    state.keySearchError?.takeIf {!keyLookup}?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
+                                    OutlinedButton({vm.clearKeySearch();keyLookup=true},modifier=Modifier.fillMaxWidth().testTag("job-key-lookup"),enabled=!state.offlineSnapshot && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) {Text("Look up key details")}
                                     TextButton(onEdit,enabled=!state.offlineSnapshot) {Text("Edit vehicle and key details")}
                                 } else {
                                     val activeJourney=journey ?: fieldJourney(j.status)
@@ -188,6 +198,11 @@ import au.mainspring.nativeapp.ui.*
                                 TextButton({moreActions=!moreActions},colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurfaceVariant)) {Text(if(moreActions) "Hide job actions" else "More job actions")}
                                 if(moreActions) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                                     TextButton(onArrival,enabled=TokenStore.canWorkJobs() && !state.statusBusy && !state.offlineSnapshot) {Text("Arrival message")}
+                                    state.adminError?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
+                                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton({confirmDuplicate=true},modifier=Modifier.weight(1f).testTag("job-duplicate"),enabled=TokenStore.canWorkJobs() && !state.adminBusy && !state.statusBusy && !state.offlineSnapshot) {Text("Duplicate job")}
+                                        if(TokenStore.canManageInvoices()) OutlinedButton({confirmDelete=true},modifier=Modifier.weight(1f).testTag("job-delete"),enabled=!state.adminBusy && !state.statusBusy && !state.offlineSnapshot) {Text("Delete job",color=MaterialTheme.colorScheme.error)}
+                                    }
                                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton({tab="finance"},modifier=Modifier.weight(1f)) {Text("Quote / invoice")}
                                     OutlinedButton({statusChangeNote="";statusPicker=true},modifier=Modifier.weight(1f),
@@ -218,6 +233,18 @@ import au.mainspring.nativeapp.ui.*
     if(confirmEnRoute) AlertDialog(onDismissRequest={confirmEnRoute=false},title={Text("Mark En Route")},text={Text("Update this job to En Route. Customer notifications follow your shop settings.")},
         confirmButton={Button({confirmEnRoute=false;vm.setStatus("en_route")},enabled=!state.loading && !state.statusBusy && !state.statusReviewRequired && !state.offlineSnapshot && TokenStore.canWorkJobs()) {Text("Confirm En Route")}},dismissButton={TextButton({confirmEnRoute=false}) {Text("Cancel")}})
 
+    if(confirmDuplicate) AlertDialog(onDismissRequest={confirmDuplicate=false},title={Text("Duplicate this job?")},
+        text={Text("Creates a new job with the same customer, vehicle and key details. The original is not changed.")},
+        confirmButton={Button({confirmDuplicate=false;vm.duplicate()}) {Text("Duplicate")}},dismissButton={TextButton({confirmDuplicate=false}) {Text("Cancel")}})
+    state.duplicated?.let {copy -> AlertDialog(onDismissRequest=vm::dismissAdminMessage,title={Text("Job duplicated")},
+        text={Text("Created ${copy.jobNumber}.${if(onOpenJob==null) " Find it in the job list." else ""}")},
+        confirmButton={if(onOpenJob!=null) Button({vm.dismissAdminMessage();onOpenJob(copy.id)}) {Text("Open duplicate")} else TextButton(vm::dismissAdminMessage) {Text("Done")}},
+        dismissButton={if(onOpenJob!=null) TextButton(vm::dismissAdminMessage) {Text("Stay here")}}) }
+    if(confirmDelete) AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete this job?")},
+        text={Text("This permanently removes ${j?.jobNumber.orEmpty()} with its quotes and photos. This cannot be undone.")},
+        confirmButton={Button({confirmDelete=false;vm.deleteJob()}) {Text("Delete job")}},dismissButton={TextButton({confirmDelete=false}) {Text("Cancel")}})
+    if(keyLookup && j!=null) KeyLookupDialog(j,state,onSearch=vm::searchKeys,onApply=vm::applyKeyMatch,onClose={keyLookup=false})
+
     if (statusPicker) {
         AlertDialog(
             onDismissRequest = { statusPicker = false },
@@ -233,13 +260,17 @@ import au.mainspring.nativeapp.ui.*
                         singleLine = false,
                         maxLines = 3,
                     )
-                    AUTO_KEY_JOB_STATUS_OPTIONS.forEach { s ->
+                    val currentStage = canonicalMobileStatus(j?.status.orEmpty())
+                    MOBILE_STATUS_PICKER.forEach { (key, label) ->
                         TextButton(onClick = {
-                            vm.setStatus(s, statusChangeNote.trim().takeIf { it.isNotEmpty() })
+                            vm.setStatus(key, statusChangeNote.trim().takeIf { it.isNotEmpty() })
                             statusChangeNote = ""
                             statusPicker = false
-                        }) {
-                            Text(s)
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(if(key == currentStage) "$label (current)" else label, fontWeight = if(key == currentStage) FontWeight.Bold else FontWeight.Normal)
+                                Text(key, style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -312,4 +343,64 @@ private fun contextText(value: com.google.gson.JsonObject,key: String): String? 
             }
         }
     }
+}
+
+
+@Composable private fun JobActivityList(events: List<JobActivityEvent>,loading: Boolean,error: String?,onRetry: () -> Unit) {
+    LazyColumn(Modifier.fillMaxSize().testTag("job-activity"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(0.dp)) {
+        item {
+            if(loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it,onRetry=onRetry)}
+            if(!loading && error==null && events.isEmpty()) Text("No activity recorded yet",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        items(events,key={it.id.ifBlank {it.createdAt+it.eventSummary}}) {event ->
+            Column(Modifier.fillMaxWidth().padding(vertical=10.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                Text(formatShopDate(event.createdAt),style=Calibre.label,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(event.eventSummary,style=MaterialTheme.typography.bodyMedium)
+                event.actorEmail?.takeIf {it.isNotBlank()}?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+            }
+            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+@Composable private fun KeyLookupDialog(job: AutoKeyJobRead,state: AutoKeyJobDetailUiState,onSearch: (String,String,String) -> Unit,onApply: (KeySpecMatch,String) -> Unit,onClose: () -> Unit) {
+    var make by rememberSaveable(job.id) {mutableStateOf(job.vehicleMake.orEmpty())}
+    var model by rememberSaveable(job.id) {mutableStateOf(job.vehicleModel.orEmpty())}
+    var year by rememberSaveable(job.id) {mutableStateOf(job.vehicleYear?.toString().orEmpty())}
+    val busy=state.keySearchLoading || state.keyApplyBusy
+    LaunchedEffect(Unit) {if(!state.keySearched && (make.trim().length>=2 || model.trim().length>=2)) onSearch(make,model,year)}
+    LaunchedEffect(state.keyApplied) {if(state.keyApplied) onClose()}
+    AlertDialog(onDismissRequest={if(!state.keyApplyBusy) onClose()},title={Text("Look up key details")},
+        text={
+            LazyColumn(Modifier.heightIn(max=480.dp).testTag("key-lookup-results"),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                item {
+                    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text("Refine make, model and year, then apply a match to fill the vehicle, key type, chip, blade code and notes.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        au.mainspring.nativeapp.ui.AtelierTextField(make,{make=it},label={Text("Make")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+                        au.mainspring.nativeapp.ui.AtelierTextField(model,{model=it},label={Text("Model")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+                        au.mainspring.nativeapp.ui.AtelierTextField(year,{year=it.filter(Char::isDigit).take(4)},label={Text("Year (optional)")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+                        Button({onSearch(make,model,year)},enabled=!busy,modifier=Modifier.fillMaxWidth()) {Text(if(state.keySearchLoading) "Searching…" else "Search")}
+                        if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                        state.keySearchError?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
+                        if(state.keySearched && state.keyMatches.isEmpty() && state.keySearchError==null) Text("No matches. Try fewer letters or remove the year.",style=MaterialTheme.typography.bodySmall)
+                    }
+                }
+                items(state.keyMatches.size) {index ->
+                    val m=state.keyMatches[index]
+                    FlatPanel {
+                        Text(m.label.ifBlank {listOf(m.vehicleMake,m.vehicleModel).joinToString(" ")},style=MaterialTheme.typography.titleSmall)
+                        m.yearsLabel?.takeIf {it.isNotBlank()}?.let {Text(it,style=Calibre.label,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                        listOf("Key type" to m.keyType,"Transponder" to m.chipType,"Blade" to m.blankCodes().joinToString(", ")).forEach {(label,value)->if(!value.isNullOrBlank()) DetailRow(label,value)}
+                        m.techNotes?.takeIf {it.isNotBlank()}?.let {Text(it,style=MaterialTheme.typography.bodySmall,maxLines=6,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)}
+                        val badges=listOfNotNull(m.aklComplexity?.takeIf {it.isNotBlank()}?.let {"AKL ${it.replace('_',' ')}"},"BSU required".takeIf {m.bsuRequired==true},"PIN required".takeIf {m.pinRequired==true},"Dealer only".takeIf {m.dealerRequired==true},"EEPROM".takeIf {m.eepromRequired==true && m.obdProgrammable!=true})
+                        if(badges.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            badges.forEach {badge->Surface(shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.secondaryContainer) {Text(badge.uppercase(),Modifier.padding(horizontal=8.dp,vertical=3.dp),style=Calibre.label)}}
+                        }
+                        Button({onApply(m,year)},enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("key-match-$index")) {Text(if(state.keyApplyBusy) "Applying…" else "Apply to job")}
+                    }
+                }
+            }
+        },
+        confirmButton={TextButton(onClose,enabled=!state.keyApplyBusy) {Text("Close")}})
 }
