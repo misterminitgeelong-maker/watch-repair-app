@@ -56,7 +56,7 @@ fun JobsBoard(
                     col.cards.forEach { card ->
                         var menu by remember(card.id, card.status) { mutableStateOf(false) }
                         Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
-                            Column(Modifier.clickable { onOpen(card.id) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Column(Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpen(card.id) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(card.title, style = MaterialTheme.typography.titleSmall)
                                 Text(card.subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 if (canMove) {

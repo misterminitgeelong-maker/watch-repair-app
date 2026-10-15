@@ -9,6 +9,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +30,16 @@ object Calibre {
     val Grey = Color(0xFFF3F3F3)
     val Hairline = Color(0xFFDADADA)
     val Ink = Color(0xFF1B1B1B)
-    val Muted = Color(0xFF6A6A6A)
+    val Muted = Color(0xFF5F5F5F)  // 6.4:1 on white, 5.1:1 on the darkest Calibre surface (was 6A6A6A, 4.3:1 on E6E6E6)
+    // Dark (system night) variants, used by the Calibre dark scheme in MainspringTheme.
+    val ForestDark = Color(0xFF8FC4A3)
+    val OnForestDark = Color(0xFF0B1A12)
+    val DarkForestContainer = Color(0xFF1E3328)
+    val DarkBackground = Color(0xFF111512)
+    val DarkSurface = Color(0xFF1B201C)
+    val DarkInk = Color(0xFFEEF2EE)
+    val DarkMuted = Color(0xFFA9B1AB)
+    val DarkHairline = Color(0xFF2E352F)
     val label = TextStyle(fontFamily = CalibreMono, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 15.sp, letterSpacing = 0.6.sp)
 }
 
@@ -39,9 +50,10 @@ object Calibre {
 
 /** Three forest bars plus "atelier / calibre": the Calibre wordmark, with the shop name as a mono tag on the right. */
 @Composable fun CalibreWordmark(shop: String?, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+    val markColor = MaterialTheme.colorScheme.primary
     Row(modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 14.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
         androidx.compose.foundation.Canvas(Modifier.size(width = 20.dp, height = 22.dp)) {
-            val bar = 3.dp.toPx(); val gap = 5.dp.toPx(); val c = Calibre.Forest
+            val bar = 3.dp.toPx(); val gap = 5.dp.toPx(); val c = markColor
             drawRect(c, androidx.compose.ui.geometry.Offset(0f, size.height * 0.15f), androidx.compose.ui.geometry.Size(bar, size.height * 0.7f))
             drawRect(c, androidx.compose.ui.geometry.Offset(bar + gap, 0f), androidx.compose.ui.geometry.Size(bar, size.height))
             drawRect(c, androidx.compose.ui.geometry.Offset((bar + gap) * 2, size.height * 0.25f), androidx.compose.ui.geometry.Size(bar, size.height * 0.5f))
@@ -56,14 +68,14 @@ object Calibre {
 
 /** Four-segment progress strip with mono captions (Intake / Approved / Serviced / Collect). */
 @Composable fun JobStageStrip(stage: Int, labels: List<String> = listOf("Intake", "Approved", "Serviced", "Collect"), modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
+    Column(modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "Progress: ${labels.getOrNull(stage.coerceIn(0, (labels.size - 1).coerceAtLeast(0))).orEmpty()}, step ${stage + 1} of ${labels.size}" }, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
             labels.forEachIndexed { i, _ ->
-                Box(Modifier.weight(1f).height(3.dp).background(if(i <= stage) Calibre.Forest else Calibre.Hairline))
+                Box(Modifier.weight(1f).height(3.dp).background(if(i <= stage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant))
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-            labels.forEachIndexed { i, l -> Box(Modifier.weight(1f)) { MonoLabel(l, color = if(i <= stage) Calibre.Forest else Calibre.Muted) } }
+            labels.forEachIndexed { i, l -> Box(Modifier.weight(1f)) { MonoLabel(l, color = if(i <= stage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
     }
 }

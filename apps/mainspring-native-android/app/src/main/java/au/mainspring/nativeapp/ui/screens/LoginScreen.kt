@@ -8,6 +8,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -68,8 +74,8 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(40.dp))
-        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(au.mainspring.nativeapp.R.drawable.ic_launcher_vector), contentDescription = "Mainspring logo", modifier = Modifier.size(88.dp))
-        Text("Mainspring", style = MaterialTheme.typography.headlineMedium)
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(au.mainspring.nativeapp.R.drawable.ic_launcher_vector), contentDescription = null, modifier = Modifier.size(88.dp))
+        Text("Mainspring", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineMedium)
         Text("Sign in to your shop", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         if (showServerConfig) {
@@ -94,8 +100,8 @@ fun LoginScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = rememberShop, onCheckedChange = { rememberShop = it }, enabled = !state.loading)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = rememberShop, enabled = !state.loading, role = Role.Checkbox, onValueChange = { rememberShop = it }), verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = rememberShop, onCheckedChange = null, enabled = !state.loading)
             Text("Remember shop ID", style = MaterialTheme.typography.bodyMedium)
         }
         au.mainspring.nativeapp.ui.AtelierTextField(
@@ -120,16 +126,16 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         state.error?.let {
-            au.mainspring.nativeapp.ui.ErrorBanner(it)
+            au.mainspring.nativeapp.ui.ErrorBanner(it) // announced as an assertive live region
         }
         Button(
             onClick = { submit() },
             enabled = !state.loading && email.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
             if (state.loading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.height(22.dp),
+                    modifier = Modifier.height(22.dp).semantics { contentDescription = "Signing in" },
                     strokeWidth = 2.dp,
                 )
             } else {

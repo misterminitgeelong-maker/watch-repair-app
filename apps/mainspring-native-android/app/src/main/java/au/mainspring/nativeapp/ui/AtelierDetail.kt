@@ -111,8 +111,8 @@ fun ActivityCard(title: String, detail: String?, time: String?, modifier: Modifi
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                detail?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Calibre.Muted) }
-                time?.let { Text(it.uppercase(), Modifier.padding(top = 3.dp), style = Calibre.label, color = Calibre.Muted, maxLines = 2) }
+                detail?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                time?.let { Text(it.uppercase(), Modifier.padding(top = 3.dp), style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2) }
             }
         }
         return
@@ -130,14 +130,14 @@ fun CalibreCheckRow(done: Boolean, title: String, detail: String? = null) {
     Column(Modifier.fillMaxWidth()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(22.dp).background(if(done) Calibre.Forest else Calibre.Grey), contentAlignment = Alignment.Center) {
-                Text(if(done) "✓" else "•", style = Calibre.label, color = if(done) androidx.compose.ui.graphics.Color.White else Calibre.Muted)
+            Box(Modifier.size(22.dp).background(if(done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                Text(if(done) "✓" else "•", style = Calibre.label, color = if(done) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Calibre.Muted) }
+                detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            Text(if(done) "DONE" else "LOCKED", style = Calibre.label, color = if(done) Calibre.Forest else Calibre.Muted)
+            Text(if(done) "DONE" else "LOCKED", style = Calibre.label, color = if(done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

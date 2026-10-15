@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import java.time.Instant
 
 /** What the subscription banner should say, separated from the UI so it can be tested. */
@@ -42,14 +44,14 @@ fun subscriptionNotice(subscriptionStatus: String?, trialEnd: String?, role: Str
         is SubscriptionNotice.TrialEnding -> Quad(
             "FREE TRIAL / ${notice.daysLeft} DAY${if(notice.daysLeft == 1) "" else "S"} LEFT",
             "Add a payment method on the web app to keep access after the trial ends.",
-            Calibre.ForestMint, Calibre.Forest)
+            MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
         SubscriptionNotice.PaymentPastDue -> Quad(
             "PAYMENT FAILED",
             "Update your billing details on the web app to avoid losing access.",
             MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
     }
-    Surface(modifier.fillMaxWidth(), color = container, contentColor = content, shape = MaterialTheme.shapes.small,
-        border = BorderStroke(1.dp, Calibre.Hairline)) {
+    Surface(modifier.fillMaxWidth().semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }, color = container, contentColor = content, shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             MonoLabel(label, color = content)
             Text(message, style = MaterialTheme.typography.bodySmall)

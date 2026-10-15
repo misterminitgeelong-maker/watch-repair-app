@@ -153,7 +153,7 @@ private fun RevenueComparison(current: Long,previous: Long?) {
             Text("No revenue recorded in either period yet.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             val maximum=maxOf(current,previous ?: 0,1).toFloat()
-            Row(Modifier.fillMaxWidth().height(130.dp),horizontalArrangement=Arrangement.spacedBy(16.dp),verticalAlignment=androidx.compose.ui.Alignment.Bottom) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 130.dp),horizontalArrangement=Arrangement.spacedBy(16.dp),verticalAlignment=androidx.compose.ui.Alignment.Bottom) {
                 listOf("Previous period" to previous,"Current period" to current).forEach {(label,value)->Column(Modifier.weight(1f),horizontalAlignment=androidx.compose.ui.Alignment.CenterHorizontally) {
                     Text(value?.let(::reportAmount) ?: "Unavailable",style=MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.height(4.dp))

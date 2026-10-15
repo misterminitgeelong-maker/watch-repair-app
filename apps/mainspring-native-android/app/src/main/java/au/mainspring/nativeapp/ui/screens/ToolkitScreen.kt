@@ -40,7 +40,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
   au.mainspring.nativeapp.ui.SectionLabel("POS catalogue categories")
   if(!s.canEditCatalogue) Text("Only the owner can change the catalogue categories.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
   s.availableCategories.forEach { category ->
-   Row(Modifier.fillMaxWidth().clickable(enabled = s.canEditCatalogue && !s.busy) { vm.toggleCategory(category.key) }.heightIn(min = 56.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+   Row(Modifier.fillMaxWidth().clickable(enabled = s.canEditCatalogue && !s.busy, role = androidx.compose.ui.semantics.Role.Button) { vm.toggleCategory(category.key) }.heightIn(min = 56.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
     Checkbox(category.key in s.enabledCategories, { vm.toggleCategory(category.key) }, enabled = s.canEditCatalogue && !s.busy, modifier = Modifier.semantics { contentDescription = category.label })
     Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
      Text(category.label.ifBlank { category.key }, style = MaterialTheme.typography.bodyLarge)
@@ -91,7 +91,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
      item { au.mainspring.nativeapp.ui.SectionLabel("${group.label} · ${group.tools.count {it.key in state.selected}} of ${group.tools.size}") }
      items(tools, key = { it.key }) { tool -> val calibre = au.mainspring.nativeapp.ui.LocalCalibre.current
       val body: @Composable () -> Unit = {
-      Row(Modifier.fillMaxWidth().clickable(enabled = !state.busy) { vm.toggle(tool.key) }.heightIn(min = 56.dp).padding(end = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+      Row(Modifier.fillMaxWidth().clickable(enabled = !state.busy, role = androidx.compose.ui.semantics.Role.Button) { vm.toggle(tool.key) }.heightIn(min = 56.dp).padding(end = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
        Checkbox(tool.key in state.selected, { vm.toggle(tool.key) }, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = tool.name })
        Column(Modifier.weight(1f).padding(vertical = 8.dp)) { Text(tool.name, style = MaterialTheme.typography.bodyLarge); tool.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
       } }

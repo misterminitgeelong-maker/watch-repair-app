@@ -71,7 +71,7 @@ private data class WorkspaceSection(val key: String, val title: String, val item
             items(g.items, key = { "${g.key}/${it.second}" }) { (label, route) ->
                 Column(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onNavigate(route) }, verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onNavigate(route) }, verticalAlignment = Alignment.CenterVertically) {
                         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                         Text("\u2192", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

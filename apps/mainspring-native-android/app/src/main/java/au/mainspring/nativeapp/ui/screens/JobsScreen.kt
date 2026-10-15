@@ -111,7 +111,7 @@ fun JobsScreen(
                         au.mainspring.nativeapp.ui.statusLabel(job.status), job.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
                     return@items
                 }
-                androidx.compose.material3.Surface(Modifier.fillMaxWidth().clickable { onOpenJob(job.id) },
+                androidx.compose.material3.Surface(Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenJob(job.id) },
                     color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

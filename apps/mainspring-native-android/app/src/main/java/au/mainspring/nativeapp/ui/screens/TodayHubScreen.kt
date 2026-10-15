@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -69,7 +71,7 @@ fun TodayHubScreen(
                 Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(Modifier.fillMaxWidth()) {
                         AtelierTextField("", {}, singleLine = true, readOnly = true, placeholder = { Text("Search jobs, customers or invoices") }, modifier = Modifier.fillMaxWidth())
-                        Box(Modifier.matchParentSize().clickable { onOpenRoute("search") })
+                        Box(Modifier.matchParentSize().semantics { contentDescription = "Search jobs, customers or invoices" }.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenRoute("search") })
                     }
                     val term = q.trim()
                     if(term.isNotEmpty()) {

@@ -50,7 +50,7 @@ import java.util.Locale
     Scaffold(topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Today's route")},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton(model::refresh,enabled=!state.loading) { Text("Refresh") }})}) {padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if(BuildConfig.MAPS_CONFIGURED) NativeStopMap(stops.map {it.jobAddress.orEmpty()},Modifier.fillMaxWidth().height(240.dp))
-            else Surface(Modifier.fillMaxWidth().height(150.dp),color=if(LocalCalibre.current) Calibre.Grey else MaterialTheme.colorScheme.secondaryContainer) {
+            else Surface(Modifier.fillMaxWidth().heightIn(min=150.dp),color=if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.secondaryContainer) {
                 Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     FieldIcon("Map");Text("Your route, stop by stop",style=MaterialTheme.typography.headlineSmall)
                     Text("The in-app map is unavailable in this build. Navigate to each stop using your maps app.",style=MaterialTheme.typography.bodySmall)
@@ -85,7 +85,7 @@ import java.util.Locale
                     Column(Modifier.fillMaxWidth()) {
                         HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                         Row(Modifier.padding(vertical=12.dp),horizontalArrangement=Arrangement.spacedBy(14.dp)) {
-                            Text("%02d".format(index+1),style=Calibre.label.copy(fontSize=13.sp),color=Calibre.Forest,modifier=Modifier.padding(top=3.dp))
+                            Text("%02d".format(index+1),style=Calibre.label.copy(fontSize=13.sp),color=MaterialTheme.colorScheme.primary,modifier=Modifier.padding(top=3.dp))
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                                 Text(job.title,style=MaterialTheme.typography.titleMedium)
                                 MonoLabel(job.jobAddress.orEmpty())
