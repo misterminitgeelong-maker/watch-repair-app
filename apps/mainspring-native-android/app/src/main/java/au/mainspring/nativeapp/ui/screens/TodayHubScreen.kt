@@ -48,7 +48,9 @@ fun TodayHubScreen(
     val zone = runCatching { ZoneId.of(TokenStore.calendarTimezone()) }.getOrDefault(ZoneId.systemDefault())
     val date = LocalDate.now(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.forLanguageTag("en-AU")))
     val canWork = TokenStore.canWorkJobs()
-    val attention = hub.jobs.filter { it.needsAttention && it.active }.sortedBy { it.sortKey }.take(4)
+    val todayIso = LocalDate.now(zone).toString()
+    val dueToday = hub.jobs.filter { it.active && it.dueDate?.take(10)?.let { d -> d <= todayIso } == true }.sortedBy { it.sortKey }.take(5)
+    val attention = hub.jobs.filter { it.needsAttention && it.active && (!LocalCalibre.current || dueToday.none { d -> d.id == it.id }) }.sortedBy { it.sortKey }.take(4)
     val widgets = dash.widgets
     val summary = dash.summary?.takeIf { TokenStore.canManageInvoices() }
     val calibre = LocalCalibre.current
@@ -90,42 +92,15 @@ fun TodayHubScreen(
                         AtelierChip(false, { onOpenRoute("newCustomer") }, { Text("New customer") })
                         AtelierChip(false, { onOpenRoute("customers") }, { Text("Customers") })
                         if("auto_key" in features) AtelierChip(false, { onOpenRoute("counterSale") }, { Text("Counter sale") })
-                        if("auto_key" in features) AtelierChip(false, { onOpenRoute("sendBookingRequest") }, { Text("Send booking request") })
-                        if("auto_key" in features || "shop_mobile_booking" in features) AtelierChip(false, { onOpenRoute("bookingRequests") }, { Text("Book mobile services") })
-                        AtelierChip(false, { onOpenRoute("quotes") }, { Text("Quotes") })
-                        AtelierChip(false, { onOpenRoute("invoices") }, { Text("Invoices") })
+                        if("auto_key" in features) AtelierChip(false, { onOpenRoute("sendBookingRequest") }, { Text("Booking request") })
                     }
                 }
             }
-            item {
-                val recent by RecentItems.items.collectAsStateWithLifecycle()
-                val resolved = recent.mapNotNull { key -> hub.jobs.firstOrNull { "${it.service}/${it.id}" == key } }.take(3)
-                if(resolved.isNotEmpty()) Column(Modifier.padding(horizontal = 20.dp)) {
-                    SectionLabel("Recent")
-                    resolved.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
-                }
-            }
-            if(summary != null) item { RevenueKpis(summary, Modifier.padding(horizontal = 20.dp)) }
             item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Mine" to hub.mineCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
-            item {
-                val tiles = buildList {
-                    if("watch" in features) add(Triple("Watch jobs", "Bench and counter", "watch_jobs"))
-                    if("shoe" in features) add(Triple("Shoe jobs", "Repairs and collections", "shoe_jobs"))
-                    if("auto_key" in features) { add(Triple("Mobile jobs", "On the road", "auto_jobs")); add(Triple("Dispatch", "Today's route", "dispatch")) }
-                }
-                if(tiles.isNotEmpty()) Column(Modifier.padding(horizontal = 20.dp)) {
-                    SectionLabel("Your workspaces")
-                    tiles.forEach { (title, sub, route) ->
-                        ListCard({ onOpenRoute(route) }) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                                    Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                                }
-                                Text("\u2197", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
+            if(dueToday.isNotEmpty()) item {
+                Column(Modifier.padding(horizontal = 20.dp)) {
+                    SectionLabel("Due today")
+                    dueToday.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
                 }
             }
         } else {
@@ -196,7 +171,18 @@ fun TodayHubScreen(
         dash.inboxCount?.takeIf { it > 0 }?.let { n ->
             item { AttentionCard("Inbox", if(n == 1) "1 unread alert" else "$n unread alerts") { onOpenRoute("inbox") } }
         }
-        if(canWork) item {
+        if(calibre) {
+            item {
+                val recent by RecentItems.items.collectAsStateWithLifecycle()
+                val resolved = recent.mapNotNull { key -> hub.jobs.firstOrNull { "${it.service}/${it.id}" == key } }.filter { r -> dueToday.none { it.id == r.id } }.take(3)
+                if(resolved.isNotEmpty()) Column(Modifier.padding(horizontal = 20.dp)) {
+                    SectionLabel("Recent")
+                    resolved.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
+                }
+            }
+            if(summary != null) item { RevenueKpis(summary, Modifier.padding(horizontal = 20.dp)) }
+        }
+        if(canWork && !calibre) item {
             PrimaryAction(onClick = onNewIntake, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
                 Text("New intake", style = MaterialTheme.typography.titleMedium)
             }
