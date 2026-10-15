@@ -12,8 +12,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 /**
@@ -52,28 +50,23 @@ object OfflineSync {
     /** Call on app start, after login/session load and whenever connectivity returns. */
     fun requestReplay() { if (started) triggers.trySend(Unit) }
 
+    /** "Apply anyway" on a stale-refused status change. */
+    fun applyAnyway(id: String) { if (queue.applyAnyway(id)) requestReplay() }
+
     /** Sign-out: TokenStore.clear() has wiped storage; reset in-memory state. */
     fun onSessionCleared() { if (TokenStore.hasOfflineStorage()) queue.reload() }
 
     suspend fun replayOnce(): ReplayResult = queue.replay(sender)
 
-    private val json = "application/json; charset=UTF-8".toMediaType()
-    private val sender = WriteSender { w ->
-        val api = ApiClient.service(OfflineReplayApi::class.java)
-        val body = w.body.toRequestBody(json)
-        val resp = when (w.method) {
-            "POST" -> api.post(w.endpoint, body)
-            "PUT" -> api.put(w.endpoint, body)
-            "PATCH" -> api.patch(w.endpoint, body)
-            else -> return@WriteSender 400
-        }
-        resp.body()?.close(); resp.errorBody()?.close()
-        resp.code()
-    }
+    private val sender = HttpWriteSender { ApiClient.service(OfflineReplayApi::class.java) }
 
     // ---- helpers for the view models: return true when the failure was a network failure and the write is now queued ----
 
-    fun queueStatus(e: Throwable, kind: String, jobId: String, status: String, note: String?, customerNote: String?, label: String): Boolean {
+    fun queueStatus(
+        e: Throwable, kind: String, jobId: String, status: String, note: String?, customerNote: String?, label: String,
+        /** Mobile jobs: the `updated_at` the user saw. Watch/shoe jobs: pass [baseStatus] (the status the user saw) instead. */
+        expectedUpdatedAt: String? = null, baseStatus: String? = null,
+    ): Boolean {
         if (e !is IOException) return false
         val base = when (kind) {
             OfflineKinds.WATCH_STATUS -> "v1/repair-jobs"
@@ -84,7 +77,7 @@ object OfflineSync {
         val body = Gson().toJson(buildMap<String, String> {
             put("status", status); note?.let { put("note", it) }; customerNote?.let { put("customer_note", it) }
         })
-        return enqueue(kind, "$base/$jobId/status", body, jobId, "$label: set status to ${status.replace('_', ' ')}")
+        return enqueue(kind, "$base/$jobId/status", body, jobId, "$label: set status to ${status.replace('_', ' ')}", expectedUpdatedAt, baseStatus, status)
     }
 
     fun queueNote(e: Throwable, kind: String, jobId: String, note: String, label: String): Boolean {
@@ -97,8 +90,9 @@ object OfflineSync {
         return enqueue(kind, "$base/$jobId/note", Gson().toJson(JobNotePayload(note)), jobId, "$label: add note")
     }
 
-    private fun enqueue(kind: String, endpoint: String, body: String, jobId: String, summary: String): Boolean {
-        val ok = queue.enqueue(kind, endpoint, "POST", body, jobId, summary)
+    private fun enqueue(kind: String, endpoint: String, body: String, jobId: String, summary: String,
+                        expectedUpdatedAt: String? = null, baseStatus: String? = null, targetStatus: String? = null): Boolean {
+        val ok = queue.enqueue(kind, endpoint, "POST", body, jobId, summary, expectedUpdatedAt, baseStatus, targetStatus)
         if (ok) requestReplay()
         return ok
     }
