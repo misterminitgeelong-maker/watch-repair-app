@@ -48,7 +48,13 @@ data class JobDetailUiState(
     val accountsLoading: Boolean = false,
     val accountBusy: Boolean = false,
     val statusUnknown: Boolean = false, val statusReviewed: Boolean = false, val statusRequest: String = "",
-)
+    /** Invoices raised for this job; the deposit alone does not show whether the customer has paid. */
+    val invoiceTotalCents: Int = 0, val invoicePaidCents: Int = 0,
+) {
+    /** What the customer still owes: unpaid invoice amounts when invoiced, otherwise quote less deposit. */
+    fun outstandingCents(job: RepairJobRead): Int =
+        if (invoiceTotalCents > 0) (invoiceTotalCents - invoicePaidCents).coerceAtLeast(0) else (job.preQuoteCents - job.depositCents).coerceAtLeast(0)
+}
 
 class JobDetailViewModel(
     private val jobId: String,
@@ -96,8 +102,10 @@ class JobDetailViewModel(
                     emptyList()
                 }
                 val watch = if(job.watchId.isNullOrBlank()) null else try { api.getWatch(job.watchId) } catch (e: CancellationException) { throw e } catch (_: Exception) { _state.value.watch }
+                val invoices = try { api.listInvoices().items.filter { it.repairJobId == jobId } } catch (e: CancellationException) { throw e } catch (_: Exception) { emptyList() }
                 _state.update {
-                    it.copy(loading = false, job = job, watch = watch, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true)
+                    it.copy(loading = false, job = job, watch = watch, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true,
+                        invoiceTotalCents = invoices.sumOf { i -> i.totalCents }, invoicePaidCents = invoices.filter { i -> i.status.equals("paid", true) }.sumOf { i -> i.totalCents })
                 }
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {

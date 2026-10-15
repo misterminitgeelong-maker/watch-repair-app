@@ -81,7 +81,7 @@ fun JobDetailScreen(
         backLabel = "Jobs", title = job.title,
         reference = listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }).joinToString(" \u00b7 "),
         banner = listOfNotNull(watchStatusLabel(job.status), if (job.priority == "urgent" || job.priority == "high") "Urgent" else null,
-            if (job.depositCents < job.preQuoteCents) "Balance outstanding" else null).joinToString(" \u00b7 "),
+            if (state.outstandingCents(job) > 0) "Balance outstanding" else null).joinToString(" \u00b7 "),
         tabs = listOf("summary" to "Summary", "activity" to "Activity", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
         primaryLabel = if (state.statusBusy) "Updating\u2026" else "Change status",
@@ -171,8 +171,8 @@ fun JobDetailScreen(
                     enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
                 if(LocalCalibre.current) {
                     if(job.status == "awaiting_collection") {
-                        val outstandingCents = (job.preQuoteCents - job.depositCents).coerceAtLeast(0)
-                        val paid = job.depositCents >= job.preQuoteCents
+                        val outstandingCents = state.outstandingCents(job)
+                        val paid = outstandingCents == 0
                         SectionLabel(if(paid) "Payment recorded" else "Check before handing over")
                         CalibreCheckRow(true, "Service complete", "Repair has reached ${statusLabel(job.status).lowercase()}")
                         CalibreCheckRow(state.smsLog.isNotEmpty(), if(state.smsLog.isNotEmpty()) "Customer notified" else "Customer not yet notified",
