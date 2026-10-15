@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -76,8 +77,19 @@ fun ShoeJobsScreen(
                     au.mainspring.nativeapp.ui.AtelierChip(state.statusFilter == s, { viewModel.setStatusFilter(s) }, label = { Text(au.mainspring.nativeapp.ui.statusLabel(s)) })
                 }
             }
+            Row(Modifier.padding(horizontal = horizontal, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                au.mainspring.nativeapp.ui.AtelierChip(!state.board, { viewModel.setBoard(false) }, label = { Text("List") }, modifier = Modifier.testTag("view-list"))
+                au.mainspring.nativeapp.ui.AtelierChip(state.board, { viewModel.setBoard(true) }, label = { Text("Board") }, modifier = Modifier.testTag("view-board"))
+            }
             val rows = state.visible
-            if(!state.loading && state.error == null && state.jobs.isNotEmpty() && rows.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No repairs match", "Try a different search or filter.")
+            if(!state.loading && state.error == null && state.jobs.isNotEmpty() && rows.isEmpty() && !state.board) au.mainspring.nativeapp.ui.EmptyState("No repairs match", "Try a different search or filter.")
+            if(state.board) {
+                val order = SHOE_ACTIVE_STATUSES + SHOE_CLOSED_STATUSES
+                val cards = state.boardJobs.map { BoardCard(it.id, it.title, listOfNotNull(it.jobNumber, state.customerName(it)).joinToString(" · "), it.status) }
+                JobsBoard(buildBoardColumns(cards, order, { s -> au.mainspring.nativeapp.ui.statusLabel(s) }), au.mainspring.nativeapp.SHOE_JOB_STATUS_OPTIONS.map { it to au.mainspring.nativeapp.ui.statusLabel(it) },
+                    canMove = au.mainspring.nativeapp.TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob,
+                    modifier = Modifier.fillMaxSize().weight(1f, fill = true))
+            } else
             LazyColumn(
                 contentPadding = PaddingValues(start = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, end = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, top = 12.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),

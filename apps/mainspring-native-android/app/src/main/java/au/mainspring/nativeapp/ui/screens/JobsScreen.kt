@@ -27,6 +27,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -89,6 +90,16 @@ fun JobsScreen(
         if (!state.loading && state.error == null && state.visibleJobs.isEmpty()) {
             au.mainspring.nativeapp.ui.EmptyState("No repairs found", "Try a different search or filter, or start a new repair.")
         }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            au.mainspring.nativeapp.ui.TabChip(selected = !state.board, onClick = { viewModel.setBoard(false) }, label = { Text("List") }, modifier = Modifier.testTag("view-list"))
+            au.mainspring.nativeapp.ui.TabChip(selected = state.board, onClick = { viewModel.setBoard(true) }, label = { Text("Board") }, modifier = Modifier.testTag("view-board"))
+        }
+        if (state.board) {
+            val cards = state.visibleJobs.map { BoardCard(it.id, it.title, listOfNotNull(it.jobNumber, it.customerName?.takeIf { n -> n.isNotBlank() }).joinToString(" · "), it.status) }
+            JobsBoard(buildBoardColumns(cards, WATCH_PICKER_STATUSES, ::watchStatusLabel), WATCH_PICKER_STATUSES.map { it to watchStatusLabel(it) },
+                canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob,
+                modifier = Modifier.fillMaxSize().weight(1f, fill = true))
+        } else
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),

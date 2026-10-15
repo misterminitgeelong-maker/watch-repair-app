@@ -19,7 +19,15 @@ data class ShoeJobsUiState(
     val statusFilter: String = "all",
     val showCompleted: Boolean = false,
     val customerNames: Map<String, String> = emptyMap(),
+    val board: Boolean = false,
+    val movingId: String? = null,
 ) {
+    /** Search-filtered jobs across every status, for the board. */
+    val boardJobs: List<ShoeRepairJobRead> get() {
+        val q = query.trim().lowercase()
+        return jobs.filter { j -> q.isEmpty() || j.jobNumber.lowercase().contains(q) || j.title.lowercase().contains(q) ||
+            (customerName(j) ?: "").lowercase().contains(q) }
+    }
     fun customerName(j: ShoeRepairJobRead): String? = j.shoe?.customerId?.let { customerNames[it] }
     val activeCount: Int get() = jobs.count { it.status in SHOE_ACTIVE_STATUSES }
     val completedCount: Int get() = jobs.count { it.status in SHOE_CLOSED_STATUSES }
@@ -51,6 +59,20 @@ class ShoeJobsViewModel : ViewModel() {
     fun refresh() {
         if(_state.value.loading) return
         fetch(false)
+    }
+    fun setBoard(value: Boolean) { _state.update { it.copy(board = value) } }
+
+    /** Board "Move to": changes one job's status and swaps the returned job into the list. */
+    fun moveJob(id: String, status: String) {
+        if(_state.value.movingId != null) return
+        _state.update { it.copy(movingId = id, error = null) }
+        viewModelScope.launch {
+            try {
+                val updated = api.postShoeRepairJobStatus(id, au.mainspring.nativeapp.api.ShoeStatusUpdate(status))
+                _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if(it.id == id) updated else it }) }
+            } catch(e: kotlinx.coroutines.CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(movingId = null, error = e.userMessage()) } }
+        }
     }
     fun setQuery(value: String) { _state.update { it.copy(query = value) } }
     fun setStatusFilter(value: String) { _state.update { it.copy(statusFilter = value) } }

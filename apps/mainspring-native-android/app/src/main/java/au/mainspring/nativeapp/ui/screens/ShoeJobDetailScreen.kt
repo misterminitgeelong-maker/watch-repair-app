@@ -60,6 +60,7 @@ fun ShoeJobDetailScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmDuplicate by remember { mutableStateOf(false) }
     var accountPicker by remember { mutableStateOf(false) }
+    var resendPicker by remember { mutableStateOf(false) }
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
     LaunchedEffect(state.clonedJobId) { state.clonedJobId?.let { vm.consumeClonedJob(); onDuplicated(it) } }
     val adminReady = !state.loading && !state.statusBusy && !state.adminBusy
@@ -102,6 +103,7 @@ fun ShoeJobDetailScreen(
             },
             DetailAction("Edit customer", adminReady && j.shoe?.customerId != null) { j.shoe?.customerId?.let(onEditCustomer) },
             DetailAction("Business account", adminReady && !state.accountBusy && TokenStore.canWorkJobs()) { vm.loadAccounts(); accountPicker = true },
+            DetailAction("Notify customer", !state.resendBusy && TokenStore.canWorkJobs()) { resendPicker = true },
             DetailAction("Duplicate job", adminReady && TokenStore.canWorkJobs()) { confirmDuplicate = true },
             if (TokenStore.canManageInvoices()) DetailAction("Delete job", adminReady) { confirmDelete = true } else null,
         ),
@@ -109,10 +111,12 @@ fun ShoeJobDetailScreen(
     ) { active ->
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
         state.error?.let { ErrorBanner(it) }
+        state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
             "history" -> {
                 if (state.history.isEmpty()) Text("No history yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 state.history.forEach { h -> ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt)) }
+                state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} · ${log.body}", "${log.toPhone} · ${formatShopDate(log.createdAt)}") }
                 state.attachments.forEach { att ->
                     FlatPanel {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -164,6 +168,13 @@ fun ShoeJobDetailScreen(
         }
     }
 
+    if (resendPicker) AlertDialog(onDismissRequest = { resendPicker = false }, title = { Text("Notify customer") },
+        text = { Column {
+            Text("Sends a text to the customer's phone. The result appears in History.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { vm.resendNotification("job_live"); resendPicker = false }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Job is live", Modifier.fillMaxWidth()) }
+            j?.let { TextButton(onClick = { vm.resendNotification("status_" + it.status); resendPicker = false }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Current status: " + statusLabel(it.status), Modifier.fillMaxWidth()) } }
+        } },
+        confirmButton = { TextButton(onClick = { resendPicker = false }) { Text("Close") } })
     if (confirmQuote) AlertDialog(onDismissRequest = { confirmQuote = false }, title = { Text("Send quote?") },
         text = { Text("Send the saved repair quote to the customer's phone for approval.") },
         confirmButton = { TextButton(onClick = { confirmQuote = false; vm.sendQuote() }) { Text("Send") } },

@@ -26,6 +26,9 @@ data class JobsUiState(
     /** Server-side filter on `assigned_user_id`. */
     val technicianId: String? = null,
     val users: List<TeamUser> = emptyList(),
+    /** Board (kanban) view instead of the list. */
+    val board: Boolean = false,
+    val movingId: String? = null,
 ) {
     /** Jobs after the client-side age filter and sort. */
     val visibleJobs: List<RepairJobRead> get() = sortJobs(
@@ -98,6 +101,20 @@ class JobsViewModel : ViewModel() {
                 _state.update { it.copy(jobs = (it.jobs + page).distinctBy { job -> job.id }, loading = false, canLoadMore = page.size == 100) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) { _state.update { it.copy(loading = false, error = "Could not load more repairs. Try again.") } }
+        }
+    }
+    fun setBoard(value: Boolean) { _state.update { it.copy(board = value) } }
+
+    /** Board "Move to": changes one job's status and swaps the returned job into the list. */
+    fun moveJob(id: String, status: String) {
+        if (_state.value.movingId != null) return
+        _state.update { it.copy(movingId = id, error = null) }
+        viewModelScope.launch {
+            try {
+                val updated = api.postRepairJobStatus(id, au.mainspring.nativeapp.api.RepairJobStatusUpdate(status = status))
+                _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if (it.id == id) updated else it }) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _state.update { it.copy(movingId = null, error = e.userMessage()) } }
         }
     }
     fun filterStatus(value: String?) { _state.update { it.copy(statusFilter = value) }; refresh() }

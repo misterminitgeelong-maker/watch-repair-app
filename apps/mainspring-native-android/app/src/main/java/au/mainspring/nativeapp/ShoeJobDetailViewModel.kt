@@ -41,6 +41,9 @@ data class ShoeJobDetailUiState(
     val accountsLoading: Boolean = false,
     val accountBusy: Boolean = false,
     val catalogue: List<ShoeCatalogueItem> = emptyList(),
+    val smsLog: List<au.mainspring.nativeapp.api.SmsLogRead> = emptyList(),
+    val resendBusy: Boolean = false,
+    val resendInfo: String? = null,
     val statusUnknown: Boolean = false, val statusReviewed: Boolean = false, val statusRequest: String = "",
 )
 
@@ -52,6 +55,8 @@ class ShoeJobDetailViewModel(
     private val statusCheckpoint = CounterStatusCheckpoint("shoe", jobId)
     private val _state = MutableStateFlow(ShoeJobDetailUiState(statusUnknown = statusCheckpoint.pending, statusRequest = statusCheckpoint.description))
     val state: StateFlow<ShoeJobDetailUiState> = _state.asStateFlow()
+
+    private val sms get() = ApiClient.service(au.mainspring.nativeapp.api.ShoeSmsApi::class.java)
 
     init {
         load()
@@ -70,7 +75,8 @@ class ShoeJobDetailViewModel(
                 } catch (_: Exception) {
                     emptyList()
                 }
-                _state.update { it.copy(loading = false, job = j, history = history, attachments = attachments, statusReviewed = true) }
+                val smsLog = try { sms.shoeSmsLog(jobId) } catch (e: CancellationException) { throw e } catch (_: Exception) { _state.value.smsLog }
+                _state.update { it.copy(loading = false, job = j, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true) }
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.userMessage()) }
@@ -228,6 +234,20 @@ class ShoeJobDetailViewModel(
             catch(e: Exception) { _state.update { it.copy(adminBusy = false, error = e.userMessage()) } }
         }
     }
+    /** Re-sends a customer SMS (`job_live` or `status_<status>`) and refreshes the SMS log. */
+    fun resendNotification(event: String) {
+        if (_state.value.resendBusy) return
+        _state.update { it.copy(resendBusy = true, error = null, resendInfo = null) }
+        viewModelScope.launch {
+            try {
+                val r = sms.resendShoeNotification(jobId, au.mainspring.nativeapp.api.ShoeResendRequest(event))
+                val log = try { sms.shoeSmsLog(jobId) } catch (e: CancellationException) { throw e } catch (_: Exception) { _state.value.smsLog }
+                _state.update { it.copy(resendBusy = false, smsLog = log, resendInfo = "SMS ${r.status} to ${r.toPhone}") }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _state.update { it.copy(resendBusy = false, error = e.userMessage()) } }
+        }
+    }
+
     fun consumeClonedJob() { _state.update { it.copy(clonedJobId = null) } }
 
     fun loadAccounts() {

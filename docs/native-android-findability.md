@@ -66,3 +66,12 @@ Not in the native app yet: Parent Account, Accounts management (team users, plan
 | Connectivity banner | Top of the app | done (offline write queue not built yet) |
 | Offline write queue | n/a | not started |
 | Push notifications | n/a | blocked: no google-services.json |
+
+## Phase 2 (watch and shoe)
+
+| Item | Where in the app | Status |
+|---|---|---|
+| Board (kanban) view with "Move to" status change | Watch Repairs and Shoe Repairs lists, List/Board chips | done |
+| Shoe SMS log and resend (job live, current status) | Shoe job detail > Notify customer, History | done |
+| Repair jobs CSV export | More > Database (already exports jobs) | already done |
+| Prev/next job, saved views, repair queue swipe triage, Niimbot labels, push | n/a | not built |
