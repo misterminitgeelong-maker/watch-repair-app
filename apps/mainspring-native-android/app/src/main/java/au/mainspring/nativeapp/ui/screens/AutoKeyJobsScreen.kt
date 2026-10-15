@@ -87,6 +87,7 @@ fun AutoKeyJobsScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(listOf(j.jobNumber, if(j.scheduledAt != null) bookingTime(j.scheduledAt) else null).filterNotNull().joinToString(" \u00b7 "), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            au.mainspring.nativeapp.slaChip(j)?.let { au.mainspring.nativeapp.ui.SlaChip(it) }
                             if(j.priority == "high" || j.priority == "urgent") au.mainspring.nativeapp.ui.StatusPill("urgent")
                             au.mainspring.nativeapp.ui.StatusPill(j.status)
                         }
