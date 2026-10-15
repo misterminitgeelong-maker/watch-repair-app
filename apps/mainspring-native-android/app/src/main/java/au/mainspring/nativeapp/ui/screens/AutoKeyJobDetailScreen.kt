@@ -143,6 +143,7 @@ import au.mainspring.nativeapp.api.*
                         else -> LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                             item {
                                 if(state.loading || state.statusBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                                au.mainspring.nativeapp.ui.PendingStatusBanner(jobId)
                                 state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
                                 state.statusInfo?.let {Text(it)}
                                 attachmentOpenError?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}

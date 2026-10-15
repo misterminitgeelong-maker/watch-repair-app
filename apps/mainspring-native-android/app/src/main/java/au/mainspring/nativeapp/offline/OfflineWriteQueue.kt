@@ -22,9 +22,28 @@ data class QueuedWrite(
     val summary: String,
     val createdAt: Long,
     val attempts: Int = 0,
-)
+    /** Sent as `Idempotency-Key` so a retry after a timeout the server did receive cannot apply twice. Null on items queued by older builds (falls back to [id]). */
+    val idempotencyKey: String? = null,
+    /** Mobile jobs: the `updated_at` the user saw. Sent as `X-Expected-Updated-At` on replay. */
+    val expectedUpdatedAt: String? = null,
+    /** Watch/shoe jobs (no server-side stale header): the status the user saw, compared with the live job before replay. */
+    val baseStatus: String? = null,
+    val targetStatus: String? = null,
+    /** True after "Apply anyway": skip every stale check. */
+    val force: Boolean = false,
+) {
+    val isStatus: Boolean get() = kind == OfflineKinds.WATCH_STATUS || kind == OfflineKinds.SHOE_STATUS || kind == OfflineKinds.MOBILE_STATUS
+    fun effectiveIdempotencyKey(): String = idempotencyKey ?: id
+}
 
-data class NeedsAttention(val item: QueuedWrite, val reason: String, val code: Int?, val at: Long)
+data class NeedsAttention(val item: QueuedWrite, val reason: String, val code: Int?, val at: Long) {
+    /** A status change the server refused because the job moved on; the user may choose to apply it anyway. */
+    val canApplyAnyway: Boolean get() = item.isStatus && (code == 409 || code == 412)
+}
+
+/** The status a job is waiting to be moved to by a queued (not yet synced) change, if any. */
+fun QueueSnapshot.pendingStatusFor(jobId: String): String? =
+    pending.lastOrNull { it.jobId == jobId && it.isStatus && it.targetStatus != null }?.targetStatus
 
 data class QueueSnapshot(val pending: List<QueuedWrite> = emptyList(), val attention: List<NeedsAttention> = emptyList())
 
@@ -81,11 +100,32 @@ class OfflineWriteQueue(
 
     fun clearAll() = synchronized(lock) { all = QueueSnapshot(); persistence.save(null); visible.value = all }
 
-    fun enqueue(kind: String, endpoint: String, method: String, body: String, jobId: String, summary: String): Boolean = synchronized(lock) {
+    fun enqueue(
+        kind: String, endpoint: String, method: String, body: String, jobId: String, summary: String,
+        expectedUpdatedAt: String? = null, baseStatus: String? = null, targetStatus: String? = null,
+    ): Boolean = synchronized(lock) {
         val scope = scopeProvider() ?: return false
         if (kind !in OfflineKinds.ALLOWED || all.pending.size >= maxPending) return false
-        val item = QueuedWrite(UUID.randomUUID().toString(), scope, kind, endpoint, method.uppercase(), body, jobId, summary, clock())
+        // A second change to the same job builds on the first: it expects the first's result, not what the user saw originally,
+        // and the first one's replay will have moved updated_at, so the timestamp precondition no longer applies.
+        val earlier = all.pending.lastOrNull { it.jobId == jobId && it.kind == kind && it.targetStatus != null }
+        val base = if (earlier != null) earlier.targetStatus else baseStatus
+        val expected = if (earlier != null) null else expectedUpdatedAt
+        val id = UUID.randomUUID().toString()
+        val item = QueuedWrite(id, scope, kind, endpoint, method.uppercase(), body, jobId, summary, clock(),
+            idempotencyKey = UUID.randomUUID().toString(), expectedUpdatedAt = expected, baseStatus = base, targetStatus = targetStatus)
         all = all.copy(pending = all.pending + item); persist(); true
+    }
+
+    /**
+     * "Apply anyway": put a refused status change back on the queue with no stale checks and a fresh idempotency key
+     * (the server cached the refusal under the old key). Returns false if the item is not in Needs attention.
+     */
+    fun applyAnyway(id: String): Boolean = synchronized(lock) {
+        val a = all.attention.firstOrNull { it.item.id == id && it.canApplyAnyway } ?: return false
+        if (all.pending.size >= maxPending) return false
+        val redo = a.item.copy(attempts = 0, force = true, expectedUpdatedAt = null, baseStatus = null, idempotencyKey = UUID.randomUUID().toString())
+        all = all.copy(attention = all.attention.filterNot { it.item.id == id }, pending = all.pending + redo); persist(); true
     }
 
     fun discard(id: String) = synchronized(lock) { all = all.copy(pending = all.pending.filterNot { it.id == id }); persist() }
@@ -120,7 +160,7 @@ class OfflineWriteQueue(
                 else -> synchronized(lock) {
                     all = all.copy(
                         pending = all.pending.filterNot { it.id == next.id },
-                        attention = (listOf(NeedsAttention(next, reasonFor(code), code, clock())) + all.attention).take(maxAttention),
+                        attention = (listOf(NeedsAttention(next, reasonFor(next, code), code, clock())) + all.attention).take(maxAttention),
                     ); persist()
                 }
             }
@@ -132,10 +172,10 @@ class OfflineWriteQueue(
     private fun markAttempt(id: String) = synchronized(lock) {
         all = all.copy(pending = all.pending.map { if (it.id == id) it.copy(attempts = it.attempts + 1) else it }); persist()
     }
-    private fun reasonFor(code: Int) = when (code) {
+    private fun reasonFor(w: QueuedWrite, code: Int) = when (code) {
         403 -> "Your account cannot make this change."
         404 -> "This job no longer exists."
-        409 -> "The job changed on the server; review it and redo this change."
+        409, 412 -> if (!w.isStatus) "The job changed on the server; review it and redo this change." else "This job was changed by someone else after you made this change. Applying it now would overwrite their update."
         else -> "The server rejected this change ($code)."
     }
 }

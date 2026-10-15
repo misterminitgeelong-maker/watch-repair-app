@@ -116,7 +116,7 @@ class ShoeJobDetailViewModel(
                 load()
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
-                if(OfflineSync.queueStatus(e, OfflineKinds.SHOE_STATUS, jobId, newStatus, message, visibleNote, "Shoe job")) {
+                if(OfflineSync.queueStatus(e, OfflineKinds.SHOE_STATUS, jobId, newStatus, message, visibleNote, "Shoe job", baseStatus = current.status)) {
                     statusCheckpoint.clear()
                     _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", info = OfflineSync.SAVED_OFFLINE_MESSAGE) }
                     return@launch

@@ -120,7 +120,7 @@ class JobDetailViewModel(
                 load()
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
-                if(OfflineSync.queueStatus(e, OfflineKinds.WATCH_STATUS, jobId, newStatus, message, visibleNote, "Watch job")) {
+                if(OfflineSync.queueStatus(e, OfflineKinds.WATCH_STATUS, jobId, newStatus, message, visibleNote, "Watch job", baseStatus = current.status)) {
                     statusCheckpoint.clear()
                     _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", resendInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }
                     return@launch

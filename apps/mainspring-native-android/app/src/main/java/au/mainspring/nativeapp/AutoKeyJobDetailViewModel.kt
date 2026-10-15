@@ -73,7 +73,7 @@ class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUr
                 mutable.update { it.copy(job = job, offlineSnapshot=false,statusInfo = message) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) {
-                if(OfflineSync.queueStatus(e, OfflineKinds.MOBILE_STATUS, jobId, body.status, body.note, null, "Mobile job")) {
+                if(OfflineSync.queueStatus(e, OfflineKinds.MOBILE_STATUS, jobId, body.status, body.note, null, "Mobile job", expectedUpdatedAt = current.updatedAt)) {
                     drafts.saveMessageDraft("$operation/request",""); drafts.setPendingOperation(operation,false)
                     mutable.update { it.copy(statusReviewRequired = false, requestedStatus = null, requestedNote = null, statusInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }
                     return@launch

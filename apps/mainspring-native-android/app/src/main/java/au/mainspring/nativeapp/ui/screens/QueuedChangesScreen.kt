@@ -50,7 +50,10 @@ import au.mainspring.nativeapp.ui.*
                     FlatPanel {
                         Text(a.item.summary, style = MaterialTheme.typography.titleSmall)
                         Text(a.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        TextButton(onClick = { OfflineSync.queue.dismissAttention(a.item.id) }, modifier = Modifier.testTag("dismiss-${a.item.id}")) { Text("Dismiss") }
+                        Row {
+                            if (a.canApplyAnyway) TextButton(onClick = { OfflineSync.applyAnyway(a.item.id) }, modifier = Modifier.testTag("apply-anyway-${a.item.id}")) { Text("Apply anyway") }
+                            TextButton(onClick = { OfflineSync.queue.dismissAttention(a.item.id) }, modifier = Modifier.testTag("dismiss-${a.item.id}")) { Text(if (a.canApplyAnyway) "Keep server version" else "Dismiss") }
+                        }
                     }
                 }
             }
