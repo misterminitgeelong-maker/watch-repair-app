@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +25,7 @@ import com.google.gson.JsonParser
     val state by model.state.collectAsStateWithLifecycle()
     var editing by remember {mutableStateOf<TeamUser?>(null)}
     var editorOpen by remember {mutableStateOf(false)}
+    var deleting by remember {mutableStateOf<TeamUser?>(null)}
     LaunchedEffect(state.info) {if(state.info=="Account saved.") editorOpen=false}
     RefreshOnResume(model::refresh)
     Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,containerColor=MaterialTheme.colorScheme.background,topBar={if(!embedded) Column {
@@ -56,11 +58,18 @@ import com.google.gson.JsonParser
                     if(user.commissionRules!=null) Text("Commission rules configured",style=MaterialTheme.typography.labelSmall)
                     if(TokenStore.canManageTeam()) { if(au.mainspring.nativeapp.ui.LocalCalibre.current) OutlinedButton({editing=user;editorOpen=true},enabled=!state.busy && !state.uncertain) {Text("Edit account")}
                     else TextButton({editing=user;editorOpen=true},enabled=!state.busy && !state.uncertain) {Text("Edit account")} }
+                    if(TokenStore.canManageTeam()) TextButton({deleting=user},enabled=!state.busy && !state.uncertain,colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error),modifier=Modifier.testTag("team-delete-${user.id}")) {Text("Delete account")}
                 }
             }
             item {Text("Commission eligibility follows each account's saved rules and filters jobs by their creation date. The report does not identify currency.",style=MaterialTheme.typography.bodySmall)}
             if(state.commissions==null && !state.loading) item {Text("Commission report unavailable.",style=MaterialTheme.typography.bodySmall)}
         }
+    }
+    deleting?.let {user->
+        AlertDialog(onDismissRequest={if(!state.busy) deleting=null},title={Text("Delete ${user.name}?")},
+            text={Text("This permanently removes the login. Jobs and notes they created are kept. To keep the account but stop it signing in, use Edit account and untick Active instead.")},
+            confirmButton={TextButton({model.delete(user);deleting=null},enabled=!state.busy,colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error),modifier=Modifier.testTag("team-delete-confirm")) {Text("Delete account")}},
+            dismissButton={TextButton({deleting=null}) {Text("Cancel")}})
     }
     if(editorOpen) TeamEditor(editing,busy=state.busy,serverError=state.error,onClose={if(!state.busy) editorOpen=false},onSave={name,email,password,role,active,rules->
         model.save(editing,name,email,password,role,active,rules)
