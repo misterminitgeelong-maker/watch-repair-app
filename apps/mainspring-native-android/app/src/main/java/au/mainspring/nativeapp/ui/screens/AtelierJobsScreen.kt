@@ -18,6 +18,12 @@ import au.mainspring.nativeapp.JobsHubViewModel
 import au.mainspring.nativeapp.ui.*
 import java.time.LocalDate
 
+/** Tab and screen name for the Jobs area: a one-service shop sees its own kind of work, not a generic "Jobs". */
+internal fun jobsTabLabel(features: Set<String>): String {
+    val services = listOf("watch", "shoe", "auto_key").filter { it in features }
+    return if(services.size == 1 && services.single() != "auto_key") "Repairs" else "Jobs"
+}
+
 internal fun serviceLabel(service: String) = when(service) { "watch" -> "Watch"; "shoe" -> "Shoe"; else -> "Mobile" }
 
 /** "JOB-00142 · Amelia Wright" */
@@ -77,7 +83,7 @@ fun AtelierJobsScreen(
     }
     val shown = state.visible
     au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { LargeHeader((shopName ?: "Your shop") + " · All services", "Jobs", onAdd = onNew, addDescription = "New job") }
+        item { LargeHeader((shopName ?: "Your shop") + (if(services.size == 1) " \u00b7 " + services.single().second else " \u00b7 All services"), jobsTabLabel(features), onAdd = onNew, addDescription = "New job") }
         item {
             au.mainspring.nativeapp.ui.AtelierTextField(state.query, viewModel::setQuery, singleLine = true, placeholder = { Text("Job, customer or reference") },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), shape = MaterialTheme.shapes.small,

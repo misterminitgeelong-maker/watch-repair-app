@@ -23,6 +23,7 @@ class ShopSessionWorkflowTest {
     private var oldPlatform = false
     private val sites = """[{"tenant_id":"old-shop","tenant_name":"Old Shop","tenant_slug":"old","user_id":"user-1","role":"manager"},{"tenant_id":"new-shop","tenant_name":"New Shop","tenant_slug":"new","user_id":"user-2","role":"tech"}]"""
     @Before fun setup() {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("more_usage", 0).edit().clear().commit()
         TokenStore.init(InstrumentationRegistry.getInstrumentation().targetContext); TokenStore.clear()
         server = MockWebServer(); server.dispatcher = object: Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -62,7 +63,7 @@ class ShopSessionWorkflowTest {
             key(state.sessionKey) { MainspringAppShell(state.sessionSummary,server.url("/").toString(),{},state.features,
                 sites = state.sites,activeSiteId = state.activeSiteId,onSwitchSite = model::switchSite) }
         } }
-        compose.onNodeWithTag("nav-more").performClick(); compose.onNodeWithTag("more-list").performScrollToNode(androidx.compose.ui.test.hasText("Switch shop")); compose.onAllNodesWithText("Switch shop").onFirst().performClick()
+        compose.onNodeWithTag("nav-more").performClick(); compose.onNodeWithTag("more-group-settings").performClick(); compose.onNodeWithTag("more-list").performScrollToNode(androidx.compose.ui.test.hasText("Switch shop")); compose.onAllNodesWithText("Switch shop").onFirst().performClick()
         compose.onNodeWithText("New Shop").performClick()
         compose.waitUntil(10_000) { model.state.value.activeSiteId == "new-shop" && !model.state.value.loading }
         Assert.assertNotEquals(oldKey,model.state.value.sessionKey); Assert.assertEquals("",TokenStore.bindDrafts().loadMessageDraft("unfinished"))

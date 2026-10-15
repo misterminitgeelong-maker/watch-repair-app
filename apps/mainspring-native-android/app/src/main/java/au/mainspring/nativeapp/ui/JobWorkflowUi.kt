@@ -138,3 +138,27 @@ fun SavedViewsRow(
         confirmButton = { TextButton(onClick = { managing = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close") } },
     )
 }
+
+
+/** One-tap Call / Text / Email for the customer, right under the job header where a thumb can reach it. */
+@Composable fun ContactQuickActions(phone: String?, email: String?, modifier: Modifier = Modifier) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val p = phone?.takeIf { it.isNotBlank() }
+    val e = email?.takeIf { it.isNotBlank() }
+    if(p == null && e == null) return
+    var error by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    val digits = p?.filter { it.isDigit() || it == '+' }
+    androidx.compose.foundation.layout.Column(modifier.testTag("contact-quick-actions"), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            if(p != null) {
+                SecondaryAction(onClick = { error = au.mainspring.nativeapp.ui.screens.launchContact(ctx, android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:$digits"))) },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Call") }
+                SecondaryAction(onClick = { error = au.mainspring.nativeapp.ui.screens.launchContact(ctx, android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.parse("smsto:$digits"))) },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Text") }
+            }
+            if(e != null) SecondaryAction(onClick = { error = au.mainspring.nativeapp.ui.screens.launchContact(ctx, android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:" + android.net.Uri.encode(e)))) },
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Email") }
+        }
+        error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+    }
+}

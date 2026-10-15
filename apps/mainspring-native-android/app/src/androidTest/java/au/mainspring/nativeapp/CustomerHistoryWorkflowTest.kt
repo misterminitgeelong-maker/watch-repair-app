@@ -18,6 +18,7 @@ class CustomerHistoryWorkflowTest {
     private val paths = ConcurrentLinkedQueue<String>()
     private val customer = """{"id":"customer-1","full_name":"Avery Customer","created_at":"2026-10-07T00:00:00Z"}"""
     @Before fun setup() {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("more_usage", 0).edit().clear().commit()
         TokenStore.init(InstrumentationRegistry.getInstrumentation().targetContext); TokenStore.clear()
         server = MockWebServer(); server.dispatcher = object: Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -66,7 +67,9 @@ class CustomerHistoryWorkflowTest {
     }
     @Test fun nativeCustomerRouteStartsMobileIntakeWithTheSelectedCustomer() {
         compose.setContent { MainspringTheme { MainspringAppShell(null,server.url("/").toString(),{},setOf("auto_key")) } }
-        compose.onNodeWithTag("nav-people").performClick()
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithTag("more-search").performTextInput("Customer")
+        compose.onNodeWithText("Customers").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Avery Customer").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Avery Customer").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("New mobile job").fetchSemanticsNodes().isNotEmpty() }

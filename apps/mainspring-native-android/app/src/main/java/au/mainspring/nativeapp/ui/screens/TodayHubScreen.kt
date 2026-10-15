@@ -88,6 +88,7 @@ fun TodayHubScreen(
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if(canWork) AtelierChip(false, onNewIntake, { Text("New intake") })
                         AtelierChip(false, { onOpenRoute("newCustomer") }, { Text("New customer") })
+                        AtelierChip(false, { onOpenRoute("customers") }, { Text("Customers") })
                         if("auto_key" in features) AtelierChip(false, { onOpenRoute("counterSale") }, { Text("Counter sale") })
                         if("auto_key" in features) AtelierChip(false, { onOpenRoute("sendBookingRequest") }, { Text("Send booking request") })
                         if("auto_key" in features || "shop_mobile_booking" in features) AtelierChip(false, { onOpenRoute("bookingRequests") }, { Text("Book mobile services") })

@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,8 +23,23 @@ import au.mainspring.nativeapp.CustomFieldsViewModel
     var newName by rememberSaveable { mutableStateOf("") }
     var newValue by rememberSaveable { mutableStateOf("") }
     val busy = state.loading || state.saving
+    // Collapsed by default so a job's main facts stay near the top on a phone; opens on tap (or when something needs attention).
+    var open by rememberSaveable(jobId) { mutableStateOf(false) }
+    val count = state.fields.size
+    if(!open && state.error == null) {
+        if(!canEdit && count == 0) return
+        androidx.compose.foundation.layout.Row(modifier.fillMaxWidth().heightIn(min = 56.dp)
+            .clickable(role = androidx.compose.ui.semantics.Role.Button) { open = true }, verticalAlignment = Alignment.CenterVertically) {
+            Text(if(count > 0) "Custom fields \u00b7 $count" else "Custom fields", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+            Text("+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+        }
+        return
+    }
     Column(modifier.fillMaxWidth()) {
-        SectionLabel("Custom fields")
+        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { open = false }, verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { SectionLabel("Custom fields") }
+            Text("\u2212", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+        }
         FlatPanel {
             if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { ErrorBanner(it, onRetry = if(state.fields.isEmpty()) vm::load else null) }

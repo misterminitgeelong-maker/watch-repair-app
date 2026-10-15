@@ -32,6 +32,7 @@ class DesignWorkspaceTest {
         return """{"id":"$id","job_number":"MS-$id","title":"$title","status":"$status","priority":"urgent","assigned_user_id":"tech","customer_name":"$customer","customer_phone":"0400000000","vehicle_make":"Toyota","vehicle_model":"Hilux","vehicle_year":2019,"job_address":"Demo address, Geelong","key_quantity":1,"programming_status":"pending","scheduled_at":${time?.let {"\"$it\""} ?: "null"},"updated_at":"$version","created_at":"2026-10-08T00:00:00Z","tech_notes":"$notes"}"""
     }
     @Before fun setup() {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("more_usage", 0).edit().clear().commit()
         TokenStore.init(InstrumentationRegistry.getInstrumentation().targetContext);TokenStore.clear();TokenStore.setSessionRole("owner");TokenStore.setDraftScope("design-shop","design-user");TokenStore.setCalendarTimezone("Australia/Sydney")
         TokenStore.setShopIdentity("AUD","Native QA","Demo ABN","0400000000","Demo address")
         DesignPreferences.init(InstrumentationRegistry.getInstrumentation().targetContext)
@@ -103,7 +104,7 @@ class DesignWorkspaceTest {
     }
     @Test fun ownerCanReachMoreAndThemeChoicePersistsAcrossComposition() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
-        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasText("Atelier"))
+        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-group-settings").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasText("Atelier"))
         compose.onNodeWithText("Atelier").assertExists()
         compose.onNodeWithText("Night Workshop").performScrollTo().performClick();Assert.assertEquals(AppAppearance.NIGHT,DesignPreferences.appearance.value)
         Assert.assertEquals("NIGHT",InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("mainspring_appearance",0).getString("appearance",null))
@@ -171,7 +172,7 @@ class DesignWorkspaceTest {
         compose.onNodeWithTag("nav-today").performClick()
         compose.onNodeWithText("Needs your attention").assertExists()
         compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithTag("more-list").performScrollToNode(hasText("Reports"))
+        compose.onNodeWithTag("more-search").performTextInput("Report")
         compose.onNodeWithText("Reports").performClick()
         compose.onNodeWithTag("period-report-list").performScrollToNode(hasText("Revenue comparison"))
         compose.onNodeWithText("Revenue comparison").assertIsDisplayed()

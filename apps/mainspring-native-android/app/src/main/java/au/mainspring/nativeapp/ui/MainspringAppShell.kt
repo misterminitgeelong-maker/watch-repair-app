@@ -88,7 +88,6 @@ private val bottomDestinations = setOf("home", "today", "dispatch", "jobs", "wat
 private fun tabFor(route: String?) = when(route) {
     "today", "home", "dispatch", "route", "dispatchPool", "new_intake" -> "today"
     "jobs", "watch_jobs", "shoe_jobs", "auto_jobs", "counterSale" -> "jobs"
-    "people", "customers" -> "people"
     "inbox", "leads" -> "inbox"
     else -> "more"
 }
@@ -181,7 +180,7 @@ fun MainspringAppShell(
                 if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
-                        listOf("today" to "Dashboard", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
+                        listOf("today" to "Today", "jobs" to au.mainspring.nativeapp.ui.screens.jobsTabLabel(features), "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
                             au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute) == route, { navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$route"))
                         }
                     }
@@ -191,7 +190,7 @@ fun MainspringAppShell(
             bottomBar = {
                 if (showBottomBar && !wide) {
                     FloatingTabBar(
-                        destinations = listOf("today" to "Dashboard", "jobs" to "Jobs", "people" to "Customers", "inbox" to "Inbox", "more" to "More"),
+                        destinations = listOf("today" to "Today", "jobs" to au.mainspring.nativeapp.ui.screens.jobsTabLabel(features), "inbox" to "Inbox", "more" to "More"),
                         isSelected = { it == tabFor(currentRoute) },
                         onSelect = { route -> navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     )

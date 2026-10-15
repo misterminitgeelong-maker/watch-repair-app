@@ -157,6 +157,7 @@ fun ShoeJobDetailScreen(
             else -> {
                 val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
                 JobNavBar(au.mainspring.nativeapp.JobNavContext.position("shoe", shownId), prevId, nextId, { shownId = it; tab = "overview" }, enabled = !state.statusBusy)
+                ContactQuickActions(state.customer?.phone, state.customer?.email)
                 DaysInShopLabel(au.mainspring.nativeapp.daysInShop(j.createdAt))
                 WorkflowRail(au.mainspring.nativeapp.SHOE_WORKFLOW_STEPS, j.status, au.mainspring.nativeapp.suggestedShoeStatuses(j.status), { au.mainspring.nativeapp.ui.statusLabel(it) },
                     enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })

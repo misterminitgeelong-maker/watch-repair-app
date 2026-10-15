@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -166,9 +167,13 @@ fun JobDetailScreen(
             else -> {
                 val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("watch", shownId)
                 JobNavBar(au.mainspring.nativeapp.JobNavContext.position("watch", shownId), prevId, nextId, { shownId = it; tab = "summary" }, enabled = !state.statusBusy)
+                ContactQuickActions(job.customerPhone, job.customerEmail)
                 DaysInShopLabel(au.mainspring.nativeapp.daysInShop(job.createdAt))
                 WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status, au.mainspring.nativeapp.suggestedWatchStatuses(job.status), ::watchStatusLabel,
                     enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
+                if(TokenStore.canManageInvoices()) SecondaryAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("job-quote-payment")) {
+                    Text(if(state.outstandingCents(job) > 0 && state.invoiceTotalCents > 0) "Take payment" else "Quote & payment")
+                }
                 if(LocalCalibre.current) {
                     if(job.status == "awaiting_collection") {
                         val outstandingCents = state.outstandingCents(job)
