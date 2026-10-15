@@ -21,6 +21,7 @@ data class ShoeJobsUiState(
     val customerNames: Map<String, String> = emptyMap(),
     val board: Boolean = false,
     val movingId: String? = null,
+    val savedViews: List<SavedJobView> = emptyList(),
 ) {
     /** Search-filtered jobs across every status, for the board. */
     val boardJobs: List<ShoeRepairJobRead> get() {
@@ -52,6 +53,7 @@ class ShoeJobsViewModel : ViewModel() {
     val state: StateFlow<ShoeJobsUiState> = _state.asStateFlow()
 
     init {
+        _state.update { it.copy(savedViews = appSavedViews.load("shoe")) }
         refresh()
         loadCustomerNames()
     }
@@ -59,6 +61,12 @@ class ShoeJobsViewModel : ViewModel() {
     fun refresh() {
         if(_state.value.loading) return
         fetch(false)
+    }
+    fun currentView() = _state.value.let { SavedJobView("", it.statusFilter.takeIf { f -> f != "all" }, board = it.board, showCompleted = it.showCompleted, query = it.query.ifBlank { null }) }
+    fun saveView(view: SavedJobView) { _state.update { it.copy(savedViews = appSavedViews.save("shoe", view)) } }
+    fun deleteView(name: String) { _state.update { it.copy(savedViews = appSavedViews.delete("shoe", name)) } }
+    fun applyView(v: SavedJobView) {
+        _state.update { it.copy(statusFilter = v.statusFilter ?: "all", showCompleted = v.showCompleted, board = v.board, query = v.query.orEmpty()) }
     }
     fun setBoard(value: Boolean) { _state.update { it.copy(board = value) } }
 

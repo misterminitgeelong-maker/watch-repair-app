@@ -35,9 +35,11 @@ fun ShoeJobDetailScreen(
     onDuplicated: (String) -> Unit = {},
     onEditCustomer: (String) -> Unit = {},
 ) {
+    // Prev/next steps through the list the job was opened from without leaving this screen.
+    var shownId by androidx.compose.runtime.saveable.rememberSaveable(jobId) { mutableStateOf(jobId) }
     val vm: ShoeJobDetailViewModel = viewModel(
-        key = "$jobId|$apiBaseUrl",
-        factory = ShoeJobDetailViewModel.factory(jobId, apiBaseUrl),
+        key = "$shownId|$apiBaseUrl",
+        factory = ShoeJobDetailViewModel.factory(shownId, apiBaseUrl),
     )
     val state by vm.state.collectAsStateWithLifecycle()
     RefreshOnResume(vm::load)
@@ -124,7 +126,7 @@ fun ShoeJobDetailScreen(
     ) { active ->
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
         state.error?.let { ErrorBanner(it) }
-        PendingStatusBanner(jobId)
+        PendingStatusBanner(shownId)
         state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
             "history" -> {
@@ -150,8 +152,13 @@ fun ShoeJobDetailScreen(
                 }
                 attachmentOpenError?.let { ErrorBanner(it) }
             }
-            "messages" -> MessageThreadScreen("shoe-repair-jobs", jobId, { tab = "overview" }, embedded = true)
+            "messages" -> MessageThreadScreen("shoe-repair-jobs", shownId, { tab = "overview" }, embedded = true)
             else -> {
+                val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
+                JobNavBar(au.mainspring.nativeapp.JobNavContext.position("shoe", shownId), prevId, nextId, { shownId = it; tab = "overview" }, enabled = !state.statusBusy)
+                DaysInShopLabel(au.mainspring.nativeapp.daysInShop(j.createdAt))
+                WorkflowRail(au.mainspring.nativeapp.SHOE_WORKFLOW_STEPS, j.status, au.mainspring.nativeapp.suggestedShoeStatuses(j.status), { au.mainspring.nativeapp.ui.statusLabel(it) },
+                    enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
                 j.description?.takeIf { it.isNotBlank() }?.let { SummaryCard("Requested work", it, null) }
                 j.customerNote?.takeIf { it.isNotBlank() }?.let { SummaryCard("Note shown to customer", it, null) }
                 val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading

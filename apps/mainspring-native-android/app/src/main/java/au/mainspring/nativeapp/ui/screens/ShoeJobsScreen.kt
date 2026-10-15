@@ -81,7 +81,9 @@ fun ShoeJobsScreen(
                 au.mainspring.nativeapp.ui.AtelierChip(!state.board, { viewModel.setBoard(false) }, label = { Text("List") }, modifier = Modifier.testTag("view-list"))
                 au.mainspring.nativeapp.ui.AtelierChip(state.board, { viewModel.setBoard(true) }, label = { Text("Board") }, modifier = Modifier.testTag("view-board"))
             }
+            au.mainspring.nativeapp.ui.SavedViewsRow(state.savedViews, viewModel::currentView, viewModel::applyView, viewModel::saveView, viewModel::deleteView)
             val rows = state.visible
+            androidx.compose.runtime.LaunchedEffect(rows) { au.mainspring.nativeapp.JobNavContext.set("shoe", rows.map { it.id }) }
             if(!state.loading && state.error == null && state.jobs.isNotEmpty() && rows.isEmpty() && !state.board) au.mainspring.nativeapp.ui.EmptyState("No repairs match", "Try a different search or filter.")
             if(state.board) {
                 val order = SHOE_ACTIVE_STATUSES + SHOE_CLOSED_STATUSES
@@ -97,7 +99,7 @@ fun ShoeJobsScreen(
             ) {
                 items(rows, key = { it.id }) { j ->
                     if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                        CalibreRow({ onOpenJob(j.id) }, j.title, listOfNotNull(j.jobNumber, state.customerName(j)).joinToString(" · "), au.mainspring.nativeapp.ui.statusLabel(j.status), j.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
+                        CalibreRow({ onOpenJob(j.id) }, j.title, listOfNotNull(j.jobNumber, state.customerName(j), au.mainspring.nativeapp.daysInShopText(au.mainspring.nativeapp.daysInShop(j.createdAt))).joinToString(" · "), au.mainspring.nativeapp.ui.statusLabel(j.status), j.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
                         return@items
                     }
                     au.mainspring.nativeapp.ui.ListCard({ onOpenJob(j.id) }) {
@@ -106,6 +108,7 @@ fun ShoeJobsScreen(
                             au.mainspring.nativeapp.ui.StatusPill(j.status)
                         }
                         Text(j.title, style = MaterialTheme.typography.titleMedium)
+                        au.mainspring.nativeapp.ui.DaysInShopLabel(au.mainspring.nativeapp.daysInShop(j.createdAt))
                         state.customerName(j)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
