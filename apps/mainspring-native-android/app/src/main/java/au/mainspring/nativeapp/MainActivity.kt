@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
         au.mainspring.nativeapp.ui.DesignPreferences.init(applicationContext)
         au.mainspring.nativeapp.ConnectivityMonitor.init(applicationContext)
         au.mainspring.nativeapp.ui.RecentItems.init(applicationContext)
+        au.mainspring.nativeapp.offline.OfflineSync.start()
         setContent {
             MainspringTheme {
                 Surface(Modifier.fillMaxSize()) {

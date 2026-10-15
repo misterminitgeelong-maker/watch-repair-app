@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import au.mainspring.nativeapp.offline.OfflineKinds
+import au.mainspring.nativeapp.offline.OfflineSync
 
 data class JobDetailUiState(
     val loading: Boolean = false,
@@ -118,6 +120,11 @@ class JobDetailViewModel(
                 load()
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
+                if(OfflineSync.queueStatus(e, OfflineKinds.WATCH_STATUS, jobId, newStatus, message, visibleNote, "Watch job")) {
+                    statusCheckpoint.clear()
+                    _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", resendInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }
+                    return@launch
+                }
                 val unknown = submitted && (e !is retrofit2.HttpException || e.code() >= 500)
                 if(!unknown) statusCheckpoint.clear()
                 _state.update { it.copy(statusBusy = false, statusUnknown = unknown, statusReviewed = false, error = e.userMessage()) }
@@ -144,6 +151,9 @@ class JobDetailViewModel(
                 }
                 _state.update { it.copy(noteBusy = false, history = history, smsLog = smsLog) }
             } catch (e: Exception) {
+                if(OfflineSync.queueNote(e, OfflineKinds.WATCH_NOTE, jobId, trimmed, "Watch job")) {
+                    _state.update { it.copy(noteBusy = false, resendInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }; return@launch
+                }
                 _state.update { it.copy(noteBusy = false, error = e.userMessage()) }
             }
         }
