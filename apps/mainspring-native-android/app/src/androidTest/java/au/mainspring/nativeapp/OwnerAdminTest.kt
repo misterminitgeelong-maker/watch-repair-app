@@ -61,6 +61,7 @@ class OwnerAdminTest {
         model.setPref("email_invoice_paid", true)
         compose.waitUntil(10_000) { model.state.value.prefs?.invoicePaid == true }
         Assert.assertTrue(bodies.any { it.contains("\"email_invoice_paid\":true") })
+        compose.waitUntil(10_000) { model.state.value.health != null }
         Assert.assertTrue(model.state.value.health!!.twilioConfigured)
     }
 

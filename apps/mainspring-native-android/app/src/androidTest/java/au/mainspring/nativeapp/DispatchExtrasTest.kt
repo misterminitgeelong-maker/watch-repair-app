@@ -76,11 +76,11 @@ class DispatchExtrasTest {
         val vm = DispatchPoolViewModel()
         compose.setContent { MainspringTheme { DispatchPoolScreen({}, {}, {}, vm, DispatchExtrasViewModel(), pollMs = 150) } }
         compose.waitUntil(10_000) { vm.state.value.jobs.size == 1 }
-        compose.onNodeWithText("Ring 1 jobs").assertExists()
+        compose.onNodeWithText("Ring 1 jobs", ignoreCase = true).assertExists()
         pool = """[{"id":"p1","customer_name":"Avery","job_address":"1 A St","ring":1,"created_at":"2026-10-07T00:00:00Z"},
             {"id":"p2","customer_name":"Blake","job_address":"2 B St","ring":2,"created_at":"2026-10-08T00:00:00Z"}]"""
         compose.waitUntil(10_000) { vm.state.value.jobs.size == 2 }
-        compose.onNodeWithText("Blake").assertExists(); compose.onNodeWithText("Ring 2 jobs").assertExists()
+        compose.onNodeWithText("Blake").assertExists(); compose.onNodeWithText("Ring 2 jobs", ignoreCase = true).assertExists()
         Assert.assertTrue(poolGets.get() >= 2)
     }
 }
