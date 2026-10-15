@@ -169,7 +169,6 @@ fun JobDetailScreen(
                 WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status, au.mainspring.nativeapp.suggestedWatchStatuses(job.status), ::watchStatusLabel,
                     enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
                 if(LocalCalibre.current) {
-                    JobStageStrip(watchStage(job.status))
                     if(job.status == "awaiting_collection") {
                         val outstandingCents = (job.preQuoteCents - job.depositCents).coerceAtLeast(0)
                         val paid = job.depositCents >= job.preQuoteCents
