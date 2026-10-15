@@ -44,6 +44,8 @@ fun ShoeJobDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val j = state.job
+    var niimbotLabel by remember { mutableStateOf<au.mainspring.nativeapp.niimbot.NiimbotLabelData?>(null) }
+    niimbotLabel?.let { au.mainspring.nativeapp.niimbot.NiimbotPrintDialog(it) { niimbotLabel = null } }
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     var statusPicker by remember { mutableStateOf(false) }
     var addNoteOpen by remember { mutableStateOf(false) }
@@ -101,6 +103,16 @@ fun ShoeJobDetailScreen(
                         shopName = TokenStore.shopValue("name"), shopPhone = TokenStore.shopValue("phone"),
                         kind = au.mainspring.nativeapp.ui.IntakeTicketKind.SHOE))
                 } catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "Could not print", android.widget.Toast.LENGTH_LONG).show() }
+            },
+            DetailAction("Print label (Niimbot)", true) {
+                val pairs = listOfNotNull(j.shoe) + j.extraShoes.orEmpty().mapNotNull { it.shoe }
+                niimbotLabel = au.mainspring.nativeapp.niimbot.NiimbotLabelData(
+                    jobNumber = j.jobNumber, customerName = null,
+                    itemTitle = pairs.joinToString("; ") { listOfNotNull(it.brand, it.shoeType, it.color).joinToString(" ") }.ifBlank { j.title },
+                    services = j.items.firstOrNull()?.name ?: j.title.takeIf { it.isNotBlank() },
+                    dateIn = formatShopDate(j.createdAt),
+                    qrText = au.mainspring.nativeapp.ui.intakeStatusUrl(apiBaseUrl, au.mainspring.nativeapp.ui.IntakeTicketKind.SHOE, j.statusToken),
+                )
             },
             DetailAction("Edit customer", adminReady && j.shoe?.customerId != null) { j.shoe?.customerId?.let(onEditCustomer) },
             DetailAction("Business account", adminReady && !state.accountBusy && TokenStore.canWorkJobs()) { vm.loadAccounts(); accountPicker = true },
