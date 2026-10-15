@@ -196,7 +196,7 @@ fun MainspringAppShell(
             },
         ) { paddingValues ->
             androidx.compose.foundation.layout.Column(Modifier.padding(paddingValues)) {
-            au.mainspring.nativeapp.ui.ConnectivityBanner()
+            au.mainspring.nativeapp.ui.ConnectivityBanner(onOpenQueue = { navController.navigate("queuedChanges") })
             au.mainspring.nativeapp.ui.SubscriptionBanner(subscriptionStatus, trialEnd, sessionRole)
             sessionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
@@ -341,6 +341,7 @@ fun MainspringAppShell(
                 composable("toolkit") { ToolkitScreen(onBack = { navController.popBackStack() }) }
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
                 composable("revenueControl") { au.mainspring.nativeapp.ui.screens.RevenueControlScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
+                composable("queuedChanges") { au.mainspring.nativeapp.ui.screens.QueuedChangesScreen { navController.popBackStack() } }
                 composable("search") { au.mainspring.nativeapp.ui.screens.SearchScreen(onBack = { navController.popBackStack() }, onOpenRoute = { navController.navigate(it) }) }
                 composable("sendBookingRequest") { au.mainspring.nativeapp.ui.screens.SendBookingRequestScreen(onBack = { navController.popBackStack() }) }
                 composable("financeReport") { au.mainspring.nativeapp.ui.screens.MobileFinanceReportScreen(onBack = { navController.popBackStack() }) }

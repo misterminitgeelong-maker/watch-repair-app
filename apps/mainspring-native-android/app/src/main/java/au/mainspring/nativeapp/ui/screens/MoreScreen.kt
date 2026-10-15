@@ -52,6 +52,7 @@ private data class WorkspaceSection(val key: String, val title: String, val item
             if(owner) add("Reports" to "reports")
             add("Inventory" to "stock")
             if(owner) add("Database" to "database")
+            add("Queued changes" to "queuedChanges")
             add("Accounts" to "accounts")
         }))
     }
