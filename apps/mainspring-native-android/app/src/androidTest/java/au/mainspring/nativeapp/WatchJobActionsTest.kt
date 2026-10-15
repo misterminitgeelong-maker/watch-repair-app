@@ -1,6 +1,5 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -10,7 +9,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 /** Payload checks for the watch job actions: customer-visible status note and technician assignment. */
 class WatchJobActionsTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     private var status = "working_on"
     private var assignedUserId: String? = null
