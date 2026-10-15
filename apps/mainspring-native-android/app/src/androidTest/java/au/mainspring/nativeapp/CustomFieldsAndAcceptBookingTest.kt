@@ -38,6 +38,8 @@ class CustomFieldsAndAcceptBookingTest {
 
     @Test fun customFieldsLoadEditAndSaveWholeSet() {
         compose.setContent { MainspringTheme { CustomFieldsCard(CustomFieldJobKind.Watch, "j1") } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Custom fields · 1").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Custom fields · 1").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Serial").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Field name").performTextInput("Colour")
         compose.onNodeWithText("Value").performTextInput("Blue")
