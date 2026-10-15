@@ -43,10 +43,10 @@ import au.mainspring.nativeapp.*
       listOf("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(state.fields["state_code"] == value, { vm.set("state_code", value) }, label = { Text(value) }, enabled = enabled) }
      }
      Text("Visit location")
-     listOf("customer_site" to "Customer's address", "at_shop" to "At this shop").forEach { (key, label) -> Row { RadioButton(state.fields["visit_location_type"].orEmpty().ifBlank { "customer_site" } == key, { vm.set("visit_location_type", key) }, enabled = enabled); Text(label) } }
+     listOf("customer_site" to "Customer's address", "at_shop" to "At this shop").forEach { (key, label) -> au.mainspring.nativeapp.ui.LabeledRadio(state.fields["visit_location_type"].orEmpty().ifBlank { "customer_site" } == key, { vm.set("visit_location_type", key) }, enabled = enabled) { Text(label) } }
      Text("Operator")
-     Row { RadioButton(state.fields["target_operator_tenant_id"].isNullOrBlank(), { vm.set("target_operator_tenant_id", "") }, enabled = enabled); Text("Route by service area") }
-     state.operators.forEach { option -> Row { RadioButton(state.fields["target_operator_tenant_id"] == option.id, { vm.set("target_operator_tenant_id", option.id) }, enabled = enabled); Text(option.name) } }
+     au.mainspring.nativeapp.ui.LabeledRadio(state.fields["target_operator_tenant_id"].isNullOrBlank(), { vm.set("target_operator_tenant_id", "") }, enabled = enabled) { Text("Route by service area") }
+     state.operators.forEach { option -> au.mainspring.nativeapp.ui.LabeledRadio(state.fields["target_operator_tenant_id"] == option.id, { vm.set("target_operator_tenant_id", option.id) }, enabled = enabled) { Text(option.name) } }
      Text("Preferred times use ${TokenStore.calendarTimezone()}. The operator confirms the booking.")
      Button(onClick = { confirm = "create" to "" }, enabled = enabled && !state.uncertain) { Text("Review and send request") }
      OutlinedButton(onClick = vm::discard, enabled = enabled) { Text("Discard request draft") }

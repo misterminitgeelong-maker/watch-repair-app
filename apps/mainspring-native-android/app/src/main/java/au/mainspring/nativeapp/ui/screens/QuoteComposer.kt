@@ -127,8 +127,8 @@ import au.mainspring.nativeapp.ui.formatCents
   }
   if(sheetLayout) TextButton({pricingOptions=!pricingOptions},enabled=enabled) {Text(if(pricingOptions) "Hide pricing options" else "Discount & GST options")}
   if(pricingOptions) {
-  Row { Checkbox(draft.gst, { persist(draft.copy(gst = it)) }, enabled = enabled); Text("GST applies") }
-  if(draft.gst) Row { Checkbox(draft.inclusive, { persist(draft.copy(inclusive = it, gstChoiceMade = true)) }, enabled = enabled); Text("Entered prices include GST") }
+  au.mainspring.nativeapp.ui.LabeledCheckbox(draft.gst, { persist(draft.copy(gst = it)) }, enabled = enabled) { Text("GST applies") }
+  if(draft.gst) au.mainspring.nativeapp.ui.LabeledCheckbox(draft.inclusive, { persist(draft.copy(inclusive = it, gstChoiceMade = true)) }, enabled = enabled) { Text("Entered prices include GST") }
   }
   if(!sheetLayout) totalsAndSave()
   }

@@ -24,7 +24,7 @@ import au.mainspring.nativeapp.*
     "internal_notes" to "Internal shop notes", "parts_eta" to "Parts ETA (DD/MM/YYYY)")
    labels.filter { it.first in state.fields }.forEach { (key,label) -> au.mainspring.nativeapp.ui.AtelierTextField(state.fields[key].orEmpty(), { vm.set(key,it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = !state.loading && !state.busy,
     keyboardOptions = KeyboardOptions(keyboardType = if(key.endsWith("_cents")) KeyboardType.Decimal else KeyboardType.Text)) }
-   Text("Priority"); listOf("low", "normal", "high", "urgent").forEach { value -> Row { RadioButton(state.fields["priority"] == value, { vm.set("priority",value) }, enabled = !state.loading && !state.busy); Text(value) } }
+   Text("Priority"); listOf("low", "normal", "high", "urgent").forEach { value -> au.mainspring.nativeapp.ui.LabeledRadio(state.fields["priority"] == value, { vm.set("priority",value) }, enabled = !state.loading && !state.busy) { Text(value) } }
    Text("Unsaved edits are retained on this device for this account.")
    OutlinedButton(onClick = vm::discard, enabled = !state.loading && !state.busy) { Text("Discard edits and use loaded job") }
    Button(onClick = vm::save, enabled = !state.loading && !state.busy && !state.conflict, modifier = Modifier.fillMaxWidth()) { Text("Save repair details") }

@@ -60,12 +60,10 @@ fun deletionConfirmed(scope: DeletionScope, shopId: String, typed: String) =
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("This sends a deletion request to Mainspring support. We verify it is really you and act within 30 days. Nothing is deleted until then.",
                     style = MaterialTheme.typography.bodySmall)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(scope == DeletionScope.OwnLogin, { scope = DeletionScope.OwnLogin; typed = "" })
+                au.mainspring.nativeapp.ui.LabeledRadio(scope == DeletionScope.OwnLogin, { scope = DeletionScope.OwnLogin; typed = "" }) {
                     Text("Only my own login and personal details", style = MaterialTheme.typography.bodyMedium)
                 }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(scope == DeletionScope.WholeShop, { scope = DeletionScope.WholeShop; typed = "" })
+                au.mainspring.nativeapp.ui.LabeledRadio(scope == DeletionScope.WholeShop, { scope = DeletionScope.WholeShop; typed = "" }) {
                     Text("The whole shop", style = MaterialTheme.typography.bodyMedium)
                 }
                 if(scope == DeletionScope.WholeShop) Text(

@@ -82,9 +82,9 @@ import java.time.format.DateTimeFormatter
       Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
        listOf("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(region == value, { region = value }, label = { Text(value) }) }
       }
-      state.categories.forEach { option -> Row { RadioButton(category == option.key, { category = option.key }, enabled = enabled); Text(option.label) } }
+      state.categories.forEach { option -> au.mainspring.nativeapp.ui.LabeledRadio(category == option.key, { category = option.key }, enabled = enabled) { Text(option.label) } }
       au.mainspring.nativeapp.ui.AtelierTextField(suburbs, { suburbs = it }, label = { Text("Suburbs, separated by commas") }, modifier = Modifier.fillMaxWidth())
-      Row { Checkbox(live, { live = it }, enabled = enabled); Text("Request fresh search (up to five suburbs)") }
+      au.mainspring.nativeapp.ui.LabeledCheckbox(live, { live = it }, enabled = enabled) { Text("Request fresh search (up to five suburbs)") }
       Button(onClick = { vm.search(category, region, suburbs, live) }, enabled = enabled && category.isNotBlank()) { Text("Search businesses") }
       state.source?.let { Text(if(it == "stored") "Results from the saved directory" else "Fresh search results") }
      }

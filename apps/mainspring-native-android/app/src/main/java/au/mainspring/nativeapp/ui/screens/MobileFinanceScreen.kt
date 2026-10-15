@@ -116,7 +116,7 @@ import au.mainspring.nativeapp.ui.formatCents
     Text("Record payment",style=MaterialTheme.typography.titleLarge)
     invoice?.let {Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(it.number);Text(formatCents(it.total,it.currency),style=MaterialTheme.typography.titleLarge)}}
     Text("Record this only after receiving the full invoice amount.",style=MaterialTheme.typography.bodySmall)
-    Column {listOf("card","cash","bank_transfer").forEach {option->Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {RadioButton(method==option,{method=option},enabled=enabled);Text(au.mainspring.nativeapp.ui.statusLabel(option).replaceFirstChar {it.uppercase()})}}}
+    Column {listOf("card","cash","bank_transfer").forEach {option->au.mainspring.nativeapp.ui.LabeledRadio(method==option,{method=option},enabled=enabled) {Text(au.mainspring.nativeapp.ui.statusLabel(option).replaceFirstChar {it.uppercase()})}}}
     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
      OutlinedButton({confirm=null},modifier=Modifier.weight(1f)) {Text("Cancel")}
      Button({confirm=null;vm.markPaid(action.second,method)},enabled=enabled && invoice!=null && state.paymentReviewId==null,modifier=Modifier.weight(1f)) {Text("Record payment")}
@@ -128,7 +128,7 @@ import au.mainspring.nativeapp.ui.formatCents
  confirm?.takeIf {it.first!="paid"}?.let { action -> AlertDialog(onDismissRequest = { confirm = null }, title = { Text(when(action.first) { "quote" -> "Send quote?"; "invoice" -> "Create invoice?"; "paid" -> "Confirm payment received"; else -> "Send invoice?" }) },
   text = { Column { if(action.first == "paid") {
    Text("Record this only after receiving the full invoice amount.")
-   listOf("cash", "card", "bank_transfer").forEach { option -> Row { RadioButton(method == option, { method = option }); Text(au.mainspring.nativeapp.ui.statusLabel(option)) } }
+   listOf("cash", "card", "bank_transfer").forEach { option -> au.mainspring.nativeapp.ui.LabeledRadio(method == option, { method = option }) { Text(au.mainspring.nativeapp.ui.statusLabel(option)) } }
   } else Text("${if(action.first == "invoice") "Create the invoice using this quote's totals." else "Send this document using the customer's saved contact details."}") } },
   confirmButton = { Button(onClick = { confirm = null; when(action.first) { "quote" -> vm.sendQuote(action.second); "invoice" -> vm.createInvoice(action.second); "paid" -> vm.markPaid(action.second, method); else -> vm.sendInvoice(action.second) } }) { Text("Confirm") } },
   dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } }) }

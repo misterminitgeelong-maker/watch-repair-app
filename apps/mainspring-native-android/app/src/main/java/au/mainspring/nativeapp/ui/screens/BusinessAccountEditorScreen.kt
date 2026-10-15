@@ -55,7 +55,7 @@ fun BusinessAccountEditorScreen(id: String, onBack: () -> Unit, onOpenAccount: (
                 RadioButton(state.fields["billing_cycle"].orEmpty() == option, null, enabled = enabled)
                 Text(option.ifBlank { "Not specified" }, modifier = Modifier.padding(top = 12.dp))
             } }
-            if(id.isNotBlank()) Row { Checkbox(state.fields["is_active"] == "true", { vm.set("is_active", it.toString()) }, enabled = enabled); Text("Active account", Modifier.padding(top = 12.dp)) }
+            if(id.isNotBlank()) au.mainspring.nativeapp.ui.LabeledCheckbox(state.fields["is_active"] == "true", { vm.set("is_active", it.toString()) }, enabled = enabled) { Text("Active account") }
             if(state.createdId == null && !state.uncertain) {
                 Text("Your unsaved edits are retained for this account on this device.")
                 OutlinedButton(onClick = { if(id.isBlank()) vm.startAnother() else vm.refresh(discard = true) }, enabled = !state.busy && !state.loading) { Text(if(id.isBlank()) "Discard draft" else "Discard edits and reload account") }

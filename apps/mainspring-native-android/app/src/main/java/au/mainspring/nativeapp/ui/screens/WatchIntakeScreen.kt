@@ -152,8 +152,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                         field("$prefix.brand", "Brand"); field("$prefix.model", "Model"); field("$prefix.serial", "Serial number")
                         field("$prefix.movement", "Movement type"); field("$prefix.condition", "Condition at intake", true)
                     }
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Checkbox(checked = vm.field("quickJob") == "true", onCheckedChange = { vm.setField("quickJob", it.toString()) }, enabled = !locked)
+                    au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("quickJob") == "true", { vm.setField("quickJob", it.toString()) }, enabled = !locked) {
                         Text("Quick counter job (photos optional)")
                     }
                 }
@@ -213,8 +212,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                             }
                         }
                     }
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Checkbox(checked = vm.field("skipPhotos") == "true", onCheckedChange = { vm.setField("skipPhotos", it.toString()) }, enabled = !state.busy)
+                    au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("skipPhotos") == "true", { vm.setField("skipPhotos", it.toString()) }, enabled = !state.busy) {
                         Text("Continue without photos")
                     }
                     Text("Creation may send the customer's tracking SMS.")

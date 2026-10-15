@@ -90,9 +90,9 @@ private fun commissionAmount(value: com.google.gson.JsonObject,key: String) = ja
     AlertDialog(onDismissRequest=onClose,title={Text(if(original==null) "Add account" else "Edit account")},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         au.mainspring.nativeapp.ui.AtelierTextField(name,{name=it},enabled=!busy,label={Text("Full name")},singleLine=true)
         if(original==null) {au.mainspring.nativeapp.ui.AtelierTextField(email,{email=it},enabled=!busy,label={Text("Email")},singleLine=true);au.mainspring.nativeapp.ui.AtelierTextField(password,{password=it},enabled=!busy,label={Text("Initial password")},singleLine=true,visualTransformation=PasswordVisualTransformation())}
-        listOf("owner","manager","tech","intake").forEach {option->Row {RadioButton(role==option,{role=option},enabled=!busy);Text(option.replaceFirstChar {it.uppercase()})}}
-        if(original!=null) Row {Checkbox(active,{active=it},enabled=!busy);Text("Active account")}
-        Row {Checkbox(comm,{comm=it},enabled=!busy);Text("Commission tracking")}
+        listOf("owner","manager","tech","intake").forEach {option->au.mainspring.nativeapp.ui.LabeledRadio(role==option,{role=option},enabled=!busy) {Text(option.replaceFirstChar {it.uppercase()})}}
+        if(original!=null) au.mainspring.nativeapp.ui.LabeledCheckbox(active,{active=it},enabled=!busy) {Text("Active account")}
+        au.mainspring.nativeapp.ui.LabeledCheckbox(comm,{comm=it},enabled=!busy) {Text("Commission tracking")}
         if(comm) {
             Text("Bonus is commission above the retainer. Existing eligibility and custom rate tiers are retained.",style=MaterialTheme.typography.bodySmall)
             listOf("Retainer per period" to Pair(retainer,{v:String->retainer=v}),"Shop referred (%)" to Pair(shop,{v:String->shop=v}),"Tech sourced (%)" to Pair(self,{v:String->self=v}),"Minit sourced (%)" to Pair(minit,{v:String->minit=v})).forEach {(label,input)->au.mainspring.nativeapp.ui.AtelierTextField(input.first,input.second,enabled=!busy,label={Text(label)},singleLine=true)}
