@@ -39,9 +39,11 @@ fun JobDetailScreen(
     onEditCustomer: (String) -> Unit = {},
     onEditWatch: (String, String) -> Unit = { _, _ -> },
 ) {
+    // Prev/next steps through the list the job was opened from without leaving this screen.
+    var shownId by androidx.compose.runtime.saveable.rememberSaveable(jobId) { mutableStateOf(jobId) }
     val vm: JobDetailViewModel = viewModel(
-        key = "$jobId|$apiBaseUrl",
-        factory = JobDetailViewModel.factory(jobId, apiBaseUrl),
+        key = "$shownId|$apiBaseUrl",
+        factory = JobDetailViewModel.factory(shownId, apiBaseUrl),
     )
     val state by vm.state.collectAsStateWithLifecycle()
     RefreshOnResume(vm::load)
@@ -125,7 +127,7 @@ fun JobDetailScreen(
         scrollBody = tab != "messages",
     ) { active ->
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
-        PendingStatusBanner(jobId)
+        PendingStatusBanner(shownId)
         state.error?.let { ErrorBanner(it) }
         state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
@@ -159,8 +161,13 @@ fun JobDetailScreen(
                     Text("Activity includes private workshop notes. Customer-visible conversations are in Messages.", Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            "messages" -> MessageThreadScreen("repair-jobs", jobId, { tab = "summary" }, embedded = true)
+            "messages" -> MessageThreadScreen("repair-jobs", shownId, { tab = "summary" }, embedded = true)
             else -> {
+                val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("watch", shownId)
+                JobNavBar(au.mainspring.nativeapp.JobNavContext.position("watch", shownId), prevId, nextId, { shownId = it; tab = "summary" }, enabled = !state.statusBusy)
+                DaysInShopLabel(au.mainspring.nativeapp.daysInShop(job.createdAt))
+                WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status, au.mainspring.nativeapp.suggestedWatchStatuses(job.status), ::watchStatusLabel,
+                    enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
                 if(LocalCalibre.current) {
                     JobStageStrip(watchStage(job.status))
                     if(job.status == "awaiting_collection") {
@@ -177,7 +184,7 @@ fun JobDetailScreen(
                             Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
                             if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        AccentAction(onClick = { onQuotes(jobId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
+                        AccentAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
                     }
                     if(state.history.isNotEmpty()) {
                         SectionLabel("Repair history / ${state.history.size} ${if(state.history.size == 1) "event" else "events"}")
@@ -218,7 +225,7 @@ fun JobDetailScreen(
                     }
                 }
                 SummaryCard("Quotes & invoicing", listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} deposit" }, job.preQuoteCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} pre-quote" }).joinToString(" \u00b7 ").ifBlank { "No charges recorded yet" },
-                    "View charges or record payment", { onQuotes(jobId) })
+                    "View charges or record payment", { onQuotes(shownId) })
                 SummaryCard("Activity & work notes", "Intake and workshop record", "Status changes, approvals and internal notes", { tab = "activity" })
                 job.internalNotes?.takeIf { it.isNotBlank() }?.let { SummaryCard("Internal notes", it, null) }
                 FlatPanel {

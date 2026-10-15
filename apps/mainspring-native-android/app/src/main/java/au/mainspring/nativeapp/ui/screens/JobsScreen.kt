@@ -53,6 +53,7 @@ fun JobsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    androidx.compose.runtime.LaunchedEffect(state.visibleJobs) { au.mainspring.nativeapp.JobNavContext.set("watch", state.visibleJobs.map { it.id }) }
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         au.mainspring.nativeapp.ui.AtelierTextField(value = state.query, onValueChange = viewModel::setQuery,
@@ -83,6 +84,7 @@ fun JobsScreen(
                     label = { Text(if (u.id == me) "Mine" else u.name) })
             }
         }
+        au.mainspring.nativeapp.ui.SavedViewsRow(state.savedViews, viewModel::currentView, viewModel::applyView, viewModel::saveView, viewModel::deleteView)
         if (state.loading && state.jobs.isEmpty()) {
             androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
         }
@@ -107,7 +109,7 @@ fun JobsScreen(
         ) {
             items(state.visibleJobs, key = { it.id }) { job ->
                 if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                    CalibreRow({ onOpenJob(job.id) }, job.title, listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }).joinToString(" · "),
+                    CalibreRow({ onOpenJob(job.id) }, job.title, listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }, au.mainspring.nativeapp.daysInShopText(au.mainspring.nativeapp.daysInShop(job.createdAt))).joinToString(" · "),
                         au.mainspring.nativeapp.ui.statusLabel(job.status), job.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
                     return@items
                 }
@@ -119,6 +121,7 @@ fun JobsScreen(
                             au.mainspring.nativeapp.ui.StatusPill(job.status)
                         }
                         Text(job.title, style = MaterialTheme.typography.titleMedium)
+                        au.mainspring.nativeapp.ui.DaysInShopLabel(au.mainspring.nativeapp.daysInShop(job.createdAt))
                         job.customerName?.let { n ->
                             Text(n, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

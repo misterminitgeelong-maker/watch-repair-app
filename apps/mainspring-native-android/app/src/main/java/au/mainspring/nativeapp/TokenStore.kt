@@ -93,6 +93,8 @@ object TokenStore {
     fun loadOfflineQueue(): String? = if(::prefs.isInitialized) prefs.getString("offline_write_queue", null) else null
     @android.annotation.SuppressLint("ApplySharedPref")
     fun saveOfflineQueue(json: String?) { if(::prefs.isInitialized) prefs.edit().apply { if(json == null) remove("offline_write_queue") else putString("offline_write_queue", json) }.commit() }
+    fun loadScopedString(key: String): String? = if(::prefs.isInitialized) prefs.getString(key, null) else null
+    fun saveScopedString(key: String, value: String) { if(::prefs.isInitialized) prefs.edit().putString(key, value).apply() }
     fun currentTenantId(): String = prefs.getString("tenant_id", "").orEmpty()
     /** Wait for prior async draft writes before an intake POST can commit on the server. */
     fun flushDraftCheckpoint() { check(prefs.edit().commit()) { "Could not retain the intake checkpoint on this device. Free storage before submitting." } }

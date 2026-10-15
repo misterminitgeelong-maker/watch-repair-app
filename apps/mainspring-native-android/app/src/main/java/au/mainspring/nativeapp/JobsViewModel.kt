@@ -29,6 +29,7 @@ data class JobsUiState(
     /** Board (kanban) view instead of the list. */
     val board: Boolean = false,
     val movingId: String? = null,
+    val savedViews: List<SavedJobView> = emptyList(),
 ) {
     /** Jobs after the client-side age filter and sort. */
     val visibleJobs: List<RepairJobRead> get() = sortJobs(
@@ -59,8 +60,18 @@ class JobsViewModel : ViewModel() {
     val state: StateFlow<JobsUiState> = _state.asStateFlow()
 
     init {
+        _state.update { it.copy(savedViews = appSavedViews.load("watch")) }
         refresh()
         loadUsers()
+    }
+
+    fun currentView() = _state.value.let { SavedJobView("", it.statusFilter, it.sort.name, it.minDaysInShop, it.technicianId, it.board, query = it.query.ifBlank { null }) }
+    fun saveView(view: SavedJobView) { _state.update { it.copy(savedViews = appSavedViews.save("watch", view)) } }
+    fun deleteView(name: String) { _state.update { it.copy(savedViews = appSavedViews.delete("watch", name)) } }
+    fun applyView(v: SavedJobView) {
+        _state.update { it.copy(statusFilter = v.statusFilter, sort = JobSort.values().firstOrNull { s -> s.name == v.sort } ?: JobSort.NEWEST,
+            minDaysInShop = v.minDaysInShop, technicianId = v.technicianId, board = v.board, query = v.query.orEmpty()) }
+        refresh()
     }
 
     private fun loadUsers() {
