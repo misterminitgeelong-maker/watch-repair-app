@@ -143,6 +143,7 @@ fun ShoeJobDetailScreen(
                 j.description?.takeIf { it.isNotBlank() }?.let { SummaryCard("Requested work", it, null) }
                 j.customerNote?.takeIf { it.isNotBlank() }?.let { SummaryCard("Note shown to customer", it, null) }
                 val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
+                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Shoe, j.id, canEdit = TokenStore.canWorkJobs())
                 SectionLabel("Shoes")
                 ShoePairCard(1, j.shoe, null, canEdit)
                 j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }

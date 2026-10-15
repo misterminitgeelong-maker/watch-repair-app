@@ -20,6 +20,11 @@ import au.mainspring.nativeapp.ui.screens.ConsoleLandingScreen
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent); setIntent(intent)
+        au.mainspring.nativeapp.DeepLinkInbox.offer(intent.data?.toString())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -28,6 +33,7 @@ class MainActivity : ComponentActivity() {
         au.mainspring.nativeapp.ConnectivityMonitor.init(applicationContext)
         au.mainspring.nativeapp.ui.RecentItems.init(applicationContext)
         au.mainspring.nativeapp.offline.OfflineSync.start()
+        if (savedInstanceState == null) au.mainspring.nativeapp.DeepLinkInbox.offer(intent?.data?.toString())
         setContent {
             MainspringTheme {
                 Surface(Modifier.fillMaxSize()) {

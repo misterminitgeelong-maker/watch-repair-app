@@ -200,6 +200,7 @@ fun MainspringAppShell(
             au.mainspring.nativeapp.ui.SubscriptionBanner(subscriptionStatus, trialEnd, sessionRole)
             sessionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+            au.mainspring.nativeapp.ui.screens.AcceptBookingLinkEffect { route -> navController.navigate(route) }
             NavHost(
                 navController = navController,
                 startDestination = startRoute,
@@ -346,6 +347,7 @@ fun MainspringAppShell(
                 composable("shopSettings") { au.mainspring.nativeapp.ui.screens.OwnerSettingsScreen(onBack = { navController.popBackStack() }) }
                 composable("reportExtras") { au.mainspring.nativeapp.ui.screens.ReportExtrasScreen(onBack = { navController.popBackStack() }) }
                 composable("repairQueue") { au.mainspring.nativeapp.ui.screens.RepairQueueScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("watchJob/$it") }) }
+                composable(au.mainspring.nativeapp.BookingDeepLink.ROUTE_PATTERN) { e -> au.mainspring.nativeapp.ui.screens.AcceptBookingScreen(bookingId = e.arguments?.getString("id").orEmpty(), onBack = { navController.popBackStack() }, onOpenJob = { id -> navController.navigate("autoKeyJob/$id") }, onOpenRequests = { navController.navigate("bookingRequests") }) }
                 composable("search") { au.mainspring.nativeapp.ui.screens.SearchScreen(onBack = { navController.popBackStack() }, onOpenRoute = { navController.navigate(it) }) }
                 composable("sendBookingRequest") { au.mainspring.nativeapp.ui.screens.SendBookingRequestScreen(onBack = { navController.popBackStack() }) }
                 composable("financeReport") { au.mainspring.nativeapp.ui.screens.MobileFinanceReportScreen(onBack = { navController.popBackStack() }) }

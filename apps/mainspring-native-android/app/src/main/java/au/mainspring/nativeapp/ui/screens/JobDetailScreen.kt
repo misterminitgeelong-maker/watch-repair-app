@@ -181,6 +181,7 @@ fun JobDetailScreen(
                     Text(listOfNotNull(job.claimedByName, job.collectionDate?.let { "Due ${formatShopDate(it)}" }, job.partsEta?.let { "Parts ${formatShopDate(it)}" }).joinToString(" \u00b7 ").ifBlank { "Unassigned" },
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Watch, job.id)
                 FlatPanel {
                     Text("Customer & contact", style = MaterialTheme.typography.titleMedium)
                     Text(job.customerName ?: "No customer recorded", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

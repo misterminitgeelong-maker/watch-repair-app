@@ -289,6 +289,7 @@ private fun contextText(value: com.google.gson.JsonObject,key: String): String? 
 @Composable private fun MobileInfoPanels(job: au.mainspring.nativeapp.api.AutoKeyJobRead,technicians: List<au.mainspring.nativeapp.api.TeamUser>) {
     var details by rememberSaveable(job.id) {mutableStateOf(false)}
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Mobile, job.id)
         job.description?.takeIf {it.isNotBlank()}?.let {SectionLabel("Requested work");Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(horizontal=16.dp,vertical=14.dp),style=MaterialTheme.typography.bodyMedium)}}
         job.techNotes?.takeIf {it.isNotBlank()}?.let {SectionLabel("Tech notes");Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(horizontal=16.dp,vertical=14.dp),style=MaterialTheme.typography.bodyMedium)}}
         if(job.description.isNullOrBlank() && job.techNotes.isNullOrBlank()) Text("No job notes recorded",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
