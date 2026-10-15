@@ -56,7 +56,7 @@ fun AutoKeyJobsScreen(
     var dateOpen by remember { mutableStateOf(false) }
     au.mainspring.nativeapp.ui.RefreshOnResume(viewModel::refresh)
     Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
-        LazyColumn(
+        au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(
             Modifier.padding(padding).fillMaxSize(),
             contentPadding = PaddingValues(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -104,7 +104,7 @@ fun AutoKeyJobsScreen(
             }
             if(!state.loading && state.jobs.isEmpty() && state.error == null) item { au.mainspring.nativeapp.ui.EmptyState("No jobs match this view", "Try another filter or search.") }
             if(state.jobs.size < state.total) item { OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("Load more jobs") } }
-        }
+        } }
     }
     if(dateOpen) {
         val initial = state.day?.let(java.time.LocalDate::parse) ?: java.time.LocalDate.now(java.time.ZoneId.of(au.mainspring.nativeapp.TokenStore.calendarTimezone()))

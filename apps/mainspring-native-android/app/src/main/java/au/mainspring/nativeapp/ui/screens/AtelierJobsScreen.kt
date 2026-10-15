@@ -76,7 +76,7 @@ fun AtelierJobsScreen(
         if("auto_key" in features) add("auto_key" to "Mobile")
     }
     val shown = state.visible
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { LargeHeader((shopName ?: "Your shop") + " · All services", "Jobs", onAdd = onNew, addDescription = "New job") }
         item {
             au.mainspring.nativeapp.ui.AtelierTextField(state.query, viewModel::setQuery, singleLine = true, placeholder = { Text("Job, customer or reference") },
@@ -104,7 +104,7 @@ fun AtelierJobsScreen(
         items(dueToday, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
         if(rest.isNotEmpty() && dueToday.isNotEmpty()) item { Text("LATER", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         items(rest, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
-    }
+    } }
 }
 
 class JobsHubFactory(private val features: Set<String>) : androidx.lifecycle.ViewModelProvider.Factory {

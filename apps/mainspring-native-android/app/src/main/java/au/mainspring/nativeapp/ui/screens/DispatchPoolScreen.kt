@@ -35,7 +35,7 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
         actions = {
             if(au.mainspring.nativeapp.TokenStore.canManageInvoices()) TextButton(onClick = { baseOpen = true }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Service area") }
             TextButton(onClick = vm::refresh, enabled = !state.busy && !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } }) }) { padding ->
-        LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        au.mainspring.nativeapp.ui.PullRefresh(state.loading, vm::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text("Nearby unclaimed work, closest first. Claiming one adds it to your mobile job board.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -70,7 +70,7 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
                     Button(onClick = { confirmingId = job.id }, enabled = !state.busy && !state.loading && state.unresolvedId.isBlank() && state.claimed == null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Claim job") }
                 }
             }
-        }
+        } }
     }
     confirmingId?.let { id ->
         AlertDialog(onDismissRequest = { confirmingId = null }, title = { Text("Claim this job?") },

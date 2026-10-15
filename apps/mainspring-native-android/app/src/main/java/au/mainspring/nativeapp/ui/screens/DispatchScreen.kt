@@ -55,7 +55,7 @@ fun DispatchScreen(
     RefreshOnResume(model::refresh)
     val zone = runCatching { ZoneId.of(TokenStore.calendarTimezone()) }.getOrDefault(ZoneId.systemDefault())
     val time = DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("en-AU"))
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    au.mainspring.nativeapp.ui.PullRefresh(state.loading, model::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { LargeHeader("Mobile services · Today", "Dispatch", onAdd = if(TokenStore.canWorkJobs()) onNew else null, addDescription = "New job") }
         item {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -121,7 +121,7 @@ fun DispatchScreen(
         item {
             PrimaryAction(onClick = onOpenPool, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) { Text("Open available job pool", style = MaterialTheme.typography.titleMedium) }
         }
-    }
+    } }
     if(confirmReminders) ReminderConfirm(onConfirm = { confirmReminders = false; extras.sendReminders() }, onDismiss = { confirmReminders = false })
 }
 

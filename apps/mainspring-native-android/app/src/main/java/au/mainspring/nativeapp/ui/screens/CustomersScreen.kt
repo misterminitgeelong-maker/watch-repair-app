@@ -30,7 +30,7 @@ fun CustomersScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     RefreshOnResume(viewModel::refresh)
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { LargeHeader("Directory · Accounts", "Customers", onAdd = onNewCustomer, addDescription = "New customer") }
         item {
             au.mainspring.nativeapp.ui.AtelierTextField(
@@ -65,5 +65,5 @@ fun CustomersScreen(
         if (state.canLoadMore) item {
             SecondaryAction(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) { Text("Load more customers") }
         }
-    }
+    } }
 }

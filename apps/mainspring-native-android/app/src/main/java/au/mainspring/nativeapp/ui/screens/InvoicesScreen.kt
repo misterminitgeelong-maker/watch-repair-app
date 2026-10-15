@@ -49,10 +49,10 @@ fun InvoicesScreen(
         if (state.loading && state.invoices.isEmpty()) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
         state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = viewModel::refresh) }
         if (!state.loading && state.error == null && shown.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No invoices yet", if (query.isBlank() && type == null && filter == null) "Invoices appear here once a quote is approved and invoiced." else "No invoices match these filters.")
-        LazyColumn(
+        au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
-            modifier = Modifier.fillMaxSize().weight(1f, fill = true),
+            modifier = Modifier.fillMaxSize(),
         ) {
             items(shown, key = { (if (it.mobile) "m-" else "w-") + it.id }) { inv ->
                 au.mainspring.nativeapp.ui.ListCard({ if (inv.mobile) onOpenMobileInvoice(inv.jobId) else onOpenInvoice(inv.id) }) {
@@ -71,6 +71,6 @@ fun InvoicesScreen(
             if(state.invoices.size < state.total) item {
                 androidx.compose.material3.OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text(if(state.loading) "Loading…" else "Load more invoices") }
             }
-        }
+        } }
     }
 }

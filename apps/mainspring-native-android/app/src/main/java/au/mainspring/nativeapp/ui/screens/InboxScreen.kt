@@ -81,10 +81,10 @@ fun InboxScreen(
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(16.dp), onRetry = { viewModel.refresh() }) }
             state.actionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp)) }
             if (!state.loading && state.error == null && state.events.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("You're all caught up", "Customer replies and booking activity will show up here.")
-            LazyColumn(
+            au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 112.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize().weight(1f, fill = true),
+                modifier = Modifier.fillMaxSize(),
             ) {
                 items(state.events, key = { it.id }) { ev ->
                     val route = inboxRoute(ev)
@@ -131,7 +131,7 @@ fun InboxScreen(
                         }
                     }
                 }
-            }
+            } }
         }
     }
 }

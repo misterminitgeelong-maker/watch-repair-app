@@ -39,6 +39,17 @@ class RouteOrderViewModel : ViewModel() {
         }
     }
 
+    /** Persists a manual order: [jobs] in their new stop order become visit_order 1..n (stale-write header kept per job). */
+    fun saveOrder(jobs: List<AutoKeyJobRead>) {
+        if(mutable.value.busy || jobs.size < 2) return
+        mutable.update { it.copy(busy = true, error = null, message = null) }
+        viewModelScope.launch {
+            try { writeOrders(jobs.mapIndexed { i, j -> j to (i + 1) }, "Stop order saved") }
+            catch(e: CancellationException) { throw e }
+            finally { mutable.update { it.copy(busy = false) } }
+        }
+    }
+
     fun clear(jobs: List<AutoKeyJobRead>) {
         if(mutable.value.busy) return
         val targets = jobs.filter { it.visitOrder != null }
