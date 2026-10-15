@@ -62,6 +62,8 @@ fun JobDetailScreen(
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
     LaunchedEffect(state.clonedJobId) { state.clonedJobId?.let { vm.consumeClonedJob(); onDuplicated(it) } }
     val job = state.job
+    var niimbotLabel by remember { mutableStateOf<au.mainspring.nativeapp.niimbot.NiimbotLabelData?>(null) }
+    niimbotLabel?.let { au.mainspring.nativeapp.niimbot.NiimbotPrintDialog(it) { niimbotLabel = null } }
     val adminReady = !state.loading && !state.statusBusy && !state.adminBusy
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     androidx.activity.compose.BackHandler(state.statusBusy) {}
@@ -104,6 +106,15 @@ fun JobDetailScreen(
                         shopName = TokenStore.shopValue("name"), shopPhone = TokenStore.shopValue("phone"),
                         kind = au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH))
                 } catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "Could not print", android.widget.Toast.LENGTH_LONG).show() }
+            },
+            DetailAction("Print label (Niimbot)", job.statusToken != null) {
+                niimbotLabel = au.mainspring.nativeapp.niimbot.NiimbotLabelData(
+                    jobNumber = job.jobNumber, customerName = job.customerName, customerPhone = job.customerPhone,
+                    itemTitle = listOfNotNull(job.watchBrand, job.watchModel).joinToString(" ").ifBlank { "Watch" },
+                    services = job.title.takeIf { it.isNotBlank() },
+                    dateIn = null,
+                    qrText = au.mainspring.nativeapp.ui.intakeStatusUrl(apiBaseUrl, au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH, job.statusToken.orEmpty()),
+                )
             },
             DetailAction("Edit customer", adminReady && state.watch != null) { state.watch?.customerId?.let(onEditCustomer) },
             DetailAction("Edit watch details", adminReady && state.watch != null) { state.watch?.let { onEditWatch(it.customerId, it.id) } },
