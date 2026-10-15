@@ -1,5 +1,8 @@
 package au.mainspring.nativeapp
 
+import au.mainspring.nativeapp.offline.OfflineKinds
+import au.mainspring.nativeapp.offline.OfflineSync
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -26,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 data class ShoeJobDetailUiState(
     val loading: Boolean = false,
     val error: String? = null,
+    val info: String? = null,
     val job: ShoeRepairJobRead? = null,
     val history: List<ShoeJobStatusHistoryRead> = emptyList(),
     val attachments: List<AttachmentRead> = emptyList(),
@@ -106,6 +110,11 @@ class ShoeJobDetailViewModel(
                 load()
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
+                if(OfflineSync.queueStatus(e, OfflineKinds.SHOE_STATUS, jobId, newStatus, message, visibleNote, "Shoe job")) {
+                    statusCheckpoint.clear()
+                    _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", info = OfflineSync.SAVED_OFFLINE_MESSAGE) }
+                    return@launch
+                }
                 val unknown = submitted && (e !is retrofit2.HttpException || e.code() >= 500)
                 if(!unknown) statusCheckpoint.clear()
                 _state.update { it.copy(statusBusy = false, statusUnknown = unknown, statusReviewed = false, error = e.userMessage()) }
@@ -128,6 +137,9 @@ class ShoeJobDetailViewModel(
                 val history = api.getShoeRepairJobStatusHistory(jobId)
                 _state.update { it.copy(noteBusy = false, job = j, history = history) }
             } catch (e: Exception) {
+                if(OfflineSync.queueNote(e, OfflineKinds.SHOE_NOTE, jobId, trimmed, "Shoe job")) {
+                    _state.update { it.copy(noteBusy = false, info = OfflineSync.SAVED_OFFLINE_MESSAGE) }; return@launch
+                }
                 _state.update { it.copy(noteBusy = false, error = e.userMessage()) }
             }
         }

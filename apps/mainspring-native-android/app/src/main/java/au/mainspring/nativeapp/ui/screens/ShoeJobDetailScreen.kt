@@ -70,6 +70,7 @@ fun ShoeJobDetailScreen(
             TextButton(onClick = onBack) { Text("\u2039 Jobs", style = MaterialTheme.typography.titleSmall) }
             if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { ErrorBanner(it, onRetry = vm::load) }
+            state.info?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
         }
     } else AtelierDetail(
         backLabel = "Jobs", title = j.title, reference = j.jobNumber,

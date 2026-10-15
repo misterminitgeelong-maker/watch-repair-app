@@ -67,6 +67,8 @@ object TokenStore {
         au.mainspring.nativeapp.data.QuoteNavCache.clear()
         val next = sessionGeneration() + 1
         prefs.edit().clear().putLong(K_GENERATION, next).apply()
+        // The offline write queue lives in these prefs, so it is already wiped; reset its in-memory view.
+        au.mainspring.nativeapp.offline.OfflineSync.onSessionCleared()
         cleanupUnusedOwnedPhotos()
     }
     internal fun context(): Context? = if(::appContext.isInitialized) appContext else null
@@ -85,6 +87,12 @@ object TokenStore {
     fun setDraftScope(tenantId: String, userId: String) {
         prefs.edit().putString("draft_scope", "${getApiBaseUrl() ?: BuildConfig.API_BASE_URL}|$tenantId|$userId").putString("tenant_id", tenantId).apply()
     }
+    /** Scope an offline write is bound to (api base | tenant | user), or null when no verified session exists. */
+    fun offlineScope(): String? = if(::prefs.isInitialized) prefs.getString("draft_scope", null) else null
+    fun hasOfflineStorage(): Boolean = ::prefs.isInitialized
+    fun loadOfflineQueue(): String? = if(::prefs.isInitialized) prefs.getString("offline_write_queue", null) else null
+    @android.annotation.SuppressLint("ApplySharedPref")
+    fun saveOfflineQueue(json: String?) { if(::prefs.isInitialized) prefs.edit().apply { if(json == null) remove("offline_write_queue") else putString("offline_write_queue", json) }.commit() }
     fun currentTenantId(): String = prefs.getString("tenant_id", "").orEmpty()
     /** Wait for prior async draft writes before an intake POST can commit on the server. */
     fun flushDraftCheckpoint() { check(prefs.edit().commit()) { "Could not retain the intake checkpoint on this device. Free storage before submitting." } }

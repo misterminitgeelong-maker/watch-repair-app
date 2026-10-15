@@ -102,6 +102,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             TokenStore.setCalendarTimezone(s.calendarTimezone)
             TokenStore.setShopIdentity(s.currency,s.shopName,s.shopAbn,s.shopPhone,s.shopAddress)
             TokenStore.setSessionRole(s.user.role)
+            au.mainspring.nativeapp.offline.OfflineSync.queue.reload(); au.mainspring.nativeapp.offline.OfflineSync.requestReplay()
             _state.update {
                 it.copy(
                     loading = false,

@@ -1,5 +1,8 @@
 package au.mainspring.nativeapp
 
+import au.mainspring.nativeapp.offline.OfflineKinds
+import au.mainspring.nativeapp.offline.OfflineSync
+
 import androidx.lifecycle.*
 import au.mainspring.nativeapp.api.*
 import kotlinx.coroutines.CancellationException
@@ -70,6 +73,11 @@ class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUr
                 mutable.update { it.copy(job = job, offlineSnapshot=false,statusInfo = message) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) {
+                if(OfflineSync.queueStatus(e, OfflineKinds.MOBILE_STATUS, jobId, body.status, body.note, null, "Mobile job")) {
+                    drafts.saveMessageDraft("$operation/request",""); drafts.setPendingOperation(operation,false)
+                    mutable.update { it.copy(statusReviewRequired = false, requestedStatus = null, requestedNote = null, statusInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }
+                    return@launch
+                }
                 val unknown = e !is HttpException || e.code() >= 500
                 val conflict = e is HttpException && e.code() == 409
                 drafts.setPendingOperation(operation,unknown)
