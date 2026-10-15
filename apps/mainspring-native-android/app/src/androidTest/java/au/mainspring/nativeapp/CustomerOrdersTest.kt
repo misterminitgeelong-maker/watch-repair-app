@@ -1,13 +1,12 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import okhttp3.mockwebserver.*
 import org.junit.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class CustomerOrdersTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     private val patches = ConcurrentLinkedQueue<String>()
     private val posts = ConcurrentLinkedQueue<String>()

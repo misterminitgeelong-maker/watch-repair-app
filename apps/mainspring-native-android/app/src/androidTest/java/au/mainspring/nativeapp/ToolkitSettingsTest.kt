@@ -1,6 +1,5 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.gson.JsonParser
 import okhttp3.mockwebserver.*
@@ -8,7 +7,7 @@ import org.junit.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class ToolkitSettingsTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     private val patches = ConcurrentLinkedQueue<String>()
     private val catalogue = """{"enabled_categories":["vehicle_key"],"available_categories":[{"key":"vehicle_key","label":"Vehicle keys","description":"Keys"},{"key":"garage_door","label":"Garage doors","description":"Remotes"}]}"""

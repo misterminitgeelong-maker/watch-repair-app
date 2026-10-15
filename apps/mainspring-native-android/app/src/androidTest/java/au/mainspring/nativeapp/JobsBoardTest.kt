@@ -1,6 +1,5 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import au.mainspring.nativeapp.ui.screens.buildBoardColumns
 import com.google.gson.JsonParser
@@ -10,7 +9,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 /** Board "Move to" status changes (watch and shoe) and the shoe SMS log / resend. */
 class JobsBoardTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     private val requests = ConcurrentLinkedQueue<String>()
     private var watchStatus = "awaiting_quote"

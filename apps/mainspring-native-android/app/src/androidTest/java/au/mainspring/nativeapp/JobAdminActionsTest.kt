@@ -1,6 +1,5 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import au.mainspring.nativeapp.api.MobileQuoteLine
 import com.google.gson.JsonParser
@@ -10,7 +9,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 /** Delete, duplicate, B2B account assignment and create-and-send quote for watch and shoe jobs. */
 class JobAdminActionsTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     // ConcurrentLinkedQueue cannot hold nulls, so every entry is a non-null "METHOD path body" string.
     private val requests = ConcurrentLinkedQueue<String>()

@@ -1,6 +1,5 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import au.mainspring.nativeapp.api.AutoKeyJobRead
 import com.google.gson.JsonParser
@@ -9,7 +8,7 @@ import org.junit.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class RouteOrderTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     private val patches = ConcurrentLinkedQueue<Triple<String, String, String?>>()
     @Volatile private var optimiseBody = """{"visit_order":[0,2,1],"source":"directions"}"""

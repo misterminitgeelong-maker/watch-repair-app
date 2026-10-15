@@ -1,12 +1,11 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import okhttp3.mockwebserver.*
 import org.junit.*
 
 class DashboardKpiTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     @Before fun setup() {
         TokenStore.init(InstrumentationRegistry.getInstrumentation().targetContext); TokenStore.clear()

@@ -1,6 +1,5 @@
 package au.mainspring.nativeapp
 
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.gson.JsonParser
@@ -8,7 +7,7 @@ import okhttp3.mockwebserver.*
 import org.junit.*
 
 class CustomIntakeWorkflowTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = HeadlessRule()
     private lateinit var server: MockWebServer
     private var failCustom = false
     private var shoeBody = ""
