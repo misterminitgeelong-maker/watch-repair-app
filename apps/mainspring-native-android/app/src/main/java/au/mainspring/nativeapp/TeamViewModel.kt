@@ -66,4 +66,17 @@ class TeamViewModel : ViewModel() {
             } finally {mutable.update {it.copy(busy=false)};reload(true)}
         }
     }
+    /** Permanently deletes a team account (owner only). Deactivating via Edit is the reversible option. */
+    fun delete(user: TeamUser, ownerService: OwnerAdminApi = ApiClient.service(OwnerAdminApi::class.java)) {
+        if(!TokenStore.canManageTeam() || mutable.value.busy || mutable.value.loading) return
+        mutable.update {it.copy(busy=true,error=null,info=null)}
+        viewModelScope.launch {
+            try {
+                val response=ownerService.deleteTeamUser(user.id)
+                if(!response.isSuccessful) throw retrofit2.HttpException(response)
+                mutable.update {it.copy(info="Account deleted.")}
+            } catch(e: CancellationException) {throw e} catch(e: Exception) {mutable.update {it.copy(error=e.userMessage())}}
+            finally {mutable.update {it.copy(busy=false)};reload(true)}
+        }
+    }
 }

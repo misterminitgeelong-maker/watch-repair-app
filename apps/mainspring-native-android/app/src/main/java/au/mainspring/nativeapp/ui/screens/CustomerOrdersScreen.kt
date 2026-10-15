@@ -30,6 +30,7 @@ import au.mainspring.nativeapp.ui.*
     var creating by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<CustomerOrderRead?>(null) }
     var deleting by remember { mutableStateOf<CustomerOrderRead?>(null) }
+    var importing by remember { mutableStateOf(false) }
     Scaffold(topBar = { BackLargeHeader("More", "Workshop", "Customer orders", onBack) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             item {
@@ -38,6 +39,7 @@ import au.mainspring.nativeapp.ui.*
                     CUSTOMER_ORDER_STATUSES.forEach { s -> TabChip(state.filter == s, { viewModel.filter(s) }, { Text(statusLabel(s)) }) }
                 }
                 PrimaryAction({ creating = true }, Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("New order") }
+                SecondaryAction({ importing = true }, Modifier.fillMaxWidth().padding(top = 8.dp).testTag("customer-order-import")) { Text("Import from CSV or Excel") }
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
             state.error?.let { item { ErrorBanner(it, onRetry = viewModel::refresh) } }
@@ -58,6 +60,7 @@ import au.mainspring.nativeapp.ui.*
             }
         }
     }
+    if(importing) OrderImportDialog(onDismiss = { importing = false }, onImported = viewModel::refresh)
     selected?.let { order ->
         AlertDialog(onDismissRequest = { selected = null }, title = { Text(order.title) },
             text = {

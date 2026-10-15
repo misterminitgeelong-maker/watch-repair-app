@@ -43,7 +43,6 @@ private data class WorkspaceSection(val key: String, val title: String, val item
         if(mobile) add(WorkspaceSection("mobile", "Mobile services", buildList {
             add("Jobs & dispatch" to "auto_jobs"); add("Send booking request" to "sendBookingRequest"); add("Revenue control" to "revenueControl"); if(owner) add("Finance report" to "financeReport"); add("Dispatch" to "dispatch"); add("Map and today's route" to "route"); add("Dispatch pool" to "dispatchPool")
             add("POS / quick sale" to "counterSale"); add("Lead inbox" to "leads"); add("Prospects" to "prospects")
-            if(owner) add("Team" to "team")
             add("Mobile toolkit" to "toolkit")
         }))
         add(WorkspaceSection("business", "Business", buildList {
@@ -52,6 +51,7 @@ private data class WorkspaceSection(val key: String, val title: String, val item
             if(owner) add("Reports" to "reports")
             add("Inventory" to "stock")
             if(owner) add("Database" to "database")
+            if(owner) add("Team" to "team"); if(owner) add("Shop settings" to "shopSettings"); if(owner) add("Sales & activity" to "reportExtras")
             add("Queued changes" to "queuedChanges")
             add("Accounts" to "accounts")
         }))

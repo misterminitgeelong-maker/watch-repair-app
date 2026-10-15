@@ -75,3 +75,12 @@ Not in the native app yet: Parent Account, Accounts management (team users, plan
 | Shoe SMS log and resend (job live, current status) | Shoe job detail > Notify customer, History | done |
 | Repair jobs CSV export | More > Database (already exports jobs) | already done |
 | Prev/next job, saved views, repair queue swipe triage, Niimbot labels, push | n/a | not built |
+## Phase 2 (business shell)
+
+| Item | Where in the app | Status |
+|---|---|---|
+| Shop details edit, email alert preferences, integration health | `OwnerSettingsScreen` | built; needs shell wiring (More > Shop settings) |
+| Sales by category, sales CSV, shop activity log | `ReportExtrasScreen` | built; needs shell wiring (More > Sales & activity) |
+| Customer Orders import (CSV/Excel, sheet pick, dry run) | Customer orders > Import | done |
+| Delete team account (owner) | Team > Delete account | done |
+| Team entry for watch/shoe-only shops | More | needs shell wiring |
