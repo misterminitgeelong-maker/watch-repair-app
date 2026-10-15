@@ -156,7 +156,7 @@ fun JobDetailScreen(
                 attachmentOpenError?.let { ErrorBanner(it) }
                 if(LocalCalibre.current) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Text("Activity includes private workshop notes. Customer-visible conversations are in Messages.", Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = Calibre.Muted)
+                    Text("Activity includes private workshop notes. Customer-visible conversations are in Messages.", Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             "messages" -> MessageThreadScreen("repair-jobs", jobId, { tab = "summary" }, embedded = true)
@@ -175,7 +175,7 @@ fun JobDetailScreen(
                         Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             MonoLabel(if(paid) "Payment recorded" else "Outstanding")
                             Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-                            if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = Calibre.Muted)
+                            if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         AccentAction(onClick = { onQuotes(jobId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
                     }

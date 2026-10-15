@@ -41,7 +41,7 @@ fun NewIntakeScreen(features: Set<String>, onBack: () -> Unit, onStart: (String)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     MonoLabel("Step 1 of 3")
-                    MonoLabel("Customer → Item → Work", color = Calibre.Forest)
+                    MonoLabel("Customer → Item → Work", color = MaterialTheme.colorScheme.primary)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }

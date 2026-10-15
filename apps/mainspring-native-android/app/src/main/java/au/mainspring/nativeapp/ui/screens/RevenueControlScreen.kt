@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -106,8 +107,8 @@ private val scheduleOptions = listOf("keep" to "Keep current timing", "now" to "
                     }
                 }
                 AtelierTextField(note, { note = it.take(2000) }, label = { Text("Next action / conversation notes") }, minLines = 3, enabled = !saving, modifier = Modifier.fillMaxWidth())
-                Row(Modifier.fillMaxWidth().clickable(enabled = !saving) { contacted = !contacted }.heightIn(min = 48.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Checkbox(contacted, { contacted = it }, enabled = !saving); Text("I contacted the customer")
+                Row(Modifier.fillMaxWidth().toggleable(value = contacted, enabled = !saving, role = androidx.compose.ui.semantics.Role.Checkbox, onValueChange = { contacted = it }).heightIn(min = 48.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Checkbox(contacted, null, enabled = !saving); Text("I contacted the customer")
                 }
                 error?.let { ErrorBanner(it) }
                 TextButton(onOpenJob, enabled = !saving, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open job") }

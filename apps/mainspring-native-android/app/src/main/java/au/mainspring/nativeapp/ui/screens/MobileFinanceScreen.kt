@@ -44,7 +44,7 @@ import au.mainspring.nativeapp.ui.formatCents
    val due=state.invoices.firstOrNull {it.status=="unpaid"}
    val draftQuote=state.quotes.firstOrNull {it.status=="draft"}
    val uninvoiced=state.quotes.firstOrNull {quote->state.invoices.none {it.quoteId==quote.id}}
-   if(!state.loading && state.historyChecked) Surface(Modifier.fillMaxWidth().testTag("job-financial-next"),shape=if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium,color=if(calibre) Calibre.Grey else MaterialTheme.colorScheme.surface) {
+   if(!state.loading && state.historyChecked) Surface(Modifier.fillMaxWidth().testTag("job-financial-next"),shape=if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium,color=if(calibre) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface) {
     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
      SectionLabel(when {due!=null->"Payment to record";draftQuote!=null->"Ready for customer review";state.invoices.isNotEmpty() && state.invoices.all {it.status=="paid"}->"Payment recorded";else->"Quote & approval"})
      Text(when {due!=null->formatCents(due.total,due.currency);draftQuote!=null->formatCents(draftQuote.total,draftQuote.currency);state.invoices.isNotEmpty() && state.invoices.all {it.status=="paid"}->"All settled";else->"Agree the work first"},style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)

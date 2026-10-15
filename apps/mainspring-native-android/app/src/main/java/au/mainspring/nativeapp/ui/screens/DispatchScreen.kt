@@ -177,7 +177,8 @@ fun DispatchScreen(
 @Composable
 private fun RouteArt(modifier: Modifier, onClick: () -> Unit) {
     val calibre = LocalCalibre.current
-    Surface(onClick, modifier.fillMaxWidth().height(210.dp).semantics { contentDescription = "Open today's route" }, shape = if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium, color = if(calibre) Calibre.Grey else Color(0xFFE5E9DD)) {
+    val routeColor = MaterialTheme.colorScheme.primary; val pinColor = MaterialTheme.colorScheme.onSurface
+    Surface(onClick, modifier.fillMaxWidth().height(210.dp).semantics { contentDescription = "Open today's route" }, shape = if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium, color = if(calibre) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFE5E9DD)) {
         Canvas(Modifier.fillMaxSize()) {
             val u = size.width / 354f
             if(!calibre) drawRoundRect(Color(0xFFC9DCE4), Offset(size.width * 0.72f, 0f), Size(size.width * 0.28f, size.height), CornerRadius(60f * u))
@@ -185,8 +186,8 @@ private fun RouteArt(modifier: Modifier, onClick: () -> Unit) {
             fun r(x1: Float, y1: Float, x2: Float, y2: Float, w: Float = 13f) = drawLine(road, Offset(x1 * u, y1 * u), Offset(x2 * u, y2 * u), w * u)
             r(0f, 60f, 354f, 20f); r(0f, 130f, 300f, 80f); r(60f, 0f, 20f, 210f); r(140f, 0f, 190f, 210f, 15f); r(250f, 0f, 220f, 210f, 10f)
             val path = Path().apply { moveTo(75f * u, 160f * u); cubicTo(110f * u, 90f * u, 140f * u, 60f * u, 170f * u, 70f * u); cubicTo(210f * u, 85f * u, 230f * u, 50f * u, 236f * u, 52f * u) }
-            drawPath(path, if(calibre) Calibre.Forest else Color(0xFF2453D4), style = Stroke(5f * u, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f * u, 9f * u))))
-            drawCircle(Color(0xFF17202C), 9f * u, Offset(75f * u, 160f * u)); drawCircle(if(calibre) Calibre.Forest else Color(0xFF2453D4), 10f * u, Offset(140f * u, 72f * u)); drawCircle(if(calibre) Color(0xFF17202C) else Color(0xFF16734F), 10f * u, Offset(236f * u, 52f * u))
+            drawPath(path, if(calibre) routeColor else Color(0xFF2453D4), style = Stroke(5f * u, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f * u, 9f * u))))
+            drawCircle(if(calibre) pinColor else Color(0xFF17202C), 9f * u, Offset(75f * u, 160f * u)); drawCircle(if(calibre) routeColor else Color(0xFF2453D4), 10f * u, Offset(140f * u, 72f * u)); drawCircle(if(calibre) pinColor else Color(0xFF16734F), 10f * u, Offset(236f * u, 52f * u))
         }
     }
 }

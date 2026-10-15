@@ -19,7 +19,10 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit) {
     val appearance by DesignPreferences.appearance.collectAsState()
-    val night = darkTheme ?: (appearance == AppAppearance.NIGHT)
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    // Calibre follows the system dark setting; the other light appearances only go dark through the explicit Night choice.
+    val night = darkTheme ?: (appearance == AppAppearance.NIGHT || (appearance == AppAppearance.CALIBRE && systemDark))
+    val calibreDark = darkTheme == null && night && appearance == AppAppearance.CALIBRE
     var colors = if (night) darkColorScheme(
         primary = Color(0xFF7FA2FF), onPrimary = Color(0xFF0A1530),
         background = Color(0xFF0E141D), surface = Color(0xFF18212D), onSurface = Color(0xFFEDF1F8),
@@ -42,8 +45,19 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
         surfaceContainer = Color(0xFFF1F4F9), surfaceContainerHigh = Color(0xFFE8EDF5), surfaceContainerHighest = Color.White,
         outline = Color(0xFF8793A6), outlineVariant = Color(0xFFDDE3EE),
         error = Color(0xFFB3261E), errorContainer = Color(0xFFFCE4E1), onErrorContainer = Color(0xFF601410))
-    val calibre = !night && appearance == AppAppearance.CALIBRE
-    if(calibre) colors = lightColorScheme(
+    val calibre = (!night && appearance == AppAppearance.CALIBRE) || calibreDark
+    if(calibreDark) colors = darkColorScheme(
+        primary = Calibre.ForestDark, onPrimary = Calibre.OnForestDark,
+        background = Calibre.DarkBackground, surface = Calibre.DarkBackground, onSurface = Calibre.DarkInk,
+        onBackground = Calibre.DarkInk, secondary = Calibre.ForestDark, onSecondary = Calibre.OnForestDark,
+        primaryContainer = Calibre.DarkForestContainer, onPrimaryContainer = Calibre.ForestDark,
+        secondaryContainer = Calibre.DarkSurface, onSecondaryContainer = Calibre.DarkInk,
+        surfaceVariant = Calibre.DarkSurface, onSurfaceVariant = Calibre.DarkMuted,
+        surfaceContainerLowest = Color(0xFF0C0F0D), surfaceContainerLow = Color(0xFF151916),
+        surfaceContainer = Calibre.DarkSurface, surfaceContainerHigh = Color(0xFF252C27), surfaceContainerHighest = Color(0xFF2D352F),
+        outline = Color(0xFF7C857E), outlineVariant = Calibre.DarkHairline,
+        error = Color(0xFFFFB4AB), errorContainer = Color(0xFF4A1F1B), onErrorContainer = Color(0xFFFFDAD6))
+    else if(calibre) colors = lightColorScheme(
         primary = Calibre.Forest, onPrimary = Color.White,
         background = Color.White, surface = Color.White, onSurface = Calibre.Ink,
         onBackground = Calibre.Ink, secondary = Calibre.Forest, onSecondary = Color.White,

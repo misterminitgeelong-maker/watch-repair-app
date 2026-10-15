@@ -97,7 +97,7 @@ private fun jobTime(job: AutoKeyJobRead,zone: ZoneId)=bookingInstant(job.schedul
 private fun jobSubtitle(job: AutoKeyJobRead)=listOf(listOfNotNull(job.vehicleMake,job.vehicleModel,job.vehicleYear?.toString()).joinToString(" "),job.customerName.orEmpty()).filter {it.isNotBlank()}.joinToString(" · ")
 @Composable private fun TodayJobRow(job: AutoKeyJobRead,zone: ZoneId,onClick: ()->Unit,nextLabel: String?=null,actions: (@Composable ()->Unit)?=null) {
     val timeWidth=if(androidx.compose.ui.platform.LocalDensity.current.fontScale>1.3f) 72.dp else 48.dp
-    Surface(Modifier.fillMaxWidth().testTag(if(nextLabel!=null) "today-next-job" else "today-row-${job.id}").clickable(onClick=onClick),color=MaterialTheme.colorScheme.surface) {
+    Surface(Modifier.fillMaxWidth().testTag(if(nextLabel!=null) "today-next-job" else "today-row-${job.id}").clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),color=MaterialTheme.colorScheme.surface) {
         Row(Modifier.padding(vertical=12.dp).height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
             Text(jobTime(job,zone),Modifier.width(timeWidth),style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
             Column(Modifier.width(8.dp).fillMaxHeight(),horizontalAlignment=Alignment.CenterHorizontally) {

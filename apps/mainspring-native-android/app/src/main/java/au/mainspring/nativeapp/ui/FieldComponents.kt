@@ -1,6 +1,11 @@
 package au.mainspring.nativeapp.ui
 
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
@@ -27,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    if(LocalCalibre.current) { MonoLabel(text, modifier.padding(top = 18.dp, bottom = 4.dp)); return }
-    Text(text, modifier = modifier.padding(top = 8.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium,
+    if(LocalCalibre.current) { MonoLabel(text, modifier.padding(top = 18.dp, bottom = 4.dp).semantics { heading() }); return }
+    Text(text, modifier = modifier.padding(top = 8.dp, bottom = 4.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurface)
 }
 
@@ -131,7 +136,7 @@ import androidx.compose.ui.unit.sp
 
 /** Friendly inline error with a retry affordance, used instead of bare red text. */
 @Composable fun ErrorBanner(message: String, modifier: Modifier = Modifier, onRetry: (() -> Unit)? = null) {
-    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
+    Surface(modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Assertive }, color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
         Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
             if(onRetry != null) TextButton(onClick = onRetry) { Text("Retry") }
@@ -142,7 +147,7 @@ import androidx.compose.ui.unit.sp
 /** Centred empty-state with a headline, optional hint and optional single action. */
 @Composable fun EmptyState(title: String, hint: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         if(hint != null) Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         if(actionLabel != null && onAction != null) androidx.compose.material3.OutlinedButton(onClick = onAction) { Text(actionLabel) }
     }
@@ -203,9 +208,9 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if(LocalCalibre.current) HorizontalDivider(Modifier.offset(y = (-10).dp), color = MaterialTheme.colorScheme.outlineVariant)
             if(LocalCalibre.current) {
-                Text("0${step + 1} / 0$steps  ${stepTitle.uppercase()}", style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("0${step + 1} / 0$steps  ${stepTitle.uppercase()}", Modifier.semantics { contentDescription = "Step ${step + 1} of $steps, $stepTitle" }, style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    (0 until steps).forEach { i -> Box(Modifier.weight(1f).height(3.dp).background(if(i <= step) Calibre.Forest else Calibre.Hairline)) }
+                    (0 until steps).forEach { i -> Box(Modifier.weight(1f).height(3.dp).background(if(i <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) }
                 }
             } else {
             Text("Step ${step + 1} of $steps \u00b7 $stepTitle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -223,9 +228,9 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun PillChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     if(LocalCalibre.current) {
-        Column(modifier.width(IntrinsicSize.Max).heightIn(min = 44.dp).semantics { this.selected = selected }
+        Column(modifier.width(IntrinsicSize.Max).heightIn(min = 48.dp).semantics { this.selected = selected }
             .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick), horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.Bottom) {
-            Box(Modifier.heightIn(min = 40.dp).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.heightIn(min = 44.dp).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
                 Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal),
                     color = (if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = if(enabled) 1f else 0.5f), maxLines = 1)
             }
@@ -233,7 +238,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         }
         return
     }
-    Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
+    Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface) {
         Box(Modifier.padding(horizontal = 18.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -268,7 +273,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     Row(modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
             if(eyebrow != null) { if(LocalCalibre.current) MonoLabel(eyebrow) else Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Text(title, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
         }
         trailing?.invoke()
         if(onAdd != null) RoundPlusButton(onAdd, addDescription)
@@ -279,7 +284,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun RoundPlusButton(onClick: () -> Unit, description: String = "New", modifier: Modifier = Modifier) {
     if(LocalCalibre.current) {
-        Surface(onClick, modifier.size(48.dp).semantics { contentDescription = description }, shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primary) {
+        Surface(onClick, modifier.size(48.dp).semantics { contentDescription = description; role = Role.Button }, shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primary) {
             val color = MaterialTheme.colorScheme.onPrimary
             Canvas(Modifier.padding(15.dp)) {
                 val w = 2.2f * density
@@ -289,7 +294,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         }
         return
     }
-    Surface(onClick, modifier.size(48.dp).semantics { contentDescription = description }, shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.surface) {
+    Surface(onClick, modifier.size(48.dp).semantics { contentDescription = description; role = Role.Button }, shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.surface) {
         val color = MaterialTheme.colorScheme.primary
         Canvas(Modifier.padding(14.dp)) {
             val w = 2.2f * density
@@ -302,13 +307,13 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Dark hero card used on Today and for key totals (e.g. outstanding balance). */
 @Composable fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val calibre = LocalCalibre.current
-    Surface(modifier.fillMaxWidth(), color = if(calibre) Calibre.Grey else MaterialTheme.colorScheme.secondary, contentColor = if(calibre) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.medium) {
+    Surface(modifier.fillMaxWidth(), color = if(calibre) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.secondary, contentColor = if(calibre) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
     }
 }
 
 /** Line-art watch used on the Today hero card. */
-@Composable fun WatchArt(modifier: Modifier = Modifier, color: Color = if(LocalCalibre.current) Calibre.Forest else Color(0xFFD7F36B)) {
+@Composable fun WatchArt(modifier: Modifier = Modifier, color: Color = if(LocalCalibre.current) MaterialTheme.colorScheme.primary else Color(0xFFD7F36B)) {
     Canvas(modifier.size(width = 84.dp, height = 112.dp)) {
         val u = size.width / 84f
         val strap = color.copy(alpha = 0.16f)
@@ -394,7 +399,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
             Spacer(Modifier.weight(1f))
             actions()
         }
-        Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 10.dp)) {
+        Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 10.dp).semantics(mergeDescendants = true) { heading() }) {
             CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurface)) { title() }
         }
     }
@@ -404,7 +409,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AtelierChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     if(LocalCalibre.current) {
-        Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
+        Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
             color = if(selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
             contentColor = (if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f),
             border = BorderStroke(if(selected) 1.5.dp else 1.dp, if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
@@ -414,7 +419,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         }
         return
     }
-    Surface(onClick, modifier.heightIn(min = 44.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
+    Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = (if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f)) {
         Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
@@ -435,7 +440,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     singleLine: Boolean = false, maxLines: Int = if(singleLine) 1 else Int.MAX_VALUE, minLines: Int = 1,
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.small,
     colors: TextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = if(LocalCalibre.current) Calibre.Grey else MaterialTheme.colorScheme.surface, unfocusedContainerColor = if(LocalCalibre.current) Calibre.Grey else MaterialTheme.colorScheme.surface, disabledContainerColor = if(LocalCalibre.current) Calibre.Grey else MaterialTheme.colorScheme.surface,
+        focusedContainerColor = if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface, unfocusedContainerColor = if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface, disabledContainerColor = if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
         unfocusedBorderColor = if(LocalCalibre.current) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary),
 ) = OutlinedTextField(value, onValueChange, modifier, enabled, readOnly, textStyle, label, placeholder, leadingIcon, trailingIcon, prefix, suffix, supportingText,
     isError, visualTransformation, keyboardOptions, keyboardActions, singleLine, maxLines, minLines, null, shape, colors)
@@ -453,9 +458,9 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Filter/tab chip: an underline tab in Calibre, the regular chip elsewhere. */
 @Composable fun TabChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     if(!LocalCalibre.current) { AtelierChip(selected, onClick, label, modifier, enabled); return }
-    Column(modifier.width(IntrinsicSize.Max).heightIn(min = 44.dp).semantics { this.selected = selected }
+    Column(modifier.width(IntrinsicSize.Max).heightIn(min = 48.dp).semantics { this.selected = selected }
         .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Tab, onClick = onClick), verticalArrangement = Arrangement.Bottom) {
-        Box(Modifier.heightIn(min = 40.dp).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.heightIn(min = 44.dp).padding(horizontal = 2.dp), contentAlignment = Alignment.CenterStart) {
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides (if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = if(enabled) 1f else 0.5f)) {
                 ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal)) { label() }
             }
@@ -471,7 +476,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         AtelierIcon(label, tint)
         if(count > 0) Box(Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp).defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
             .background(MaterialTheme.colorScheme.error, androidx.compose.foundation.shape.CircleShape).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
-            Text(if(count > 99) "99+" else count.toString(), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = MaterialTheme.colorScheme.onError)
+            Text(if(count > 99) "99+" else count.toString(), Modifier.semantics { contentDescription = "$count unread" }, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = MaterialTheme.colorScheme.onError)
         }
     }
 }

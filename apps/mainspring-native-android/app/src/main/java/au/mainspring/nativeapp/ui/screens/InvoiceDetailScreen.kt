@@ -80,7 +80,7 @@ fun InvoiceDetailScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 au.mainspring.nativeapp.ui.MonoLabel(d.invoice.invoiceNumber)
                                 au.mainspring.nativeapp.ui.MonoLabel("/")
-                                au.mainspring.nativeapp.ui.MonoLabel(if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL", color = au.mainspring.nativeapp.ui.Calibre.Forest)
+                                au.mainspring.nativeapp.ui.MonoLabel(if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL", color = MaterialTheme.colorScheme.primary)
                             }
                             HorizontalDivider(Modifier.padding(top = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
                             Text(formatCents(remainingCents.coerceAtLeast(0), currency), Modifier.fillMaxWidth().padding(vertical = 14.dp), style = MaterialTheme.typography.displaySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal), textAlign = androidx.compose.ui.text.style.TextAlign.End)
@@ -227,9 +227,9 @@ fun InvoiceDetailScreen(
 
 /** Calibre notice: grey block with a forest rule on the left. */
 @Composable internal fun CalibreNotice(text: String, modifier: Modifier = Modifier) {
-    androidx.compose.foundation.layout.Row(modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).background(au.mainspring.nativeapp.ui.Calibre.Grey)) {
-        androidx.compose.foundation.layout.Box(Modifier.width(3.dp).fillMaxHeight().background(au.mainspring.nativeapp.ui.Calibre.Forest))
-        Text(text, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium, color = au.mainspring.nativeapp.ui.Calibre.Ink)
+    androidx.compose.foundation.layout.Row(modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).background(MaterialTheme.colorScheme.surfaceVariant)) {
+        androidx.compose.foundation.layout.Box(Modifier.width(3.dp).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+        Text(text, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -238,7 +238,7 @@ fun InvoiceDetailScreen(
     androidx.compose.foundation.layout.Row(
         modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = if(enabled) au.mainspring.nativeapp.ui.Calibre.Forest else au.mainspring.nativeapp.ui.Calibre.Muted)
-        Text("→", style = MaterialTheme.typography.bodyLarge, color = if(enabled) au.mainspring.nativeapp.ui.Calibre.Forest else au.mainspring.nativeapp.ui.Calibre.Muted)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = if(enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("→", style = MaterialTheme.typography.bodyLarge, color = if(enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -63,7 +63,7 @@ private fun LazyListScope.section(title: String, hits: List<SearchHit>, onOpenRo
     item(key = "h-$title") { SectionLabel(title, Modifier.padding(horizontal = 20.dp)) }
     items(hits, key = { "${it.kind}-${it.id}" }) { hit ->
         Column(
-            Modifier.fillMaxWidth().clickable { searchRoute(hit)?.let(onOpenRoute) }.heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { searchRoute(hit)?.let(onOpenRoute) }.heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -72,6 +72,6 @@ private fun LazyListScope.section(title: String, hits: List<SearchHit>, onOpenRo
             }
             MonoLabel(listOfNotNull(kindLabel(hit.kind), hit.subtitle?.takeIf { it.isNotBlank() }, hit.status?.takeIf { it.isNotBlank() && it != hit.subtitle }?.let(::statusLabel)).joinToString(" · "))
         }
-        HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = Calibre.Hairline)
+        HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }

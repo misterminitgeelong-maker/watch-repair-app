@@ -91,7 +91,7 @@ private fun leadMeta(lead: InboundLead): String = listOfNotNull(
     val uri = LocalUriHandler.current
     Column(Modifier.fillMaxWidth()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Column(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onToggle).padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(lead.name, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
                 StatusPill(if(overdue) "overdue" else lead.status)

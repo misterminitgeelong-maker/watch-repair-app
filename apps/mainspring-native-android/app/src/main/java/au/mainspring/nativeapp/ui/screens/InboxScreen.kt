@@ -92,7 +92,7 @@ fun InboxScreen(
                     val issue = if (isCard) ev.entityId?.let { state.issues[it] } else null
                     val busy = issue != null && state.busyIssueId == issue.id
                     au.mainspring.nativeapp.ui.FlatPanel(
-                        Modifier.padding(horizontal = 4.dp).let { m -> if (route != null) m.clickable { onOpenEntity(route) } else m },
+                        Modifier.padding(horizontal = 4.dp).let { m -> if (route != null) m.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenEntity(route) } else m },
                     ) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(au.mainspring.nativeapp.ui.statusLabel(ev.eventType), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
