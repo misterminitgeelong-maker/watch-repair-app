@@ -21,64 +21,151 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.ConnectivityMonitor
 import au.mainspring.nativeapp.RepairQueueViewModel
+import au.mainspring.nativeapp.ShoeRepairQueueViewModel
 import au.mainspring.nativeapp.api.RepairJobRead
+import au.mainspring.nativeapp.api.ShoeRepairJobRead
+import au.mainspring.nativeapp.nextShoeQueueStatus
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import au.mainspring.nativeapp.previewQueueSwipe
 import au.mainspring.nativeapp.ui.*
 import kotlinx.coroutines.launch
 
+/** One card in the queue stack, lane-agnostic so watch and shoe jobs share the same UI. */
+data class QueueCardUi(
+    val id: String,
+    val jobNumber: String,
+    val title: String,
+    val subtitle: String?,
+    val customer: String?,
+    val status: String,
+    val due: String?,
+    val description: String?,
+    /** Status a right swipe produces, or null at the end of the lane. */
+    val rightTarget: String?,
+    /** Status a left swipe steps back to, or null when left means skip. */
+    val leftTarget: String?,
+)
+
+/** Lane-agnostic view of a queue's state. */
+data class QueueLaneUi(
+    val loading: Boolean,
+    val error: String?,
+    val total: Int,
+    val advanced: Int,
+    val skipped: Int,
+    val busy: Boolean,
+    val canUndo: Boolean,
+    val canAdvance: Boolean,
+    val canGoBack: Boolean,
+    val queue: List<QueueCardUi>,
+    val emptyBody: String,
+)
+
+class QueueLaneActions(
+    val refresh: () -> Unit, val dismissError: () -> Unit, val advance: () -> Unit, val backOrSkip: () -> Unit,
+    val skip: () -> Unit, val undo: () -> Unit, val open: (String) -> Unit,
+)
+
+internal fun RepairJobRead.toCard() = QueueCardUi(
+    id = id, jobNumber = jobNumber, title = title, subtitle = listOfNotNull(watchBrand, watchModel).joinToString(" ").ifBlank { null },
+    customer = customerName, status = status, due = collectionDate, description = description,
+    rightTarget = previewQueueSwipe(status, "right"), leftTarget = previewQueueSwipe(status, "left"),
+)
+
+internal fun ShoeRepairJobRead.toCard() = QueueCardUi(
+    id = id, jobNumber = jobNumber, title = title,
+    subtitle = items.map { it.name }.filter { it.isNotBlank() }.joinToString(", ").ifBlank { listOfNotNull(shoe?.brand, shoe?.shoeType).joinToString(" ").ifBlank { null } },
+    customer = null, status = status, due = collectionDate, description = description,
+    rightTarget = nextShoeQueueStatus(status), leftTarget = null,
+)
+
 /**
- * Repair queue swipe triage (web RepairQueueModal, watch lane). Swipe the top card right to move the job
- * forward one status, left to step it back (or skip it when there is no earlier step). Buttons do the same,
- * and Undo reverses the last action. Status-only; the customer is never messaged from here.
+ * Repair queue swipe triage (web RepairQueueModal). Swipe the top card right to move the job
+ * forward one status. On the watch lane left steps it back (or skips it when there is no earlier step);
+ * on the shoe lane there is no back step, so left skips. Buttons do the same, and Undo reverses the last
+ * action. A lane toggle switches between Watch and Shoe; the shoe lane is created lazily so it only
+ * loads when selected. The watch lane is status-only; the shoe lane uses the normal shoe status endpoint.
  */
 @Composable
 fun RepairQueueScreen(
     onBack: () -> Unit,
     onOpenJob: (String) -> Unit,
     viewModel: RepairQueueViewModel = viewModel(),
+    onOpenShoeJob: (String) -> Unit = {},
+    initialLane: String = "watch",
+    shoeViewModel: ShoeRepairQueueViewModel? = null,
 ) {
-    val s by viewModel.state.collectAsStateWithLifecycle()
+    var lane by rememberSaveable { mutableStateOf(initialLane) }
     val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         BackLargeHeader("More", "Workshop", "Repair queue", onBack)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LaneChip("Watch", lane == "watch", Modifier.weight(1f).testTag("queue-lane-watch")) { lane = "watch" }
+            LaneChip("Shoe", lane == "shoe", Modifier.weight(1f).testTag("queue-lane-shoe")) { lane = "shoe" }
+        }
         if (!online) {
             Text("Offline. Moves are paused until you reconnect.", Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("queue-offline"),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
-        when {
-            s.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(Modifier.testTag("queue-loading")) }
-            s.error != null && s.total == 0 && s.queue.isEmpty() -> Column(Modifier.fillMaxWidth().padding(16.dp).testTag("queue-load-error"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(s.error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                OutlinedButton(onClick = viewModel::refresh, modifier = Modifier.testTag("queue-retry")) { Text("Retry") }
+        if (lane == "shoe") {
+            val vm = shoeViewModel ?: viewModel<ShoeRepairQueueViewModel>()
+            val s by vm.state.collectAsStateWithLifecycle()
+            val ui = QueueLaneUi(s.loading, s.error, s.total, s.advanced, s.skipped, s.busy, s.canUndo, s.canAdvance, false,
+                s.queue.map { it.toCard() }, "Shoe repairs waiting on a step appear here.")
+            QueueLane(ui, QueueLaneActions(vm::refresh, vm::dismissError, vm::advance, vm::backOrSkip, vm::skip, vm::undo, onOpenShoeJob))
+        } else {
+            val s by viewModel.state.collectAsStateWithLifecycle()
+            val ui = QueueLaneUi(s.loading, s.error, s.total, s.advanced, s.skipped, s.busy, s.canUndo, s.canAdvance, s.canGoBack,
+                s.queue.map { it.toCard() }, "Watch repairs waiting on a step appear here.")
+            QueueLane(ui, QueueLaneActions(viewModel::refresh, viewModel::dismissError, viewModel::advance, viewModel::backOrSkip, viewModel::skip, viewModel::undo, onOpenJob))
+        }
+    }
+}
+
+@Composable private fun LaneChip(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected, onClick = onClick, label = { Text(label, Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+        modifier = modifier.heightIn(min = 48.dp).semantics { role = Role.Button; stateDescription = if (selected) "Selected" else "Not selected" },
+    )
+}
+
+@Composable private fun ColumnScope.QueueLane(s: QueueLaneUi, a: QueueLaneActions) {
+    when {
+        s.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(Modifier.testTag("queue-loading")) }
+        s.error != null && s.total == 0 && s.queue.isEmpty() -> Column(Modifier.fillMaxWidth().padding(16.dp).testTag("queue-load-error"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(s.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = a.refresh, modifier = Modifier.heightIn(min = 48.dp).testTag("queue-retry")) { Text("Retry") }
+        }
+        s.total == 0 -> EmptyState("No jobs to triage", s.emptyBody, "Refresh", a.refresh, Modifier.testTag("queue-empty"))
+        else -> {
+            Progress(s.advanced, s.total, s.skipped)
+            s.error?.let {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("queue-error"), verticalAlignment = Alignment.CenterVertically) {
+                    Text(it, Modifier.weight(1f), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = a.dismissError, modifier = Modifier.heightIn(min = 48.dp)) { Text("Dismiss") }
+                }
             }
-            s.total == 0 -> EmptyState("No jobs to triage", "Watch repairs waiting on a step appear here.", "Refresh", viewModel::refresh, Modifier.testTag("queue-empty"))
-            else -> {
-                Progress(s.advanced, s.total, s.skipped)
-                s.error?.let {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag("queue-error"), verticalAlignment = Alignment.CenterVertically) {
-                        Text(it, Modifier.weight(1f), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = viewModel::dismissError) { Text("Dismiss") }
-                    }
+            val current = s.queue.firstOrNull()
+            if (current == null) {
+                Column(Modifier.weight(1f).fillMaxWidth().testTag("queue-clear"), horizontalAlignment = Alignment.CenterHorizontally) {
+                    EmptyState("Queue clear", "You moved ${s.advanced} job${if (s.advanced == 1) "" else "s"} along.", "Refresh", a.refresh)
+                    TextButton(onClick = a.undo, enabled = s.canUndo, modifier = Modifier.heightIn(min = 48.dp).testTag("queue-undo")) { Text("Undo last") }
                 }
-                val current = s.current
-                if (current == null) {
-                    Column(Modifier.weight(1f).fillMaxWidth().testTag("queue-clear"), horizontalAlignment = Alignment.CenterHorizontally) {
-                        EmptyState("Queue clear", "You moved ${s.advanced} job${if (s.advanced == 1) "" else "s"} along.", "Refresh", viewModel::refresh)
-                        TextButton(onClick = viewModel::undo, enabled = s.canUndo, modifier = Modifier.testTag("queue-undo")) { Text("Undo last") }
-                    }
-                } else {
-                    Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
-                        s.queue.getOrNull(2)?.let { BackdropCard(it, 2) }
-                        s.queue.getOrNull(1)?.let { BackdropCard(it, 1) }
-                        SwipeCard(current, s.canAdvance, s.canGoBack, s.canUndo,
-                            onSwipeRight = viewModel::advance, onSwipeLeft = viewModel::backOrSkip,
-                            onSkip = viewModel::skip, onUndo = viewModel::undo, onOpen = { onOpenJob(current.id) })
-                    }
-                    Controls(
-                        current, s.busy, s.canAdvance, s.canGoBack, s.canUndo,
-                        onAdvance = viewModel::advance, onBackOrSkip = viewModel::backOrSkip, onSkip = viewModel::skip, onUndo = viewModel::undo,
-                    )
+            } else {
+                Box(Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
+                    s.queue.getOrNull(2)?.let { BackdropCard(2) }
+                    s.queue.getOrNull(1)?.let { BackdropCard(1) }
+                    SwipeCard(current, s.canAdvance, s.canGoBack, s.canUndo,
+                        onSwipeRight = a.advance, onSwipeLeft = a.backOrSkip,
+                        onSkip = a.skip, onUndo = a.undo, onOpen = { a.open(current.id) })
                 }
+                Controls(
+                    current, s.busy, s.canAdvance, s.canGoBack, s.canUndo,
+                    onAdvance = a.advance, onBackOrSkip = a.backOrSkip, onSkip = a.skip, onUndo = a.undo,
+                )
             }
         }
     }
@@ -93,7 +180,7 @@ fun RepairQueueScreen(
     }
 }
 
-@Composable private fun BackdropCard(job: RepairJobRead, depth: Int) {
+@Composable private fun BackdropCard(depth: Int) {
     val calibre = LocalCalibre.current
     Surface(
         Modifier.fillMaxWidth().fillMaxHeight(0.9f).padding(top = (depth * 10).dp, start = (depth * 6).dp, end = (depth * 6).dp),
@@ -104,7 +191,7 @@ fun RepairQueueScreen(
 }
 
 @Composable private fun SwipeCard(
-    job: RepairJobRead,
+    job: QueueCardUi,
     canAdvance: Boolean,
     canGoBack: Boolean,
     canUndo: Boolean,
@@ -118,8 +205,8 @@ fun RepairQueueScreen(
     val scope = rememberCoroutineScope()
     val threshold = with(LocalDensity.current) { 110.dp.toPx() }
     val offset = remember(job.id, job.status) { Animatable(0f) }
-    val leftTarget = previewQueueSwipe(job.status, "left")
-    val rightTarget = previewQueueSwipe(job.status, "right")
+    val leftTarget = job.leftTarget
+    val rightTarget = job.rightTarget
     val actions = buildList {
         if (canAdvance) add(CustomAccessibilityAction("Move to ${statusLabel(rightTarget.orEmpty())}") { onSwipeRight(); true })
         if (canGoBack) add(CustomAccessibilityAction("Send back to ${statusLabel(leftTarget.orEmpty())}") { onSwipeLeft(); true })
@@ -153,11 +240,10 @@ fun RepairQueueScreen(
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (calibre) MonoLabel(job.jobNumber) else Text(job.jobNumber, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(job.title, style = MaterialTheme.typography.headlineSmall)
-            val watch = listOfNotNull(job.watchBrand, job.watchModel).joinToString(" ")
-            if (watch.isNotBlank()) Text(watch, style = MaterialTheme.typography.bodyLarge)
-            job.customerName?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            job.subtitle?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
+            job.customer?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             StatusPill(job.status, Modifier.testTag("queue-status"))
-            job.collectionDate?.takeIf { it.isNotBlank() }?.let { Text("Due $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            job.due?.takeIf { it.isNotBlank() }?.let { Text("Due $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 6) }
             Spacer(Modifier.weight(1f))
             Text(
@@ -169,7 +255,7 @@ fun RepairQueueScreen(
 }
 
 @Composable private fun Controls(
-    job: RepairJobRead,
+    job: QueueCardUi,
     busy: Boolean,
     canAdvance: Boolean,
     canGoBack: Boolean,
@@ -181,12 +267,12 @@ fun RepairQueueScreen(
 ) {
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onBackOrSkip, enabled = !busy && canGoBack, modifier = Modifier.weight(1f).testTag("queue-back")) { Text("Back") }
-            OutlinedButton(onClick = onSkip, enabled = !busy, modifier = Modifier.weight(1f).testTag("queue-skip")) { Text("Skip") }
-            OutlinedButton(onClick = onUndo, enabled = canUndo, modifier = Modifier.weight(1f).testTag("queue-undo")) { Text("Undo") }
+            OutlinedButton(onClick = onBackOrSkip, enabled = !busy && canGoBack, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("queue-back")) { Text("Back") }
+            OutlinedButton(onClick = onSkip, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("queue-skip")) { Text("Skip") }
+            OutlinedButton(onClick = onUndo, enabled = canUndo, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("queue-undo")) { Text("Undo") }
         }
-        val next = previewQueueSwipe(job.status, "right")
-        Button(onClick = onAdvance, enabled = canAdvance, modifier = Modifier.fillMaxWidth().testTag("queue-advance")) {
+        val next = job.rightTarget
+        Button(onClick = onAdvance, enabled = canAdvance, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("queue-advance")) {
             Text(if (busy) "Saving..." else next?.let { "Move to ${statusLabel(it)}" } ?: "Final step")
         }
     }
