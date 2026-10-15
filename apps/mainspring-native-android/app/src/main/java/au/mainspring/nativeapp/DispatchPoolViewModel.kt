@@ -16,7 +16,10 @@ data class DispatchPoolState(
     val unresolvedId: String = "",
     val historyChecked: Boolean = false,
     val claimed: DispatchClaim? = null,
+    val polling: Boolean = false,
 )
+
+const val POOL_POLL_MS = 30_000L
 
 class DispatchPoolViewModel : ViewModel() {
     private val api = ApiClient.api
@@ -35,6 +38,22 @@ class DispatchPoolViewModel : ViewModel() {
                 mutable.update { it.copy(jobs = jobs, loading = false, historyChecked = true) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) { mutable.update { it.copy(loading = false, error = e.userMessage()) } }
+        }
+    }
+
+    /** Quiet background refresh (the web polls every 30 s). Never shows progress and keeps any visible error/claim state. */
+    fun poll() {
+        val now = mutable.value
+        if(now.busy || now.loading || now.polling) return
+        mutable.update { it.copy(polling = true) }
+        viewModelScope.launch {
+            try {
+                val jobs = api.listDispatchPool().sortedWith(compareBy<DispatchPoolJob> { it.ring }.thenBy { it.createdAt })
+                // A claim may have started while the request was in flight; its result must win.
+                if(!mutable.value.busy) mutable.update { it.copy(jobs = jobs, historyChecked = true) }
+            } catch(e: CancellationException) { throw e }
+            catch(_: Exception) { /* silent: the next tick or a manual refresh reports problems */ }
+            finally { mutable.update { it.copy(polling = false) } }
         }
     }
 
