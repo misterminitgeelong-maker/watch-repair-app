@@ -84,3 +84,15 @@ Not in the native app yet: Parent Account, Accounts management (team users, plan
 | Customer Orders import (CSV/Excel, sheet pick, dry run) | Customer orders > Import | done |
 | Delete team account (owner) | Team > Delete account | done |
 | Team entry for watch/shoe-only shops | More | needs shell wiring |
+## Phase 2: mobile services dispatch
+
+| Item | Where in the app | Status |
+|---|---|---|
+| SLA chips (Late / At risk / Unscheduled aging) | Dispatch list, Jobs list cards | done |
+| Technician lanes and risk-first sort | Dispatch (lane chips from the team list; Unassigned lane) | done |
+| Day-before reminders to tomorrow's customers | Dispatch > Send tomorrow's reminders | done |
+| Pool auto-refresh every 30 s, ring headings | Dispatch pool | done |
+| Service area (base address and ring radius) | Dispatch pool > Service area (owner/manager) | done |
+| Optimise driving order, save or clear visit_order | Today's route | done |
+| Pending booking request banner | Jobs board, Dispatch (Dispatch needs shell wiring) | done |
+| Push for new pool jobs or requests | n/a | blocked: no google-services.json |

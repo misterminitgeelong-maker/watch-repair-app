@@ -37,14 +37,14 @@ import java.time.*
                 "board" -> MobileKanbanScreen(onBack,onOpenJob,onNewJob)
                 "planner" -> WeekPlannerScreen(onBack,onOpenJob)
                 else -> if(maxWidth>=720.dp) Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.width(320.dp)) {AutoKeyJobsScreen(onBack,{selected=it},onNewJob,embedded=true)}
+                    Box(Modifier.width(320.dp)) {AutoKeyJobsScreen(onBack,{selected=it},onNewJob,embedded=true,onOpenBookingRequests={onNavigate("bookingRequests")})}
                     VerticalDivider()
                     Box(Modifier.weight(1f)) {
                         selected?.let {id->AutoKeyJobDetailScreen(id,apiBaseUrl,{selected=null},{onNavigate("messages/auto-key-jobs/$id")},{onNavigate("mobileFinance/$id?business=$it")},
                             {onNavigate("mobileEdit/$id")},onArrival={onNavigate("arrivalMessage/$id")},onSignature={onNavigate("quoteSignature/$id/$it")},embedded=true)}
                             ?: Column(Modifier.padding(32.dp)) {Text("Select a job",style=MaterialTheme.typography.headlineMedium);Text("View its details alongside your job list.")}
                     }
-                } else AutoKeyJobsScreen(onBack,onOpenJob,onNewJob,embedded=true)
+                } else AutoKeyJobsScreen(onBack,onOpenJob,onNewJob,embedded=true,onOpenBookingRequests={onNavigate("bookingRequests")})
             }
         }
     }

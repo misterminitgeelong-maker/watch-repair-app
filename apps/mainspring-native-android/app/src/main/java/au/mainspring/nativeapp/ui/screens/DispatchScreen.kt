@@ -2,12 +2,14 @@ package au.mainspring.nativeapp.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -38,9 +40,18 @@ fun DispatchScreen(
     onOpenRoute: () -> Unit,
     onOpenPlanner: () -> Unit,
     onOpenPool: () -> Unit,
+    onOpenBookingRequests: (() -> Unit)? = null,
     model: TodayViewModel = viewModel(),
+    extras: au.mainspring.nativeapp.DispatchExtrasViewModel = viewModel(),
 ) {
     val state by model.state.collectAsStateWithLifecycle()
+    val extra by extras.state.collectAsStateWithLifecycle()
+    var lane by rememberSaveable { mutableStateOf("all") }
+    var riskFirst by rememberSaveable { mutableStateOf(false) }
+    var confirmReminders by rememberSaveable { mutableStateOf(false) }
+    val now = java.time.Instant.now()
+    val shown = state.jobs.filter { lane == "all" || (lane == "none" && it.assignedUserId == null) || it.assignedUserId == lane }
+        .let { rows -> if(riskFirst) rows.sortedWith(compareByDescending<au.mainspring.nativeapp.api.AutoKeyJobRead> { au.mainspring.nativeapp.slaChip(it, now)?.weight ?: 0 }.then(au.mainspring.nativeapp.DispatchSlaOrder)) else rows.sortedWith(au.mainspring.nativeapp.DispatchSlaOrder) }
     RefreshOnResume(model::refresh)
     val zone = runCatching { ZoneId.of(TokenStore.calendarTimezone()) }.getOrDefault(ZoneId.systemDefault())
     val time = DateTimeFormatter.ofPattern("h:mm a", Locale.forLanguageTag("en-AU"))
@@ -52,6 +63,7 @@ fun DispatchScreen(
                 if(LocalCalibre.current) MonoLabel("Illustrative area diagram")
             }
         }
+        if(onOpenBookingRequests != null) item { PendingBookingsBanner(onOpenBookingRequests, Modifier.padding(horizontal = 20.dp)) }
         item {
             SegmentedPills(listOf("today" to "Today", "week" to "This week", "pool" to "Pool"), "today",
                 { key -> when(key) { "week" -> onOpenPlanner(); "pool" -> onOpenPool(); else -> Unit } }, Modifier.padding(horizontal = 20.dp))
@@ -65,29 +77,59 @@ fun DispatchScreen(
                 TextButton(onClick = onOpenPlanner, modifier = Modifier.heightIn(min = 44.dp)) { Text("Planner", style = MaterialTheme.typography.labelLarge) }
             }
         }
+        if(extra.technicians.isNotEmpty() || riskFirst || state.jobs.any { it.assignedUserId == null }) item {
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PillChip("All lanes", lane == "all", { lane = "all" })
+                    extra.technicians.forEach { t -> PillChip(t.name, lane == t.id, { lane = t.id }) }
+                    PillChip("Unassigned", lane == "none", { lane = "none" })
+                    PillChip(if(riskFirst) "Risk first: on" else "Risk first", riskFirst, { riskFirst = !riskFirst })
+                }
+            }
+        }
         if(state.loading && state.jobs.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = model::refresh) } }
-        if(!state.loading && state.error == null && state.jobs.isEmpty()) item { EmptyState("No appointments today", "Check the pool for nearby work, or plan the week.") }
-        items(state.jobs, key = { it.id }) { job ->
+        if(!state.loading && state.error == null && shown.isEmpty()) item { EmptyState(if(state.jobs.isEmpty()) "No appointments today" else "Nothing in this lane", if(state.jobs.isEmpty()) "Check the pool for nearby work, or plan the week." else "Pick another lane to see the rest of today.") }
+        items(shown, key = { it.id }) { job ->
             val whenText = bookingInstant(job.scheduledAt)?.atZone(zone)?.format(time)
+            val sla = au.mainspring.nativeapp.slaChip(job, now)
             if(LocalCalibre.current) {
                 CalibreRow({ onOpenJob(job.id) },
                     listOfNotNull(listOfNotNull(job.vehicleMake, job.vehicleModel).joinToString(" ").takeIf { it.isNotBlank() }, job.title).joinToString(" · "),
                     listOfNotNull(whenText, job.jobAddress?.takeIf { it.isNotBlank() }, job.customerName).joinToString(" · "),
-                    statusLabel(job.status) + if(job.priority == "urgent") " · Urgent" else "", job.priority == "urgent", Modifier.padding(horizontal = 20.dp))
+                    statusLabel(job.status) + (if(job.priority == "urgent") " · Urgent" else "") + (sla?.let { " · ${it.label}" } ?: ""), job.priority == "urgent" || sla == au.mainspring.nativeapp.SlaKind.LATE, Modifier.padding(horizontal = 20.dp))
                 return@items
             }
             ListCard({ onOpenJob(job.id) }, Modifier.padding(horizontal = 20.dp)) {
                 Text(listOfNotNull(listOfNotNull(job.vehicleMake, job.vehicleModel).joinToString(" ").takeIf { it.isNotBlank() }, job.title).joinToString(" · "), style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text(listOfNotNull(whenText, job.jobAddress?.takeIf { it.isNotBlank() }, job.customerName).joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                Text(statusLabel(job.status) + if(job.priority == "urgent") " · Urgent" else "", style = MaterialTheme.typography.labelMedium,
-                    color = if(job.priority == "urgent") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(statusLabel(job.status) + if(job.priority == "urgent") " · Urgent" else "", style = MaterialTheme.typography.labelMedium,
+                        color = if(job.priority == "urgent") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                    sla?.let { SlaChip(it) }
+                }
+            }
+        }
+        if(TokenStore.canWorkJobs()) item {
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                extra.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                extra.error?.let { ErrorBanner(it) }
+                if(extra.uncertain) LinkAction(onClick = extras::acknowledgeUncertain) { Text("I have checked, allow another send") }
+                else LinkAction(onClick = { confirmReminders = true }, enabled = !extra.busy) { Text(if(extra.busy) "Sending reminders…" else "Send tomorrow's reminders") }
             }
         }
         item {
             PrimaryAction(onClick = onOpenPool, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) { Text("Open available job pool", style = MaterialTheme.typography.titleMedium) }
         }
     }
+    if(confirmReminders) ReminderConfirm(onConfirm = { confirmReminders = false; extras.sendReminders() }, onDismiss = { confirmReminders = false })
+}
+
+@Composable private fun ReminderConfirm(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Text tomorrow's customers?") },
+        text = { Text("Sends a reminder SMS to every customer with an open booking tomorrow. Customers who were already reminded will be texted again.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Send reminders") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }
 
 /** Calibre secondary action: a plain text link with a trailing arrow. Outside Calibre it is the regular outlined button. */

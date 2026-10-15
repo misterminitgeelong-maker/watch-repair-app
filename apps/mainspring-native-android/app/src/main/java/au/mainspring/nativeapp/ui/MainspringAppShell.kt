@@ -213,6 +213,7 @@ fun MainspringAppShell(
                 }
                 composable("dispatch") {
                     au.mainspring.nativeapp.ui.screens.DispatchScreen(
+                        onOpenBookingRequests = { navController.navigate("bookingRequests") },
                         onOpenJob = { navController.navigate("autoKeyJob/$it") },
                         onNew = { navController.navigate("mobile_intake") },
                         onOpenRoute = { navController.navigate("route") },

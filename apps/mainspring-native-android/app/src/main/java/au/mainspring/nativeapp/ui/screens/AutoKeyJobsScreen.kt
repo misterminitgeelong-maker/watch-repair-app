@@ -50,6 +50,7 @@ fun AutoKeyJobsScreen(
     onNewJob: () -> Unit,
     viewModel: AutoKeyJobsViewModel = viewModel(),
     embedded: Boolean = false,
+    onOpenBookingRequests: (() -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var dateOpen by remember { mutableStateOf(false) }
@@ -60,6 +61,7 @@ fun AutoKeyJobsScreen(
             contentPadding = PaddingValues(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if(onOpenBookingRequests != null) item { au.mainspring.nativeapp.ui.PendingBookingsBanner(onOpenBookingRequests, Modifier.padding(horizontal = 16.dp)) }
             item {
                 au.mainspring.nativeapp.ui.AtelierTextField(state.query, viewModel::query, label = { Text("Search jobs, customers or registration") }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), singleLine = true)
                 au.mainspring.nativeapp.ui.FilterRow(listOf("active" to "Active", "completed" to "Completed", "all" to "All").map { (k, v) -> k as String? to v }, if(state.focus == null) state.directory else null, { viewModel.directory(it ?: "active") })
@@ -87,6 +89,7 @@ fun AutoKeyJobsScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(listOf(j.jobNumber, if(j.scheduledAt != null) bookingTime(j.scheduledAt) else null).filterNotNull().joinToString(" \u00b7 "), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            au.mainspring.nativeapp.slaChip(j)?.let { au.mainspring.nativeapp.ui.SlaChip(it) }
                             if(j.priority == "high" || j.priority == "urgent") au.mainspring.nativeapp.ui.StatusPill("urgent")
                             au.mainspring.nativeapp.ui.StatusPill(j.status)
                         }

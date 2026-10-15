@@ -28,12 +28,21 @@ import kotlinx.coroutines.*
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun RouteScreen(onBack: () -> Unit,onJob: (String) -> Unit,model: TodayViewModel = viewModel(key="route-today")) {
+@Composable fun RouteScreen(onBack: () -> Unit,onJob: (String) -> Unit,model: TodayViewModel = viewModel(key="route-today"),orderModel: RouteOrderViewModel = viewModel(),geocode: (suspend (String) -> Pair<Double,Double>?)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val context=LocalContext.current
     var error by remember {mutableStateOf<String?>(null)}
+    val order by orderModel.state.collectAsStateWithLifecycle()
+    val scope=rememberCoroutineScope()
+    var locating by remember {mutableStateOf(false)}
+    val deviceGeocode: suspend (String) -> Pair<Double,Double>? = geocode ?: {address -> withContext(Dispatchers.IO) {
+        if(!Geocoder.isPresent()) null else try {
+            @Suppress("DEPRECATION") Geocoder(context,Locale.getDefault()).getFromLocationName(address,1)?.firstOrNull()?.let {it.latitude to it.longitude}
+        } catch(_: java.io.IOException) {null}
+    }}
     val stops=state.jobs.filter { !it.jobAddress.isNullOrBlank() }.sortedWith(compareBy({it.visitOrder ?: Int.MAX_VALUE},{bookingInstant(it.scheduledAt)}))
     RefreshOnResume(model::refresh)
+    LaunchedEffect(order.message,order.error) {if(order.changed>0) model.refresh()}
     fun navigate(address: String) {
         try { context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://www.google.com/maps/dir/").buildUpon().appendQueryParameter("api","1").appendQueryParameter("destination",address).appendQueryParameter("travelmode","driving").build())) }
         catch(_: android.content.ActivityNotFoundException) {error="No maps app or browser is available."}
@@ -50,6 +59,25 @@ import java.util.Locale
             }
             LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 item {if(LocalCalibre.current) {MonoLabel("Where to go");Text("${stops.size} stops",style=MaterialTheme.typography.headlineMedium)} else SectionLabel("Where to go · ${stops.size} stops");Text("Stops follow saved visit order, then booking time.",style=MaterialTheme.typography.bodySmall)}
+                if(TokenStore.canWorkJobs() && stops.size>=2) item {
+                    Column(verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement=Arrangement.spacedBy(16.dp)) {
+                            OutlinedButton({
+                                scope.launch {
+                                    locating=true
+                                    try {
+                                        val byTime=stops.sortedBy {bookingInstant(it.scheduledAt) ?: java.time.Instant.MAX}
+                                        val located=byTime.mapNotNull {job -> deviceGeocode(job.jobAddress.orEmpty())?.let {LocatedStop(job,it.first,it.second)}}
+                                        orderModel.optimise(located)
+                                    } finally {locating=false}
+                                }
+                            },enabled=!order.busy && !locating) {Text(if(locating) "Locating stops…" else if(order.busy) "Saving order…" else "Optimise order")}
+                            if(stops.any {it.visitOrder!=null}) OutlinedButton({orderModel.clear(stops)},enabled=!order.busy && !locating) {Text("Clear saved order")}
+                        }
+                        order.message?.let {Text(it,style=MaterialTheme.typography.bodySmall)}
+                        order.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
+                    }
+                }
                 if(state.loading) item {LinearProgressIndicator(Modifier.fillMaxWidth())}
                 (error ?: state.error)?.let {item {au.mainspring.nativeapp.ui.ErrorBanner(it)}}
                 if(state.jobs.size>stops.size) item {Text("${state.jobs.size-stops.size} jobs have no address. Add an address in the job before navigating.",style=MaterialTheme.typography.bodySmall)}
