@@ -62,7 +62,7 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
         }
     }
     Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) au.mainspring.nativeapp.ui.BackLargeHeader("More", "Money & performance", "Reports", onBack) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("period-report-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        au.mainspring.nativeapp.ui.PullRefresh(state.loading, model::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("period-report-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("day", "week", "month", "quarter").forEach { period ->
@@ -135,7 +135,7 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
                 }
                 item { Text("Periods follow the server's UTC reporting days, so the current period may be incomplete.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-        }
+        } }
     }
     if(dateOpen) {
         val picker = rememberDatePickerState(initialSelectedDateMillis = LocalDate.parse(state.date).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())

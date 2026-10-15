@@ -90,10 +90,10 @@ fun ShoeJobsScreen(
                     canMove = au.mainspring.nativeapp.TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob,
                     modifier = Modifier.fillMaxSize().weight(1f, fill = true))
             } else
-            LazyColumn(
+            au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
                 contentPadding = PaddingValues(start = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, end = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp, top = 12.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
-                modifier = Modifier.fillMaxSize().weight(1f, fill = true),
+                modifier = Modifier.fillMaxSize(),
             ) {
                 items(rows, key = { it.id }) { j ->
                     if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
@@ -113,7 +113,7 @@ fun ShoeJobsScreen(
                     if(au.mainspring.nativeapp.ui.LocalCalibre.current) LinkAction(onClick = viewModel::loadMore, enabled = !state.loading) { Text("Load more repairs") }
                     else OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more repairs") }
                 }
-            }
+            } }
         }
     }
 }

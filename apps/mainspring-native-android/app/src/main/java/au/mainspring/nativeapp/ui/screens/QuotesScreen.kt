@@ -50,10 +50,10 @@ fun QuotesScreen(
         if (state.loading && state.quotes.isEmpty()) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
         state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = viewModel::refresh) }
         if (!state.loading && state.error == null && shown.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No quotes", if(filter == null && query.isBlank() && olderDays == 0) "Quotes you create from a job will show up here." else "No quotes match these filters.")
-        LazyColumn(
+        au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
-            modifier = Modifier.fillMaxSize().weight(1f, fill = true),
+            modifier = Modifier.fillMaxSize(),
         ) {
             items(shown, key = { it.id }) { q ->
                 val job = state.jobs[q.repairJobId]
@@ -70,6 +70,6 @@ fun QuotesScreen(
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-        }
+        } }
     }
 }
