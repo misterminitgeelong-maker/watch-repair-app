@@ -29,6 +29,10 @@ class OwnerAdminTest {
                     path.startsWith("/v1/me/notification-preferences") -> json(prefs)
                     path.startsWith("/v1/tenant/integration-health") -> json("""{"twilio_configured":true,"stripe_configured":false,"sendgrid_configured":true,"attachment_backend":"s3"}""")
                     path.startsWith("/v1/reports/category-summary") -> json("""{"watch":{"jobs":2,"billed_cents":10000,"revenue_cents":6000,"cost_cents":0,"outstanding_cents":4000},"shoe":{"jobs":0},"mobile":{"jobs":1,"billed_cents":500,"revenue_cents":500}}""")
+                    path.startsWith("/v1/reports/gst-summary") -> json("""{"watch":{"invoice_count":2,"subtotal_cents":9000,"gst_cents":900,"total_cents":9900},"mobile":{"invoice_count":0},"combined":{"invoice_count":2,"subtotal_cents":9000,"gst_cents":900,"total_cents":9900}}""")
+                    path.startsWith("/v1/reports/tech-breakdown") -> json("""[{"user_id":"u1","user_name":"Tess","total_minutes":30,"jobs_count":1},{"user_id":"u2","user_name":"Raj","total_minutes":120,"jobs_count":4}]""")
+                    path.startsWith("/v1/reports/trends") -> json("""{"months":[{"month":"2026-09","jobs_opened":3,"revenue_cents":12000},{"month":"2026-10","jobs_opened":5,"revenue_cents":30000}]}""")
+                    path.startsWith("/v1/invoices/") && path.endsWith("/xero/retry") && request.method == "POST" -> json("""{"xero_sync_status":"synced","xero_sync_error":null}""")
                     path.startsWith("/v1/reports/export/sales") -> MockResponse().setHeader("Content-Type", "text/csv").setBody("a,b\n1,2\n")
                     path.startsWith("/v1/reports/activity") -> json("""[{"id":"e1","actor_email":"o@x.co","entity_type":"user","event_type":"x","event_summary":"Did a thing","created_at":"2026-10-01T00:00:00Z"}]""")
                     path.startsWith("/v1/customer-orders/import/sheets") -> json("""["Sheet1","Orders"]""")
@@ -72,6 +76,27 @@ class OwnerAdminTest {
         val csv = kotlinx.coroutines.runBlocking { model.downloadSales("watch") }
         Assert.assertEquals("a,b\n1,2\n", String(csv))
         Assert.assertTrue(requests.any { it.contains("export/sales") && it.contains("category=watch") })
+    }
+
+    @Test fun customRangeSendsDatesLoadsBreakdownsAndExportsSameRange() {
+        val model = ReportExtrasViewModel(); compose.waitUntil(10_000) { model.state.value.techs.isNotEmpty() && model.state.value.trends.isNotEmpty() && model.state.value.gst != null }
+        Assert.assertEquals("Raj", model.state.value.techs.first().userName)
+        Assert.assertEquals(900L, model.state.value.gst!!.watch!!.gstCents)
+        requests.clear()
+        model.setCustomRange("2026-09-30", "2026-09-01")
+        Assert.assertNotNull(model.state.value.rangeError); Assert.assertTrue(requests.isEmpty())
+        model.setCustomRange("2026-09-01", "2026-09-30")
+        compose.waitUntil(10_000) { !model.state.value.loading && requests.any { it.contains("gst-summary") } }
+        Assert.assertTrue(requests.any { it.contains("category-summary") && it.contains("date_from=2026-09-01") && it.contains("date_to=2026-09-30") && !it.contains("period=") })
+        kotlinx.coroutines.runBlocking { model.downloadSales("all") }
+        Assert.assertTrue(requests.any { it.contains("export/sales") && it.contains("date_from=2026-09-01") && !it.contains("period=") })
+        model.selectTrendMonths(12); compose.waitUntil(10_000) { requests.any { it.contains("trends") && it.contains("months=12") } }
+    }
+
+    @Test fun xeroRetryPostsAndReturnsRefreshedStatus() {
+        val info = kotlinx.coroutines.runBlocking { au.mainspring.nativeapp.api.ApiClient.service(au.mainspring.nativeapp.api.InvoiceExtrasApi::class.java).retryXero("inv1") }
+        Assert.assertEquals("synced", info.syncStatus)
+        Assert.assertTrue(requests.any { it == "POST /v1/invoices/inv1/xero/retry" })
     }
 
     @Test fun orderImportPicksSheetDryRunsThenImports() {

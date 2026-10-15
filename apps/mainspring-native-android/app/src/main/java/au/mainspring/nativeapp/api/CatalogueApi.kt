@@ -18,8 +18,10 @@ data class CataloguePriceItem(
 data class CatalogueMovement(
     val key: String = "", val name: String = "",
     @SerializedName("quote_cents") val quoteCents: Int? = null,
+    @SerializedName("purchase_cost_cents") val purchaseCostCents: Int? = null,
 )
-data class CatalogueMovements(val movements: List<CatalogueMovement> = emptyList(), val currency: String? = null)
+data class CatalogueMovements(val movements: List<CatalogueMovement> = emptyList(), val currency: String? = null,
+    @SerializedName("default_margin_percent") val defaultMarginPercent: Int? = null)
 data class ShoeComboRule(
     val id: String = "", val name: String = "", val discount: String? = null,
     val discounts: List<String>? = null, val rule: String? = null,

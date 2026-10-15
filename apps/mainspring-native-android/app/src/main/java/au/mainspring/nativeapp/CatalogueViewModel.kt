@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.*
 data class CatalogueState(
     val tab: String = "repairs", val search: String = "", val group: String = "",
     val groups: List<CatalogueGroup> = emptyList(), val items: List<CataloguePriceItem> = emptyList(),
-    val movements: List<CatalogueMovement> = emptyList(),
+    val movements: List<CatalogueMovement> = emptyList(), val defaultMargin: Int? = null,
     val loading: Boolean = false, val error: String? = null,
 )
 class CatalogueViewModel : ViewModel() {
@@ -30,8 +30,8 @@ class CatalogueViewModel : ViewModel() {
             try {
                 if(debounce) delay(300)
                 if(selection.tab == "movements") {
-                    val movements = api.watchMovements().movements
-                    mutable.update { it.copy(loading = false, movements = movements) }
+                    val response = api.watchMovements()
+                    mutable.update { it.copy(loading = false, movements = response.movements, defaultMargin = response.defaultMarginPercent) }
                 } else {
                     val groups = if(state.value.groups.isEmpty()) api.watchGroups() else state.value.groups
                     val items = api.watchItems(selection.search.trim().ifBlank { null }, selection.group.ifBlank { null })

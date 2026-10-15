@@ -17,6 +17,10 @@ import au.mainspring.nativeapp.CatalogueViewModel
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.ui.*
 
+/** "Our cost $120.00 \u00b7 RRP" caption for a movement row; cost is shown only to owner/manager as on the web catalogue. */
+internal fun catalogueMovementCaption(costCents: Int?, currency: String, canSeeCost: Boolean = TokenStore.canManageInvoices()): String =
+    if(canSeeCost && costCents != null) "Our cost ${formatCents(costCents, currency)} \u00b7 RRP" else "RRP"
+
 @Composable internal fun PriceRow(name: String, caption: String, price: String, note: String? = null) {
     val calibre = LocalCalibre.current
     if(calibre) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -49,6 +53,7 @@ import au.mainspring.nativeapp.ui.*
                     TabChip(state.group.isEmpty(), { viewModel.group("") }, { Text("All") })
                     state.groups.forEach { g -> TabChip(state.group == g.id, { viewModel.group(g.id) }, { Text(g.label ?: g.id) }) }
                 }
+                if(movementsTab && TokenStore.canManageInvoices()) state.defaultMargin?.let { Text("RRP = cost plus $it% (minimum floor applies). Cost is only shown to owners and managers.", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
             state.error?.let { item { ErrorBanner(it, onRetry = viewModel::refresh) } }
@@ -57,7 +62,7 @@ import au.mainspring.nativeapp.ui.*
                 if(!movementsTab && state.items.isEmpty()) item { EmptyState("No repairs found", "Try a different search or category.") }
             }
             if(movementsTab) items(movements.take(500), key = { it.key }) { m ->
-                PriceRow(m.name, "RRP", m.quoteCents?.let { formatCents(it, currency) } ?: "—")
+                PriceRow(m.name, catalogueMovementCaption(m.purchaseCostCents, currency), m.quoteCents?.let { formatCents(it, currency) } ?: "—")
             } else items(state.items, key = { it.key }) { item ->
                 PriceRow(item.name, item.groupLabel ?: item.groupId.orEmpty(), formatCents(item.priceCents ?: 0, currency), item.notes?.takeIf { it.isNotBlank() })
             }

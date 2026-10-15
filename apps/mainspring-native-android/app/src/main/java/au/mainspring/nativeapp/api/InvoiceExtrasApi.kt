@@ -2,6 +2,7 @@ package au.mainspring.nativeapp.api
 
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -35,4 +36,8 @@ interface InvoiceExtrasApi {
 
     @GET("v1/invoices/{invoiceId}")
     suspend fun invoiceXero(@Path("invoiceId") invoiceId: String): InvoiceXeroEnvelope
+
+    /** Manager+ only. Clears the failed state and re-runs the sync; returns the flat invoice with refreshed xero_* fields. */
+    @POST("v1/invoices/{invoiceId}/xero/retry")
+    suspend fun retryXero(@Path("invoiceId") invoiceId: String): InvoiceXeroInfo
 }

@@ -27,6 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.launch
+import au.mainspring.nativeapp.userMessage
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,6 +54,9 @@ fun InvoiceDetailScreen(
     var amountDraft by remember { mutableStateOf("") }
     var refDraft by remember { mutableStateOf("") }
     var xero by remember(invoiceId) { mutableStateOf<au.mainspring.nativeapp.api.InvoiceXeroInfo?>(null) }
+    var xeroRetryBusy by remember(invoiceId) { mutableStateOf(false) }
+    var xeroRetryError by remember(invoiceId) { mutableStateOf<String?>(null) }
+    val xeroScope = androidx.compose.runtime.rememberCoroutineScope()
     androidx.compose.runtime.LaunchedEffect(invoiceId, state.data?.invoice?.status) {
         xero = runCatching { au.mainspring.nativeapp.api.ApiClient.service(au.mainspring.nativeapp.api.InvoiceExtrasApi::class.java).invoiceXero(invoiceId).invoice }.getOrNull()
     }
@@ -101,6 +107,18 @@ fun InvoiceDetailScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 x.syncStatus?.takeIf { it.isNotBlank() }?.let {
                                     Text("Xero: ${it.replace('_', ' ')}" + (x.syncError?.takeIf { e -> e.isNotBlank() && it == "failed" }?.let { e -> " - $e" } ?: ""), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if(x.syncStatus == "failed" && au.mainspring.nativeapp.TokenStore.canManageInvoices()) {
+                                    OutlinedButton(onClick = {
+                                        xeroRetryBusy = true; xeroRetryError = null
+                                        xeroScope.launch {
+                                            try { xero = au.mainspring.nativeapp.api.ApiClient.service(au.mainspring.nativeapp.api.InvoiceExtrasApi::class.java).retryXero(invoiceId) }
+                                            catch(e: kotlinx.coroutines.CancellationException) { throw e }
+                                            catch(e: Exception) { xeroRetryError = e.userMessage() }
+                                            finally { xeroRetryBusy = false }
+                                        }
+                                    }, enabled = !xeroRetryBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("xero-retry")) { Text(if(xeroRetryBusy) "Retrying Xero\u2026" else "Retry Xero sync") }
+                                    xeroRetryError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                                 }
                                 x.onlineUrl?.takeIf { it.isNotBlank() }?.let { url ->
                                     OutlinedButton(onClick = { runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))) } }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Pay online") }
