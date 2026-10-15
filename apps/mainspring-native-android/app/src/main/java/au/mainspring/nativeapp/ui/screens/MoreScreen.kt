@@ -33,6 +33,7 @@ private data class WorkspaceSection(val key: String, val title: String, val item
     val mobile = "auto_key" in features
     val sections = buildList {
         add(WorkspaceSection("workshop", "Workshop", buildList {
+            if("watch" in features) add("Repair queue" to "repairQueue")
             if(mobile || "shop_mobile_booking" in features) add("Book mobile services" to "bookingRequests")
             if("watch" in features) add("Watch Repairs" to "watch_jobs")
             if("shoe" in features) add("Shoe Repairs" to "shoe_jobs")
