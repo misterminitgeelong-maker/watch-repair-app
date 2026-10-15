@@ -118,7 +118,7 @@ class ShoeJobDetailViewModel(
             catch (e: Exception) {
                 if(OfflineSync.queueStatus(e, OfflineKinds.SHOE_STATUS, jobId, newStatus, message, visibleNote, "Shoe job", baseStatus = current.status)) {
                     statusCheckpoint.clear()
-                    _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", info = OfflineSync.SAVED_OFFLINE_MESSAGE) }
+                    _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", info = null) }
                     return@launch
                 }
                 val unknown = submitted && (e !is retrofit2.HttpException || e.code() >= 500)

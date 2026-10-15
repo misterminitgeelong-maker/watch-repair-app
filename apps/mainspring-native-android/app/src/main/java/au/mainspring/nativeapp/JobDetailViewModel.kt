@@ -59,6 +59,20 @@ class JobDetailViewModel(
     private val _state = MutableStateFlow(JobDetailUiState(statusUnknown = statusCheckpoint.pending, statusRequest = statusCheckpoint.description))
     val state: StateFlow<JobDetailUiState> = _state.asStateFlow()
 
+    private var customerFallback: au.mainspring.nativeapp.api.CustomerRead? = null
+
+    /** The single-job endpoint omits customer name/phone/email (only the list joins them), so fill them from the watch's customer. */
+    private suspend fun fetchJob(): RepairJobRead {
+        val job = api.getRepairJob(jobId)
+        if(!job.customerName.isNullOrBlank()) return job
+        val customerId = _state.value.watch?.customerId ?: job.watchId?.takeIf { it.isNotBlank() }?.let {
+            try { api.getWatch(it).customerId } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
+        } ?: return job
+        val customer = customerFallback?.takeIf { it.id == customerId } ?: try { api.getCustomer(customerId) } catch (e: CancellationException) { throw e } catch (_: Exception) { null } ?: return job
+        customerFallback = customer
+        return job.copy(customerName = customer.fullName, customerPhone = job.customerPhone ?: customer.phone, customerEmail = job.customerEmail ?: customer.email)
+    }
+
     init {
         load()
     }
@@ -68,7 +82,7 @@ class JobDetailViewModel(
         _state.update { it.copy(loading = true, error = null, statusReviewed = false) }
         viewModelScope.launch {
             try {
-                val job = api.getRepairJob(jobId)
+                val job = fetchJob()
                 _state.update { it.copy(job = job) }
                 val history = api.getRepairJobStatusHistory(jobId)
                 val attachments = try {
@@ -108,7 +122,7 @@ class JobDetailViewModel(
         viewModelScope.launch {
             var submitted = false
             try {
-                val latest = api.getRepairJob(jobId)
+                val latest = fetchJob()
                 if(latest.status != current.status) {
                     _state.update { it.copy(statusBusy = false, job = latest, error = "This status changed. Review the latest job before updating it.") }; return@launch
                 }
@@ -122,7 +136,7 @@ class JobDetailViewModel(
             catch (e: Exception) {
                 if(OfflineSync.queueStatus(e, OfflineKinds.WATCH_STATUS, jobId, newStatus, message, visibleNote, "Watch job", baseStatus = current.status)) {
                     statusCheckpoint.clear()
-                    _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", resendInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }
+                    _state.update { it.copy(statusBusy = false, statusUnknown = false, statusRequest = "", resendInfo = null) }
                     return@launch
                 }
                 val unknown = submitted && (e !is retrofit2.HttpException || e.code() >= 500)
@@ -167,7 +181,7 @@ class JobDetailViewModel(
             try {
                 api.postRepairJobClaim(jobId)
                 if(me.isNotBlank()) api.updateCounterWatch(jobId, JsonObject().apply { addProperty("assigned_user_id", me) })
-                _state.update { it.copy(claimBusy = false, job = api.getRepairJob(jobId)) }
+                _state.update { it.copy(claimBusy = false, job = fetchJob()) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
@@ -185,7 +199,7 @@ class JobDetailViewModel(
                 if(current?.assignedUserId != null && current.assignedUserId == me) {
                     api.updateCounterWatch(jobId, JsonObject().apply { addProperty("clear_assigned_user", true) })
                 }
-                _state.update { it.copy(claimBusy = false, job = api.getRepairJob(jobId)) }
+                _state.update { it.copy(claimBusy = false, job = fetchJob()) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 _state.update { it.copy(claimBusy = false, error = e.userMessage()) }
@@ -215,7 +229,7 @@ class JobDetailViewModel(
                 val fields = JsonObject()
                 if(userId == null) fields.addProperty("clear_assigned_user", true) else fields.addProperty("assigned_user_id", userId)
                 api.updateCounterWatch(jobId, fields)
-                _state.update { it.copy(assignBusy = false, job = api.getRepairJob(jobId)) }
+                _state.update { it.copy(assignBusy = false, job = fetchJob()) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { _state.update { it.copy(assignBusy = false, error = e.userMessage()) } }
         }
@@ -300,7 +314,7 @@ class JobDetailViewModel(
                 val fields = JsonObject()
                 if(accountId == null) fields.add("customer_account_id", com.google.gson.JsonNull.INSTANCE) else fields.addProperty("customer_account_id", accountId)
                 api.updateCounterWatch(jobId, fields)
-                _state.update { it.copy(accountBusy = false, job = api.getRepairJob(jobId)) }
+                _state.update { it.copy(accountBusy = false, job = fetchJob()) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) { _state.update { it.copy(accountBusy = false, error = e.userMessage()) } }
         }

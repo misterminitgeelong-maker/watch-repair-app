@@ -6,6 +6,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -23,5 +26,16 @@ import au.mainspring.nativeapp.offline.pendingStatusFor
             "${OfflineSync.SAVED_OFFLINE_MESSAGE}: status will change to ${pending.replace('_', ' ')}",
             Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSecondaryContainer, style = MaterialTheme.typography.bodyMedium,
         )
+    }
+}
+
+/** Reloads the job once its queued offline changes have synced, so the screen shows the server's new status. */
+@Composable fun SyncedRefreshEffect(jobId: String, onSynced: () -> Unit) {
+    val snap by OfflineSync.queue.state.collectAsStateWithLifecycle()
+    val hasPending = snap.pending.any { it.jobId == jobId }
+    val hadPending = remember(jobId) { mutableStateOf(false) }
+    LaunchedEffect(hasPending) {
+        if (hadPending.value && !hasPending) onSynced()
+        hadPending.value = hasPending
     }
 }

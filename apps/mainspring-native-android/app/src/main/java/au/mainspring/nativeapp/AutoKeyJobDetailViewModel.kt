@@ -75,7 +75,7 @@ class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUr
             catch(e: Exception) {
                 if(OfflineSync.queueStatus(e, OfflineKinds.MOBILE_STATUS, jobId, body.status, body.note, null, "Mobile job", expectedUpdatedAt = current.updatedAt)) {
                     drafts.saveMessageDraft("$operation/request",""); drafts.setPendingOperation(operation,false)
-                    mutable.update { it.copy(statusReviewRequired = false, requestedStatus = null, requestedNote = null, statusInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }
+                    mutable.update { it.copy(statusReviewRequired = false, requestedStatus = null, requestedNote = null, statusInfo = null) }
                     return@launch
                 }
                 val unknown = e !is HttpException || e.code() >= 500

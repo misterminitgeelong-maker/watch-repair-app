@@ -127,6 +127,7 @@ fun ShoeJobDetailScreen(
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
         state.error?.let { ErrorBanner(it) }
         PendingStatusBanner(shownId)
+        SyncedRefreshEffect(shownId) { vm.load() }
         state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
             "history" -> {

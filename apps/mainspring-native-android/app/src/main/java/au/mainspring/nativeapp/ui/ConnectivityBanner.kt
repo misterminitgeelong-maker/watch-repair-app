@@ -21,7 +21,7 @@ import kotlinx.coroutines.delay
 
 /** Slim bar shown while the device is offline, with a brief "Back online" confirmation afterwards. */
 @Composable
-fun ConnectivityBanner(modifier: Modifier = Modifier, onOpenQueue: (() -> Unit)? = null) {
+fun ConnectivityBanner(modifier: Modifier = Modifier, onOpenQueue: (() -> Unit)? = null, onVisibleChange: (Boolean) -> Unit = {}) {
     val queued by au.mainspring.nativeapp.offline.OfflineSync.queue.state.collectAsStateWithLifecycle()
     val pending = queued.pending.size; val attention = queued.attention.size
     val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
@@ -31,38 +31,43 @@ fun ConnectivityBanner(modifier: Modifier = Modifier, onOpenQueue: (() -> Unit)?
         if (!online) { wasOffline = true; showRestored = false }
         else if (wasOffline) { wasOffline = false; showRestored = true; delay(2500); showRestored = false }
     }
+    val visible = !online || showRestored || pending > 0 || attention > 0
+    SideEffect { onVisibleChange(visible) }
     if (online && !showRestored) {
         if (pending > 0 || attention > 0) QueueChipRow(pending, attention, onOpenQueue, modifier)
         return
     }
     val offline = !online
     Row(
-        modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }.background(if (offline) Calibre.Ink else Calibre.Forest).padding(horizontal = 20.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }.background(if (offline) BannerAmber else BannerGreen).statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        MonoLabel(if (offline) "Offline" else "Online", color = Color.White)
+        MonoLabel(if (offline) "Offline" else "Online", color = Calibre.Ink)
         Text(
             if (offline) "You are offline. Job status changes and notes are saved and will sync." else "Back online",
-            Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = Color.White,
+            Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = Calibre.Ink,
         )
         if (pending > 0) QueueChip(pending, onOpenQueue)
     }
 }
 
+private val BannerAmber = Color(0xFFFFE9B0)
+private val BannerGreen = Color(0xFFDDEBE3)
+
 fun pendingChangesLabel(count: Int) = if (count == 1) "1 change waiting to sync" else "$count changes waiting to sync"
 
 @Composable private fun QueueChip(pending: Int, onOpenQueue: (() -> Unit)?) {
     Text(pendingChangesLabel(pending), Modifier.testTag("pending-changes-chip").let { if (onOpenQueue != null) it.minimumInteractiveComponentSize().clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onOpenQueue) else it }
-        .background(Color.White.copy(alpha = 0.18f)).padding(horizontal = 8.dp, vertical = 4.dp),
-        style = MaterialTheme.typography.labelSmall, color = Color.White)
+        .background(Calibre.Ink.copy(alpha = 0.10f)).padding(horizontal = 8.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.labelSmall, color = Calibre.Ink)
 }
 
 @Composable private fun QueueChipRow(pending: Int, attention: Int, onOpenQueue: (() -> Unit)?, modifier: Modifier) {
-    Row(modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }.background(Calibre.Ink).padding(horizontal = 20.dp, vertical = 8.dp),
+    Row(modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }.background(BannerAmber).statusBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        MonoLabel("Sync", color = Color.White)
+        MonoLabel("Sync", color = Calibre.Ink)
         if (pending > 0) QueueChip(pending, onOpenQueue)
         if (attention > 0) Text("$attention need attention", Modifier.testTag("attention-chip").let { if (onOpenQueue != null) it.minimumInteractiveComponentSize().clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onOpenQueue) else it },
-            style = MaterialTheme.typography.bodySmall, color = Color.White)
+            style = MaterialTheme.typography.bodySmall, color = Calibre.Ink)
     }
 }

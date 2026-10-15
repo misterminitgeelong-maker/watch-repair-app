@@ -1,6 +1,9 @@
 package au.mainspring.nativeapp.ui
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -196,10 +199,11 @@ fun MainspringAppShell(
             },
         ) { paddingValues ->
             androidx.compose.foundation.layout.Column(Modifier.padding(paddingValues)) {
-            au.mainspring.nativeapp.ui.ConnectivityBanner(onOpenQueue = { navController.navigate("queuedChanges") })
+            var bannerShowing by remember { mutableStateOf(false) }
+            au.mainspring.nativeapp.ui.ConnectivityBanner(onOpenQueue = { navController.navigate("queuedChanges") }, onVisibleChange = { bannerShowing = it })
             au.mainspring.nativeapp.ui.SubscriptionBanner(subscriptionStatus, trialEnd, sessionRole)
             sessionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
-            androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+            androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth().then(if(bannerShowing) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
             au.mainspring.nativeapp.ui.screens.AcceptBookingLinkEffect { route -> navController.navigate(route) }
             NavHost(
                 navController = navController,

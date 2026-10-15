@@ -144,6 +144,7 @@ import au.mainspring.nativeapp.api.*
                             item {
                                 if(state.loading || state.statusBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
                                 au.mainspring.nativeapp.ui.PendingStatusBanner(jobId)
+                                au.mainspring.nativeapp.ui.SyncedRefreshEffect(jobId) { vm.load() }
                                 state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
                                 state.statusInfo?.let {Text(it)}
                                 attachmentOpenError?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
