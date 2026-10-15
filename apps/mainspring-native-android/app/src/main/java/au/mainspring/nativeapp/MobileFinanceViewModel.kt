@@ -43,7 +43,7 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
  }
  fun sendQuote(id: String) = runAction {
   val result = api.sendMobileQuote(id)
-  mutable.update { it.copy(quotes = it.quotes.map { q -> if(q.id == id) result.quote else q }, info = if(result.sent) "Quote emailed to customer." else "Quote saved, but email was not sent: ${result.reason ?: "delivery failed"}.") }
+  mutable.update { it.copy(quotes = it.quotes.map { q -> if(q.id == id) result.quote else q }, info = if(result.sent) "Quote emailed to customer." else "Quote saved, but it was not sent: ${sendFailureText(result.reason)}") }
  }
  fun createInvoice(quoteId: String) = runAction {
   try {
@@ -97,3 +97,13 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
  } }
 }
 
+
+/** Plain-language text for a send failure code from the backend (e.g. `no_email`). */
+internal fun sendFailureText(reason: String?): String = when(reason) {
+    null, "" -> "delivery failed."
+    "no_email" -> "this customer has no email address."
+    "no_phone" -> "this customer has no phone number."
+    "email_not_configured", "email_disabled" -> "email is not set up for this shop."
+    "sms_not_configured" -> "SMS is not set up for this shop."
+    else -> reason.replace('_', ' ') + "."
+}

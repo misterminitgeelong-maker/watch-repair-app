@@ -23,6 +23,7 @@ import au.mainspring.nativeapp.ui.formatCents
 
 @Composable fun QuoteComposer(draftKey: String, businessAccount: Boolean, enabled: Boolean, catalogue: Boolean,
  resetVersion: String? = null, quickSale: Boolean = false, currency: String? = TokenStore.shopValue("currency"), buttonLabel: String = "Save draft quote", modifier: Modifier = Modifier, sheetLayout: Boolean = false, secondaryLabel: String? = null, onSecondary: ((List<MobileQuoteLine>, Boolean, Boolean) -> Unit)? = null, onSave: (List<MobileQuoteLine>, Boolean, Boolean) -> Unit) {
+  @Suppress("NAME_SHADOWING") val currency = currency ?: "AUD" // the app is AUD-first; an unset shop currency must not hide the total
  val drafts = remember(draftKey) { TokenStore.bindDrafts() }
  val gson = remember { Gson() }
  val initial = remember(draftKey) { try { gson.fromJson(drafts.loadMessageDraft(draftKey), QuoteComposerDraft::class.java) ?: QuoteComposerDraft(inclusive = !businessAccount) } catch(_: Exception) { QuoteComposerDraft(inclusive = !businessAccount) } }

@@ -71,7 +71,7 @@ import au.mainspring.nativeapp.ui.formatCents
     if(calibre) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {StatusPill(q.status);Text(formatCents(q.total,q.currency),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
     Text("Subtotal ${formatCents(q.subtotal, q.currency)} · GST ${formatCents(q.tax, q.currency)}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-    q.lines.forEach { Text("${it.description}: ${it.quantity} × ${formatCents(it.unitCents, q.currency)}") }
+    q.lines.forEach { Text("${it.description}: ${java.math.BigDecimal.valueOf(it.quantity).stripTrailingZeros().toPlainString()} × ${formatCents(it.unitCents, q.currency)}") }
     q.signer?.let { Text("Signed by $it") }
     q.signedAt?.let { Text("Signed ${au.mainspring.nativeapp.ui.formatShopDate(it)}") }
     if(q.hasSignature) OutlinedButton({ onSignature(q.id) }, enabled = !state.loading && !state.busy && TokenStore.canWorkJobs()) { Text("View customer signature") }
