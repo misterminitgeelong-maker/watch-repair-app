@@ -15,6 +15,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.*
 import au.mainspring.nativeapp.ui.RefreshOnResume
 import au.mainspring.nativeapp.ui.formatCents
+import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +57,15 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
     var search by rememberSaveable { mutableStateOf("") }
     val manager = TokenStore.canManageInvoices()
     val enabled = !state.loading && !state.busy
+    val scope = rememberCoroutineScope()
+    var csvMessage by remember { mutableStateOf<String?>(null) }
+    val csvSaver = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if(uri != null) scope.launch {
+            csvMessage = try { saveReportExport(context, uri, accountInvoicesCsv(state.invoices).toByteArray(Charsets.UTF_8)); "Invoices CSV saved." }
+            catch(e: kotlinx.coroutines.CancellationException) { throw e }
+            catch(e: Exception) { "Could not save the file. Choose another file location." }
+        }
+    }
     RefreshOnResume(vm::refresh)
     Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(state.account?.name ?: "Business account") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -112,7 +123,10 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
                 }
             }
             item { HorizontalDivider(); Text("Account invoices", style = MaterialTheme.typography.titleLarge)
-                if(enabled && state.invoices.isEmpty()) Text("No account invoices saved.") }
+                if(enabled && state.invoices.isEmpty()) Text("No account invoices saved.")
+                else if(state.invoices.isNotEmpty()) OutlinedButton(onClick = { csvSaver.launch(accountInvoicesCsvFileName(state.account?.name.orEmpty())) }, enabled = enabled,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("account-invoices-csv")) { Text("Export invoices CSV") }
+                csvMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) } }
             items(state.invoices, key = { it.id }) { invoice ->
                 CardOrFlat { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("${invoice.number} · ${invoice.month}/${invoice.year}", style = MaterialTheme.typography.titleMedium)

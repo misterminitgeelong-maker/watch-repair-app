@@ -26,6 +26,7 @@ data class AccountInvoice(
     @SerializedName("total_cents") val total: Int,
     val currency: String,
     val lines: List<AccountStatementLine> = emptyList(),
+    @SerializedName("created_at") val createdAt: String? = null,
 )
 data class AccountInvoiceCreate(
     @SerializedName("period_year") val year: Int,

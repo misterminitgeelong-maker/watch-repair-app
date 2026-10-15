@@ -2,6 +2,8 @@ package au.mainspring.nativeapp.ui.screens
 import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +28,7 @@ import java.time.format.DateTimeFormatter
  var tab by rememberSaveable { mutableStateOf(initialTab) }; var region by rememberSaveable { mutableStateOf("VIC") }
  var category by rememberSaveable { mutableStateOf("") }; var suburbs by rememberSaveable { mutableStateOf("") }
  var live by rememberSaveable { mutableStateOf(false) }; var query by rememberSaveable { mutableStateOf("") }
+ var boardView by rememberSaveable { mutableStateOf(false) }; var advancing by remember { mutableStateOf<ProspectLead?>(null) }
  var stage by rememberSaveable { mutableStateOf("") }; var editing by rememberSaveable { mutableStateOf<String?>(null) }
  val enabled = !state.loading && !state.busy
  LaunchedEffect(state.categories) { if(category.isBlank()) category = state.categories.firstOrNull()?.key.orEmpty() }
@@ -60,8 +63,13 @@ import java.time.format.DateTimeFormatter
       }
      }
      val leads = state.leads.filter { (stage.isBlank() || it.status == stage) && (query.isBlank() || "${it.name} ${it.contactName.orEmpty()} ${it.notes.orEmpty()} ${it.phone.orEmpty()}".contains(query, true)) }
+     item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      au.mainspring.nativeapp.ui.AtelierChip(!boardView, { boardView = false }, label = { Text("List") }, modifier = Modifier.testTag("prospects-view-list"))
+      au.mainspring.nativeapp.ui.AtelierChip(boardView, { boardView = true }, label = { Text("Board") }, modifier = Modifier.testTag("prospects-view-board"))
+     } }
      if(enabled && leads.isEmpty()) item { Text("No prospects match this view") }
-     items(leads, key = { it.id }) { lead -> CardOrFlat(spacing = 5.dp) { Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+     if(boardView) item { ProspectBoard(leads, enabled && state.uncertainLead.isBlank(), onOpen = { editing = it }, onAdvance = { advancing = it }) }
+     else items(leads, key = { it.id }) { lead -> CardOrFlat(spacing = 5.dp) { Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
       Text(lead.name, style = MaterialTheme.typography.titleMedium); if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.StatusPill(lead.status) else Text(au.mainspring.nativeapp.ui.statusLabel(lead.status))
       lead.address?.let { Text(it) }; lead.contactName?.let { Text("Contact: $it") }; lead.contactEmail?.let { Text(it) }; lead.phone?.let { Text(it) }
       lead.visit?.let { Text("Visit ${au.mainspring.nativeapp.ui.formatShopDate(it, TokenStore.calendarTimezone())}") }
@@ -91,6 +99,11 @@ import java.time.format.DateTimeFormatter
    }
   }
  }
+ advancing?.let { lead -> val next = prospectNextStage(lead.status)?.let { n -> PROSPECT_STAGES.firstOrNull { it.first == n }?.second ?: n }.orEmpty()
+  AlertDialog(onDismissRequest = { advancing = null }, title = { Text("Move to $next?") },
+   text = { Text(if(lead.status == "visited") "${lead.name} will be moved to $next and a customer account will be created for it." else "${lead.name} will be moved to $next.") },
+   confirmButton = { Button(onClick = { advancing = null; vm.advanceStage(lead.id) }, enabled = enabled, modifier = Modifier.testTag("prospect-advance-confirm")) { Text("Move prospect") } },
+   dismissButton = { TextButton(onClick = { advancing = null }) { Text("Cancel") } }) }
  state.leads.firstOrNull { it.id == editing }?.let { lead -> key(lead.id) { ProspectEditor(lead, vm, enabled, onClose = { editing = null }) } }
 }
 
