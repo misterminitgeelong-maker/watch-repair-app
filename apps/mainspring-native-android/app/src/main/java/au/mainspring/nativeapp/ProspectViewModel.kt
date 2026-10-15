@@ -48,6 +48,20 @@ class ProspectViewModel: ViewModel() {
    }; throw e
   } }
  }
+ /** Board "Mark as ...": advances one stage with an empty body, so saved contact details are left untouched. */
+ fun advanceStage(id: String) {
+  if(mutable.value.busy || mutable.value.loading || mutable.value.uncertainLead.isNotBlank()) return
+  drafts.saveMessageDraft("prospect-advance", id)
+  runAction { try {
+   val lead = api.advanceProspect(id, JsonObject())
+   drafts.saveMessageDraft("prospect-advance", "")
+   mutable.update { it.copy(leads = it.leads.map { row -> if(row.id == id) lead else row }) }
+  } catch(e: Exception) {
+   val unknown = e !is retrofit2.HttpException || e.code() >= 500
+   if(!unknown) drafts.saveMessageDraft("prospect-advance", "")
+   mutable.update { it.copy(uncertainLead = if(unknown) id else "", historyChecked = false) }; throw e
+  } }
+ }
  fun acknowledgeStage() { if(!mutable.value.historyChecked) return; drafts.saveMessageDraft("prospect-advance", ""); mutable.update { it.copy(uncertainLead = "") } }
  private fun runAction(action: suspend () -> Unit) { if(mutable.value.busy || mutable.value.loading) return
   mutable.update { it.copy(busy = true, error = null) }; viewModelScope.launch { try { action() }

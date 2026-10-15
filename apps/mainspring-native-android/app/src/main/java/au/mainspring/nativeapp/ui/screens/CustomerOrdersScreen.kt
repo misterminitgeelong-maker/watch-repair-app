@@ -18,6 +18,8 @@ import au.mainspring.nativeapp.CUSTOMER_ORDER_PRIORITIES
 import au.mainspring.nativeapp.CUSTOMER_ORDER_STATUSES
 import au.mainspring.nativeapp.CustomerOrdersViewModel
 import au.mainspring.nativeapp.TokenStore
+import au.mainspring.nativeapp.customerOrderCards
+import androidx.compose.runtime.saveable.rememberSaveable
 import au.mainspring.nativeapp.api.CustomerOrderRead
 import au.mainspring.nativeapp.api.CustomerRead
 import androidx.compose.ui.platform.testTag
@@ -31,9 +33,25 @@ import au.mainspring.nativeapp.ui.*
     var editing by remember { mutableStateOf<CustomerOrderRead?>(null) }
     var deleting by remember { mutableStateOf<CustomerOrderRead?>(null) }
     var importing by remember { mutableStateOf(false) }
+    var board by rememberSaveable { mutableStateOf(false) }
+    val viewToggle: @Composable () -> Unit = {
+        Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AtelierChip(!board, { board = false }, label = { Text("List") }, modifier = Modifier.testTag("orders-view-list"))
+            AtelierChip(board, { board = true; if(state.filter != null) viewModel.filter(null) }, label = { Text("Board") }, modifier = Modifier.testTag("orders-view-board"))
+        }
+    }
     Scaffold(topBar = { BackLargeHeader("More", "Workshop", "Customer orders", onBack) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if(board) Column(Modifier.fillMaxSize().padding(padding)) {
+            Column(Modifier.padding(horizontal = 16.dp)) { viewToggle(); if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            state.error?.let { ErrorBanner(it, Modifier.padding(horizontal = 16.dp), onRetry = viewModel::refresh) }
+            JobsBoard(buildBoardColumns(customerOrderCards(state.orders), CUSTOMER_ORDER_STATUSES) { statusLabel(it) },
+                CUSTOMER_ORDER_STATUSES.map { it to statusLabel(it) }, canMove = !state.saving,
+                onOpen = { id -> selected = state.orders.firstOrNull { it.id == id } },
+                onMove = { id, status -> state.orders.firstOrNull { it.id == id }?.let { viewModel.setStatus(it, status) } },
+                modifier = Modifier.fillMaxSize().testTag("orders-board"))
+        } else LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             item {
+                viewToggle()
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     TabChip(state.filter == null, { viewModel.filter(null) }, { Text("All") })
                     CUSTOMER_ORDER_STATUSES.forEach { s -> TabChip(state.filter == s, { viewModel.filter(s) }, { Text(statusLabel(s)) }) }

@@ -57,7 +57,7 @@ fun CustomersScreen(
                     Text(c.fullName, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
                     Text("›", style = MaterialTheme.typography.titleLarge)
                 }
-                listOfNotNull(c.phone, c.email).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let {
+                listOfNotNull(c.phone, c.email, au.mainspring.nativeapp.customerAddedLabel(c.createdAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()).ifBlank { null }).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let {
                     Text(it.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
             }
