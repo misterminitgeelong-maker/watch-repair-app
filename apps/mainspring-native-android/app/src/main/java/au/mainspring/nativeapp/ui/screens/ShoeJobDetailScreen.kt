@@ -78,7 +78,7 @@ fun ShoeJobDetailScreen(
             state.info?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
         }
     } else AtelierDetail(
-        backLabel = "Jobs", title = j.title, reference = j.jobNumber,
+        backLabel = "Jobs", title = j.title, reference = listOfNotNull(j.jobNumber, state.customer?.fullName?.uppercase()).joinToString(" · "),
         banner = statusLabel(j.status).let { s -> val q = if (j.quoteStatus != "none") "Quote ${j.quoteStatus.replace('_', ' ')}" else null; if (q == null || q.equals(s, true)) s else "$s · $q" },
         tabs = listOf("overview" to "Overview", "history" to "History", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
@@ -96,7 +96,7 @@ fun ShoeJobDetailScreen(
                 try {
                     val pairs = listOfNotNull(j.shoe) + j.extraShoes.orEmpty().mapNotNull { it.shoe }
                     au.mainspring.nativeapp.ui.printIntakeTicket(context, au.mainspring.nativeapp.ui.IntakeTicket(
-                        jobNumber = j.jobNumber, customerName = null, customerPhone = null,
+                        jobNumber = j.jobNumber, customerName = state.customer?.fullName, customerPhone = state.customer?.phone,
                         itemSummary = pairs.joinToString("; ") { listOfNotNull(it.brand, it.shoeType, it.color).joinToString(" ") }.ifBlank { j.title },
                         workSummary = (j.items.map { it.name } + listOfNotNull(j.description?.takeIf { it.isNotBlank() })).joinToString("\n").ifBlank { j.title },
                         dueDate = (j.collectionDate ?: j.estimatedReadyBy)?.takeIf { it.isNotBlank() }?.let { formatShopDate(it) },
@@ -109,7 +109,7 @@ fun ShoeJobDetailScreen(
             DetailAction("Print label (Niimbot)", true) {
                 val pairs = listOfNotNull(j.shoe) + j.extraShoes.orEmpty().mapNotNull { it.shoe }
                 niimbotLabel = au.mainspring.nativeapp.niimbot.NiimbotLabelData(
-                    jobNumber = j.jobNumber, customerName = null,
+                    jobNumber = j.jobNumber, customerName = state.customer?.fullName,
                     itemTitle = pairs.joinToString("; ") { listOfNotNull(it.brand, it.shoeType, it.color).joinToString(" ") }.ifBlank { j.title },
                     services = j.items.firstOrNull()?.name ?: j.title.takeIf { it.isNotBlank() },
                     dateIn = formatShopDate(j.createdAt),
@@ -162,6 +162,19 @@ fun ShoeJobDetailScreen(
                     enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
                 j.description?.takeIf { it.isNotBlank() }?.let { SummaryCard("Requested work", it, null) }
                 j.customerNote?.takeIf { it.isNotBlank() }?.let { SummaryCard("Note shown to customer", it, null) }
+                state.customer?.let { c ->
+                    var contactError by remember { mutableStateOf<String?>(null) }
+                    val phone = c.phone?.takeIf { it.isNotBlank() }
+                    val email = c.email?.takeIf { it.isNotBlank() }
+                    FlatPanel {
+                        Text("Customer & contact", style = MaterialTheme.typography.titleMedium)
+                        Text(c.fullName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (phone == null && email == null) Text("No phone or email on file", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        phone?.let { p -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + p.filter { ch -> ch.isDigit() || ch == '+' }))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Call $p") } }
+                        email?.let { e -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + Uri.encode(e)))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Email $e") } }
+                        contactError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                    }
+                }
                 val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
                 au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Shoe, j.id, canEdit = TokenStore.canWorkJobs())
                 SectionLabel("Shoes")

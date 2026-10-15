@@ -359,5 +359,5 @@ fun JobDetailScreen(
 }
 
 /** Starts an external call/email intent; returns an error message when no app can handle it. */
-private fun launchContact(context: android.content.Context, intent: Intent): String? =
+internal fun launchContact(context: android.content.Context, intent: Intent): String? =
     try { context.startActivity(intent); null } catch (e: android.content.ActivityNotFoundException) { "No app available to handle this." }

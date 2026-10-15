@@ -31,6 +31,7 @@ data class ShoeJobDetailUiState(
     val error: String? = null,
     val info: String? = null,
     val job: ShoeRepairJobRead? = null,
+    val customer: au.mainspring.nativeapp.api.CustomerRead? = null,
     val history: List<ShoeJobStatusHistoryRead> = emptyList(),
     val attachments: List<AttachmentRead> = emptyList(),
     val statusBusy: Boolean = false,
@@ -80,7 +81,10 @@ class ShoeJobDetailViewModel(
                     emptyList()
                 }
                 val smsLog = try { sms.shoeSmsLog(jobId) } catch (e: CancellationException) { throw e } catch (_: Exception) { _state.value.smsLog }
-                _state.update { it.copy(loading = false, job = j, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true) }
+                val customerId = j.shoe?.customerId
+                val customer = if (customerId == null) null else _state.value.customer?.takeIf { it.id == customerId }
+                    ?: try { api.getCustomer(customerId) } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
+                _state.update { it.copy(loading = false, job = j, customer = customer, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true) }
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.userMessage()) }
