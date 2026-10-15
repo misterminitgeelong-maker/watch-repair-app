@@ -26,6 +26,21 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Accept-booking links from booking SMS/email. autoVerify stays false until assetlinks.json is published on the web host. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="mainspring.au" android:path="/auto-key" />
+                <data android:scheme="https" android:host="www.mainspring.au" android:path="/auto-key" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mainspring" android:host="booking" android:path="/accept" />
+                <data android:scheme="mainspring" android:host="auto-key" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>
