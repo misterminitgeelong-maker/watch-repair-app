@@ -66,3 +66,13 @@ Not in the native app yet: Parent Account, Accounts management (team users, plan
 | Connectivity banner | Top of the app | done (offline write queue not built yet) |
 | Offline write queue | n/a | not started |
 | Push notifications | n/a | blocked: no google-services.json |
+
+## Phase 2 (business shell)
+
+| Item | Where in the app | Status |
+|---|---|---|
+| Shop details edit, email alert preferences, integration health | `OwnerSettingsScreen` | built; needs shell wiring (More > Shop settings) |
+| Sales by category, sales CSV, shop activity log | `ReportExtrasScreen` | built; needs shell wiring (More > Sales & activity) |
+| Customer Orders import (CSV/Excel, sheet pick, dry run) | Customer orders > Import | done |
+| Delete team account (owner) | Team > Delete account | done |
+| Team entry for watch/shoe-only shops | More | needs shell wiring |
