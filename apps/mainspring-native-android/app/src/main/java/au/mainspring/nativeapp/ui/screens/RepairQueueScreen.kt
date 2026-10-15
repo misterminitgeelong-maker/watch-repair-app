@@ -77,7 +77,7 @@ internal fun RepairJobRead.toCard() = QueueCardUi(
 
 internal fun ShoeRepairJobRead.toCard() = QueueCardUi(
     id = id, jobNumber = jobNumber, title = title,
-    subtitle = items.map { it.name }.filter { it.isNotBlank() }.joinToString(", ").ifBlank { listOfNotNull(shoe?.brand, shoe?.shoeType).joinToString(" ").ifBlank { null } },
+    subtitle = (items as List<au.mainspring.nativeapp.api.ShoeJobItemRead>?).orEmpty().map { it.name }.filter { it.isNotBlank() }.joinToString(", ").ifBlank { listOfNotNull(shoe?.brand, shoe?.shoeType).joinToString(" ").ifBlank { null } },
     customer = null, status = status, due = collectionDate, description = description,
     rightTarget = nextShoeQueueStatus(status), leftTarget = null,
 )

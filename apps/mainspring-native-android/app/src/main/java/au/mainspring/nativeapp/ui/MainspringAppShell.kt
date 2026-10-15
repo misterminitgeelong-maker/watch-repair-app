@@ -346,7 +346,7 @@ fun MainspringAppShell(
                 composable("queuedChanges") { au.mainspring.nativeapp.ui.screens.QueuedChangesScreen { navController.popBackStack() } }
                 composable("shopSettings") { au.mainspring.nativeapp.ui.screens.OwnerSettingsScreen(onBack = { navController.popBackStack() }) }
                 composable("reportExtras") { au.mainspring.nativeapp.ui.screens.ReportExtrasScreen(onBack = { navController.popBackStack() }) }
-                composable("repairQueue") { au.mainspring.nativeapp.ui.screens.RepairQueueScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("watchJob/$it") }) }
+                composable("repairQueue") { au.mainspring.nativeapp.ui.screens.RepairQueueScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("watchJob/$it") }, onOpenShoeJob = { navController.navigate("shoeJob/$it") }) }
                 composable(au.mainspring.nativeapp.BookingDeepLink.ROUTE_PATTERN) { e -> au.mainspring.nativeapp.ui.screens.AcceptBookingScreen(bookingId = e.arguments?.getString("id").orEmpty(), onBack = { navController.popBackStack() }, onOpenJob = { id -> navController.navigate("autoKeyJob/$id") }, onOpenRequests = { navController.navigate("bookingRequests") }) }
                 composable("search") { au.mainspring.nativeapp.ui.screens.SearchScreen(onBack = { navController.popBackStack() }, onOpenRoute = { navController.navigate(it) }) }
                 composable("sendBookingRequest") { au.mainspring.nativeapp.ui.screens.SendBookingRequestScreen(onBack = { navController.popBackStack() }) }
