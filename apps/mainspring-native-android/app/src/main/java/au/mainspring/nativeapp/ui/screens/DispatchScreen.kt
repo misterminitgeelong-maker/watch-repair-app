@@ -40,6 +40,7 @@ fun DispatchScreen(
     onOpenRoute: () -> Unit,
     onOpenPlanner: () -> Unit,
     onOpenPool: () -> Unit,
+    onOpenBookingRequests: (() -> Unit)? = null,
     model: TodayViewModel = viewModel(),
     extras: au.mainspring.nativeapp.DispatchExtrasViewModel = viewModel(),
 ) {
@@ -62,6 +63,7 @@ fun DispatchScreen(
                 if(LocalCalibre.current) MonoLabel("Illustrative area diagram")
             }
         }
+        if(onOpenBookingRequests != null) item { PendingBookingsBanner(onOpenBookingRequests, Modifier.padding(horizontal = 20.dp)) }
         item {
             SegmentedPills(listOf("today" to "Today", "week" to "This week", "pool" to "Pool"), "today",
                 { key -> when(key) { "week" -> onOpenPlanner(); "pool" -> onOpenPool(); else -> Unit } }, Modifier.padding(horizontal = 20.dp))
