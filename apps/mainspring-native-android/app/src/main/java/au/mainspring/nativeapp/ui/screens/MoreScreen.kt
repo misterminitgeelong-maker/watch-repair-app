@@ -17,6 +17,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.ui.*
@@ -101,7 +103,7 @@ private object MoreUsage {
         }
         if(q.isNotEmpty()) {
             if(matches.isEmpty()) item { Text("No tool matches \u201c$q\u201d.", Modifier.padding(horizontal = 20.dp, vertical = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            items(matches, key = { "m/${it.route}" }) { MoreRow(it.label, Modifier) { go(it.route) } }
+            items(matches, key = { "m/${it.route}" }) { MoreRow(it.label, it.route, Modifier) { go(it.route) } }
         } else {
             item(key = "quick") {
                 Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -109,9 +111,15 @@ private object MoreUsage {
                     quick.chunked(2).forEach { pair ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             pair.forEach { item ->
-                                Box(Modifier.weight(1f).heightIn(min = 56.dp).background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
-                                    .clickable(role = Role.Button) { go(item.route) }.padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
-                                    Text(item.label, style = MaterialTheme.typography.titleSmall)
+                                val calibre = LocalCalibre.current
+                                val tileShape = if(calibre) CalibreCardShape else MaterialTheme.shapes.small
+                                Box(Modifier.weight(1f).heightIn(min = if(calibre) 64.dp else 56.dp).background(if(calibre) calibreCardColor() else MaterialTheme.colorScheme.surfaceVariant, tileShape)
+                                    .then(if(calibre) Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), tileShape) else Modifier)
+                                    .clip(tileShape).clickable(role = Role.Button) { go(item.route) }.padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        if(calibre) ToolIcon(item.route, size = 24.dp)
+                                        Text(item.label, style = MaterialTheme.typography.titleSmall)
+                                    }
                                 }
                             }
                             if(pair.size == 1) Spacer(Modifier.weight(1f))
@@ -121,10 +129,10 @@ private object MoreUsage {
             }
             groups.forEach { g ->
                 val isOpen = g.key in open
-                item(key = "h-${g.key}") { MoreGroupHeader(g.title, g.items.size, isOpen, Modifier.testTag("more-group-${g.key}")) { toggle(g.key) } }
-                if(isOpen) items(g.items, key = { "${g.key}/${it.route}" }) { MoreRow(it.label, Modifier) { go(it.route) } }
+                item(key = "h-${g.key}") { MoreGroupHeader(g.title, g.key, g.items.size, isOpen,Modifier.testTag("more-group-${g.key}")) { toggle(g.key) } }
+                if(isOpen) items(g.items, key = { "${g.key}/${it.route}" }) { MoreRow(it.label, it.route, Modifier) { go(it.route) } }
             }
-            item(key = "h-settings") { MoreGroupHeader("Settings & appearance", null, "settings" in open, Modifier.testTag("more-group-settings")) { toggle("settings") } }
+            item(key = "h-settings") { MoreGroupHeader("Settings & appearance", "settings", null,"settings" in open, Modifier.testTag("more-group-settings")) { toggle("settings") } }
             if("settings" in open) item(key = "settings") { SettingsPanels(shop, summary, features, canSwitch, onSwitch, fieldNavigation, appearance, owner) }
             item(key = "signout") { TextButton({ signOut = true }, modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().heightIn(min = 56.dp)) { Text("Sign out") } }
         }
@@ -133,20 +141,22 @@ private object MoreUsage {
         confirmButton = { TextButton({ signOut = false; onLogout() }) { Text("Sign out") } }, dismissButton = { TextButton({ signOut = false }) { Text("Cancel") } })
 }
 
-@Composable private fun MoreRow(label: String, modifier: Modifier, onClick: () -> Unit) {
+@Composable private fun MoreRow(label: String, route: String, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
+            if(LocalCalibre.current) { ToolIcon(route, size = 22.dp); Spacer(Modifier.width(14.dp)) }
             Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             Text("\u2192", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
-@Composable private fun MoreGroupHeader(title: String, count: Int?, open: Boolean, modifier: Modifier, onClick: () -> Unit) {
+@Composable private fun MoreGroupHeader(title: String, key: String, count: Int?, open: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).semantics { role = Role.Button; stateDescription = if(open) "Expanded" else "Collapsed" }.clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
+            if(LocalCalibre.current) { ToolIcon(key, size = 24.dp); Spacer(Modifier.width(14.dp)) }
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             if(count != null) Text(count.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 16.dp))
             Text(if(open) "\u2212" else "+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
