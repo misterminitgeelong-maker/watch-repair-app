@@ -126,6 +126,7 @@ fun JobDetailScreen(
             if (TokenStore.canManageInvoices()) DetailAction("Delete job", adminReady) { confirmDelete = true } else null,
         ),
         scrollBody = tab != "messages",
+        service = "watch", bannerStatus = job.status,
     ) { active ->
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
         PendingStatusBanner(shownId)
@@ -167,6 +168,7 @@ fun JobDetailScreen(
             else -> {
                 val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("watch", shownId)
                 JobNavBar(au.mainspring.nativeapp.JobNavContext.position("watch", shownId), prevId, nextId, { shownId = it; tab = "summary" }, enabled = !state.statusBusy)
+                if(LocalCalibre.current) JobHeroPhoto("watch", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
                 ContactQuickActions(job.customerPhone, job.customerEmail)
                 DaysInShopLabel(au.mainspring.nativeapp.daysInShop(job.createdAt))
                 WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status, au.mainspring.nativeapp.suggestedWatchStatuses(job.status), ::watchStatusLabel,

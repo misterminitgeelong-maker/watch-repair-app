@@ -40,15 +40,16 @@ internal fun HubJob.statusLine(): String {
 @Composable fun HubJobCard(job: HubJob, onClick: () -> Unit, modifier: Modifier = Modifier) {
     if(LocalCalibre.current) {
         ListCard(onClick, modifier) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(job.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text("\u203a", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-            }
-            MonoLabel(job.reference())
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val tone = if(job.urgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                Box(Modifier.size(6.dp).background(tone, androidx.compose.foundation.shape.CircleShape))
-                Text(job.statusLine(), style = MaterialTheme.typography.labelMedium, color = tone)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                JobThumb(job.service, job.id)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(job.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                        Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    MonoLabel(job.reference())
+                    StatusLinePill(job.statusLine(), job.status, job.urgent)
+                }
             }
         }
         return

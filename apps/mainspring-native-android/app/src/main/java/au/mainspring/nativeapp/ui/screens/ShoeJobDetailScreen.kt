@@ -123,6 +123,7 @@ fun ShoeJobDetailScreen(
             if (TokenStore.canManageInvoices()) DetailAction("Delete job", adminReady) { confirmDelete = true } else null,
         ),
         scrollBody = tab != "messages",
+        service = "shoe", bannerStatus = j.status,
     ) { active ->
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
         state.error?.let { ErrorBanner(it) }
@@ -157,6 +158,7 @@ fun ShoeJobDetailScreen(
             else -> {
                 val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
                 JobNavBar(au.mainspring.nativeapp.JobNavContext.position("shoe", shownId), prevId, nextId, { shownId = it; tab = "overview" }, enabled = !state.statusBusy)
+                if(LocalCalibre.current) JobHeroPhoto("shoe", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
                 ContactQuickActions(state.customer?.phone, state.customer?.email)
                 DaysInShopLabel(au.mainspring.nativeapp.daysInShop(j.createdAt))
                 WorkflowRail(au.mainspring.nativeapp.SHOE_WORKFLOW_STEPS, j.status, au.mainspring.nativeapp.suggestedShoeStatuses(j.status), { au.mainspring.nativeapp.ui.statusLabel(it) },

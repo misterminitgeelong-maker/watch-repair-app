@@ -61,16 +61,10 @@ import androidx.compose.ui.unit.sp
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/** Atelier status line: one blue caption, red only for things that went wrong. */
+/** Atelier status: a soft tinted pill (amber waiting, green ready, forest in progress, red late, grey neutral) in Calibre; the blue caption otherwise. */
 @Composable fun StatusPill(status: String, modifier: Modifier = Modifier) {
     val negative = status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent")
-    if(LocalCalibre.current) {
-        Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.size(6.dp).background(if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
-            Text(statusLabel(status), style = MaterialTheme.typography.labelMedium, color = if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-        }
-        return
-    }
+    if(LocalCalibre.current) { TonePill(statusLabel(status), statusTone(status), modifier); return }
     Text(statusLabel(status), modifier, style = MaterialTheme.typography.labelMedium,
         color = if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
 }

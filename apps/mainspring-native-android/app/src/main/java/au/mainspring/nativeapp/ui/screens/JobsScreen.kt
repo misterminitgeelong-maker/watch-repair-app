@@ -110,7 +110,8 @@ fun JobsScreen(
             items(state.visibleJobs, key = { it.id }) { job ->
                 if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
                     CalibreRow({ onOpenJob(job.id) }, job.title, listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }, au.mainspring.nativeapp.daysInShopText(au.mainspring.nativeapp.daysInShop(job.createdAt))).joinToString(" · "),
-                        au.mainspring.nativeapp.ui.statusLabel(job.status), job.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
+                        au.mainspring.nativeapp.ui.statusLabel(job.status), job.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"),
+                        service = "watch", jobId = job.id, statusKey = job.status)
                     return@items
                 }
                 androidx.compose.material3.Surface(Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenJob(job.id) },

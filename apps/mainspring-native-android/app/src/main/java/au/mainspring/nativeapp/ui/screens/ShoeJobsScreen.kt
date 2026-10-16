@@ -99,7 +99,8 @@ fun ShoeJobsScreen(
             ) {
                 items(rows, key = { it.id }) { j ->
                     if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                        CalibreRow({ onOpenJob(j.id) }, j.title, listOfNotNull(j.jobNumber, state.customerName(j), au.mainspring.nativeapp.daysInShopText(au.mainspring.nativeapp.daysInShop(j.createdAt))).joinToString(" · "), au.mainspring.nativeapp.ui.statusLabel(j.status), j.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"))
+                        CalibreRow({ onOpenJob(j.id) }, j.title, listOfNotNull(j.jobNumber, state.customerName(j), au.mainspring.nativeapp.daysInShopText(au.mainspring.nativeapp.daysInShop(j.createdAt))).joinToString(" · "), au.mainspring.nativeapp.ui.statusLabel(j.status), j.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"),
+                            service = "shoe", jobId = j.id, statusKey = j.status)
                         return@items
                     }
                     au.mainspring.nativeapp.ui.ListCard({ onOpenJob(j.id) }) {

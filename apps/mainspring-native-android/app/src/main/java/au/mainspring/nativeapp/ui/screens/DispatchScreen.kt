@@ -97,7 +97,8 @@ fun DispatchScreen(
                 CalibreRow({ onOpenJob(job.id) },
                     listOfNotNull(listOfNotNull(job.vehicleMake, job.vehicleModel).joinToString(" ").takeIf { it.isNotBlank() }, job.title).joinToString(" · "),
                     listOfNotNull(whenText, job.jobAddress?.takeIf { it.isNotBlank() }, job.customerName).joinToString(" · "),
-                    statusLabel(job.status) + (if(job.priority == "urgent") " · Urgent" else "") + (sla?.let { " · ${it.label}" } ?: ""), job.priority == "urgent" || sla == au.mainspring.nativeapp.SlaKind.LATE, Modifier.padding(horizontal = 20.dp))
+                    statusLabel(job.status) + (if(job.priority == "urgent") " · Urgent" else "") + (sla?.let { " · ${it.label}" } ?: ""), job.priority == "urgent" || sla == au.mainspring.nativeapp.SlaKind.LATE, Modifier.padding(horizontal = 20.dp),
+                    service = "auto_key", jobId = job.id, statusKey = job.status)
                 return@items
             }
             ListCard({ onOpenJob(job.id) }, Modifier.padding(horizontal = 20.dp)) {
@@ -155,18 +156,18 @@ fun DispatchScreen(
 }
 
 /** Calibre list row: title with arrow, mono reference line, status dot line, hairline below (the HubJobCard pattern). */
-@Composable internal fun CalibreRow(onClick: () -> Unit, title: String, reference: String?, status: String?, urgent: Boolean = false, modifier: Modifier = Modifier) {
+@Composable internal fun CalibreRow(onClick: () -> Unit, title: String, reference: String?, status: String?, urgent: Boolean = false, modifier: Modifier = Modifier,
+    service: String? = null, jobId: String? = null, statusKey: String? = null) {
     ListCard(onClick, modifier) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
-            Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-        }
-        if(!reference.isNullOrBlank()) MonoLabel(reference)
-        if(!status.isNullOrBlank()) {
-            val tone = if(urgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(6.dp).background(tone, androidx.compose.foundation.shape.CircleShape))
-                Text(status, style = MaterialTheme.typography.labelMedium, color = tone)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if(service != null && jobId != null) JobThumb(service, jobId)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                    Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                }
+                if(!reference.isNullOrBlank()) MonoLabel(reference)
+                if(!status.isNullOrBlank()) TonePill(status, if(urgent) StatusTone.Late else statusTone(statusKey ?: status))
             }
         }
     }

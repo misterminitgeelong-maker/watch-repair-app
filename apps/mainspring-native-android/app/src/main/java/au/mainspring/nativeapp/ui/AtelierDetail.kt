@@ -43,6 +43,8 @@ fun AtelierDetail(
     backEnabled: Boolean = true,
     menu: List<DetailAction> = emptyList(),
     scrollBody: Boolean = true,
+    service: String? = null,
+    bannerStatus: String? = null,
     content: @Composable ColumnScope.(String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -64,9 +66,13 @@ fun AtelierDetail(
             }
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
-                reference?.let { if(LocalCalibre.current) MonoLabel(it) else Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                reference?.let { if(LocalCalibre.current) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if(service != null) JobTypeMark(service, color = MaterialTheme.colorScheme.primary)
+                    MonoLabel(it)
+                } else Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 banner?.let {
-                    if(LocalCalibre.current) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if(LocalCalibre.current && bannerStatus != null) Row { TonePill(it, statusTone(bannerStatus)) }
+                    else if(LocalCalibre.current) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
                         Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     } else Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.small) {

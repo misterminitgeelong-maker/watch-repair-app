@@ -115,7 +115,7 @@ import au.mainspring.nativeapp.api.*
                 Column(Modifier.padding(horizontal=16.dp,vertical=if(compactHeader) 0.dp else 8.dp),verticalArrangement=Arrangement.spacedBy(if(compactHeader) 0.dp else 6.dp)) {
                     if(!compactHeader) Text(listOf(listOfNotNull(j.vehicleMake,j.vehicleModel,j.vehicleYear?.toString()).joinToString(" "),j.customerName.orEmpty()).filter {it.isNotBlank()}.joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                        if(LocalCalibre.current) StatusPill(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status)
+                        if(LocalCalibre.current) Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {JobTypeMark("auto_key",color=MaterialTheme.colorScheme.primary);StatusPill(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status)}
                         else Surface(color=MaterialTheme.colorScheme.secondary,contentColor=MaterialTheme.colorScheme.onSecondary,shape=MaterialTheme.shapes.small) {
                             Text(statusLabel(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status),Modifier.padding(horizontal=16.dp,vertical=12.dp),style=MaterialTheme.typography.titleSmall)
                         }
@@ -192,6 +192,7 @@ import au.mainspring.nativeapp.api.*
                                     TextButton(onEdit,enabled=!state.offlineSnapshot) {Text("Edit vehicle and key details")}
                                 } else {
                                     val activeJourney=journey ?: fieldJourney(j.status)
+                                    if(LocalCalibre.current) JobHeroPhoto("auto_key",jobId,onClick={tab="photos"})
                                     if(activeJourney.step in 0..2) {
                                         PreparationPanel(j,state.vehicleContext,onVehicle={tab="vehicle"})
                                     }
