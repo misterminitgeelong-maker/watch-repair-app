@@ -62,7 +62,7 @@ fun TodayHubScreen(
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         MonoLabel(LocalDate.now(zone).format(DateTimeFormatter.ofPattern("EEEE / d MMMM", Locale.forLanguageTag("en-AU"))))
                         Row(verticalAlignment = Alignment.Top) {
-                            Text("Today, at the bench.", Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge)
+                            Text("Today, at the bench.", Modifier.weight(1f), style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge))
                             if(canWork) RoundPlusButton(onNewIntake, "New intake")
                         }
                     }
@@ -129,7 +129,7 @@ fun TodayHubScreen(
                     Text("Your workspaces", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         tiles.forEach { (title, sub, route) ->
-                            ListCard({ onOpenRoute(route) }, Modifier.width(172.dp)) {
+                            SoftCard({ onOpenRoute(route) }, Modifier.width(172.dp)) {
                                 Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                                 Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                             }
@@ -155,7 +155,7 @@ fun TodayHubScreen(
         }
         if(attention.isEmpty() && actions.isEmpty()) item {
             if(hub.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp))
-            else EmptyState("You're all caught up", "Nothing is overdue or waiting on you right now.")
+            else EmptyState("You're all caught up", "Nothing is overdue or waiting on you right now.", icon = "check")
         }
         items(attention, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
         if(actions.isNotEmpty()) item {
@@ -204,7 +204,7 @@ fun TodayHubScreen(
 }
 
 @Composable private fun AttentionCard(title: String, detail: String, onClick: () -> Unit) {
-    ListCard(onClick, Modifier.padding(horizontal = 20.dp)) {
+    SoftCard(onClick, Modifier.padding(horizontal = 20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Text("›", style = MaterialTheme.typography.titleLarge)

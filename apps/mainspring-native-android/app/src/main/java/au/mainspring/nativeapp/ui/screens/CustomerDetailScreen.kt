@@ -53,9 +53,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                         au.mainspring.nativeapp.ui.FlatPanel {
                             val initials = customer.fullName.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }.ifBlank { "?" }
                             if(au.mainspring.nativeapp.ui.LocalCalibre.current) Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                Surface(Modifier.size(72.dp), color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small) {
-                                    androidx.compose.foundation.layout.Box(contentAlignment = androidx.compose.ui.Alignment.Center) { Text(initials, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface) }
-                                }
+                                au.mainspring.nativeapp.ui.InitialsAvatar(customer.fullName, size = 72.dp)
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     au.mainspring.nativeapp.ui.MonoLabel("Customer profile")
                                     Text("Customer since ${formatShopDate(customer.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.titleMedium)

@@ -50,15 +50,18 @@ fun CustomersScreen(
         }
         if (state.loading && state.customers.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = { viewModel.refresh() }) } }
-        if (!state.loading && state.error == null && state.customers.isEmpty()) item { EmptyState("No customers found", "Try a different name, or add a new customer with the + button.") }
+        if (!state.loading && state.error == null && state.customers.isEmpty()) item { EmptyState("No customers found", "Try a different name, or add a new customer with the + button.", icon = "customers") }
         items(state.customers, key = { it.id }) { c ->
             ListCard({ onOpenCustomer(c.id) }, Modifier.padding(horizontal = 20.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(c.fullName, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.InitialsAvatar(c.fullName, size = 44.dp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(c.fullName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                        listOfNotNull(c.phone, c.email, au.mainspring.nativeapp.customerAddedLabel(c.createdAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()).ifBlank { null }).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let {
+                            Text(it.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        }
+                    }
                     Text("›", style = MaterialTheme.typography.titleLarge)
-                }
-                listOfNotNull(c.phone, c.email, au.mainspring.nativeapp.customerAddedLabel(c.createdAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()).ifBlank { null }).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let {
-                    Text(it.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
             }
         }

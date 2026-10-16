@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -69,6 +70,8 @@ fun WorkflowRail(
             }
         }
         if (suggestions.isNotEmpty()) {
+            val nextModifier = if (calibre) Modifier.fillMaxWidth().background(calibreCardColor(), CalibreCardShape).padding(horizontal = 12.dp, vertical = 10.dp) else Modifier.fillMaxWidth()
+            Column(nextModifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Next", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 suggestions.forEachIndexed { i, s ->
@@ -76,6 +79,7 @@ fun WorkflowRail(
                     if (i == 0) PrimaryAction(onClick = { onMove(s) }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp).testTag("rail-next-$s")) { action() }
                     else SecondaryAction(onClick = { onMove(s) }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp).testTag("rail-next-$s")) { action() }
                 }
+            }
             }
         }
     }

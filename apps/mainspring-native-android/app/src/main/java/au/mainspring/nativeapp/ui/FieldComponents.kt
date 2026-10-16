@@ -17,6 +17,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -39,11 +43,14 @@ import androidx.compose.ui.unit.sp
         color = MaterialTheme.colorScheme.onSurface)
 }
 
+/** Calibre card corner radius (the theme's own shapes are deliberately near-square). */
+val CalibreCardShape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+
 @Composable fun FlatPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     if(LocalCalibre.current) {
-        Column(modifier.fillMaxWidth()) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+        Surface(modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = 1.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
         }
         return
     }
@@ -75,19 +82,29 @@ import androidx.compose.ui.unit.sp
         color = if(negative) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
 }
 
+/**
+ * Big Calibre number in the display face. One line; if it does not fit its column (long money values,
+ * large system font) the size steps down to a 16sp floor, so it is never clipped or ellipsised.
+ */
+@Composable fun KpiNumber(value: String, modifier: Modifier = Modifier, maxSize: androidx.compose.ui.unit.TextUnit = 34.sp) {
+    var size by remember(value, maxSize) { mutableStateOf(maxSize) }
+    Text(value, modifier, style = calibreDisplayStyle(MaterialTheme.typography.headlineMedium).copy(fontSize = size, lineHeight = size * 1.2f),
+        color = MaterialTheme.colorScheme.onSurface, maxLines = 1, softWrap = false,
+        onTextLayout = { if(it.hasVisualOverflow && size.value > 16f) size = (size.value * 0.9f).coerceAtLeast(16f).sp })
+}
+
 @Composable fun MetricStrip(values: List<Pair<String, String>>, modifier: Modifier = Modifier) {
     if(LocalCalibre.current) {
-        Column(modifier.fillMaxWidth()) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Row(Modifier.fillMaxWidth().padding(vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Surface(modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = 1.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 values.forEach { (label, value) ->
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(value, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Normal), color = MaterialTheme.colorScheme.onSurface)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        KpiNumber(value)
                         MonoLabel(label)
                     }
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
         return
     }
@@ -147,11 +164,28 @@ import androidx.compose.ui.unit.sp
 }
 
 /** Centred empty-state with a headline, optional hint and optional single action. */
-@Composable fun EmptyState(title: String, hint: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+@Composable fun EmptyState(title: String, hint: String? = null, actionLabel: String? = null, onAction: (() -> Unit)? = null, modifier: Modifier = Modifier, icon: String = "inbox") {
     Column(modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if(LocalCalibre.current) {
+            Box(Modifier.size(64.dp).background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) { ToolIcon(icon, size = 28.dp) }
+            Spacer(Modifier.height(4.dp))
+        }
         Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         if(hint != null) Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         if(actionLabel != null && onAction != null) androidx.compose.material3.OutlinedButton(onClick = onAction) { Text(actionLabel) }
+    }
+}
+
+/**
+ * Standalone tappable card: tinted, rounded and softly lifted in Calibre (Today attention cards, workspace tiles),
+ * identical to [ListCard] elsewhere. Long lists keep [ListCard]'s divider rows.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun SoftCard(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    if(!LocalCalibre.current) { ListCard(onClick, modifier, content); return }
+    Surface(onClick, modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
     }
 }
 
@@ -275,7 +309,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     Row(modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
             if(eyebrow != null) { if(LocalCalibre.current) MonoLabel(eyebrow) else Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
+            Text(title, Modifier.semantics { heading() }, style = if(LocalCalibre.current) calibreDisplayStyle(MaterialTheme.typography.headlineLarge) else MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
         }
         trailing?.invoke()
         if(onAdd != null) RoundPlusButton(onAdd, addDescription)
@@ -309,7 +343,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** Dark hero card used on Today and for key totals (e.g. outstanding balance). */
 @Composable fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val calibre = LocalCalibre.current
-    Surface(modifier.fillMaxWidth(), color = if(calibre) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.secondary, contentColor = if(calibre) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.medium) {
+    Surface(modifier.fillMaxWidth(), color = if(calibre) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.secondary, contentColor = if(calibre) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondary, shape = if(calibre) CalibreCardShape else MaterialTheme.shapes.medium,
+        shadowElevation = if(calibre) 1.dp else 0.dp, border = if(calibre) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)) else null) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
     }
 }
