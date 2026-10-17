@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -113,39 +114,39 @@ private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, 
     onMove: (id: String, status: String) -> Unit, modifier: Modifier) {
     val line = MaterialTheme.colorScheme.outlineVariant
     val square = RoundedCornerShape(2.dp)
-    Row(modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         columns.forEach { col ->
-            Surface(Modifier.width(330.dp).testTag("board-column-${col.status}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
+            Surface(Modifier.width(158.dp).testTag("board-column-${col.status}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
                 Column {
                     Box(Modifier.fillMaxWidth().height(3.dp).background(BoardBrown))
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(col.label, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(col.label, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         Surface(shape = RoundedCornerShape(50), color = Color(0xFFF5E8D3)) {
-                            Text(col.cards.size.toString(), Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelMedium, color = BoardBrown)
+                            Text(col.cards.size.toString(), Modifier.padding(horizontal = 6.dp, vertical = 0.dp), style = MaterialTheme.typography.labelMedium, color = BoardBrown)
                         }
                     }
                     HorizontalDivider(color = line)
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if(col.cards.isEmpty()) Text("No jobs in ${col.label}", Modifier.fillMaxWidth().padding(vertical = 12.dp), style = MaterialTheme.typography.bodySmall,
+                    Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if(col.cards.isEmpty()) Text("No jobs in ${col.label}", Modifier.fillMaxWidth().padding(vertical = 8.dp), style = MaterialTheme.typography.bodySmall,
                             fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         col.cards.forEach { card ->
                             var menu by remember(card.id, card.status) { mutableStateOf(false) }
                             Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
-                                Column(Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpen(card.id) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Column(Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpen(card.id) }.padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         card.number?.let { Text("#$it", style = MaterialTheme.typography.labelMedium, color = BoardBrown, fontWeight = FontWeight.SemiBold) }
-                                        Text(card.brand.orEmpty().uppercase(), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Spacer(Modifier.weight(1f))
                                         card.days?.let { Surface(shape = RoundedCornerShape(50), color = Color(0xFFE3F3E6)) {
                                             Text(it, Modifier.padding(horizontal = 8.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E6B3A)) } }
                                     }
-                                    Text(card.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                                    card.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                                    card.brand?.takeIf { it.isNotBlank() }?.let { Text(it.uppercase(), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                    Text(card.title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                     card.customerLine?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                     Box {
-                                        Surface(onClick = { if(canMove) menu = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp).testTag("board-move-${card.id}"), shape = square,
+                                        Surface(onClick = { if(canMove) menu = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp).testTag("board-move-${card.id}"), shape = square,
                                             color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface)) {
                                             Row(Modifier.padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                Text(columns.firstOrNull { it.status == card.status }?.label ?: card.status, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                                                Text(columns.firstOrNull { it.status == card.status }?.label ?: card.status, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                                 Text("▾", style = MaterialTheme.typography.bodySmall)
                                             }
                                         }
@@ -155,14 +156,9 @@ private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, 
                                             }
                                         }
                                     }
-                                    HorizontalDivider(color = line)
                                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(card.assignee ?: "Unassigned", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        card.price?.let { Text(it, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
-                                    }
-                                    Surface(onClick = { onOpen(card.id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp), shape = square,
-                                        color = MaterialTheme.colorScheme.background, border = BorderStroke(1.dp, line)) {
-                                        Box(contentAlignment = Alignment.Center) { Text("+ Log Work", style = MaterialTheme.typography.labelMedium) }
+                                        Text(card.assignee.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        card.price?.let { Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold) }
                                     }
                                 }
                             }

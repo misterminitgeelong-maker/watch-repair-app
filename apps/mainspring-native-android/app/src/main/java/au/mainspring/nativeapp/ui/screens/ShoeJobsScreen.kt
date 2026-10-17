@@ -205,9 +205,9 @@ private fun ShoeBoardCard(card: BoardCard, number: String, customer: String?, co
     onOpen: (String) -> Unit, onMove: (String, String) -> Unit) {
     var menu by remember(card.id, card.status) { mutableStateOf(false) }
     Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.clickable(role = Role.Button) { onOpen(card.id) }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.clickable(role = Role.Button) { onOpen(card.id) }.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(number, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
-            Text(card.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(card.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (!customer.isNullOrBlank()) Text(customer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (canMove) {
                 TextButton(onClick = { menu = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("board-move-${card.id}")) { Text("Move to…") }

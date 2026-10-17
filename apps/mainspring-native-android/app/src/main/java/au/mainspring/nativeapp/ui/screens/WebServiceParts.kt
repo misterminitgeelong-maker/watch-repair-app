@@ -276,26 +276,26 @@ internal data class WebKanbanColumn(val key: String, val label: String, val colo
  * count badge; an empty column says "No jobs in this stage." [card] draws one job (it gets the column colour).
  * A round chevron at the top right scrolls to the next columns, and a grey track shows the scroll position.
  */
-@Composable internal fun WebKanban(columns: List<WebKanbanColumn>, modifier: Modifier = Modifier, columnWidth: Dp = 232.dp, minColumnHeight: Dp = 300.dp,
+@Composable internal fun WebKanban(columns: List<WebKanbanColumn>, modifier: Modifier = Modifier, columnWidth: Dp = 168.dp, minColumnHeight: Dp = 96.dp,
     card: @Composable (BoardCard, Color) -> Unit) {
     val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box {
-            Row(Modifier.horizontalScroll(scroll).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            Row(Modifier.horizontalScroll(scroll).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
                 columns.forEach { col ->
                     Surface(Modifier.width(columnWidth).testTag("board-column-${col.key}"), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.surface,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                         Column {
                             Box(Modifier.fillMaxWidth().height(3.dp).background(col.color))
-                            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 10.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(col.label, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(col.label, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text("${col.cards.size}", Modifier.background(col.tint, CircleShape).padding(horizontal = 8.dp, vertical = 1.dp), style = MaterialTheme.typography.labelMedium, color = col.color)
                             }
                             androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Column(Modifier.heightIn(min = minColumnHeight).padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                if(col.cards.isEmpty()) Text("No jobs in this stage.", Modifier.fillMaxWidth().padding(top = 56.dp), style = MaterialTheme.typography.bodySmall,
+                            Column(Modifier.heightIn(min = minColumnHeight).padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if(col.cards.isEmpty()) Text("No jobs in this stage.", Modifier.fillMaxWidth().padding(vertical = 16.dp), style = MaterialTheme.typography.bodySmall,
                                     fontStyle = FontStyle.Italic, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 col.cards.forEach { c -> card(c, col.color) }
                             }
@@ -303,8 +303,8 @@ internal data class WebKanbanColumn(val key: String, val label: String, val colo
                     }
                 }
             }
-            if(scroll.maxValue > 0 && scroll.value < scroll.maxValue) Surface({ scope.launch { scroll.animateScrollTo(scroll.value + with(density) { (columnWidth + 10.dp).toPx() }.toInt()) } },
-                Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 12.dp).size(36.dp).semantics { contentDescription = "Scroll to next columns" },
+            if(scroll.maxValue > 0 && scroll.value < scroll.maxValue) Surface({ scope.launch { scroll.animateScrollTo(scroll.value + with(density) { (columnWidth + 8.dp).toPx() }.toInt()) } },
+                Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 8.dp).size(32.dp).semantics { contentDescription = "Scroll to next columns" },
                 shape = CircleShape, color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 1.dp) {
                 Box(contentAlignment = Alignment.Center) { GlyphIcon("chevronRight", size = 18.dp, color = MaterialTheme.colorScheme.onSurface) }
             }

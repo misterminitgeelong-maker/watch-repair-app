@@ -101,15 +101,15 @@ private val MOBILE_STAGES=listOf(
             val job=byId[card.id] ?: return@WebKanban
             val vehicle=listOfNotNull(job.vehicleYear?.toString(),job.vehicleMake,job.vehicleModel).filter {it.isNotBlank()}.joinToString(" ")
             Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface,border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
-                Column(Modifier.clickable(role=androidx.compose.ui.semantics.Role.Button) {onJob(job.id)}.padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.clickable(role=androidx.compose.ui.semantics.Role.Button) {onJob(job.id)}.padding(8.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text(job.jobNumber,Modifier.weight(1f),style=MaterialTheme.typography.labelLarge,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=color,maxLines=1)
                         AgeChip("${daysInShop(job.createdAt)}d")
                     }
-                    Text(job.title,style=MaterialTheme.typography.titleSmall,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,maxLines=2)
+                    Text(job.title,style=MaterialTheme.typography.bodyMedium,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,maxLines=2)
                     if(vehicle.isNotBlank()) Text(vehicle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1)
                     if(!job.customerName.isNullOrBlank()) Text(job.customerName,style=MaterialTheme.typography.bodySmall,maxLines=1)
-                    job.scheduledAt?.let {DatePill(formatShopDate(it,TokenStore.calendarTimezone()),Modifier.padding(top=4.dp))}
+                    job.scheduledAt?.let {DatePill(formatShopDate(it,TokenStore.calendarTimezone()),Modifier.padding(top=2.dp))}
                 }
             }
         }
