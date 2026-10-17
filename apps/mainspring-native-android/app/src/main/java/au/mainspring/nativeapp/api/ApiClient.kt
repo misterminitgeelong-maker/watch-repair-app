@@ -15,7 +15,10 @@ object ApiClient {
   val raw = (TokenStore.getApiBaseUrl() ?: BuildConfig.API_BASE_URL).trim()
   return if(raw.endsWith('/')) raw else "$raw/"
  }
+ /** Tells the server this is the native app, which gets a long sliding session (the website keeps its short one). */
+ const val CLIENT_HEADER = "X-Mainspring-Client"; const val CLIENT_NATIVE = "native-android"
  private fun clientBuilder() = OkHttpClient.Builder().connectTimeout(30,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS)
+  .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().header(CLIENT_HEADER, CLIENT_NATIVE).build()) }
  private fun logging() = HttpLoggingInterceptor().apply { level = if(BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE }
  private val extras = HashMap<Class<*>, Any>(); private var extrasKey = ""
  /** Additional Retrofit service interfaces share the same authenticated client and base URL as [api]. */

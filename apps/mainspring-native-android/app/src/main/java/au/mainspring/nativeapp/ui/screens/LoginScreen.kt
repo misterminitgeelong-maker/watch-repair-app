@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.padding
@@ -55,12 +56,12 @@ fun LoginScreen(
 ) {
     var slug by rememberSaveable { mutableStateOf(LoginPrefs.rememberedShopId()) }
     var rememberShop by rememberSaveable { mutableStateOf(LoginPrefs.rememberEnabled()) }
-    var email by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf(if(state.sessionEnded) LoginPrefs.lastEmail() else "") }
     var password by remember { mutableStateOf("") }
     var serverUrl by remember { mutableStateOf(ApiClient.getEffectiveBaseUrl()) }
     var showServerConfig by remember { mutableStateOf(false) }
     var showPassword by remember { mutableStateOf(false) }
-    val submit = { LoginPrefs.save(slug, rememberShop); onLogin(slug, email, password, serverUrl) }
+    val submit = { LoginPrefs.save(slug, rememberShop); LoginPrefs.saveEmail(email); onLogin(slug, email, password, serverUrl) }
 
     Column(
         Modifier
@@ -76,7 +77,10 @@ fun LoginScreen(
         Spacer(Modifier.height(40.dp))
         androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(au.mainspring.nativeapp.R.drawable.ic_launcher_vector), contentDescription = null, modifier = Modifier.size(88.dp))
         Text("Mainspring", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineMedium)
-        Text("Sign in to your shop", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if(state.sessionEnded) {
+            Text("Welcome back", Modifier.semantics { heading() }.testTag("welcome-back"), style = MaterialTheme.typography.titleLarge)
+            Text("It has been a while, so please sign in again. Your shop ID is filled in and your drafts are kept.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else Text("Sign in to your shop", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         if (showServerConfig) {
             au.mainspring.nativeapp.ui.AtelierTextField(

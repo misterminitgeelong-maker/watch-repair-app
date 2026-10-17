@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import au.mainspring.nativeapp.AppLock
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.ui.*
 
@@ -182,6 +183,30 @@ private const val MORE_COLUMNS = 4
     }
 }
 
+/** "Unlock with fingerprint, face or phone PIN": only shown when the phone has a screen lock; turning it on asks the phone first. */
+@Composable private fun AppLockSetting() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    if(!AppLock.available(context)) return
+    var on by remember { mutableStateOf(AppLock.enabled()) }
+    var note by remember { mutableStateOf<String?>(null) }
+    FlatPanel {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Unlock with fingerprint, face or PIN", style = MaterialTheme.typography.bodyLarge)
+                Text("Asks your phone to unlock Mainspring when you open it. Your shop password is never asked for.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(on, { want ->
+                note = null
+                if(!want) { AppLock.setEnabled(false); on = false }
+                else context.findFragmentActivity()?.let { act ->
+                    AppLock.prompt(act, "Turn on unlock", { AppLock.setEnabled(true); on = true }, { note = it })
+                }
+            }, Modifier.testTag("app-lock-switch").semantics { contentDescription = "Unlock with fingerprint, face or PIN" })
+        }
+        note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+    }
+}
+
 @Composable private fun SettingsPanels(shop: String?, summary: String?, features: Set<String>, canSwitch: Boolean, onSwitch: () -> Unit,
     fieldNavigation: Boolean, appearance: AppAppearance, owner: Boolean) {
     Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -191,6 +216,7 @@ private const val MORE_COLUMNS = 4
                 Switch(fieldNavigation, { DesignPreferences.fieldNavigation(it) }, Modifier.semantics { contentDescription = "Use field navigation" })
             }
         }
+        AppLockSetting()
         SectionLabel("Appearance")
         AppAppearance.entries.chunked(2).forEach { pair ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

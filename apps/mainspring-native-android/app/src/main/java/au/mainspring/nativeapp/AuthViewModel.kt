@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 data class AuthUiState(
+    /** True when a saved sign-in ended on its own: the sign-in screen then says "Welcome back" and offers the shop ID and email again. */
+    val sessionEnded: Boolean = false,
     val loading: Boolean = false,
     val error: String? = null,
     val loggedIn: Boolean = false,
@@ -41,7 +43,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch { TokenStore.expiredSessions.collect { generation ->
-            if(TokenStore.sessionGeneration() == generation && TokenStore.getAccessToken() == null) _state.value = AuthUiState(error = "Your session expired. Sign in again; your drafts are retained.")
+            if(TokenStore.sessionGeneration() == generation && TokenStore.getAccessToken() == null) _state.value = AuthUiState(sessionEnded = true)
         } }
         val token = TokenStore.getAccessToken()
         if (token != null) {

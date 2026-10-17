@@ -13,6 +13,10 @@ object LoginPrefs {
     /** Whether the checkbox is on; defaults to on until the user turns it off. */
     fun rememberEnabled(): Boolean = prefs()?.getBoolean(K_REMEMBER, true) ?: true
     fun rememberedShopId(): String = if(rememberEnabled()) prefs()?.getString(K_SHOP, null).orEmpty() else ""
+    private const val K_EMAIL = "last_email"
+    /** Email used for the last sign-in (not a secret); offered again only on the "Welcome back" prompt. */
+    fun lastEmail(): String = if(rememberEnabled()) prefs()?.getString(K_EMAIL, null).orEmpty() else ""
+    fun saveEmail(email: String) { if(rememberEnabled()) prefs()?.edit()?.putString(K_EMAIL, email.trim())?.apply() }
     fun save(shopId: String, remember: Boolean) {
         val p = prefs() ?: return
         p.edit().putBoolean(K_REMEMBER, remember).apply { if(remember) putString(K_SHOP, shopId.trim()) else remove(K_SHOP) }.apply()

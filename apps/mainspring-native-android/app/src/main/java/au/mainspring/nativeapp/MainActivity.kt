@@ -1,7 +1,7 @@
 package au.mainspring.nativeapp
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +19,7 @@ import au.mainspring.nativeapp.ui.screens.LoginScreen
 import au.mainspring.nativeapp.ui.screens.ConsoleLandingScreen
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent); setIntent(intent)
         au.mainspring.nativeapp.DeepLinkInbox.offer(intent.data?.toString())
@@ -33,12 +33,19 @@ class MainActivity : ComponentActivity() {
         au.mainspring.nativeapp.ConnectivityMonitor.init(applicationContext)
         au.mainspring.nativeapp.ui.RecentItems.init(applicationContext)
         au.mainspring.nativeapp.offline.OfflineSync.start()
+        if (savedInstanceState == null) AppLock.onColdStart()
+        lifecycle.addObserver(androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if(event == androidx.lifecycle.Lifecycle.Event.ON_STOP) AppLock.onBackground()
+            if(event == androidx.lifecycle.Lifecycle.Event.ON_START) AppLock.onForeground()
+        })
         if (savedInstanceState == null) au.mainspring.nativeapp.DeepLinkInbox.offer(intent?.data?.toString())
         setContent {
             MainspringTheme {
                 Surface(Modifier.fillMaxSize()) {
                     val authVm: AuthViewModel = viewModel(factory = AuthViewModelFactory(application))
                     val authState by authVm.state.collectAsStateWithLifecycle()
+                    val appLocked by AppLock.locked.collectAsStateWithLifecycle()
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     if (authState.loggedIn) {
                         key(authState.sessionKey) {
                         if(authState.consoleOnly) ConsoleLandingScreen(authState,authVm::switchSite,onOpenWeb = {
@@ -74,6 +81,8 @@ class MainActivity : ComponentActivity() {
                             apiBaseUrl = au.mainspring.nativeapp.api.ApiClient.getEffectiveBaseUrl(),
                             onLogin = { slug, email, pass, serverUrl -> authVm.login(slug, email, pass, serverUrl) },
                         )
+                    }
+                    if(authState.loggedIn && appLocked) au.mainspring.nativeapp.ui.screens.AppLockOverlay(onUnlock = AppLock::unlocked, onSignOut = { AppLock.unlocked(); authVm.logout() })
                     }
                 }
             }
