@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,8 +50,10 @@ fun TodayHubScreen(
     val date = LocalDate.now(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.forLanguageTag("en-AU")))
     val canWork = TokenStore.canWorkJobs()
     val todayIso = LocalDate.now(zone).toString()
-    val dueToday = hub.jobs.filter { it.active && it.dueDate?.take(10)?.let { d -> d <= todayIso } == true }.sortedBy { it.sortKey }.take(5)
-    val attention = hub.jobs.filter { it.needsAttention && it.active && (!LocalCalibre.current || dueToday.none { d -> d.id == it.id }) }.sortedBy { it.sortKey }.take(4)
+    val dueAll = hub.jobs.filter { it.active && it.dueDate?.take(10)?.let { d -> d <= todayIso } == true }.sortedBy { it.sortKey }
+    val dueToday = dueAll.take(5)
+    val attentionAll = hub.jobs.filter { it.needsAttention && it.active && (!LocalCalibre.current || dueToday.none { d -> d.id == it.id }) }.sortedBy { it.sortKey }
+    val attention = attentionAll.take(4)
     val widgets = dash.widgets
     val summary = dash.summary?.takeIf { TokenStore.canManageInvoices() }
     val calibre = LocalCalibre.current
@@ -84,9 +87,10 @@ fun TodayHubScreen(
                     }
                 }
             }
+            item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Mine" to hub.mineCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp), onItemClick = { onViewAll() }) }
             item {
                 Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MonoLabel("Quick actions")
+                    BlockHeader("Shortcuts")
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if(canWork) AtelierChip(false, onNewIntake, { Text("New intake") })
                         AtelierChip(false, { onOpenRoute("newCustomer") }, { Text("New customer") })
@@ -96,10 +100,10 @@ fun TodayHubScreen(
                     }
                 }
             }
-            item { MetricStrip(listOf("On the bench" to hub.activeCount.toString(), "Mine" to hub.mineCount.toString(), "Ready to collect" to hub.readyCount.toString()), Modifier.padding(horizontal = 20.dp)) }
-            if(dueToday.isNotEmpty()) item {
-                Column(Modifier.padding(horizontal = 20.dp)) {
-                    SectionLabel("Due today")
+            item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BlockHeader("Due today", count = dueAll.size, onSeeAll = onViewAll, seeAllDescription = "See all jobs")
+                    if(dueToday.isEmpty()) Text("Nothing due today.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     dueToday.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
                 }
             }
@@ -138,19 +142,20 @@ fun TodayHubScreen(
                 }
             }
         }
-        if(hub.error != null) item { ErrorBanner(hub.error.orEmpty(), Modifier.padding(horizontal = 20.dp), onRetry = jobs::refresh) }
-        item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = if(calibre) 20.dp else 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                if(calibre) MonoLabel("Needs your attention", Modifier.weight(1f)) else Text("Needs your attention", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = onViewAll, modifier = Modifier.heightIn(min = 44.dp)) { Text("View all", style = MaterialTheme.typography.labelLarge) }
-            }
-        }
         val actions = buildList {
             widgets?.let { w ->
                 if(w.overdueJobsCount > 0) add(Triple("Jobs awaiting go-ahead", "${w.overdueJobsCount} waiting 14+ days", "watch_jobs"))
                 if(w.overdueCollectionCount > 0) add(Triple("Jobs past collection date", "${w.overdueCollectionCount} overdue for collection", "watch_jobs"))
                 if(w.quotesPending7dCount > 0) add(Triple("Quotes waiting for an answer", "${w.quotesPending7dCount} sent more than 7 days ago", "quotes"))
                 if(w.overdueInvoicesCount > 0) add(Triple("Unpaid invoices", "${w.overdueInvoicesCount} outstanding", "invoices"))
+            }
+        }
+        if(hub.error != null) item { ErrorBanner(hub.error.orEmpty(), Modifier.padding(horizontal = 20.dp), onRetry = jobs::refresh) }
+        item {
+            if(calibre) Box(Modifier.padding(horizontal = 20.dp)) { BlockHeader("Needs your attention", count = attentionAll.size + actions.size + (dash.inboxCount?.takeIf { it > 0 }?.let { 1 } ?: 0), onSeeAll = onViewAll, seeAllDescription = "See all jobs needing attention") }
+            else Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Needs your attention", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = onViewAll, modifier = Modifier.heightIn(min = 44.dp)) { Text("View all", style = MaterialTheme.typography.labelLarge) }
             }
         }
         if(attention.isEmpty() && actions.isEmpty()) item {
@@ -172,15 +177,20 @@ fun TodayHubScreen(
             item { AttentionCard("Inbox", if(n == 1) "1 unread alert" else "$n unread alerts") { onOpenRoute("inbox") } }
         }
         if(calibre) {
+            if(summary != null) item {
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BlockHeader("Money", onSeeAll = { onOpenRoute("reports") }, seeAllDescription = "See all reports")
+                    RevenueKpis(summary, showLabel = false)
+                }
+            }
             item {
                 val recent by RecentItems.items.collectAsStateWithLifecycle()
                 val resolved = recent.mapNotNull { key -> hub.jobs.firstOrNull { "${it.service}/${it.id}" == key } }.filter { r -> dueToday.none { it.id == r.id } }.take(3)
-                if(resolved.isNotEmpty()) Column(Modifier.padding(horizontal = 20.dp)) {
-                    SectionLabel("Recent")
+                if(resolved.isNotEmpty()) Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BlockHeader("Recent")
                     resolved.forEach { job -> HubJobCard(job, { onOpenJob(job) }) }
                 }
             }
-            if(summary != null) item { RevenueKpis(summary, Modifier.padding(horizontal = 20.dp)) }
         }
         if(canWork && !calibre) item {
             PrimaryAction(onClick = onNewIntake, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
@@ -191,13 +201,13 @@ fun TodayHubScreen(
 }
 
 @Suppress("USELESS_CAST", "SENSELESS_COMPARISON")
-@Composable private fun RevenueKpis(s: au.mainspring.nativeapp.api.ReportsSummaryResponse, modifier: Modifier = Modifier) {
+@Composable private fun RevenueKpis(s: au.mainspring.nativeapp.api.ReportsSummaryResponse, modifier: Modifier = Modifier, showLabel: Boolean = true) {
     fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
     val f = s.financials as au.mainspring.nativeapp.api.ReportsFinancials?
     if(f == null) return
     val approval = (s.salesFunnel as au.mainspring.nativeapp.api.SalesFunnelSummary?)?.approvalRatePercent?.toInt() ?: 0
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        MonoLabel("Business this period")
+        if(showLabel) MonoLabel("Business this period")
         MetricStrip(listOf("Revenue" to money(f.revenueCents), "Gross profit" to money(f.grossProfitCents), "Approval rate" to "$approval%"))
         MetricStrip(listOf("Outstanding" to money(f.outstandingCents), "Billed" to money(f.billedCents)))
     }
@@ -210,5 +220,15 @@ fun TodayHubScreen(
             Text("›", style = MaterialTheme.typography.titleLarge)
         }
         Text(detail, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Calibre block header: title, optional count, and an optional "See all" link on the right. */
+@Composable private fun BlockHeader(title: String, count: Int? = null, onSeeAll: (() -> Unit)? = null, seeAllDescription: String = "See all") {
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        if(count != null) { Spacer(Modifier.width(8.dp)); MonoLabel(count.toString()) }
+        Spacer(Modifier.weight(1f))
+        if(onSeeAll != null) TextButton(onClick = onSeeAll, modifier = Modifier.heightIn(min = 44.dp).semantics { contentDescription = seeAllDescription }) { Text("See all", style = MaterialTheme.typography.labelLarge) }
     }
 }

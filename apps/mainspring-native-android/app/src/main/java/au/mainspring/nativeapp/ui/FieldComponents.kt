@@ -87,13 +87,13 @@ val CalibreCardShape = androidx.compose.foundation.shape.RoundedCornerShape(12.d
         onTextLayout = { if(it.hasVisualOverflow && size.value > 16f) size = (size.value * 0.9f).coerceAtLeast(16f).sp })
 }
 
-@Composable fun MetricStrip(values: List<Pair<String, String>>, modifier: Modifier = Modifier) {
+@Composable fun MetricStrip(values: List<Pair<String, String>>, modifier: Modifier = Modifier, onItemClick: ((String) -> Unit)? = null) {
     if(LocalCalibre.current) {
         Surface(modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = 1.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 values.forEach { (label, value) ->
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(Modifier.weight(1f).then(if(onItemClick != null) Modifier.heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onItemClick(label) } else Modifier), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         KpiNumber(value)
                         MonoLabel(label)
                     }
@@ -104,7 +104,7 @@ val CalibreCardShape = androidx.compose.foundation.shape.RoundedCornerShape(12.d
     }
     Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         values.forEach { (label, value) ->
-            Surface(Modifier.weight(1f).fillMaxHeight(), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+            Surface(Modifier.weight(1f).fillMaxHeight().then(if(onItemClick != null) Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onItemClick(label) } else Modifier), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(value, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
                     Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

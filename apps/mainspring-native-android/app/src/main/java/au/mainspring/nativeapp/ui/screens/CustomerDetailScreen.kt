@@ -41,7 +41,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
             }
             else -> {
                 val customer = state.customer!!
-                var tab by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("repairs") }
+                var tab by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("jobs") }
                 var jobView by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("active") }
                 val inView = { status: String -> (status in CUSTOMER_NON_ACTIVE_STATUSES) == (jobView == "completed") }
                 LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -49,7 +49,6 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                         if(state.loading || state.paging != null) LinearProgressIndicator(Modifier.fillMaxWidth())
                         state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::load) }
                         val contact = listOf("Phone" to customer.phone, "Email" to customer.email, "Address" to customer.address, "Notes" to customer.notes).filter { !it.second.isNullOrBlank() }
-                        val context = androidx.compose.ui.platform.LocalContext.current
                         au.mainspring.nativeapp.ui.FlatPanel {
                             val initials = customer.fullName.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }.ifBlank { "?" }
                             if(au.mainspring.nativeapp.ui.LocalCalibre.current) Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -62,14 +61,17 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                             Text(initials, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary)
                             Text("Customer since ${formatShopDate(customer.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.titleMedium)
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if(!customer.phone.isNullOrBlank()) TextButton({ runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.fromParts("tel", customer.phone, null))) } }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Call") }
-                                if(!customer.email.isNullOrBlank()) TextButton({ runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, android.net.Uri.fromParts("mailto", customer.email, null))) } }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Email") }
-                                TextButton({ onEdit(customerId) }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Edit details") }
-                            }
+                            au.mainspring.nativeapp.ui.ContactQuickActions(customer.phone, customer.email, Modifier.fillMaxWidth())
+                            au.mainspring.nativeapp.ui.SectionLabel("Overview")
+                            if(contact.isEmpty()) Text("No contact details on file.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            contact.forEach { (label, value) -> au.mainspring.nativeapp.ui.DetailRow(label, value.orEmpty()) }
+                            TextButton({ onEdit(customerId) }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Edit details") }
                         }
                     }
-                    item { au.mainspring.nativeapp.ui.SegmentedPills(listOf("repairs" to "Repairs", "orders" to "Orders", "account" to "Account"), tab, { tab = it }) }
+                    item {
+                        val jobTotal = state.watchJobs.size + state.shoeJobs.size + state.mobileJobs.size
+                        au.mainspring.nativeapp.ui.SegmentedPills(customerTabs(features, jobTotal, state.watches.size, state.orders.size.takeIf { state.ordersLoaded }), tab, { tab = it })
+                    }
                     if(tab == "orders") {
                         val currency = TokenStore.shopValue("currency") ?: "AUD"
                         item {
@@ -92,14 +94,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                     if(tab == "account") item {
                         LoyaltyAndMergeSection(state, vm, customer.fullName)
                     }
-                    if(tab == "account") item {
-                        val contactRows = listOf("Phone" to customer.phone, "Email" to customer.email, "Address" to customer.address, "Notes" to customer.notes).filter { !it.second.isNullOrBlank() }
-                        au.mainspring.nativeapp.ui.FlatPanel {
-                            if(contactRows.isEmpty()) Text("No contact details on file.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            contactRows.forEach { (label, value) -> au.mainspring.nativeapp.ui.DetailRow(label, value.orEmpty()) }
-                        }
-                    }
-                    if(tab == "repairs") item {
+                    if(tab == "jobs") item {
                         val services = listOf("watch" in features, "shoe" in features, "auto_key" in features)
                         val first = customer.fullName.substringBefore(' ')
                         if(services.count { it } == 1) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { if(services[0]) onNewRepair(customerId) else if(services[1]) onNewShoe(customerId) else onNewMobile(customerId) },
@@ -111,14 +106,14 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                             if("auto_key" in features) OutlinedButton(onClick = { onNewMobile(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("New mobile job") }
                         }
                     }
-                    if(tab == "repairs") item {
+                    if(tab == "jobs") item {
                         val all = state.watchJobs.map { it.status } + state.shoeJobs.map { it.status } + state.mobileJobs.map { it.status }
                         val activeCount = all.count { it !in CUSTOMER_NON_ACTIVE_STATUSES }
                         au.mainspring.nativeapp.ui.SegmentedPills(listOf("active" to "Active ($activeCount)", "completed" to "Completed (${all.size - activeCount})"), jobView, { jobView = it })
                     }
-                    if(tab == "repairs" && "watch" in features) {
+                    if(tab == "watches" && "watch" in features) {
                         item {
-                            au.mainspring.nativeapp.ui.SectionLabel("Watches")
+                            au.mainspring.nativeapp.ui.SectionLabel("Watches (${state.watches.size})")
                             state.historyErrors["watches"]?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                             if(state.watches.isEmpty() && "watches" !in state.historyErrors) Text("No watches on file.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -135,20 +130,28 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                         }
                         item { OutlinedButton({ onAddWatch(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add watch") } }
                         if("watches" in state.more) item { OutlinedButton(onClick = { vm.loadMore("watches") },enabled = !state.loading && state.paging == null, modifier = Modifier.fillMaxWidth()) { Text("Load older watches") } }
-                        historySection("Watch repair jobs","watch",state.watchJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenWatchJob,vm)
                     }
-                    if(tab == "repairs" && "shoe" in features) historySection("Shoe repair jobs","shoe",state.shoeJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenShoeJob,vm)
-                    if(tab == "repairs" && "auto_key" in features) historySection("Mobile service jobs","mobile",state.mobileJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenMobileJob,vm)
+                    if(tab == "jobs" && "watch" in features) historySection("Watch repair jobs","watch",state.watchJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenWatchJob,vm)
+                    if(tab == "jobs" && "shoe" in features) historySection("Shoe repair jobs","shoe",state.shoeJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenShoeJob,vm)
+                    if(tab == "jobs" && "auto_key" in features) historySection("Mobile service jobs","mobile",state.mobileJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenMobileJob,vm)
                 }
             }
         }
     }
 }
 
+/** Segment keys and labels for the customer profile; counts make each tab worth opening before tapping it. */
+internal fun customerTabs(features: Set<String>, jobCount: Int, watchCount: Int, orderCount: Int?): List<Pair<String, String>> = buildList {
+    add("jobs" to "Jobs ($jobCount)")
+    if("watch" in features) add("watches" to "Watches ($watchCount)")
+    add("orders" to if(orderCount != null) "Orders ($orderCount)" else "Orders")
+    add("account" to "Account")
+}
+
 private fun LazyListScope.historySection(title: String, section: String, rows: List<CustomerHistoryRow>, state: CustomerDetailUiState,
     onOpen: (String) -> Unit, vm: CustomerDetailViewModel) {
     item {
-        au.mainspring.nativeapp.ui.SectionLabel(title)
+        au.mainspring.nativeapp.ui.SectionLabel("$title (${rows.size})")
         state.historyErrors[section]?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
         if(rows.isEmpty() && section !in state.historyErrors) Text("No ${title.lowercase()} for this customer.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
