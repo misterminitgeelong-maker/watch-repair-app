@@ -44,3 +44,6 @@ Thumbs.db
 .idea/
 
 .claude/
+
+# local QA backend state (generated, machine-specific)
+artifacts/native-local-backend/
