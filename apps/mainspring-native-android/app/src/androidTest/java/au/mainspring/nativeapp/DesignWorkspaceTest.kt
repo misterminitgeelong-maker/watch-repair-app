@@ -196,7 +196,7 @@ class DesignWorkspaceTest {
     }
     @Test fun plannerMoveThenSlotRequiresAConfirmedVersionedBookingUpdate() {
         compose.setContent {MainspringTheme {MobileWorkBoardScreen(server.url("/").toString(),{},{},{},{})}}
-        compose.onNodeWithText("Planner").performClick()
+        compose.onNodeWithTag("view-select").performClick(); compose.onNodeWithText("Planner").performClick()
         compose.waitUntil(10_000) {compose.onAllNodesWithTag("planner-move-first").fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithTag("planner-move-first").performSemanticsAction(SemanticsActions.OnClick) {it()}
         val day=LocalDate.now(ZoneId.of("Australia/Sydney"))

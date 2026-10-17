@@ -20,26 +20,40 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
 import au.mainspring.nativeapp.api.AutoKeyJobRead
 import au.mainspring.nativeapp.ui.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import java.time.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun MobileWorkBoardScreen(apiBaseUrl: String,onBack: () -> Unit,onOpenJob: (String) -> Unit,onNewJob: () -> Unit,onNavigate: (String)->Unit) {
-    var mode by rememberSaveable {mutableStateOf("list")}
+    // Web default is the Kanban; a tablet keeps the master-detail list.
+    val wide=androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp>=720
+    var mode by rememberSaveable {mutableStateOf(if(wide) "list" else "board")}
     var selected by rememberSaveable {mutableStateOf<String?>(null)}
     Scaffold(contentWindowInsets=WindowInsets(0,0,0,0),containerColor=androidx.compose.ui.graphics.Color.Transparent,
         floatingActionButton={if(TokenStore.canWorkJobs()) NewJobFab(onNewJob)}) {padding->
     Column(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            ServiceTitle("Jobs & dispatch",Modifier.padding(top=8.dp))
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
-                TextToggle(listOf(ToggleOption("list","List","view-list"),ToggleOption("board","Kanban","view-board"),ToggleOption("planner","Planner","view-planner")),mode,{mode=it})
-                SecondaryAction({onNavigate("route")},Modifier.padding(start=8.dp)) {Text("Map")}
+            ServiceTitle("Mobile Services",Modifier.padding(top=8.dp))
+            var menuOpen by remember {mutableStateOf(false)}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                Box {
+                    WebButton(null,{menuOpen=true},icon="dots",tag="mobile-menu",description="More options")
+                    DropdownMenu(menuOpen,{menuOpen=false}) {
+                        DropdownMenuItem(text={Text("Map")},onClick={menuOpen=false;onNavigate("route")})
+                        DropdownMenuItem(text={Text("Booking requests")},onClick={menuOpen=false;onNavigate("bookingRequests")})
+                    }
+                }
+                if(TokenStore.canWorkJobs()) WebButton("New Job",onNewJob,primary=true,icon="plus",tag="new-job-ticket")
+                WebButton("Send request",{onNavigate("sendBookingRequest")},icon="phone",tag="send-request")
             }
-            if(TokenStore.canWorkJobs()) NewTicketButton("New Job Ticket",onNewJob)
+            ChipTabs(listOf(ToggleOption("jobs","Jobs & dispatch","tab-jobs"),ToggleOption("revenue","Revenue control","tab-revenue"),ToggleOption("team","Team","tab-team"),ToggleOption("finance","Finance report","tab-finance")),"jobs",
+                {when(it) {"revenue"->onNavigate("revenueControl");"team"->onNavigate("team");"finance"->onNavigate("financeReport")}})
+            WebSelect(when(mode) {"board"->"Kanban";"planner"->"Planner";else->"List"},listOf("board" to "Kanban","list" to "List","planner" to "Planner"),{mode=it},tag="view-select",description="Job view")
         }
         BoxWithConstraints(Modifier.weight(1f)) {
             when(mode) {
-                "board" -> MobileKanbanScreen(onBack,onOpenJob,onNewJob)
+                "board" -> MobileKanbanScreen(onOpenJob)
                 "planner" -> WeekPlannerScreen(onBack,onOpenJob)
                 else -> if(maxWidth>=720.dp) Row(Modifier.fillMaxSize()) {
                     Box(Modifier.width(320.dp)) {AutoKeyJobsScreen(onBack,{selected=it},onNewJob,embedded=true,onOpenBookingRequests={onNavigate("bookingRequests")})}
@@ -56,42 +70,50 @@ import java.time.*
     }
 }
 
-private fun boardColumn(status: String)=when(status) {
-    "awaiting_quote","awaiting_customer_details"->"Awaiting quote"
-    "quote_sent","awaiting_go_ahead"->"Quote sent"
-    "booked","booking_confirmed","awaiting_booking_confirmation","pending_booking","go_ahead","booking_on_hold","job_delayed","awaiting_parts"->"Booked"
-    "en_route","on_site","working_on","service"->"In the field"
-    "work_completed","completed","booking_completed","awaiting_collection"->"Completed"
-    "invoice_paid","collected"->"Paid"
-    else->"Other"
-}
+/** The web's active Mobile Services stages (frontend/src/components/kanban/columns.ts): label, statuses, top-edge colour, badge tint. */
+private class MobileStage(val key: String,val label: String,val statuses: Set<String>,val color: androidx.compose.ui.graphics.Color,val tint: androidx.compose.ui.graphics.Color)
+private val MOBILE_STAGES=listOf(
+    MobileStage("awaiting_quote","Awaiting Quote",setOf("awaiting_quote","awaiting_customer_details"),androidx.compose.ui.graphics.Color(0xFF9A5F10),androidx.compose.ui.graphics.Color(0xFFFAEEDB)),
+    MobileStage("quote_sent","Quote Sent",setOf("quote_sent","awaiting_go_ahead"),androidx.compose.ui.graphics.Color(0xFF2A5FA0),androidx.compose.ui.graphics.Color(0xFFEDF3FA)),
+    MobileStage("awaiting_booking_confirmation","Awaiting Booking Confirmation",setOf("awaiting_booking_confirmation","pending_booking"),androidx.compose.ui.graphics.Color(0xFF3E6FB0),androidx.compose.ui.graphics.Color(0xFFE7F0FA)),
+    MobileStage("booking_confirmed","Booking Confirmed",setOf("booking_confirmed","booked","go_ahead"),androidx.compose.ui.graphics.Color(0xFFB06010),androidx.compose.ui.graphics.Color(0xFFFFF0E0)),
+    MobileStage("booking_on_hold","Booking on Hold",setOf("booking_on_hold","job_delayed","awaiting_parts"),androidx.compose.ui.graphics.Color(0xFFA84F1A),androidx.compose.ui.graphics.Color(0xFFFDE8D8)),
+    MobileStage("in_field","In the Field",setOf("en_route","on_site","working_on","service"),androidx.compose.ui.graphics.Color(0xFF6A3FC9),androidx.compose.ui.graphics.Color(0xFFEDE5F5)),
+    MobileStage("work_completed","Work Completed",setOf("work_completed","completed","booking_completed","awaiting_collection"),androidx.compose.ui.graphics.Color(0xFF1E7040),androidx.compose.ui.graphics.Color(0xFFE8F5ED)),
+)
+
+/** Web "Mobile Services - Kanban": heading, active-job caption and one coloured column per stage with web-style job cards. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun MobileKanbanScreen(onBack: ()->Unit,onJob: (String)->Unit,onNew: ()->Unit,model: AutoKeyJobsViewModel=viewModel(key="kanban")) {
+@Composable private fun MobileKanbanScreen(onJob: (String)->Unit,model: AutoKeyJobsViewModel=viewModel(key="kanban")) {
     val state by model.state.collectAsStateWithLifecycle()
-    LaunchedEffect(model) {model.directory("all")}
-    Scaffold(contentWindowInsets=WindowInsets(0,0,0,0),containerColor=androidx.compose.ui.graphics.Color.Transparent) {padding->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            au.mainspring.nativeapp.ui.AtelierTextField(state.query,model::query,label={Text("Search jobs")},modifier=Modifier.fillMaxWidth().padding(12.dp),singleLine=true)
-            Text("${state.jobs.size} of ${state.total} jobs loaded",Modifier.padding(horizontal=12.dp),style=MaterialTheme.typography.bodySmall)
-            state.error?.let {Text(it,Modifier.padding(12.dp),color=MaterialTheme.colorScheme.error)}
-            if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(12.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                listOf("Awaiting quote","Quote sent","Booked","In the field","Completed","Paid","Other").forEach {label->
-                    val rows=state.jobs.filter {boardColumn(it.status)==label}
-                    Column(Modifier.width(240.dp)) {
-                        SectionLabel("$label · ${rows.size}")
-                        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp)) {items(rows,key={it.id}) {job->FlatPanel {
-                            Text(job.title,style=MaterialTheme.typography.titleSmall)
-                            Text(job.customerName ?: job.jobNumber,style=MaterialTheme.typography.bodySmall)
-                            job.scheduledAt?.let {Text(formatShopDate(it),style=MaterialTheme.typography.bodySmall)}
-                            StatusPill(job.status)
-                            if(LocalCalibre.current) LinkAction({onJob(job.id)}) {Text("Open job")} else TextButton({onJob(job.id)}) {Text("Open job")}
-                        } } }
+    LaunchedEffect(model) {model.directory("active")}
+    val byId=state.jobs.associateBy {it.id}
+    val stages=MOBILE_STAGES.map {st->WebKanbanColumn(st.key,st.label,st.color,st.tint,state.jobs.filter {it.status in st.statuses}.map {BoardCard(it.id,it.title,it.customerName.orEmpty(),it.status)})}
+    val active=stages.sumOf {it.cards.size}
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+            Text("Mobile Services \u2014 Kanban",style=MaterialTheme.typography.titleMedium,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+            Text("$active active job${if(active==1) "" else "s"} across ${stages.size} stages",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it,Modifier.padding(horizontal=16.dp),onRetry={model.refresh()})}
+        if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        WebKanban(stages) {card,color->
+            val job=byId[card.id] ?: return@WebKanban
+            val vehicle=listOfNotNull(job.vehicleYear?.toString(),job.vehicleMake,job.vehicleModel).filter {it.isNotBlank()}.joinToString(" ")
+            Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface,border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+                Column(Modifier.clickable(role=androidx.compose.ui.semantics.Role.Button) {onJob(job.id)}.padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text(job.jobNumber,Modifier.weight(1f),style=MaterialTheme.typography.labelLarge,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=color,maxLines=1)
+                        AgeChip("${daysInShop(job.createdAt)}d")
                     }
+                    Text(job.title,style=MaterialTheme.typography.titleSmall,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,maxLines=2)
+                    if(vehicle.isNotBlank()) Text(vehicle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1)
+                    if(!job.customerName.isNullOrBlank()) Text(job.customerName,style=MaterialTheme.typography.bodySmall,maxLines=1)
+                    job.scheduledAt?.let {DatePill(formatShopDate(it,TokenStore.calendarTimezone()),Modifier.padding(top=4.dp))}
                 }
             }
-            if(state.jobs.size<state.total) Button(model::loadMore,enabled=!state.loading,modifier=Modifier.padding(12.dp),shape=MaterialTheme.shapes.small) {Text("Load more jobs")}
         }
+        if(state.jobs.size<state.total) SecondaryAction(model::loadMore,Modifier.padding(horizontal=16.dp),enabled=!state.loading) {Text("Load more jobs")}
     }
 }
 
