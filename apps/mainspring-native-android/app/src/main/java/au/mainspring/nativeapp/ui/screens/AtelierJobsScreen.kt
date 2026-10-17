@@ -67,20 +67,6 @@ internal fun HubJob.statusLine(): String {
     }
 }
 
-/** "13 jobs" on the left, a compact Sort menu on the right. */
-@Composable private fun JobsCountSortRow(count: Int, sort: String, onSort: (String) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(countLabel(count, "job"), Modifier.weight(1f).testTag("jobs-count"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Box {
-            TextButton({ open = true }, Modifier.heightIn(min = 48.dp).testTag("jobs-sort")) { Text("Sort: " + (JOB_SORTS.firstOrNull { it.first == sort }?.second ?: "Default") + " ▾") }
-            DropdownMenu(open, { open = false }) {
-                JOB_SORTS.forEach { (key, label) -> DropdownMenuItem({ Text(label) }, { onSort(key); open = false }, Modifier.testTag("jobs-sort-$key")) }
-            }
-        }
-    }
-}
-
 fun hubJobRoute(job: HubJob) = when(job.service) { "watch" -> "watchJob/${job.id}"; "shoe" -> "shoeJob/${job.id}"; else -> "autoKeyJob/${job.id}" }
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -100,34 +86,37 @@ fun AtelierJobsScreen(
         if("auto_key" in features) add("auto_key" to "Mobile")
     }
     val shown = state.visible
-    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { LargeHeader((shopName ?: "Your shop") + (if(services.size == 1) " \u00b7 " + services.single().second else " \u00b7 All services"), jobsTabLabel(features), onAdd = onNew, addDescription = "New job") }
-        stickyHeader(key = "filters", contentType = "filters") {
-            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(top = 4.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            au.mainspring.nativeapp.ui.AtelierTextField(state.query, viewModel::setQuery, singleLine = true, placeholder = { Text("Job, customer or reference") },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), shape = MaterialTheme.shapes.small,
-                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))
-            SegmentedPills(listOf("active" to "Active ${state.activeCount}", "mine" to "Mine ${state.mineCount}", "ready" to "Ready ${state.readyCount}"),
-                state.segment, viewModel::setSegment, Modifier.padding(horizontal = 20.dp))
-            if(services.size > 1) SegmentedPills(listOf("all" to "All") + services, state.service, viewModel::setService, Modifier.padding(horizontal = 20.dp))
-            JobsCountSortRow(shown.size, state.sort, viewModel::setSort)
+    var filtersOpen by remember { mutableStateOf(false) }
+    val today = LocalDate.now().toString()
+    val dueToday = shown.filter { it.dueDate?.take(10)?.let { d -> d <= today } == true }
+    val rest = shown - dueToday.toSet()
+    val filterCount = (if(state.sort != "default") 1 else 0) + (if(state.service != "all") 1 else 0)
+    Box(Modifier.fillMaxSize()) {
+    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ServiceTitle("All jobs", Modifier.padding(top = 8.dp))
+                SegmentedPills(listOf("active" to "Active ${state.activeCount}", "mine" to "Mine ${state.mineCount}", "ready" to "Ready ${state.readyCount}"), state.segment, viewModel::setSegment)
+                SearchFiltersRow(state.query, viewModel::setQuery, "Job, customer or reference", { filtersOpen = true }, filterCount)
             }
         }
-        if(state.loading && state.jobs.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
-        state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = viewModel::refresh) } }
+        if(state.loading && state.jobs.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) }
+        state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 16.dp), onRetry = viewModel::refresh) } }
         if(!state.loading && state.error == null && shown.isEmpty()) item {
-            EmptyState(if(state.query.isNotBlank()) "Nothing matches that search" else "No jobs here yet", "Try another filter, or start a new intake with the + button.")
+            EmptyState(if(state.query.isNotBlank()) "Nothing matches that search" else "No jobs here yet", "Try another filter, or start a new intake with the New Job button.")
         }
-        val today = LocalDate.now().toString()
-        val dueToday = shown.filter { it.dueDate?.take(10)?.let { d -> d <= today } == true }
-        val rest = shown - dueToday.toSet()
-        if(dueToday.isNotEmpty()) item { Text("DUE TODAY", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        items(dueToday, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
-        if(rest.isNotEmpty() && dueToday.isNotEmpty()) item { Text("LATER", Modifier.padding(horizontal = 24.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        items(rest, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
+        if(dueToday.isNotEmpty()) item { Text("DUE TODAY", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        items(dueToday, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 16.dp)) }
+        if(rest.isNotEmpty() && dueToday.isNotEmpty()) item { Text("LATER", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        items(rest, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 16.dp)) }
     } }
+    NewJobFab(onNew, Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
+    }
+    if(filtersOpen) FiltersSheet(onDismiss = { filtersOpen = false }, onReset = { viewModel.setSort("default"); viewModel.setService("all") }) {
+        Text(countLabel(shown.size, "job"), Modifier.testTag("jobs-count"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FilterSection("Sort by") { JOB_SORTS.forEach { (key, label) -> SheetChip(label, state.sort == key, { viewModel.setSort(key) }, "jobs-sort-$key") } }
+        if(services.size > 1) FilterSection("Service") { (listOf("all" to "All") + services).forEach { (key, label) -> SheetChip(label, state.service == key, { viewModel.setService(key) }) } }
+    }
 }
 
 class JobsHubFactory(private val features: Set<String>) : androidx.lifecycle.ViewModelProvider.Factory {

@@ -30,11 +30,21 @@ data class JobsUiState(
     val board: Boolean = false,
     val movingId: String? = null,
     val savedViews: List<SavedJobView> = emptyList(),
+    /** Completed tab (web "Completed") instead of Active. */
+    val showCompleted: Boolean = false,
 ) {
-    /** Jobs after the client-side age filter and sort. */
+    /** Jobs after the client-side Active/Completed split, age filter and sort. */
     val visibleJobs: List<RepairJobRead> get() = sortJobs(
-        jobs.filter { minDaysInShop == null || daysInShop(it.createdAt) >= minDaysInShop }, sort)
+        jobs.filter { isWatchCompleted(it.status) == showCompleted && (minDaysInShop == null || daysInShop(it.createdAt) >= minDaysInShop) }, sort)
+    val activeCount: Int get() = jobs.count { !isWatchCompleted(it.status) }
+    val completedCount: Int get() = jobs.count { isWatchCompleted(it.status) }
+    /** Number of non-default Filters-sheet choices, for the "Filters" button badge. */
+    val activeFilterCount: Int get() = listOf(statusFilter != null, sort != JobSort.NEWEST, minDaysInShop != null, technicianId != null).count { it }
 }
+
+/** Statuses that belong on the Completed tab; everything else is Active. */
+val WATCH_COMPLETED_STATUSES: Set<String> = setOf("collected", "invoice_paid", "failed_job", "no_go")
+fun isWatchCompleted(status: String): Boolean = status in WATCH_COMPLETED_STATUSES
 
 enum class JobSort(val label: String) {
     NEWEST("Newest"), OLDEST("Oldest"), DUE("Due date"), CUSTOMER("Customer"),
@@ -65,12 +75,12 @@ class JobsViewModel : ViewModel() {
         loadUsers()
     }
 
-    fun currentView() = _state.value.let { SavedJobView("", it.statusFilter, it.sort.name, it.minDaysInShop, it.technicianId, it.board, query = it.query.ifBlank { null }) }
+    fun currentView() = _state.value.let { SavedJobView("", it.statusFilter, it.sort.name, it.minDaysInShop, it.technicianId, it.board, showCompleted = it.showCompleted, query = it.query.ifBlank { null }) }
     fun saveView(view: SavedJobView) { _state.update { it.copy(savedViews = appSavedViews.save("watch", view)) } }
     fun deleteView(name: String) { _state.update { it.copy(savedViews = appSavedViews.delete("watch", name)) } }
     fun applyView(v: SavedJobView) {
         _state.update { it.copy(statusFilter = v.statusFilter, sort = JobSort.values().firstOrNull { s -> s.name == v.sort } ?: JobSort.NEWEST,
-            minDaysInShop = v.minDaysInShop, technicianId = v.technicianId, board = v.board, query = v.query.orEmpty()) }
+            minDaysInShop = v.minDaysInShop, technicianId = v.technicianId, board = v.board, showCompleted = v.showCompleted, query = v.query.orEmpty()) }
         refresh()
     }
 
@@ -128,7 +138,8 @@ class JobsViewModel : ViewModel() {
             catch (e: Exception) { _state.update { it.copy(movingId = null, error = e.userMessage()) } }
         }
     }
-    fun filterStatus(value: String?) { _state.update { it.copy(statusFilter = value) }; refresh() }
+    fun filterStatus(value: String?) { _state.update { it.copy(statusFilter = value, showCompleted = value?.let(::isWatchCompleted) ?: it.showCompleted) }; refresh() }
+    fun setShowCompleted(value: Boolean) { _state.update { it.copy(showCompleted = value) } }
     fun setSort(value: JobSort) { _state.update { it.copy(sort = value) } }
     fun filterMinDays(value: Int?) { _state.update { it.copy(minDaysInShop = value) } }
     fun filterTechnician(userId: String?) { _state.update { it.copy(technicianId = userId) }; refresh() }
