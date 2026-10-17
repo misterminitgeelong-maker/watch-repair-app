@@ -90,6 +90,7 @@ private val MOBILE_STAGES=listOf(
     val byId=state.jobs.associateBy {it.id}
     val stages=MOBILE_STAGES.map {st->WebKanbanColumn(st.key,st.label,st.color,st.tint,state.jobs.filter {it.status in st.statuses}.map {BoardCard(it.id,it.title,it.customerName.orEmpty(),it.status)})}
     val active=stages.sumOf {it.cards.size}
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
             Text("Mobile Services \u2014 Kanban",style=MaterialTheme.typography.titleMedium,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
@@ -100,8 +101,9 @@ private val MOBILE_STAGES=listOf(
         WebKanban(stages) {card,color->
             val job=byId[card.id] ?: return@WebKanban
             val vehicle=listOfNotNull(job.vehicleYear?.toString(),job.vehicleMake,job.vehicleModel).filter {it.isNotBlank()}.joinToString(" ")
-            Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface,border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
-                Column(Modifier.clickable(role=androidx.compose.ui.semantics.Role.Button) {onJob(job.id)}.padding(8.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+            HoldMenuTicket(job.title, MOBILE_STAGES.firstOrNull {job.status in it.statuses}?.statuses?.first() ?: job.status, MOBILE_STAGES.map {it.statuses.first() to it.label}, TokenStore.canWorkJobs() && state.movingId==null, job.customerPhone, {onJob(job.id)}, {st,why->model.moveJob(job.id,st,MOBILE_STAGES.first {it.statuses.first()==st}.label,why)}) {
+Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCornerShape(4.dp),color=MaterialTheme.colorScheme.surface,border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+                Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text(job.jobNumber,Modifier.weight(1f),style=MaterialTheme.typography.labelLarge,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,color=color,maxLines=1)
                         AgeChip("${daysInShop(job.createdAt)}d")
@@ -112,8 +114,11 @@ private val MOBILE_STAGES=listOf(
                     job.scheduledAt?.let {DatePill(formatShopDate(it,TokenStore.calendarTimezone()),Modifier.padding(top=2.dp))}
                 }
             }
+}
         }
         if(state.jobs.size<state.total) SecondaryAction(model::loadMore,Modifier.padding(horizontal=16.dp),enabled=!state.loading) {Text("Load more jobs")}
+    }
+        BoardMoveToastBar(state.moveToast,{t->model.moveJob(t.id,t.from,au.mainspring.nativeapp.ui.statusLabel(t.from),null,false)},model::clearMoveToast,Modifier.align(Alignment.BottomCenter).padding(bottom=84.dp))
     }
 }
 

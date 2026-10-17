@@ -21,6 +21,7 @@ data class ShoeJobsUiState(
     val customerNames: Map<String, String> = emptyMap(),
     val board: Boolean = false,
     val movingId: String? = null,
+    val moveToast: au.mainspring.nativeapp.ui.screens.BoardMoveToast? = null,
     val savedViews: List<SavedJobView> = emptyList(),
 ) {
     /** Search-filtered jobs across every status, for the board. */
@@ -71,17 +72,28 @@ class ShoeJobsViewModel : ViewModel() {
     fun setBoard(value: Boolean) { _state.update { it.copy(board = value) } }
 
     /** Board "Move to": changes one job's status and swaps the returned job into the list. */
-    fun moveJob(id: String, status: String) {
+    fun moveJob(id: String, status: String) = moveJob(id, status, null, true)
+    fun moveJob(id: String, status: String, reason: String?, showToast: Boolean = true) {
         if(_state.value.movingId != null) return
-        _state.update { it.copy(movingId = id, error = null) }
+        val from = _state.value.jobs.firstOrNull { it.id == id }?.status ?: return
+        if(from == status) return
+        val note = reason?.trim()?.takeIf { it.isNotEmpty() }
+        _state.update { it.copy(movingId = id, error = null, moveToast = null) }
         viewModelScope.launch {
             try {
-                val updated = api.postShoeRepairJobStatus(id, au.mainspring.nativeapp.api.ShoeStatusUpdate(status))
-                _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if(it.id == id) updated else it }) }
+                val updated = api.postShoeRepairJobStatus(id, au.mainspring.nativeapp.api.ShoeStatusUpdate(status, note))
+                _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if(it.id == id) updated else it }, moveToast = if(showToast) toast(id, from, status, false) else null) }
             } catch(e: kotlinx.coroutines.CancellationException) { throw e }
-            catch(e: Exception) { _state.update { it.copy(movingId = null, error = e.userMessage()) } }
+            catch(e: Exception) {
+                if(au.mainspring.nativeapp.offline.OfflineSync.queueStatus(e, au.mainspring.nativeapp.offline.OfflineKinds.SHOE_STATUS, id, status, note, null, "Shoe job", baseStatus = from)) {
+                    _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if(it.id == id) it.copy(status = status) else it }, moveToast = if(showToast) toast(id, from, status, true) else null) }
+                } else _state.update { it.copy(movingId = null, error = e.userMessage()) }
+            }
         }
     }
+    private fun toast(id: String, from: String, to: String, queued: Boolean) = au.mainspring.nativeapp.ui.screens.BoardMoveToast(id, from, to, au.mainspring.nativeapp.ui.statusLabel(to), queued)
+    fun clearMoveToast() { _state.update { it.copy(moveToast = null) } }
+    fun undoMove(t: au.mainspring.nativeapp.ui.screens.BoardMoveToast) { _state.update { it.copy(moveToast = null) }; moveJob(t.id, t.from, null, false) }
     fun setQuery(value: String) { _state.update { it.copy(query = value) } }
     fun setStatusFilter(value: String) { _state.update { it.copy(statusFilter = value) } }
     fun setShowCompleted(value: Boolean) { _state.update { it.copy(showCompleted = value, statusFilter = "all") } }

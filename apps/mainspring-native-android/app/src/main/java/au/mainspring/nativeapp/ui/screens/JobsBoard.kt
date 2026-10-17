@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 data class BoardCard(val id: String, val title: String, val subtitle: String, val status: String,
     /** Web-style rich card fields (used when [JobsBoard] is called with `web = true`). */
     val number: String? = null, val brand: String? = null, val days: String? = null, val description: String? = null,
-    val customerLine: String? = null, val assignee: String? = null, val price: String? = null)
+    val customerLine: String? = null, val assignee: String? = null, val price: String? = null, val phone: String? = null)
 
 /** One status column; [cards] are already filtered and sorted. */
 data class BoardColumn(val status: String, val label: String, val cards: List<BoardCard>)
@@ -61,13 +61,14 @@ fun JobsBoard(
     canMove: Boolean,
     onOpen: (String) -> Unit,
     onMove: (id: String, status: String) -> Unit,
+    onMoveReason: (id: String, status: String, reason: String?) -> Unit = { id, status, _ -> onMove(id, status) },
     modifier: Modifier = Modifier,
     /** false = natural height (inside a page that scrolls vertically); true = fill the parent and scroll each column. */
     fillHeight: Boolean = true,
     /** Web phone look: bordered white columns with a brown top rule, count badge and rich job cards. */
     web: Boolean = false,
 ) {
-    if(web) { WebBoard(columns, moveTargets, canMove, onOpen, onMove, modifier); return }
+    if(web) { WebBoard(columns, moveTargets, canMove, onOpen, onMoveReason, onMove, modifier); return }
     val calibre = au.mainspring.nativeapp.ui.LocalCalibre.current
     Row((if(fillHeight) modifier.fillMaxHeight() else modifier).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         columns.forEach { col ->
@@ -111,7 +112,7 @@ private val BoardBrown = Color(0xFF8A6A2F)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, String>>, canMove: Boolean, onOpen: (String) -> Unit,
-    onMove: (id: String, status: String) -> Unit, modifier: Modifier) {
+    onMoveReason: (id: String, status: String, reason: String?) -> Unit, onMove: (id: String, status: String) -> Unit, modifier: Modifier) {
     val line = MaterialTheme.colorScheme.outlineVariant
     val square = RoundedCornerShape(2.dp)
     Row(modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -131,8 +132,9 @@ private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, 
                             fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         col.cards.forEach { card ->
                             var menu by remember(card.id, card.status) { mutableStateOf(false) }
-                            Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
-                                Column(Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpen(card.id) }.padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            HoldMenuTicket(card.title, card.status, moveTargets, canMove, card.phone, { onOpen(card.id) }, { st, why -> onMoveReason(card.id, st, why) }) {
+Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
+                                Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         card.number?.let { Text("#$it", style = MaterialTheme.typography.labelMedium, color = BoardBrown, fontWeight = FontWeight.SemiBold) }
                                         Spacer(Modifier.weight(1f))
@@ -162,6 +164,7 @@ private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, 
                                     }
                                 }
                             }
+}
                         }
                     }
                 }

@@ -146,7 +146,7 @@ fun ShoeJobsScreen(
                     val targets = au.mainspring.nativeapp.SHOE_JOB_STATUS_OPTIONS.map { it to statusLabel(it) }
                     WebKanban(columns) { card, color ->
                         val job = byId[card.id]
-                        ShoeBoardCard(card, job?.jobNumber ?: "", job?.let { state.customerName(it) }, color, canMove, targets, onOpenJob, viewModel::moveJob)
+                        ShoeBoardCard(card, job?.jobNumber ?: "", job?.let { state.customerName(it) }, color, canMove, targets, onOpenJob, viewModel::moveJob, { id, st, why -> viewModel.moveJob(id, st, why) })
                     }
                 }
             }
@@ -167,6 +167,7 @@ fun ShoeJobsScreen(
                 }
             }
         }
+        BoardMoveToastBar(state.moveToast, viewModel::undoMove, viewModel::clearMoveToast, Modifier.align(Alignment.BottomCenter).padding(bottom = 84.dp))
         NewJobFab(onNewJob, Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
     }
 }
@@ -202,10 +203,11 @@ private fun ShoeCombosPanel(viewModel: ShoeServicesViewModel = viewModel()) {
 /** One job in a board column: job number in the column colour, title, customer, and the native "Move to..." menu. */
 @Composable
 private fun ShoeBoardCard(card: BoardCard, number: String, customer: String?, color: Color, canMove: Boolean, moveTargets: List<Pair<String, String>>,
-    onOpen: (String) -> Unit, onMove: (String, String) -> Unit) {
+    onOpen: (String) -> Unit, onMove: (String, String) -> Unit, onMoveReason: (String, String, String?) -> Unit) {
     var menu by remember(card.id, card.status) { mutableStateOf(false) }
-    Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.clickable(role = Role.Button) { onOpen(card.id) }.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    HoldMenuTicket(card.title, card.status, moveTargets, canMove, null, { onOpen(card.id) }, { st, why -> onMoveReason(card.id, st, why) }) {
+Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(number, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
             Text(card.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (!customer.isNullOrBlank()) Text(customer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -219,4 +221,5 @@ private fun ShoeBoardCard(card: BoardCard, number: String, customer: String?, co
             }
         }
     }
+}
 }

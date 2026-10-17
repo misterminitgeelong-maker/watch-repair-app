@@ -29,6 +29,8 @@ data class JobsUiState(
     /** Board (kanban) view instead of the list. */
     val board: Boolean = true,
     val movingId: String? = null,
+    /** "Moved to X. Undo" message after a board move. */
+    val moveToast: au.mainspring.nativeapp.ui.screens.BoardMoveToast? = null,
     val savedViews: List<SavedJobView> = emptyList(),
     /** Completed tab (web "Completed") instead of Active. */
     val showCompleted: Boolean = false,
@@ -140,17 +142,32 @@ class JobsViewModel : ViewModel() {
     }
 
     /** Board "Move to": changes one job's status and swaps the returned job into the list. */
-    fun moveJob(id: String, status: String) {
+    fun moveJob(id: String, status: String) = moveJob(id, status, null, true)
+    /** Moves a ticket to [status] (with [reason] as the status note). A network failure queues the change like any other offline write. */
+    fun moveJob(id: String, status: String, reason: String?, showToast: Boolean = true) {
         if (_state.value.movingId != null) return
-        _state.update { it.copy(movingId = id, error = null) }
+        val from = _state.value.jobs.firstOrNull { it.id == id }?.status ?: return
+        if (from == status) return
+        val note = reason?.trim()?.takeIf { it.isNotEmpty() }
+        _state.update { it.copy(movingId = id, error = null, moveToast = null) }
         viewModelScope.launch {
             try {
-                val updated = api.postRepairJobStatus(id, au.mainspring.nativeapp.api.RepairJobStatusUpdate(status = status))
-                _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if (it.id == id) updated else it }) }
+                val updated = api.postRepairJobStatus(id, au.mainspring.nativeapp.api.RepairJobStatusUpdate(status = status, note = note))
+                _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if (it.id == id) updated else it },
+                    moveToast = if(showToast) toast(id, from, status, false) else null) }
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _state.update { it.copy(movingId = null, error = e.userMessage()) } }
+            catch (e: Exception) {
+                if(au.mainspring.nativeapp.offline.OfflineSync.queueStatus(e, au.mainspring.nativeapp.offline.OfflineKinds.WATCH_STATUS, id, status, note, null, "Watch job", baseStatus = from)) {
+                    _state.update { s -> s.copy(movingId = null, jobs = s.jobs.map { if (it.id == id) it.copy(status = status) else it },
+                        moveToast = if(showToast) toast(id, from, status, true) else null) }
+                } else _state.update { it.copy(movingId = null, error = e.userMessage()) }
+            }
         }
     }
+    private fun toast(id: String, from: String, to: String, queued: Boolean) =
+        au.mainspring.nativeapp.ui.screens.BoardMoveToast(id, from, to, watchStatusLabel(to), queued)
+    fun clearMoveToast() { _state.update { it.copy(moveToast = null) } }
+    fun undoMove(t: au.mainspring.nativeapp.ui.screens.BoardMoveToast) { _state.update { it.copy(moveToast = null) }; moveJob(t.id, t.from, null, false) }
     fun filterStatus(value: String?) { _state.update { it.copy(statusFilter = value, showCompleted = value?.let(::isWatchCompleted) ?: it.showCompleted) }; refresh() }
     fun setShowCompleted(value: Boolean) { _state.update { it.copy(showCompleted = value) } }
     fun setSort(value: JobSort) { _state.update { it.copy(sort = value) } }
