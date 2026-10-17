@@ -45,13 +45,15 @@ fun JobsBoard(
     onOpen: (String) -> Unit,
     onMove: (id: String, status: String) -> Unit,
     modifier: Modifier = Modifier,
+    /** false = natural height (inside a page that scrolls vertically); true = fill the parent and scroll each column. */
+    fillHeight: Boolean = true,
 ) {
     val calibre = au.mainspring.nativeapp.ui.LocalCalibre.current
-    Row(modifier.fillMaxHeight().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row((if(fillHeight) modifier.fillMaxHeight() else modifier).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         columns.forEach { col ->
-            Column(Modifier.width(260.dp).fillMaxHeight().testTag("board-column-${col.status}")) {
+            Column((if(fillHeight) Modifier.width(260.dp).fillMaxHeight() else Modifier.width(260.dp)).testTag("board-column-${col.status}")) {
                 Text("${col.label} (${col.cards.size})", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(if (calibre) 0.dp else 8.dp)) {
+                Column(if(fillHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (col.cards.isEmpty()) Text("Nothing here", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     col.cards.forEach { card ->
                         var menu by remember(card.id, card.status) { mutableStateOf(false) }

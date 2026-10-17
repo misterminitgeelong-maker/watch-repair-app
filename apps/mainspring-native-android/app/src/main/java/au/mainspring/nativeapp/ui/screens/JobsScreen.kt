@@ -1,12 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
-import au.mainspring.nativeapp.ui.PrimaryAction as Button
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,32 +10,49 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import au.mainspring.nativeapp.CatalogueViewModel
 import au.mainspring.nativeapp.JobSort
 import au.mainspring.nativeapp.JobsViewModel
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.WATCH_PICKER_STATUSES
+import au.mainspring.nativeapp.isWatchCompleted
+import au.mainspring.nativeapp.ui.JobThumb
+import au.mainspring.nativeapp.ui.SecondaryAction
+import au.mainspring.nativeapp.ui.formatCents
 import au.mainspring.nativeapp.watchStatusLabel
 
+private val URGENT_STATUSES = setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent")
+
+/**
+ * Watch service screen, top to bottom like the web: title, Board | List (+ Queue), one primary button, Jobs | Catalogue,
+ * Active | Completed, search + Filters, the list or board, and a floating "New Job" button.
+ * [onOpenQueue] shows the Queue button (the repair queue) when given.
+ */
 @Composable
 fun JobsScreen(
     onOpenJob: (String) -> Unit,
     onNewJob: () -> Unit,
+    onOpenQueue: (() -> Unit)? = null,
     viewModel: JobsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -52,88 +64,91 @@ fun JobsScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    LaunchedEffect(state.visibleJobs) { au.mainspring.nativeapp.JobNavContext.set("watch", state.visibleJobs.map { it.id }) }
+    var tab by rememberSaveable { mutableStateOf("jobs") }
+    var filtersOpen by remember { mutableStateOf(false) }
+    val currency = TokenStore.shopValue("currency") ?: "AUD"
 
-    androidx.compose.runtime.LaunchedEffect(state.visibleJobs) { au.mainspring.nativeapp.JobNavContext.set("watch", state.visibleJobs.map { it.id }) }
-    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize()) {
-        au.mainspring.nativeapp.ui.AtelierTextField(value = state.query, onValueChange = viewModel::setQuery,
-            label = { Text("Search jobs or customers") }, singleLine = true,
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { viewModel.refresh() }),
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp))
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            (listOf<String?>(null) + WATCH_PICKER_STATUSES).forEach { status ->
-                au.mainspring.nativeapp.ui.TabChip(selected = state.statusFilter == status, onClick = { viewModel.filterStatus(status) },
-                    label = { Text(status?.let { watchStatusLabel(it) } ?: "All") })
+    val header: @Composable () -> Unit = {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ServiceTitle("Watch repairs", Modifier.padding(top = 8.dp))
+            if (tab == "jobs") Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                TextToggle(listOf(ToggleOption("board", "Board", "view-board"), ToggleOption("list", "List", "view-list")),
+                    if (state.board) "board" else "list", { viewModel.setBoard(it == "board") })
+                if (onOpenQueue != null) SecondaryAction(onOpenQueue, Modifier.padding(start = 8.dp)) { Text("Queue") }
             }
-        }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            JobSort.values().forEach { sort ->
-                au.mainspring.nativeapp.ui.TabChip(selected = state.sort == sort, onClick = { viewModel.setSort(sort) }, label = { Text(sort.label) })
-            }
-        }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf<Int?>(null, 7, 14, 21).forEach { days ->
-                au.mainspring.nativeapp.ui.TabChip(selected = state.minDaysInShop == days, onClick = { viewModel.filterMinDays(days) },
-                    label = { Text(if (days == null) "Any age" else "$days+ days") })
-            }
-            val me = TokenStore.currentUserId()
-            au.mainspring.nativeapp.ui.TabChip(selected = state.technicianId == null, onClick = { viewModel.filterTechnician(null) }, label = { Text("All technicians") })
-            state.users.forEach { u ->
-                au.mainspring.nativeapp.ui.TabChip(selected = state.technicianId == u.id, onClick = { viewModel.filterTechnician(u.id) },
-                    label = { Text(if (u.id == me) "Mine" else u.name) })
-            }
-        }
-        au.mainspring.nativeapp.ui.SavedViewsRow(state.savedViews, viewModel::currentView, viewModel::applyView, viewModel::saveView, viewModel::deleteView)
-        if (state.loading && state.jobs.isEmpty()) {
-            androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
-        state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = { viewModel.refresh() }) }
-        if (!state.loading && state.error == null && state.visibleJobs.isEmpty()) {
-            au.mainspring.nativeapp.ui.EmptyState("No repairs found", "Try a different search or filter, or start a new repair.")
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            au.mainspring.nativeapp.ui.TabChip(selected = !state.board, onClick = { viewModel.setBoard(false) }, label = { Text("List") }, modifier = Modifier.testTag("view-list"))
-            au.mainspring.nativeapp.ui.TabChip(selected = state.board, onClick = { viewModel.setBoard(true) }, label = { Text("Board") }, modifier = Modifier.testTag("view-board"))
-        }
-        if (state.board) {
-            val cards = state.visibleJobs.map { BoardCard(it.id, it.title, listOfNotNull(it.jobNumber, it.customerName?.takeIf { n -> n.isNotBlank() }).joinToString(" · "), it.status) }
-            JobsBoard(buildBoardColumns(cards, WATCH_PICKER_STATUSES, ::watchStatusLabel), WATCH_PICKER_STATUSES.map { it to watchStatusLabel(it) },
-                canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob,
-                modifier = Modifier.fillMaxSize().weight(1f, fill = true))
-        } else
-        au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 8.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            items(state.visibleJobs, key = { it.id }) { job ->
-                if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                    CalibreRow({ onOpenJob(job.id) }, job.title, listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }, au.mainspring.nativeapp.daysInShopText(au.mainspring.nativeapp.daysInShop(job.createdAt))).joinToString(" · "),
-                        au.mainspring.nativeapp.ui.statusLabel(job.status), job.status in setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent"),
-                        service = "watch", jobId = job.id, statusKey = job.status)
-                    return@items
+            NewTicketButton("New Job Ticket", onNewJob)
+            UnderlineTabs(listOf(ToggleOption("jobs", "Jobs", "tab-jobs"), ToggleOption("catalogue", "Catalogue", "tab-catalogue")), tab, { tab = it })
+            if (tab == "jobs") {
+                TextToggle(listOf(ToggleOption("active", "Active (${state.activeCount})", "segment-active"), ToggleOption("completed", "Completed (${state.completedCount})", "segment-completed")),
+                    if (state.showCompleted) "completed" else "active", { viewModel.setShowCompleted(it == "completed") })
+                SearchFiltersRow(state.query, viewModel::setQuery, "Search jobs…", { filtersOpen = true }, state.activeFilterCount, onSearch = viewModel::refresh)
+                if (state.loading && state.jobs.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
+                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = { viewModel.refresh() }) }
+                if (!state.loading && state.error == null && state.visibleJobs.isEmpty()) {
+                    au.mainspring.nativeapp.ui.EmptyState("No repairs found", "Try a different search or filter, or start a new repair.")
                 }
-                androidx.compose.material3.Surface(Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenJob(job.id) },
-                    color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
-                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(job.jobNumber, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            au.mainspring.nativeapp.ui.StatusPill(job.status)
-                        }
-                        Text(job.title, style = MaterialTheme.typography.titleMedium)
-                        au.mainspring.nativeapp.ui.DaysInShopLabel(au.mainspring.nativeapp.daysInShop(job.createdAt))
-                        job.customerName?.let { n ->
-                            Text(n, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        if (tab == "catalogue") {
+            val catalogue: CatalogueViewModel = viewModel()
+            val catalogueState by catalogue.state.collectAsStateWithLifecycle()
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                item { header() }
+                catalogueBody(catalogueState, catalogue)
+            }
+        } else if (state.board) {
+            au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    header()
+                    val order = WATCH_PICKER_STATUSES.filter { isWatchCompleted(it) == state.showCompleted }
+                    val cards = state.visibleJobs.map { BoardCard(it.id, it.title, listOfNotNull(it.jobNumber, it.customerName?.takeIf { n -> n.isNotBlank() }).joinToString(" · "), it.status) }
+                    JobsBoard(buildBoardColumns(cards, order, ::watchStatusLabel), WATCH_PICKER_STATUSES.map { it to watchStatusLabel(it) },
+                        canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob, fillHeight = false)
+                }
+            }
+        } else {
+            au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) {
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    item { header() }
+                    items(state.visibleJobs, key = { it.id }) { job ->
+                        ServiceJobCard({ onOpenJob(job.id) }, job.jobNumber, job.title, job.customerName, au.mainspring.nativeapp.ui.statusLabel(job.status), job.status,
+                            shortDaysInShop(au.mainspring.nativeapp.daysInShop(job.createdAt)),
+                            job.preQuoteCents.takeIf { it > 0 }?.let { "Quote ${formatCents(it, currency)}" },
+                            thumb = { JobThumb("watch", job.id, size = 56.dp) }, urgent = job.status in URGENT_STATUSES,
+                            modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+                    if (state.canLoadMore) item {
+                        SecondaryAction(viewModel::loadMore, Modifier.padding(horizontal = 16.dp).fillMaxWidth(), enabled = !state.loading) { Text("Load more repairs") }
                     }
                 }
             }
-            if(state.canLoadMore) item {
-                if(au.mainspring.nativeapp.ui.LocalCalibre.current) LinkAction(onClick = viewModel::loadMore, enabled = !state.loading) { Text("Load more repairs") } else
-                androidx.compose.material3.OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text("Load more repairs") }
-            }
-        } }
+        }
+        NewJobFab(onNewJob, Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
     }
+
+    if (filtersOpen) {
+        val me = TokenStore.currentUserId()
+        FiltersSheet(onDismiss = { filtersOpen = false }, onReset = {
+            viewModel.setSort(JobSort.NEWEST); viewModel.filterMinDays(null); viewModel.filterStatus(null); viewModel.filterTechnician(null)
+        }) {
+            FilterSection("Status") {
+                SheetChip("All", state.statusFilter == null, { viewModel.filterStatus(null) })
+                WATCH_PICKER_STATUSES.forEach { s -> SheetChip(watchStatusLabel(s), state.statusFilter == s, { viewModel.filterStatus(s) }) }
+            }
+            FilterSection("Sort by") { JobSort.values().forEach { s -> SheetChip(s.label, state.sort == s, { viewModel.setSort(s) }, "sort-${s.name}") } }
+            FilterSection("Days in shop") {
+                listOf<Int?>(null, 7, 14, 21).forEach { d -> SheetChip(if (d == null) "Any age" else "$d+ days", state.minDaysInShop == d, { viewModel.filterMinDays(d) }) }
+            }
+            FilterSection("Technician") {
+                SheetChip("All technicians", state.technicianId == null, { viewModel.filterTechnician(null) })
+                state.users.forEach { u -> SheetChip(if (u.id == me) "Mine" else u.name, state.technicianId == u.id, { viewModel.filterTechnician(u.id) }) }
+            }
+            Text("Saved views", style = androidx.compose.material3.MaterialTheme.typography.labelLarge, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+            au.mainspring.nativeapp.ui.SavedViewsRow(state.savedViews, viewModel::currentView, viewModel::applyView, viewModel::saveView, viewModel::deleteView, Modifier.padding(horizontal = 0.dp))
+        }
     }
 }
