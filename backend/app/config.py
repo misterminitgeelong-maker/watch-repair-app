@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use
     jwt_refresh_expire_days: int = 7
+    # Native app sessions (request header X-Mainspring-Client: native-android)
+    # slide: each refresh pushes expiry out by the idle window, but never past
+    # the absolute cap measured from login. Web sessions keep the fixed window.
+    jwt_native_refresh_idle_days: int = 90
+    jwt_native_refresh_max_days: int = 365
     app_env: Literal["development", "test", "staging", "production"] = "development"
     # Break-glass flag only for explicitly intended production SQLite runs.
     allow_sqlite_in_production: bool = False
