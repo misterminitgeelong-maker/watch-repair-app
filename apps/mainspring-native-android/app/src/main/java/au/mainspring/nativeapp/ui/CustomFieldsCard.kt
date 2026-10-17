@@ -18,13 +18,15 @@ import au.mainspring.nativeapp.CustomFieldsViewModel
  * Drop into a detail screen's column: `CustomFieldsCard(CustomFieldJobKind.Watch, job.id)`.
  */
 @Composable fun CustomFieldsCard(kind: CustomFieldJobKind, jobId: String, modifier: Modifier = Modifier, canEdit: Boolean = true,
+    /** Web phone layout: no collapse toggle, the fields and the FIELD NAME / VALUE inputs are always shown. */
+    alwaysOpen: Boolean = false,
     vm: CustomFieldsViewModel = viewModel(key = "custom-fields-$kind-$jobId", factory = CustomFieldsViewModel.factory(kind, jobId))) {
     val state by vm.state.collectAsStateWithLifecycle()
     var newName by rememberSaveable { mutableStateOf("") }
     var newValue by rememberSaveable { mutableStateOf("") }
     val busy = state.loading || state.saving
     // Collapsed by default so a job's main facts stay near the top on a phone; opens on tap (or when something needs attention).
-    var open by rememberSaveable(jobId) { mutableStateOf(false) }
+    var open by rememberSaveable(jobId) { mutableStateOf(alwaysOpen) }
     val count = state.fields.size
     if(!open && state.error == null) {
         if(!canEdit && count == 0) return
@@ -36,7 +38,7 @@ import au.mainspring.nativeapp.CustomFieldsViewModel
         return
     }
     Column(modifier.fillMaxWidth()) {
-        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { open = false }, verticalAlignment = Alignment.CenterVertically) {
+        if(!alwaysOpen) androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { open = false }, verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { SectionLabel("Custom fields") }
             Text("\u2212", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
         }
@@ -54,8 +56,8 @@ import au.mainspring.nativeapp.CustomFieldsViewModel
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AtelierTextField(newName, { newName = it }, Modifier.weight(1f), enabled = !busy, label = { Text("Field name") }, singleLine = true)
-                    AtelierTextField(newValue, { newValue = it }, Modifier.weight(1f), enabled = !busy, label = { Text("Value") }, singleLine = true)
+                    AtelierTextField(newName, { newName = it }, Modifier.weight(1f), enabled = !busy, label = { Text(if(alwaysOpen) "FIELD NAME" else "Field name") }, singleLine = true)
+                    AtelierTextField(newValue, { newValue = it }, Modifier.weight(1f), enabled = !busy, label = { Text(if(alwaysOpen) "VALUE" else "Value") }, singleLine = true)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SecondaryAction({ if(vm.add(newName, newValue)) { newName = ""; newValue = "" } }, enabled = !busy && newName.isNotBlank()) { Text("Add") }

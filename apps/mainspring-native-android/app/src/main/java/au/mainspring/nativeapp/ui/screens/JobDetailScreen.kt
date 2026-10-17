@@ -76,7 +76,10 @@ fun JobDetailScreen(
     var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("overview") }
     if (job == null) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(16.dp)) {
-            TextButton(onClick = onBack) { Text("\u2039 Jobs", style = MaterialTheme.typography.titleSmall) }
+            TextButton(onClick = onBack, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                LineIcon("chevL", androidx.compose.material3.LocalContentColor.current, 18.dp); Spacer(Modifier.width(6.dp))
+                Text("Back to Jobs", style = MaterialTheme.typography.bodyLarge)
+            }
             if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { ErrorBanner(it, onRetry = vm::load) }
         }
@@ -88,8 +91,8 @@ fun JobDetailScreen(
             listOfNotNull(
                 DetailFact("Status", watchStatusLabel(job.status), pillStatus = job.status),
                 DetailFact("Priority", job.priority.replace('_', ' ').replaceFirstChar { it.uppercase() }),
-                quote?.let { DetailFact("Quote", formatCents(it, currency)) },
-                DetailFact("Created", formatShopDate(job.createdAt)),
+                quote?.let { DetailFact("Quote", webMoney(it, currency)) },
+                DetailFact("Created", shopDateOnly(job.createdAt)),
                 DetailFact("In shop", if (days == 1) "1 day" else "$days days", tag = "days-in-shop",
                     valueColor = when (au.mainspring.nativeapp.daysInShopSeverity(days)) { 2 -> MaterialTheme.colorScheme.error; 1 -> androidx.compose.ui.graphics.Color(0xFF9A5010); else -> null }),
             )
@@ -153,11 +156,27 @@ fun JobDetailScreen(
         when (active) {
             "messages" -> MessageThreadScreen("repair-jobs", shownId, { tab = "overview" }, embedded = true)
             "work" -> {
-                FlatPanel {
-                    CardHeading("Work logs")
-                    Text("Record what was done on the bench for this repair.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SecondaryAction(onClick = onWorkLogs, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Log work") }
+                val workLogs: au.mainspring.nativeapp.WorkLogsViewModel = viewModel(key = shownId, factory = au.mainspring.nativeapp.WorkLogsViewModel.factory(shownId))
+                val workLogState by workLogs.state.collectAsStateWithLifecycle()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (workLogState.rows.size == 1) "1 log" else "${workLogState.rows.size} logs", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    AccentAction(onClick = onWorkLogs, modifier = Modifier.heightIn(min = 48.dp).testTag("log-work")) { Text("Log Work", style = MaterialTheme.typography.bodyLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold) }
                 }
+                workLogState.rows.forEach { row ->
+                    FlatPanel {
+                        Text("${row.minutes} min", style = MaterialTheme.typography.titleSmall)
+                        row.note?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                        Text(shopDateOnly(row.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                job.description?.takeIf { it.isNotBlank() }?.let { note ->
+                    FlatPanel {
+                        CardHeading("Initial notes")
+                        Text(note, style = MaterialTheme.typography.bodyLarge)
+                        Text(shopDateOnly(job.createdAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Watch, job.id, alwaysOpen = true)
                 FlatPanel {
                     CardHeading("Shop notes")
                     val notes = job.internalNotes?.takeIf { it.isNotBlank() }
@@ -168,10 +187,52 @@ fun JobDetailScreen(
             }
             "attachments" -> {
                 if(LocalCalibre.current) JobHeroPhoto("watch", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
-                FlatPanel {
+                var sortByName by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+                var sortReversed by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+                var sortMenu by remember { mutableStateOf(false) }
+                var orderMenu by remember { mutableStateOf(false) }
+                val files = state.attachments.let { list ->
+                    val sorted = if (sortByName) list.sortedBy { (it.fileName ?: it.storageKey).lowercase() } else list.sortedBy { it.createdAt }
+                    // Newest / Z-A is the default (descending); the other option flips it.
+                    if (sortReversed) sorted else sorted.reversed()
+                }
+                Text(if (state.attachments.size == 1) "1 file loaded" else "${state.attachments.size} files loaded", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box {
+                        SecondaryAction(onClick = { sortMenu = true }, modifier = Modifier.heightIn(min = 44.dp).testTag("attachments-sort"), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                            Text("Sort: " + if (sortByName) "Name" else "Date"); Spacer(Modifier.width(6.dp)); Text("▾")
+                        }
+                        DropdownMenu(sortMenu, { sortMenu = false }) {
+                            DropdownMenuItem(text = { Text("Sort: Date") }, onClick = { sortByName = false; sortMenu = false })
+                            DropdownMenuItem(text = { Text("Sort: Name") }, onClick = { sortByName = true; sortMenu = false })
+                        }
+                    }
+                    Box {
+                        SecondaryAction(onClick = { orderMenu = true }, modifier = Modifier.heightIn(min = 44.dp).testTag("attachments-order"), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                            Text(if (sortReversed) "Oldest / A-Z" else "Newest / Z-A"); Spacer(Modifier.width(6.dp)); Text("▾")
+                        }
+                        DropdownMenu(orderMenu, { orderMenu = false }) {
+                            DropdownMenuItem(text = { Text("Newest / Z-A") }, onClick = { sortReversed = false; orderMenu = false })
+                            DropdownMenuItem(text = { Text("Oldest / A-Z") }, onClick = { sortReversed = true; orderMenu = false })
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SecondaryAction(onClick = onPhotos, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("take-extra-photo"), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                        LineIcon("camera", androidx.compose.material3.LocalContentColor.current, 18.dp); Spacer(Modifier.width(8.dp)); Text("Take Extra Photo", maxLines = 1)
+                    }
+                    AccentAction(onClick = onPhotos, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("upload-file")) {
+                        LineIcon("upload", androidx.compose.material3.LocalContentColor.current, 18.dp); Spacer(Modifier.width(8.dp)); Text("Upload File", maxLines = 1, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                    }
+                }
+                if (state.attachments.isEmpty() && !state.loading) Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LineIcon("upload", MaterialTheme.colorScheme.error, 32.dp)
+                    Text("No attachments yet. Upload photos or documents.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                }
+                if (state.loading && state.attachments.isEmpty()) Text("Loading…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (state.attachments.isNotEmpty()) FlatPanel {
                     CardHeading("Photos & files / ${state.attachments.size}")
-                    if (state.attachments.isEmpty()) Text(if (state.loading) "Loading…" else "No photos or files yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    state.attachments.forEach { att ->
+                    files.forEach { att ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleSmall)
@@ -187,7 +248,6 @@ fun JobDetailScreen(
                         }
                     }
                     attachmentOpenError?.let { ErrorBanner(it) }
-                    SecondaryAction(onClick = onPhotos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Photos & files") }
                 }
             }
             "money" -> {
@@ -224,14 +284,15 @@ fun JobDetailScreen(
             else -> {
                 FlatPanel {
                     CardHeading("Job ticket")
+                    Text(shopDateOnly(job.createdAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(job.title, style = MaterialTheme.typography.titleMedium)
                     job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    DetailRow("Job #", job.jobNumber)
-                    DetailRow("Status", watchStatusLabel(job.status))
-                    job.collectionDate?.takeIf { it.isNotBlank() }?.let { DetailRow("Due", formatShopDate(it)) }
-                    job.partsEta?.takeIf { it.isNotBlank() }?.let { DetailRow("Parts", formatShopDate(it)) }
-                    DetailRow("Created", formatShopDate(job.createdAt))
+                    DashedDivider(Modifier.padding(vertical = 4.dp))
+                    TicketRow("Job #", job.jobNumber.removePrefix("#").let { "#$it" }, mono = true)
+                    TicketRow("Status", watchStatusLabel(job.status), pillStatus = job.status)
+                    job.collectionDate?.takeIf { it.isNotBlank() }?.let { TicketRow("Due", formatShopDate(it)) }
+                    job.partsEta?.takeIf { it.isNotBlank() }?.let { TicketRow("Parts", formatShopDate(it)) }
+                    TicketRow("Created", shopDateOnly(job.createdAt))
                 }
                 FlatPanel {
                     CardHeading("Customer & contact")
@@ -263,7 +324,6 @@ fun JobDetailScreen(
                         else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Release") }
                     }
                 }
-                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Watch, job.id)
                 FlatPanel {
                     CardHeading("Repair activity")
                     if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No activity recorded yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -395,6 +455,13 @@ fun JobDetailScreen(
 /** Starts an external call/email intent; returns an error message when no app can handle it. */
 internal fun launchContact(context: android.content.Context, intent: Intent): String? =
     try { context.startActivity(intent); null } catch (e: android.content.ActivityNotFoundException) { "No app available to handle this." }
+
+/** The web shows the quote as "$95.00" (no currency suffix) for AUD shops; other currencies keep the suffix. */
+internal fun webMoney(cents: Int, currency: String): String =
+    if (currency == "AUD") String.format(java.util.Locale.US, "$%.2f", cents / 100.0) else formatCents(cents, currency)
+
+/** Shop-timezone date without the time of day, as the web's job header and ticket show it. */
+internal fun shopDateOnly(value: String): String = formatShopDate(value).substringBefore(' ')
 
 /** Phone-first tab set shared by the watch and shoe job details: counts are shown only when non-zero. */
 internal fun detailTabs(photos: Int, events: Int): List<Pair<String, String>> = listOf(
