@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -84,6 +85,22 @@ private fun Modifier.tagged(tag: String?): Modifier = if(tag != null) testTag(ta
         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
             if(icon != null) GlyphIcon(icon, size = 18.dp, color = content.copy(alpha = if(enabled) 1f else 0.5f))
             if(label != null) Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = if(primary) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+        }
+    }
+}
+
+/** Transparent button with a dashed accent outline and accent text (web "Gallery upload"). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable internal fun DashedButton(label: String, onClick: () -> Unit, icon: String? = null, modifier: Modifier = Modifier, tag: String? = null) {
+    val accent = MaterialTheme.colorScheme.primary
+    val edge = MaterialTheme.colorScheme.outline
+    Surface(onClick, modifier.heightIn(min = 48.dp).tagged(tag).semantics { role = Role.Button }, shape = RoundedCornerShape(6.dp), color = Color.Transparent) {
+        Row(Modifier.drawBehind {
+            drawRoundRect(edge, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()))),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
+        }.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if(icon != null) GlyphIcon(icon, size = 16.dp, color = accent)
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = accent, maxLines = 1)
         }
     }
 }
