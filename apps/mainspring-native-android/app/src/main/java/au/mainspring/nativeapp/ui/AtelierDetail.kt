@@ -1,9 +1,15 @@
 package au.mainspring.nativeapp.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -14,82 +20,143 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** One entry in the "..." overflow menu of an [AtelierDetail]. */
 data class DetailAction(val label: String, val enabled: Boolean = true, val onClick: () -> Unit)
 
+/** One light inline "Label: value" fact in the header block. [pillStatus] renders the value as a status pill. */
+data class DetailFact(val label: String, val value: String, val pillStatus: String? = null, val valueColor: Color? = null, val tag: String? = null)
+
 /**
- * Atelier job detail frame: blue "‹ Back" link and "…" menu, big bold title, reference line, dark status
- * banner, segmented Summary/Activity/Messages tabs, scrolling cards, and one blue primary action pinned
- * to the bottom with a small footnote.
+ * Job detail frame, laid out like the web phone view: "‹ Jobs" back link with Prev / Next at the right, a big
+ * display-serif title with a short accent underline, one row with the next-step button and a "..." overflow
+ * menu, light inline facts, a [header] slot (contact buttons, workflow stepper), an underlined scrollable tab
+ * row and the tab content as spaced cards. The whole page scrolls; the Messages tab keeps its own scroller
+ * so only the compact header stays above it.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AtelierDetail(
     backLabel: String,
     title: String,
-    reference: String?,
-    banner: String?,
+    facts: List<DetailFact>,
     tabs: List<Pair<String, String>>,
     selectedTab: String,
     onTab: (String) -> Unit,
     onBack: () -> Unit,
     primaryLabel: String?,
     onPrimary: () -> Unit,
+    onChangeStatus: () -> Unit,
     modifier: Modifier = Modifier,
     primaryEnabled: Boolean = true,
-    footnote: String? = null,
+    primaryTag: String = "detail-primary",
     backEnabled: Boolean = true,
+    onPrev: (() -> Unit)? = null,
+    onNext: (() -> Unit)? = null,
+    showNav: Boolean = onPrev != null || onNext != null,
     menu: List<DetailAction> = emptyList(),
     scrollBody: Boolean = true,
-    service: String? = null,
-    bannerStatus: String? = null,
+    header: @Composable ColumnScope.() -> Unit = {},
     content: @Composable ColumnScope.(String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(Modifier.weight(1f)) {
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semanticsBack()) {
-                    Text("‹ $backLabel", style = MaterialTheme.typography.titleSmall)
-                }
-                Spacer(Modifier.weight(1f))
-                if(menu.isNotEmpty()) Box {
-                    TextButton(onClick = { menuOpen = true }, modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("detail-menu")) {
-                        Text("•••", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    }
-                    DropdownMenu(menuOpen, { menuOpen = false }) {
-                        menu.forEach { action -> DropdownMenuItem(text = { Text(action.label) }, enabled = action.enabled, onClick = { menuOpen = false; action.onClick() }) }
-                    }
-                }
+    val calibre = LocalCalibre.current
+    val compact = !scrollBody
+    val headerBlock: @Composable ColumnScope.() -> Unit = {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 8.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semanticsBack()) {
+                Text("‹ $backLabel", style = MaterialTheme.typography.titleSmall)
             }
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
-                reference?.let { if(LocalCalibre.current) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if(service != null) JobTypeMark(service, color = MaterialTheme.colorScheme.primary)
-                    MonoLabel(it)
-                } else Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                banner?.let {
-                    if(LocalCalibre.current && bannerStatus != null) Row { TonePill(it, statusTone(bannerStatus)) }
-                    else if(LocalCalibre.current) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
-                        Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    } else Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary, shape = MaterialTheme.shapes.small) {
-                        Text(it, Modifier.padding(horizontal = 16.dp, vertical = 14.dp), style = MaterialTheme.typography.titleSmall)
-                    }
-                }
-                if(tabs.size > 1) SegmentedPills(tabs, selectedTab, onTab)
+            Spacer(Modifier.weight(1f))
+            if(showNav) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SecondaryAction(onClick = { onPrev?.invoke() }, enabled = backEnabled && onPrev != null, modifier = Modifier.heightIn(min = 44.dp).testTag("job-prev"),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) { Text("‹ Prev") }
+                SecondaryAction(onClick = { onNext?.invoke() }, enabled = backEnabled && onNext != null, modifier = Modifier.heightIn(min = 44.dp).testTag("job-next"),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) { Text("Next ›") }
             }
-            val body = if(scrollBody) Modifier.weight(1f).verticalScroll(rememberScrollState()) else Modifier.weight(1f)
-            Column(body.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content(selectedTab) }
         }
-        if(primaryLabel != null) Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            AccentAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).testTag("detail-primary")) {
-                Text(primaryLabel, style = MaterialTheme.typography.titleMedium)
+        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, Modifier.padding(top = 4.dp),
+                    style = if(calibre) calibreDisplayStyle(MaterialTheme.typography.headlineMedium) else MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface, maxLines = 3)
+                Box(Modifier.width(40.dp).height(3.dp).background(MaterialTheme.colorScheme.primary))
             }
-            footnote?.let { Text(it, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if(!compact) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if(primaryLabel != null) AccentAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.heightIn(min = 48.dp).testTag(primaryTag)) {
+                        Text(primaryLabel, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    }
+                    Box {
+                        SecondaryAction(onClick = { menuOpen = true }, modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 56.dp).testTag("detail-menu").semantics { contentDescription = "More actions" },
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) { Text("•••", style = MaterialTheme.typography.titleMedium) }
+                        DropdownMenu(menuOpen, { menuOpen = false }) {
+                            DropdownMenuItem(text = { Text("Change status") }, enabled = primaryEnabled, onClick = { menuOpen = false; onChangeStatus() })
+                            menu.forEach { action -> DropdownMenuItem(text = { Text(action.label) }, enabled = action.enabled, onClick = { menuOpen = false; action.onClick() }) }
+                        }
+                    }
+                }
+                if(facts.isNotEmpty()) FlowRow(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    facts.forEach { f ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(f.label + ": ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if(f.pillStatus != null) TonePill(f.value, statusTone(f.pillStatus))
+                            else Text(f.value, if(f.tag != null) Modifier.testTag(f.tag) else Modifier, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = f.valueColor ?: MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+                header()
+            }
+            if(tabs.size > 1) UnderlineTabs(tabs, selectedTab, onTab)
         }
+    }
+    if(scrollBody) Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).navigationBarsPadding()) {
+        headerBlock()
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content(selectedTab) }
+    } else Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        headerBlock()
+        Column(Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content(selectedTab) }
+    }
+}
+
+/** Web-style tab row: plain labels in a scrollable row, the selected one in the accent colour with an underline. */
+@Composable
+fun UnderlineTabs(tabs: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            tabs.forEach { (key, label) ->
+                val on = key == selected
+                Column(Modifier.selectable(selected = on, role = Role.Tab, onClick = { onSelect(key) }).heightIn(min = 48.dp).testTag("tab-$key"), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.heightIn(min = 45.dp), contentAlignment = Alignment.Center) {
+                        Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = if(on) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1,
+                            color = if(on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Box(Modifier.height(3.dp).fillMaxWidth().background(if(on) MaterialTheme.colorScheme.primary else Color.Transparent))
+                }
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+/** Small heading inside a detail card (mono caps in Calibre, like the web's "JOB TICKET"). */
+@Composable
+fun CardHeading(text: String, modifier: Modifier = Modifier) {
+    if(LocalCalibre.current) MonoLabel(text.uppercase(), modifier.semantics { heading() })
+    else Text(text, modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+}
+
+/** Label on the left, value on the right, one line of a detail card. */
+@Composable
+fun DetailRow(label: String, value: String, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
+        Text(label, Modifier.width(96.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 

@@ -46,6 +46,8 @@ fun ShoeJobDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val j = state.job
+    val suggested = j?.let { au.mainspring.nativeapp.suggestedShoeStatuses(it.status) } ?: emptyList()
+    val (prevJobId, nextJobId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
     var niimbotLabel by remember { mutableStateOf<au.mainspring.nativeapp.niimbot.NiimbotLabelData?>(null) }
     niimbotLabel?.let { au.mainspring.nativeapp.niimbot.NiimbotPrintDialog(it) { niimbotLabel = null } }
     val currency = TokenStore.shopValue("currency") ?: "AUD"
@@ -78,15 +80,34 @@ fun ShoeJobDetailScreen(
             state.info?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
         }
     } else AtelierDetail(
-        backLabel = "Jobs", title = j.title, reference = listOfNotNull(j.jobNumber, state.customer?.fullName?.uppercase()).joinToString(" · "),
-        banner = statusLabel(j.status).let { s -> val q = if (j.quoteStatus != "none") "Quote ${j.quoteStatus.replace('_', ' ')}" else null; if (q == null || q.equals(s, true)) s else "$s · $q" },
+        backLabel = "Jobs", title = (if (j.jobNumber.startsWith("#")) j.jobNumber else "#" + j.jobNumber) + " · " + j.title,
+        facts = run {
+            val days = au.mainspring.nativeapp.daysInShop(j.createdAt)
+            val quoteTotal = j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }
+            listOfNotNull(
+                DetailFact("Status", statusLabel(j.status), pillStatus = j.status),
+                DetailFact("Priority", j.priority.replace('_', ' ').replaceFirstChar { it.uppercase() }),
+                if (quoteTotal != null) DetailFact("Quote", formatCents(quoteTotal, currency) + if (j.quoteStatus == "approved") " approved" else "")
+                else if (j.quoteStatus != "none") DetailFact("Quote", j.quoteStatus.replace('_', ' ').replaceFirstChar { it.uppercase() }) else null,
+                DetailFact("Created", formatShopDate(j.createdAt)),
+                DetailFact("In shop", if (days == 1) "1 day" else "$days days", tag = "days-in-shop",
+                    valueColor = when (au.mainspring.nativeapp.daysInShopSeverity(days)) { 2 -> MaterialTheme.colorScheme.error; 1 -> androidx.compose.ui.graphics.Color(0xFF9A5010); else -> null }),
+            )
+        },
         tabs = detailTabs(state.attachments.size, state.history.size + state.smsLog.size), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
-        primaryLabel = if (state.statusBusy) "Updating\u2026" else "Update repair status",
+        primaryLabel = if (state.statusBusy) "Updating…" else suggested.firstOrNull()?.let { "→ " + statusLabel(it) } ?: "Change status",
         primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
-        onPrimary = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
-        footnote = j.depositCents.takeIf { it > 0 }?.let { "Deposit ${formatCents(it, currency)}" },
-        menu = listOfNotNull(
+        primaryTag = suggested.firstOrNull()?.let { "rail-next-$it" } ?: "detail-primary",
+        onPrimary = { val s = suggested.firstOrNull(); if (s != null) vm.setStatus(s) else { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true } },
+        onChangeStatus = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
+        onPrev = prevJobId?.let { id -> { shownId = id; tab = "overview" } },
+        onNext = nextJobId?.let { id -> { shownId = id; tab = "overview" } },
+        header = {
+            ContactQuickActions(state.customer?.phone, state.customer?.email)
+            WorkflowRail(au.mainspring.nativeapp.SHOE_WORKFLOW_STEPS, j.status)
+        },
+        menu = suggested.drop(1).map { s -> DetailAction("Move to " + statusLabel(s).lowercase(), !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs()) { vm.setStatus(s) } } + listOfNotNull(
             DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
             DetailAction("Refresh", !state.loading && !state.statusBusy, vm::load),
             DetailAction("Photos & files", true, onPhotos),
@@ -123,7 +144,6 @@ fun ShoeJobDetailScreen(
             if (TokenStore.canManageInvoices()) DetailAction("Delete job", adminReady) { confirmDelete = true } else null,
         ),
         scrollBody = tab != "messages",
-        service = "shoe", bannerStatus = j.status,
     ) { active ->
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
         state.error?.let { ErrorBanner(it) }
@@ -131,20 +151,29 @@ fun ShoeJobDetailScreen(
         SyncedRefreshEffect(shownId) { vm.load() }
         state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
-            "history" -> {
-                if (state.history.isEmpty()) Text("No history yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                state.history.forEach { h -> ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt)) }
-                state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} · ${log.body}", "${log.toPhone} · ${formatShopDate(log.createdAt)}") }
-            }
             "messages" -> MessageThreadScreen("shoe-repair-jobs", shownId, { tab = "overview" }, embedded = true)
             "work" -> {
-                SectionLabel("Photos & files / ${state.attachments.size}")
-                if (state.attachments.isEmpty()) Text(if (state.loading) "Loading\u2026" else "No photos or files yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                state.attachments.forEach { att ->
-                    FlatPanel {
+                val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
+                FlatPanel {
+                    CardHeading("Services")
+                    if(j.items.isEmpty()) Text("No services added yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    j.items.forEach { item -> ShoeServiceRow(item, currency, { removeItem = item.id }, canEdit) }
+                    SecondaryAction(onClick = { vm.loadCatalogue(); pickServices = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add services") }
+                }
+                FlatPanel {
+                    CardHeading("Shop notes")
+                    SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add note") }
+                }
+            }
+            "attachments" -> {
+                if(LocalCalibre.current) JobHeroPhoto("shoe", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
+                FlatPanel {
+                    CardHeading("Photos & files / ${state.attachments.size}")
+                    if (state.attachments.isEmpty()) Text(if (state.loading) "Loading…" else "No photos or files yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    state.attachments.forEach { att ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleMedium)
+                                Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleSmall)
                                 att.contentType?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
                             TextButton(onClick = {
@@ -156,16 +185,9 @@ fun ShoeJobDetailScreen(
                             }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open") }
                         }
                     }
+                    attachmentOpenError?.let { ErrorBanner(it) }
+                    SecondaryAction(onClick = onPhotos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Photos & files") }
                 }
-                attachmentOpenError?.let { ErrorBanner(it) }
-                SecondaryAction(onClick = onPhotos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Photos & files") }
-                val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
-                SectionLabel("Services")
-                if(j.items.isEmpty()) Text("No services added yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                j.items.forEach { item -> ShoeServiceRow(item, currency, { removeItem = item.id }, canEdit) }
-                SecondaryAction(onClick = { vm.loadCatalogue(); pickServices = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add services") }
-                SectionLabel("Shop notes")
-                SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add note") }
             }
             "money" -> {
                 SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
@@ -174,21 +196,24 @@ fun ShoeJobDetailScreen(
                 if (j.depositCents > 0) SummaryCard("Deposit", formatCents(j.depositCents, currency), null)
             }
             else -> {
-                val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
-                JobNavBar(au.mainspring.nativeapp.JobNavContext.position("shoe", shownId), prevId, nextId, { shownId = it; tab = "overview" }, enabled = !state.statusBusy)
-                if(LocalCalibre.current) JobHeroPhoto("shoe", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
-                ContactQuickActions(state.customer?.phone, state.customer?.email)
-                DaysInShopLabel(au.mainspring.nativeapp.daysInShop(j.createdAt))
-                WorkflowRail(au.mainspring.nativeapp.SHOE_WORKFLOW_STEPS, j.status, au.mainspring.nativeapp.suggestedShoeStatuses(j.status), { au.mainspring.nativeapp.ui.statusLabel(it) },
-                    enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
-                j.description?.takeIf { it.isNotBlank() }?.let { SummaryCard("Requested work", it, null) }
-                j.customerNote?.takeIf { it.isNotBlank() }?.let { SummaryCard("Note shown to customer", it, null) }
+                FlatPanel {
+                    CardHeading("Job ticket")
+                    Text(j.title, style = MaterialTheme.typography.titleMedium)
+                    j.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    DetailRow("Job #", j.jobNumber)
+                    DetailRow("Status", statusLabel(j.status))
+                    j.estimatedReadyBy?.takeIf { it.isNotBlank() }?.let { DetailRow("Estimated ready", formatShopDate(it)) }
+                    DetailRow("Created", formatShopDate(j.createdAt))
+                    if (j.customerAccountId != null) DetailRow("Business account", "Linked")
+                    j.customerNote?.takeIf { it.isNotBlank() }?.let { DetailRow("Customer note", it) }
+                }
                 state.customer?.let { c ->
                     var contactError by remember { mutableStateOf<String?>(null) }
                     val phone = c.phone?.takeIf { it.isNotBlank() }
                     val email = c.email?.takeIf { it.isNotBlank() }
                     FlatPanel {
-                        Text("Customer & contact", style = MaterialTheme.typography.titleMedium)
+                        CardHeading("Customer & contact")
                         Text(c.fullName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (phone == null && email == null) Text("No phone or email on file", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         phone?.let { p -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + p.filter { ch -> ch.isDigit() || ch == '+' }))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Call $p") } }
@@ -197,23 +222,28 @@ fun ShoeJobDetailScreen(
                     }
                 }
                 val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
-                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Shoe, j.id, canEdit = TokenStore.canWorkJobs())
-                SectionLabel("Shoes")
-                ShoePairCard(1, j.shoe, null, canEdit)
-                j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }
-                if(j.shoe?.customerId != null) SecondaryAction(onClick = { addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add pair") }
-                j.estimatedReadyBy?.takeIf { it.isNotBlank() }?.let { SummaryCard("Estimated ready", formatShopDate(it), null) }
-                if (j.customerAccountId != null) SummaryCard("Business account", "Linked to a customer account", null)
-                SummaryCard(statusLabel(j.status), listOfNotNull(j.claimedByName?.let { "Assigned to $it" }, "Created ${formatShopDate(j.createdAt)}").joinToString(" \u00b7 "), null)
+                FlatPanel {
+                    CardHeading("Shoes")
+                    ShoePairCard(1, j.shoe, null, canEdit)
+                    j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }
+                    if(j.shoe?.customerId != null) SecondaryAction(onClick = { addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add pair") }
+                }
                 FlatPanel {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Assigned to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(j.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.titleMedium)
                         }
-                        if (j.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Claim for me") }
-                        else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Release") }
+                        if (j.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Claim for me") }
+                        else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Release") }
                     }
+                }
+                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Shoe, j.id, canEdit = TokenStore.canWorkJobs())
+                FlatPanel {
+                    CardHeading("History")
+                    if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No history yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    state.history.forEach { h -> ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt)) }
+                    state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} · ${log.body}", "${log.toPhone} · ${formatShopDate(log.createdAt)}") }
                 }
             }
         }

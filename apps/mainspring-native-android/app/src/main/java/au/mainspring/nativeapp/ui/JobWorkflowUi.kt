@@ -1,6 +1,15 @@
 package au.mainspring.nativeapp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Surface
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,42 +53,37 @@ fun DaysInShopLabel(days: Int, modifier: Modifier = Modifier) {
 }
 
 /**
- * Workflow rail: where the job sits across the web's steps plus one-tap suggestions for the
- * next sensible statuses. [onMove] is only offered when [enabled].
+ * Workflow stepper: one bordered card with a circle per step (check mark when done, ringed when current)
+ * and its label underneath, scrolling sideways on narrow phones. Moving the job on is done with the
+ * next-step button and the "..." menu in the header, not from the rail.
  */
 @Composable
 fun WorkflowRail(
     steps: List<WorkflowStep>,
     status: String,
-    suggestions: List<String>,
-    labelFor: (String) -> String,
-    enabled: Boolean,
-    onMove: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val current = workflowStepIndex(steps, status)
-    val calibre = LocalCalibre.current
-    Column(modifier.fillMaxWidth().testTag("workflow-rail"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (calibre) MonoLabel("Workflow") else Text("Workflow", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleSmall)
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    val primary = MaterialTheme.colorScheme.primary
+    Surface(modifier.fillMaxWidth().testTag("workflow-rail"), color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 14.dp)) {
             steps.forEachIndexed { i, step ->
                 val state = if (i < current) "done" else if (i == current) "current" else "upcoming"
-                TabChip(selected = i == current, onClick = {}, enabled = false,
-                    label = { Text((if (i < current) "✓ " else "") + step.label) },
-                    modifier = Modifier.semantics { contentDescription = "${step.label}, $state" })
-            }
-        }
-        if (suggestions.isNotEmpty()) {
-            val nextModifier = if (calibre) Modifier.fillMaxWidth().background(calibreCardColor(), CalibreCardShape).padding(horizontal = 12.dp, vertical = 10.dp) else Modifier.fillMaxWidth()
-            Column(nextModifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Next", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                suggestions.forEachIndexed { i, s ->
-                    val action: @Composable () -> Unit = { Text(labelFor(s)) }
-                    if (i == 0) PrimaryAction(onClick = { onMove(s) }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp).testTag("rail-next-$s")) { action() }
-                    else SecondaryAction(onClick = { onMove(s) }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp).testTag("rail-next-$s")) { action() }
+                Column(Modifier.width(80.dp).semantics(mergeDescendants = true) { contentDescription = "${step.label}, $state" },
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.size(30.dp)
+                        .background(if (i <= current) primary else Color.Transparent, CircleShape)
+                        .border(if (i <= current) 0.dp else 1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        contentAlignment = Alignment.Center) {
+                        if (i < current) Text("✓", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
+                        else if (i == current) Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.onPrimary, CircleShape))
+                        else Text("${i + 1}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                    }
+                    Text(step.label, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, maxLines = 2,
+                        fontWeight = if (i == current) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (i <= current) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
             }
         }
     }
