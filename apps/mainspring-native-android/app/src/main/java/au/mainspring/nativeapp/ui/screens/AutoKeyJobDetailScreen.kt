@@ -80,7 +80,7 @@ import au.mainspring.nativeapp.api.*
         try { context.startActivity(Intent(if(dial) Intent.ACTION_DIAL else Intent.ACTION_VIEW,uri)) }
         catch(_: android.content.ActivityNotFoundException) { attachmentOpenError = "No compatible app is available on this device." }
     }
-    Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
+    Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) MobileDetailHeader(j,onBack,vm::load,onEdit,!state.loading && !state.statusBusy,!state.loading && !state.statusBusy && !state.offlineSnapshot) else au.mainspring.nativeapp.ui.AtelierTopAppBar(windowInsets=if(embedded) WindowInsets(0,0,0,0) else TopAppBarDefaults.windowInsets,title = {Column {
             Text(j?.title ?: "Job",style=if(compactHeader) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineMedium,maxLines=2,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if(!compactHeader) j?.jobNumber?.let {Text(it,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         }},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
@@ -112,25 +112,20 @@ import au.mainspring.nativeapp.api.*
                         TextButton(vm::load,enabled=!state.loading) {Text("Retry")}
                     }
                 }
-                Column(Modifier.padding(horizontal=16.dp,vertical=if(compactHeader) 0.dp else 8.dp),verticalArrangement=Arrangement.spacedBy(if(compactHeader) 0.dp else 6.dp)) {
-                    if(!compactHeader) Text(listOf(listOfNotNull(j.vehicleMake,j.vehicleModel,j.vehicleYear?.toString()).joinToString(" "),j.customerName.orEmpty()).filter {it.isNotBlank()}.joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                        if(LocalCalibre.current) Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {JobTypeMark("auto_key",color=MaterialTheme.colorScheme.primary);StatusPill(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status)}
-                        else Surface(color=MaterialTheme.colorScheme.secondary,contentColor=MaterialTheme.colorScheme.onSecondary,shape=MaterialTheme.shapes.small) {
-                            Text(statusLabel(if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status),Modifier.padding(horizontal=16.dp,vertical=12.dp),style=MaterialTheme.typography.titleSmall)
-                        }
-                        Row {
-                            if(!j.customerPhone.isNullOrBlank()) OutlinedButton({open(Uri.fromParts("tel",j.customerPhone,null),true)},Modifier.heightIn(min=48.dp)) {Text("Call")}
-                            Spacer(Modifier.width(8.dp))
-                            if(!j.jobAddress.isNullOrBlank()) OutlinedButton({open(Uri.parse("geo:0,0?q=${Uri.encode(j.jobAddress)}"))},Modifier.heightIn(min=48.dp)) {Text("Navigate")}
-                        }
+                val shownStatus=if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status
+                val issueCount=state.vehicleContext?.getAsJsonArray("known_issues")?.size() ?: 0
+                Column(Modifier.padding(horizontal=16.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                    if(issueCount>0 && !compactHeader) VehicleWarningCard(issueCount,issueSeverity(state.vehicleContext),onShow={tab="vehicle"})
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.CenterVertically) {
+                        TonePill(statusLabel(shownStatus),statusTone(shownStatus))
+                        WebSelect(statusLabel(shownStatus),emptyList(),{},Modifier.weight(1f),tag="job-status-select",description="Change status",onOpen={statusChangeNote="";statusPicker=true},
+                            enabled=!state.loading && !state.statusBusy && !state.statusReviewRequired && !state.offlineSnapshot && TokenStore.canWorkJobs())
+                        WebButton("Nav",{open(Uri.parse("geo:0,0?q=${Uri.encode(j.jobAddress.orEmpty())}"))},icon="pin",tint=true,enabled=!j.jobAddress.isNullOrBlank(),tag="job-navigate",description="Navigate")
                     }
-                    if(!compactHeader) JourneyProgress((journey ?: fieldJourney(j.status)).step)
+                    if(!j.customerPhone.isNullOrBlank()) OutlinedButton({open(Uri.fromParts("tel",j.customerPhone,null),true)},Modifier.heightIn(min=48.dp)) {Text("Call ${j.customerPhone}")}
                 }
                 val sections=listOf("info" to "Info","vehicle" to "Vehicle & Key","finance" to "Financial","photos" to "Photos","messages" to "Messages","activity" to "Activity")
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=16.dp,vertical=6.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    sections.forEach {(key,label)->PillChip(label,tab==key,{tab=key})}
-                }
+                au.mainspring.nativeapp.ui.UnderlineTabs(sections,tab,{tab=it},Modifier.padding(horizontal=16.dp))
                 AnimatedContent(targetState=tab,modifier=Modifier.weight(1f).testTag("job-detail-body"),label="job-section") { activeTab ->
                     if(state.offlineSnapshot && activeTab in listOf("finance","photos","messages","activity")) Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         Text("Reconnect to load current ${when(activeTab) {"finance"->"quotes, invoices and payments";"activity"->"the activity log";else->activeTab}}.")
@@ -192,6 +187,7 @@ import au.mainspring.nativeapp.api.*
                                     TextButton(onEdit,enabled=!state.offlineSnapshot) {Text("Edit vehicle and key details")}
                                 } else {
                                     val activeJourney=journey ?: fieldJourney(j.status)
+                                    MobileInfoCard(j,state.technicians,if(paymentRecorded && fieldJourney(j.status).step>=3) "paid" else j.status,issueSeverity(state.vehicleContext))
                                     if(LocalCalibre.current) JobHeroPhoto("auto_key",jobId,onClick={tab="photos"})
                                     if(activeJourney.step in 0..2) {
                                         PreparationPanel(j,state.vehicleContext,onVehicle={tab="vehicle"})
@@ -295,25 +291,6 @@ private fun contextText(value: com.google.gson.JsonObject,key: String): String? 
         job.description?.takeIf {it.isNotBlank()}?.let {SectionLabel("Requested work");Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(horizontal=16.dp,vertical=14.dp),style=MaterialTheme.typography.bodyMedium)}}
         job.techNotes?.takeIf {it.isNotBlank()}?.let {SectionLabel("Tech notes");Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(horizontal=16.dp,vertical=14.dp),style=MaterialTheme.typography.bodyMedium)}}
         if(job.description.isNullOrBlank() && job.techNotes.isNullOrBlank()) Text("No job notes recorded",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        FlatPanel {
-            listOfNotNull(job.customerName,job.customerPhone).takeIf {it.isNotEmpty()}?.let {DetailRow("Customer",it.joinToString(" · "))}
-            DetailRow("When",job.scheduledAt?.let {formatShopDate(it,TokenStore.calendarTimezone())} ?: "Unscheduled")
-            DetailRow("Where",job.jobAddress.orEmpty())
-        }
-        TextButton({details=!details},modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurface)) {
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                Text(if(details) "Hide customer & booking details" else "Customer & booking details",Modifier.weight(1f),style=MaterialTheme.typography.labelLarge)
-                Text(if(details) "−" else "+",Modifier.padding(start=8.dp),style=MaterialTheme.typography.titleMedium)
-            }
-        }
-        if(details) FlatPanel {
-            DetailRow("Customer",job.customerName.orEmpty());DetailRow("Mobile",job.customerPhone.orEmpty())
-            DetailRow("Account",if(job.customerAccountId!=null) "Business account linked" else "Personal customer")
-            DetailRow("Type",job.jobType ?: job.title);DetailRow("Priority",job.priority.orEmpty())
-            DetailRow("Technician",technicians.firstOrNull {it.id==job.assignedUserId}?.name ?: if(job.assignedUserId==null) "Unassigned" else "Assigned")
-            DetailRow("Scheduled",job.scheduledAt?.let {formatShopDate(it,TokenStore.calendarTimezone())} ?: "Unscheduled")
-            DetailRow("Address",job.jobAddress.orEmpty());DetailRow("Created",formatShopDate(job.createdAt))
-        }
     }
 }
 

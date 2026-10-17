@@ -143,10 +143,10 @@ private fun Modifier.tagged(tag: String?): Modifier = if(tag != null) testTag(ta
 /** Bordered white select (web <select>): shows [selectedLabel] and a chevron; opens a menu of [options]. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun WebSelect(selectedLabel: String, options: List<Pair<String, String>>, onSelect: (String) -> Unit, modifier: Modifier = Modifier, tag: String? = null,
-    description: String? = null, enabled: Boolean = true) {
+    description: String? = null, enabled: Boolean = true, onOpen: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     Box(modifier.fillMaxWidth()) {
-        Surface({ open = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp).tagged(tag).semantics { role = Role.DropdownList; if(description != null) contentDescription = description },
+        Surface({ if(onOpen != null) onOpen() else open = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp).tagged(tag).semantics { role = Role.DropdownList; if(description != null) contentDescription = description },
             enabled = enabled, shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
             Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(selectedLabel, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
