@@ -37,10 +37,10 @@ import androidx.compose.ui.unit.dp
             drawPath(path, color, style = st)
         }
         when(key) {
-            "workshop", "repairQueue", "auto_jobs" -> { rect(5f, 4f, 14f, 17f); ln(9f, 9f, 15f, 9f); ln(9f, 13f, 15f, 13f); ln(9f, 17f, 12f, 17f) }
+            "workshop", "repairQueue", "auto_jobs", "jobs" -> { rect(5f, 4f, 14f, 17f); ln(9f, 9f, 15f, 9f); ln(9f, 13f, 15f, 13f); ln(9f, 17f, 12f, 17f) }
             "customerOrders", "stock" -> { poly(12f, 3f, 20f, 7.5f, 20f, 16.5f, 12f, 21f, 4f, 16.5f, 4f, 7.5f, close = true); ln(4f, 7.5f, 12f, 12f); ln(20f, 7.5f, 12f, 12f); ln(12f, 12f, 12f, 21f) }
             "catalogue" -> { poly(4f, 5f, 12f, 7f, 12f, 20f, 4f, 18f, close = true); poly(20f, 5f, 12f, 7f, 12f, 20f, 20f, 18f, close = true) }
-            "shoeServices" -> { poly(4f, 7f, 9f, 7f, 10f, 12f, 20f, 15f, 20f, 18f, 4f, 18f, close = true); ln(4f, 15f, 20f, 15f) }
+            "shoeServices", "shoe_jobs" -> { poly(4f, 7f, 9f, 7f, 10f, 12f, 20f, 15f, 20f, 18f, 4f, 18f, close = true); ln(4f, 15f, 20f, 15f) }
             "bookingRequests" -> { rect(4f, 5f, 16f, 15f); ln(4f, 10f, 20f, 10f); ln(8f, 3f, 8f, 7f); ln(16f, 3f, 16f, 7f) }
             "mobile", "dispatch" -> { rect(2.5f, 7f, 12f, 9f, 1.5f); poly(14.5f, 10f, 19f, 10f, 21.5f, 13f, 21.5f, 16f, 14.5f, 16f); circle(7f, 17.5f, 2f); circle(17.5f, 17.5f, 2f) }
             "route" -> { poly(12f, 21f, 6f, 11f, 6.5f, 7f, 9.5f, 4f, 14.5f, 4f, 17.5f, 7f, 18f, 11f, close = true); circle(12f, 9.5f, 2.4f) }

@@ -7,7 +7,7 @@ import au.mainspring.nativeapp.ui.*
 import okhttp3.mockwebserver.*
 import org.junit.*
 
-/** The bar and More follow the shop's service plan, keep Customers out of the bar, and More remembers what was opened. */
+/** The bar and More follow the shop's service plan: Home, Inbox, up to two service tabs, More with a tool grid. */
 class NavigationShapeTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var server: MockWebServer
@@ -28,51 +28,55 @@ class NavigationShapeTest {
 
     private fun shell(features: Set<String>) = compose.setContent { MainspringTheme { MainspringAppShell("Native QA", server.url("/").toString(), {}, features) } }
 
-    @Test fun barHasFourTabsAndNoCustomersTab() {
+    @Test fun threeServicesShowTwoServiceTabsAndShoeMovesToMore() {
         shell(setOf("watch", "shoe", "auto_key"))
-        listOf("nav-today", "nav-jobs", "nav-inbox", "nav-more").forEach { compose.onNodeWithTag(it).assertExists() }
-        compose.onNodeWithTag("nav-people").assertDoesNotExist()
+        listOf("nav-today", "nav-inbox", "nav-watch", "nav-mobile", "nav-more").forEach { compose.onNodeWithTag(it).assertExists() }
+        listOf("nav-shoe", "nav-jobs", "nav-people").forEach { compose.onNodeWithTag(it).assertDoesNotExist() }
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("Shoe").assertExists()
+        compose.onNodeWithText("All jobs").assertExists()
     }
 
-    @Test fun watchOnlyShopSeesRepairsTabAndNoMobileGroup() {
+    @Test fun twoServicesGetTwoTabs() {
+        shell(setOf("watch", "shoe"))
+        listOf("nav-watch", "nav-shoe").forEach { compose.onNodeWithTag(it).assertExists() }
+        compose.onNodeWithTag("nav-mobile").assertDoesNotExist()
+    }
+
+    @Test fun watchOnlyShopSeesWatchTabAndNoMobileTools() {
         shell(setOf("watch"))
-        compose.onNodeWithTag("nav-jobs").assertExists()
-        compose.onNodeWithText("Repairs").assertExists()
+        compose.onNodeWithTag("nav-watch").assertExists()
+        compose.onNodeWithTag("nav-mobile").assertDoesNotExist()
         compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithTag("more-group-workshop").assertExists()
-        compose.onNodeWithTag("more-group-mobile").assertDoesNotExist()
-    }
-
-    @Test fun mobileOnlyShopKeepsJobsLabelAndLeadsWithMobileGroup() {
-        shell(setOf("auto_key"))
-        compose.onNodeWithText("Jobs").assertExists()
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithTag("more-group-mobile").assertExists()
-        compose.onNodeWithTag("more-group-workshop").assertDoesNotExist()
-    }
-
-    @Test fun groupsStartCollapsedExpandOnTapAndRememberThat() {
-        shell(setOf("watch"))
-        compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithText("Repair queue").assertDoesNotExist()
-        compose.onNodeWithTag("more-group-workshop").performClick()
         compose.onNodeWithText("Repair queue").assertExists()
-        val remembered = InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("more_usage", 0).getStringSet("expanded", null)
-        Assert.assertEquals(setOf("workshop"), remembered)
-        compose.onNodeWithTag("more-group-workshop").performClick()
+        compose.onNodeWithText("Dispatch pool").assertDoesNotExist()
+    }
+
+    @Test fun mobileOnlyShopHasMobileTabAndMobileTools() {
+        shell(setOf("auto_key"))
+        compose.onNodeWithTag("nav-mobile").assertExists()
+        compose.onNodeWithTag("nav-watch").assertDoesNotExist()
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("Dispatch pool").assertExists()
         compose.onNodeWithText("Repair queue").assertDoesNotExist()
     }
 
-    @Test fun searchFindsToolsAcrossCollapsedGroups() {
+    @Test fun headerSearchIconIsOnTabScreens() {
+        shell(setOf("watch"))
+        compose.onNodeWithTag("app-search").assertExists()
+    }
+
+    @Test fun searchFindsToolsInTheGrid() {
         shell(setOf("watch"))
         compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithTag("more-search").performTextInput("Invoic")
         compose.onNodeWithText("Invoices").assertExists()
+        compose.onNodeWithText("Quotes").assertDoesNotExist()
         compose.onNodeWithTag("more-search").performTextReplacement("zzz")
-        compose.onNodeWithText("No tool matches “zzz”.").assertExists()
+        compose.onNodeWithText("No tool matches \u201czzz\u201d.").assertExists()
     }
 
-    @Test fun customersReachableFromMoreQuickAccess() {
+    @Test fun customersReachableFromMoreGrid() {
         shell(setOf("watch"))
         compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithText("Customers").performClick()

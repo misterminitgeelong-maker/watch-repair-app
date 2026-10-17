@@ -114,7 +114,6 @@ class DesignWorkspaceTest {
         TokenStore.setSessionRole("tech")
         compose.setContent {MainspringTheme {MainspringAppShell("Technician",server.url("/").toString(),{},setOf("auto_key"))}}
         compose.onNodeWithTag("nav-more").performClick()
-        compose.onNodeWithTag("more-group-mobile").performClick()
         compose.onNodeWithText("Map and today's route").assertExists();compose.onNodeWithText("Dispatch pool").assertExists();compose.onNodeWithText("POS / quick sale").assertExists()
         compose.onNodeWithText("Team").assertDoesNotExist()
     }
