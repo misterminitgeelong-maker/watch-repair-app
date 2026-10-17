@@ -100,7 +100,7 @@ class WatchIntakeUiTest {
         Assert.assertEquals("Battery", restored.field("title"))
         Assert.assertEquals(2, restored.count())
         compose.setContent { MainspringTheme { WatchIntakeScreen(onBack = {}, onOpenJob = {}, vm = restored) } }
-        compose.onNodeWithText("Create Job Ticket").performClick()
+        compose.onNodeWithText("Create 2 Tickets").performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("Intake complete").fetchSemanticsNodes().isNotEmpty() }
         Assert.assertEquals(2, jobs.get())
         jobBodies.forEach { body -> val json = JsonParser.parseString(body).asJsonObject

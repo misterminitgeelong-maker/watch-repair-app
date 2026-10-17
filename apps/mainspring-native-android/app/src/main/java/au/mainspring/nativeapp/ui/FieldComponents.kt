@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui
 
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -284,13 +285,13 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     singleLine: Boolean = true, keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
     keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default) {
     if(!LocalCalibre.current) {
-        AtelierTextField(value, onValueChange, modifier.semantics { contentDescription = label }, enabled, label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } },
+        AtelierTextField(value, onValueChange, modifier.semantics { contentDescription = label; if(!enabled) disabled() }, enabled, label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } },
             keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, singleLine = singleLine)
         return
     }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label.uppercase(), Modifier.clearAndSetSemantics { }, style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        AtelierTextField(value, onValueChange, Modifier.fillMaxWidth().semantics { contentDescription = label }, enabled,
+        AtelierTextField(value, onValueChange, Modifier.fillMaxWidth().semantics { contentDescription = label; if(!enabled) disabled() }, enabled,
             placeholder = placeholder?.let { { Text(it, color = LocalCalibrePalette.current.placeholder) } }, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
             singleLine = singleLine, minLines = if(singleLine) 1 else 2,
             colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface, disabledContainerColor = MaterialTheme.colorScheme.surface,

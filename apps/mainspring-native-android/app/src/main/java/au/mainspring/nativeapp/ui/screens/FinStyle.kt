@@ -130,14 +130,14 @@ internal val FinSand = Color(0xFFF2E8DC)
 }
 
 /** Search box with a magnifier, 44dp high and white with the strong border (web search field). */
-@Composable internal fun FinSearchField(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, onSearch: (() -> Unit)? = null) {
+@Composable internal fun FinSearchField(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, onSearch: (() -> Unit)? = null, fieldTag: String? = null) {
     val textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
     Row(modifier.fillMaxWidth().heightIn(min = 48.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(6.dp)).border6(finBorderColor()).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         ToolIcon("search", size = 20.dp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(Modifier.weight(1f)) {
             if(value.isEmpty()) Text(placeholder, style = textStyle, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), maxLines = 1)
-            BasicTextField(value, onValueChange, Modifier.fillMaxWidth().then(Modifier.semantics { contentDescription = placeholder }), singleLine = true, textStyle = textStyle,
+            BasicTextField(value, onValueChange, Modifier.fillMaxWidth().then(if(fieldTag != null) Modifier.testTag(fieldTag) else Modifier).then(Modifier.semantics { contentDescription = placeholder }), singleLine = true, textStyle = textStyle,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch?.invoke() }))
         }

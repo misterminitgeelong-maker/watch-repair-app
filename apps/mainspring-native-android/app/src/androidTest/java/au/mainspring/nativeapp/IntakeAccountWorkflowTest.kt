@@ -61,7 +61,7 @@ class IntakeAccountWorkflowTest {
         val restored = MobileIntakeViewModel(SavedStateHandle())
         Assert.assertEquals("saved-customer",restored.field("customerId")); Assert.assertEquals("true",restored.field("hasAcknowledgement"))
         compose.setContent { MainspringTheme { MobileIntakeScreen({}, {}, restored) } }
-        compose.onNode(hasContentDescription("Full Name *") and hasSetTextAction()).assertIsNotEnabled()
+        compose.onNode(hasContentDescription("Full Name *")).assertIsNotEnabled()
         compose.onNodeWithText("Discard").assertIsEnabled()
     }
 }

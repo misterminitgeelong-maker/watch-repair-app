@@ -59,7 +59,7 @@ fun InvoicesScreen(
             modifier = Modifier.fillMaxSize().testTag("invoices-list"),
         ) {
             item { FinTitle("Invoices", gutter = 0.dp) }
-            item { FinSearchField(query, { query = it }, "Search invoice number...", Modifier.testTag("invoices-search"), onSearch = null) }
+            item { FinSearchField(query, { query = it }, "Search invoice number...", Modifier, onSearch = null, fieldTag = "invoices-search") }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FinSegmentRow(listOf(null to "All", "unpaid" to "Unpaid", "paid" to "Paid"), filter, { filter = it })
