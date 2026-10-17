@@ -299,6 +299,23 @@ fun CalibreCheckRow(done: Boolean, title: String, detail: String? = null) {
 @Composable
 fun IntakeHeader(current: String, onBack: () -> Unit, backEnabled: Boolean, onDiscard: () -> Unit, discardEnabled: Boolean,
     services: List<Pair<String, String>>, onSwitch: ((String) -> Unit)?) {
+    if(LocalCalibre.current) {
+        // Web sheet header: title left, Discard, then the x close at the right; native draft banner and service switcher below.
+        Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(when(current) { "shoe" -> "New Shoe Repair"; "auto_key" -> "New Mobile Job"; else -> "New Job Ticket" }, Modifier.weight(1f).padding(vertical = 12.dp).semantics { heading() },
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
+                TextButton(onClick = onDiscard, enabled = discardEnabled, modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") }
+                IconButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.semantics { contentDescription = "Back" }) {
+                    Text("×", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if(onSwitch != null && services.size > 1) SegmentedPills(services, current, { if(it != current) onSwitch(it) }, Modifier.padding(horizontal = 16.dp))
+            MonoLabel("Draft saved on this device", Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        return
+    }
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Back" }) { Text("\u2039 Today", style = MaterialTheme.typography.titleSmall) }

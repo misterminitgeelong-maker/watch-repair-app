@@ -61,16 +61,16 @@ class WatchIntakeUiTest {
     @Test fun newCustomerQuickJobCompletesAndOnlyCreatesOneTicket() {
         val vm = WatchIntakeViewModel(SavedStateHandle())
         compose.setContent { MainspringTheme { WatchIntakeScreen(onBack = {}, onOpenJob = {}, vm = vm) } }
-        compose.onNodeWithText("New customer").performClick()
-        compose.onNodeWithText("Customer name *").performTextInput("Avery")
-        compose.onNodeWithText("Continue").performClick()
+        compose.onNodeWithText("New Customer").performClick()
+        compose.onNode(hasContentDescription("Full Name *") and hasSetTextAction()).performTextInput("Avery")
+        compose.onNodeWithText("Next →").performClick()
         compose.onNodeWithText("Quick counter job (photos optional)").performScrollTo()
         compose.onAllNodes(isToggleable()).onLast().performClick()
         Assert.assertEquals("true", vm.field("quickJob"))
-        compose.onNodeWithText("Continue").performClick()
-        compose.onNodeWithText("Job title *").performScrollTo().performTextInput("Battery")
-        compose.onNodeWithText("Continue").performClick()
-        compose.onNodeWithText("Create / finish intake").assertIsEnabled()
+        compose.onNodeWithText("Next →").performClick()
+        compose.onNode(hasContentDescription("Job Title *") and hasSetTextAction()).performScrollTo().performTextInput("Battery")
+        compose.onNodeWithText("Next →").performClick()
+        compose.onNodeWithText("Create Job Ticket").assertIsEnabled()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
         compose.waitUntil(15_000) { vm.state.value.complete || (!vm.state.value.busy && vm.state.value.error != null) }
         Assert.assertNull(vm.state.value.error)
@@ -100,7 +100,7 @@ class WatchIntakeUiTest {
         Assert.assertEquals("Battery", restored.field("title"))
         Assert.assertEquals(2, restored.count())
         compose.setContent { MainspringTheme { WatchIntakeScreen(onBack = {}, onOpenJob = {}, vm = restored) } }
-        compose.onNodeWithText("Create / finish intake").performClick()
+        compose.onNodeWithText("Create Job Ticket").performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("Intake complete").fetchSemanticsNodes().isNotEmpty() }
         Assert.assertEquals(2, jobs.get())
         jobBodies.forEach { body -> val json = JsonParser.parseString(body).asJsonObject
@@ -120,7 +120,7 @@ class WatchIntakeUiTest {
         vm.setField("customerId", "customer-1"); vm.setField("title", "Battery")
         vm.setField("quickJob", "true"); vm.setField("step", "3"); vm.setPhoto(0, "front", uri.toString())
         compose.setContent { MainspringTheme { WatchIntakeScreen(onBack = {}, onOpenJob = {}, vm = vm) } }
-        compose.onNodeWithText("Create / finish intake").performClick()
+        compose.onNodeWithText("Create Job Ticket").performClick()
         compose.waitUntil(15_000) { vm.state.value.complete && vm.state.value.uploadFailures.isNotEmpty() }
         compose.onNodeWithText("Continue / retry remaining photos").performScrollTo().performClick()
         compose.waitUntil(15_000) { vm.state.value.complete && !vm.state.value.busy && vm.state.value.uploadFailures.isEmpty() }
@@ -131,7 +131,7 @@ class WatchIntakeUiTest {
         val vm = ShoeIntakeViewModel(SavedStateHandle())
         vm.set("customerId", "customer-1"); vm.set("count", "2"); vm.set("title", "Heel repairs"); vm.set("step", "3")
         compose.setContent { MainspringTheme { ShoeIntakeScreen(onBack = {}, onOpenJob = {}, vm = vm) } }
-        compose.onNodeWithText("Create / finish repair").performClick()
+        compose.onNodeWithText("Create Shoe Repair").performClick()
         compose.waitUntil(15_000) { vm.state.value.complete && !vm.state.value.busy }
         Assert.assertEquals(1, shoeJobs.get()); Assert.assertEquals(1, shoeLinks.get())
         compose.onNodeWithText("Open repair job").assertExists()

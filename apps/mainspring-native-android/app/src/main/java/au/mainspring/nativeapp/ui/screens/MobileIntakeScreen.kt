@@ -27,23 +27,20 @@ import au.mainspring.nativeapp.ui.SectionLabel
     LaunchedEffect(Unit) {if(preselectedCustomerId!=null && state.fields.isEmpty()) {vm.set("customerId",preselectedCustomerId);vm.set("customerMode","existing")};vm.search()}
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("auto_key", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar={if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Column {if(au.mainspring.nativeapp.ui.LocalCalibre.current) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant);Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        bottomBar={if(vm.field("jobId").isBlank() && au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.WizardActionRow("Cancel",{leave=true},!state.busy,"Create job",vm::submit,!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs())
+        else if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Column {if(au.mainspring.nativeapp.ui.LocalCalibre.current) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant);Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton({leave=true},enabled=!state.busy,modifier=Modifier.weight(1f)) {Text("Cancel")}
             Button(vm::submit,enabled=!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs(),modifier=Modifier.weight(1f)) {Text("Create job")}
         } } } }) {padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                au.mainspring.nativeapp.ui.MonoLabel("Mobile intake / draft saved on this device")
-                Text("Start a mobile job",style=MaterialTheme.typography.headlineMedium)
-                HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
-            } else Text("Draft saved on this device",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            if(!au.mainspring.nativeapp.ui.LocalCalibre.current) Text("Draft saved on this device",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             state.error?.let {ErrorBanner(it)}
             vm.field("trackingWarning").takeIf(String::isNotBlank)?.let {ErrorBanner(it)}
             if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if(vm.field("uncertain").isNotBlank()) OutlinedButton({reconcile=true}) {Text("I checked shop records")}
             if(vm.field("jobId").isNotBlank()) Button({val id=vm.field("jobId");vm.finish();onOpenJob(id)}) {Text("Job saved · open job")}
             @Composable fun field(key: String,label: String,modifier: Modifier=Modifier.fillMaxWidth()) {
-                au.mainspring.nativeapp.ui.AtelierTextField(vm.field(key),{vm.set(key,it)},label={Text(label)},modifier=modifier,enabled=!locked)
+                au.mainspring.nativeapp.ui.WizardField(label,vm.field(key),{vm.set(key,it)},modifier=modifier,enabled=!locked,placeholder=when(key) {"name"->"Jane Smith";"phone"->"0412 345 678";"email"->"jane@example.com";else->null})
             }
             SectionLabel("Job type")
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -54,16 +51,13 @@ import au.mainspring.nativeapp.ui.SectionLabel
                     },enabled=!locked,label={Text(type)})
                 }
             }
-            field("title","Job title *")
+            field("title","Job Title *")
             SectionLabel("Customer")
                     val new = vm.field("customerMode") == "new"
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        au.mainspring.nativeapp.ui.AtelierChip(selected = !new, onClick = { vm.set("customerMode", "existing") }, enabled = !locked, label = { Text("Existing") })
-                        au.mainspring.nativeapp.ui.AtelierChip(selected = new, onClick = { vm.set("customerMode", "new"); vm.set("customerId", "") }, enabled = !locked, label = { Text("New customer") })
-                    }
-                    if(new) { field("name", "Name *"); field("phone", "Phone"); field("email", "Email") }
+                    au.mainspring.nativeapp.ui.CustomerModeToggle(new, { vm.set("customerMode", "existing") }, { vm.set("customerMode", "new"); vm.set("customerId", "") }, !locked)
+                    if(new) { field("name", "Full Name *"); field("phone", "Phone"); field("email", "Email") }
                     else {
-                        au.mainspring.nativeapp.ui.AtelierTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
+                        au.mainspring.nativeapp.ui.WizardField("Search Customer", vm.field("query"), { vm.set("query", it) }, placeholder = "Type name, phone or email...", singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.search() }))
                         state.customers.forEach { c ->
