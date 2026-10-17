@@ -15,6 +15,11 @@ import au.mainspring.nativeapp.api.CUSTOMER_NON_ACTIVE_STATUSES
 import androidx.compose.ui.platform.testTag
 import au.mainspring.nativeapp.ui.RefreshOnResume
 import au.mainspring.nativeapp.ui.formatShopDate
+import androidx.compose.foundation.background
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import au.mainspring.nativeapp.ui.calibreDisplayStyle
 
 private data class CustomerHistoryRow(val id: String, val number: String, val title: String, val status: String)
 
@@ -28,7 +33,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
     vm: CustomerDetailViewModel = viewModel(key = customerId, factory = CustomerDetailViewModel.factory(customerId,features))) {
     val state by vm.state.collectAsStateWithLifecycle()
     RefreshOnResume(vm::load)
-    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(state.customer?.fullName ?: "Customer") },
+    Scaffold(topBar = { if(!au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(state.customer?.fullName ?: "Customer") },
         navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
         actions = {
             TextButton(onClick = vm::load, enabled = !state.loading && state.paging == null, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
@@ -41,6 +46,11 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
             }
             else -> {
                 val customer = state.customer!!
+                if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
+                    CalibreCustomerBody(Modifier.padding(padding), customer, state, vm, features, onBack, onEdit, onNewRepair, onNewShoe, onNewMobile,
+                        onAddWatch, onEditWatch, onOpenWatchJob, onOpenShoeJob, onOpenMobileJob)
+                    return@Scaffold
+                }
                 var tab by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("jobs") }
                 var jobView by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("active") }
                 val inView = { status: String -> (status in CUSTOMER_NON_ACTIVE_STATUSES) == (jobView == "completed") }
@@ -135,6 +145,119 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                     if(tab == "jobs" && "shoe" in features) historySection("Shoe repair jobs","shoe",state.shoeJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenShoeJob,vm)
                     if(tab == "jobs" && "auto_key" in features) historySection("Mobile service jobs","mobile",state.mobileJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id,it.jobNumber,it.title,it.status) },state,onOpenMobileJob,vm)
                 }
+            }
+        }
+    }
+}
+
+/** Web phone layout of the customer page: back link, serif name, actions, Email line, Watches and Repair Jobs cards; native extras follow as cards. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun CalibreCustomerBody(modifier: Modifier, customer: au.mainspring.nativeapp.api.CustomerRead, state: CustomerDetailUiState, vm: CustomerDetailViewModel, features: Set<String>,
+    onBack: () -> Unit, onEdit: (String) -> Unit, onNewRepair: (String) -> Unit, onNewShoe: (String) -> Unit, onNewMobile: (String) -> Unit,
+    onAddWatch: (String) -> Unit, onEditWatch: (String) -> Unit, onOpenWatchJob: (String) -> Unit, onOpenShoeJob: (String) -> Unit, onOpenMobileJob: (String) -> Unit) {
+    val id = customer.id
+    var jobView by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("active") }
+    val inView = { status: String -> (status in CUSTOMER_NON_ACTIVE_STATUSES) == (jobView == "completed") }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val line = MaterialTheme.colorScheme.outlineVariant
+    val currency = TokenStore.shopValue("currency") ?: "AUD"
+    val watchOnly = features.contains("watch") && !features.contains("shoe") && !features.contains("auto_key")
+    val all = state.watchJobs.map { it.status } + state.shoeJobs.map { it.status } + state.mobileJobs.map { it.status }
+    val activeCount = all.count { it !in CUSTOMER_NON_ACTIVE_STATUSES }
+    val shown = state.watchJobs.count { inView(it.status) } + state.shoeJobs.count { inView(it.status) } + state.mobileJobs.count { inView(it.status) }
+    val contact = listOf("Phone" to customer.phone, "Email" to customer.email, "Address" to customer.address, "Notes" to customer.notes).filter { !it.second.isNullOrBlank() }
+    @Composable fun Card(content: @Composable ColumnScope.() -> Unit) = Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, line)) { Column(content = content) }
+    @Composable fun CardTitle(text: String) { Text(text, Modifier.padding(horizontal = 20.dp, vertical = 16.dp), style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold); HorizontalDivider(color = line) }
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if(state.loading || state.paging != null) LinearProgressIndicator(Modifier.fillMaxWidth())
+                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::load) }
+                TextButton(onBack, Modifier.heightIn(min = 48.dp)) { Text("‹  Back to Customers", color = muted) }
+                Column {
+                    Text(customer.fullName, style = au.mainspring.nativeapp.ui.calibreDisplayStyle(MaterialTheme.typography.headlineLarge), maxLines = 2)
+                    Box(Modifier.padding(top = 8.dp).width(28.dp).height(3.dp).background(MaterialTheme.colorScheme.primary))
+                }
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if("watch" in features) IconLabelButton("plus", "Add Watch", { onAddWatch(id) })
+                    if("watch" in features) NewTicketButton("New Job Ticket", { onNewRepair(id) }, glyph = "wrench", fullWidth = false)
+                    if("shoe" in features) OutlinedButton(onClick = { onNewShoe(id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("New shoe repair") }
+                    if("auto_key" in features) OutlinedButton(onClick = { onNewMobile(id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("New mobile job") }
+                    if(!watchOnly && "watch" in features) OutlinedButton(onClick = { onNewRepair(id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("New watch repair") }
+                }
+                customer.email?.takeIf { it.isNotBlank() }?.let { Text(buildAnnotatedString { withStyle(SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)) { append("Email: ") }; append(it) }, style = MaterialTheme.typography.bodyMedium, color = muted) }
+            }
+        }
+        if("watch" in features) item {
+            Card {
+                CardTitle("Watches (${state.watches.size})")
+                state.historyErrors["watches"]?.let { Box(Modifier.padding(16.dp)) { au.mainspring.nativeapp.ui.ErrorBanner(it) } }
+                if(state.watches.isEmpty() && "watches" !in state.historyErrors) Text("No watches on file.", Modifier.padding(20.dp), style = MaterialTheme.typography.bodyMedium, color = muted)
+                state.watches.forEachIndexed { i, watch ->
+                    if(i > 0) HorizontalDivider(color = line)
+                    Surface({ onEditWatch(watch.id) }, color = MaterialTheme.colorScheme.surface) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
+                            Text(listOfNotNull(watch.brand, watch.model).joinToString(" ").ifBlank { "Watch" }, style = MaterialTheme.typography.bodyLarge)
+                            listOfNotNull(watch.serialNumber?.let { "Serial $it" }, watch.movementType).takeIf { it.isNotEmpty() }?.let { Text(it.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = muted) }
+                        }
+                    }
+                }
+                if("watches" in state.more) OutlinedButton(onClick = { vm.loadMore("watches") }, enabled = !state.loading && state.paging == null, modifier = Modifier.fillMaxWidth().padding(12.dp)) { Text("Load older watches") }
+            }
+        }
+        item {
+            Card {
+                CardTitle("Repair Jobs (${all.size})")
+                Box(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    SandSegmented(listOf(ToggleOption("active", "Active ($activeCount)", "segment-active"), ToggleOption("completed", "Completed (${all.size - activeCount})", "segment-completed")), jobView, { jobView = it })
+                }
+                HorizontalDivider(color = line)
+                if(shown == 0) Text(if(jobView == "active") "No active jobs." else "No completed jobs.", Modifier.padding(20.dp), style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = muted)
+            }
+        }
+        if("watch" in features) historySection("Watch repair jobs", "watch", state.watchJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id, it.jobNumber, it.title, it.status) }, state, onOpenWatchJob, vm)
+        if("shoe" in features) historySection("Shoe repair jobs", "shoe", state.shoeJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id, it.jobNumber, it.title, it.status) }, state, onOpenShoeJob, vm)
+        if("auto_key" in features) historySection("Mobile service jobs", "mobile", state.mobileJobs.filter { inView(it.status) }.map { CustomerHistoryRow(it.id, it.jobNumber, it.title, it.status) }, state, onOpenMobileJob, vm)
+        item {
+            Card {
+                CardTitle("Contact")
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    au.mainspring.nativeapp.ui.ContactQuickActions(customer.phone, customer.email, Modifier.fillMaxWidth())
+                    Text("Customer since ${formatShopDate(customer.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.bodyMedium, color = muted)
+                    if(contact.isEmpty()) Text("No contact details on file.", style = MaterialTheme.typography.bodyMedium, color = muted)
+                    contact.forEach { (label, value) -> au.mainspring.nativeapp.ui.DetailRow(label, value.orEmpty()) }
+                    TextButton({ onEdit(id) }, modifier = Modifier.heightIn(min = 44.dp)) { Text("Edit details") }
+                }
+            }
+        }
+        item {
+            Card {
+                CardTitle(if(state.ordersLoaded) "Orders (${state.orders.size})" else "Orders")
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.ordersError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::load) }
+                    if(state.ordersLoaded && state.orders.isEmpty()) Text("No orders yet. Customer orders will appear here once one is created.", style = MaterialTheme.typography.bodyMedium, color = muted)
+                    else if(!state.ordersLoaded && state.ordersError == null) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    state.orders.forEach { order ->
+                        Column(Modifier.fillMaxWidth().testTag("customer-order-row"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Text(order.title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                                au.mainspring.nativeapp.ui.StatusPill(order.status)
+                            }
+                            val detail = listOfNotNull(order.supplier?.takeIf { it.isNotBlank() }, order.priority.takeIf { it != "normal" }?.let { "${au.mainspring.nativeapp.ui.statusLabel(it)} priority" },
+                                order.estimatedCostCents.takeIf { it > 0 }?.let { au.mainspring.nativeapp.ui.formatCents(it, currency) }).joinToString(" · ")
+                            if(detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = muted)
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Card {
+                CardTitle("Account")
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { LoyaltyAndMergeSection(state, vm, customer.fullName) }
             }
         }
     }

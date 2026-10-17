@@ -4,8 +4,8 @@ import androidx.lifecycle.viewModelScope
 import au.mainspring.nativeapp.api.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-data class CustomersUiState(val loading: Boolean = false, val error: String? = null, val customers: List<CustomerRead> = emptyList(), val query: String = "", val canLoadMore: Boolean = false, val sort: String = "name_asc")
-val CUSTOMER_SORTS = listOf("name_asc" to "Name A-Z", "name_desc" to "Name Z-A", "newest" to "Newest", "oldest" to "Oldest")
+data class CustomersUiState(val loading: Boolean = false, val error: String? = null, val customers: List<CustomerRead> = emptyList(), val query: String = "", val canLoadMore: Boolean = false, val sort: String = "newest")
+val CUSTOMER_SORTS = listOf("newest" to "Newest first", "oldest" to "Oldest first", "name_asc" to "Name A-Z", "name_desc" to "Name Z-A")
 class CustomersViewModel: ViewModel() {
     private val api = au.mainspring.nativeapp.api.ApiClient.api
  private val mutable = MutableStateFlow(CustomersUiState()); val state = mutable.asStateFlow(); private var request: Job? = null

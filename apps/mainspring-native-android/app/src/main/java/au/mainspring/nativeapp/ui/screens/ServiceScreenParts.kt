@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -30,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -91,9 +96,54 @@ internal data class ToggleOption(val key: String, val label: String, val tag: St
     }
 }
 
+/** Sand-coloured track with a white selected pill (web "Jobs | Catalogue", "Active (8) | Completed (0)"). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable internal fun SandSegmented(options: List<ToggleOption>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    Surface(modifier, shape = RoundedCornerShape(6.dp), color = androidx.compose.ui.graphics.Color(0xFFF1E8DC)) {
+        Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+            options.forEach { o ->
+                val on = o.key == selected
+                val tag = if(o.tag != null) Modifier.testTag(o.tag) else Modifier
+                Surface({ onSelect(o.key) }, tag.heightIn(min = 40.dp).semantics { role = Role.Tab }, shape = RoundedCornerShape(4.dp),
+                    color = if(on) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent) {
+                    Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        Text(o.label, style = MaterialTheme.typography.labelLarge, fontWeight = if(on) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if(on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Small line glyph for buttons: plus, queue, download, wrench, close. */
+@Composable internal fun ServiceGlyph(kind: String, modifier: Modifier = Modifier, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
+    androidx.compose.foundation.Canvas(modifier.androidx_size()) {
+        val s = size.width / 24f
+        fun ln(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(color, Offset(x1 * s, y1 * s), Offset(x2 * s, y2 * s), 1.8f * s, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        when(kind) {
+            "plus" -> { ln(12f, 5f, 12f, 19f); ln(5f, 12f, 19f, 12f) }
+            "queue" -> { ln(10f, 7f, 20f, 7f); ln(10f, 12f, 20f, 12f); ln(10f, 17f, 20f, 17f); ln(4f, 6f, 6f, 8f); ln(4f, 11f, 6f, 13f); ln(4f, 16f, 6f, 18f) }
+            "download" -> { ln(12f, 4f, 12f, 15f); ln(7f, 10f, 12f, 15f); ln(17f, 10f, 12f, 15f); ln(5f, 20f, 19f, 20f) }
+            "wrench" -> { ln(5f, 19f, 13f, 11f); drawCircle(color, 3.6f * s, Offset(16.5f * s, 7.5f * s), style = androidx.compose.ui.graphics.drawscope.Stroke(1.8f * s)) }
+            "close" -> { ln(7f, 7f, 17f, 17f); ln(17f, 7f, 7f, 17f) }
+        }
+    }
+}
+private fun Modifier.androidx_size(): Modifier = this.then(Modifier.size(18.dp))
+
+/** Outlined button with a leading glyph (web "Queue", "Export CSV", "Add Watch"). */
+@Composable internal fun IconLabelButton(glyph: String, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    SecondaryAction(onClick, modifier.heightIn(min = 48.dp), enabled = enabled, shape = RoundedCornerShape(2.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+        ServiceGlyph(glyph); Spacer(Modifier.width(8.dp)); Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    }
+}
+
 /** One full-width primary button ("+ New Job Ticket"). */
-@Composable internal fun NewTicketButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    PrimaryAction(onClick, modifier.fillMaxWidth().testTag("new-job-ticket"), shape = RoundedCornerShape(10.dp)) { Text("+  $label", style = MaterialTheme.typography.titleSmall) }
+@Composable internal fun NewTicketButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, glyph: String = "plus", fullWidth: Boolean = true) {
+    PrimaryAction(onClick, (if(fullWidth) modifier.fillMaxWidth() else modifier).testTag("new-job-ticket"), shape = RoundedCornerShape(2.dp)) {
+        ServiceGlyph(glyph, color = MaterialTheme.colorScheme.onPrimary); Spacer(Modifier.width(8.dp)); Text(label, style = MaterialTheme.typography.titleSmall)
+    }
 }
 
 /** Search field and the "Filters" button on one row. [activeCount] > 0 shows as "Filters (n)". */
@@ -140,7 +190,7 @@ internal data class ToggleOption(val key: String, val label: String, val tag: St
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun ServiceJobCard(onClick: () -> Unit, number: String, title: String, customer: String?, statusText: String, statusKey: String,
     daysText: String?, priceLine: String?, thumb: (@Composable () -> Unit)? = null, urgent: Boolean = false, modifier: Modifier = Modifier,
-    badges: (@Composable () -> Unit)? = null) {
+    badges: (@Composable () -> Unit)? = null, onDelete: (() -> Unit)? = null) {
     Surface(onClick, modifier.fillMaxWidth().semantics { role = Role.Button }, shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
@@ -156,6 +206,10 @@ internal data class ToggleOption(val key: String, val label: String, val tag: St
                 if(priceLine != null) Text(priceLine, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             thumb?.invoke()
+            if(onDelete != null) Surface(onDelete, Modifier.size(44.dp).testTag("job-delete").semantics { contentDescription = "Delete $number" }, shape = androidx.compose.foundation.shape.CircleShape,
+                color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Box(contentAlignment = Alignment.Center) { ServiceGlyph("close", color = MaterialTheme.colorScheme.primary, modifier = Modifier) }
+            }
         }
     }
 }
