@@ -268,7 +268,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         }
         return
     }
-    Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
+    Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected; role = androidx.compose.ui.semantics.Role.Tab }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface) {
         Box(Modifier.padding(horizontal = 18.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -289,7 +289,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         }
         return
     }
-    if(androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.25f && options.size > 2) {
+    if((androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.25f && options.size > 2) || options.size > 4) {
         Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { (key, label) -> PillChip(label, selected == key, { onSelect(key) }) }
         }
@@ -440,7 +440,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AtelierChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     if(LocalCalibre.current) {
-        Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
+        Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected; role = androidx.compose.ui.semantics.Role.Tab }, enabled = enabled, shape = MaterialTheme.shapes.small,
             color = if(selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
             contentColor = (if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f),
             border = BorderStroke(if(selected) 1.5.dp else 1.dp, if(selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
@@ -450,7 +450,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         }
         return
     }
-    Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected }, enabled = enabled, shape = MaterialTheme.shapes.small,
+    Surface(onClick, modifier.heightIn(min = 48.dp).semantics { this.selected = selected; role = androidx.compose.ui.semantics.Role.Tab }, enabled = enabled, shape = MaterialTheme.shapes.small,
         color = if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
         contentColor = (if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f)) {
         Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {

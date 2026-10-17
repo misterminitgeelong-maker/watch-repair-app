@@ -71,7 +71,7 @@ fun JobDetailScreen(
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     androidx.activity.compose.BackHandler(state.statusBusy) {}
 
-    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("summary") }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("overview") }
     if (job == null) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(16.dp)) {
             TextButton(onClick = onBack) { Text("\u2039 Jobs", style = MaterialTheme.typography.titleSmall) }
@@ -83,7 +83,7 @@ fun JobDetailScreen(
         reference = listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }).joinToString(" \u00b7 "),
         banner = listOfNotNull(watchStatusLabel(job.status), if (job.priority == "urgent" || job.priority == "high") "Urgent" else null,
             if (state.outstandingCents(job) > 0) "Balance outstanding" else null).joinToString(" \u00b7 "),
-        tabs = listOf("summary" to "Summary", "activity" to "Activity", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
+        tabs = detailTabs(state.attachments.size, state.history.size + state.smsLog.size), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
         primaryLabel = if (state.statusBusy) "Updating\u2026" else "Change status",
         primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
@@ -134,13 +134,22 @@ fun JobDetailScreen(
         state.error?.let { ErrorBanner(it) }
         state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
-            "activity" -> {
+            "history" -> {
                 if(LocalCalibre.current) MonoLabel("Repair activity / most recent first")
                 if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No activity recorded yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 state.history.forEach { h ->
                     ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
                 }
                 state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} \u00b7 ${log.body}", "${log.toPhone} \u00b7 ${formatShopDate(log.createdAt)}") }
+                if(LocalCalibre.current) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Text("Activity includes private workshop notes. Customer-visible conversations are in Messages.", Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            "messages" -> MessageThreadScreen("repair-jobs", shownId, { tab = "overview" }, embedded = true)
+            "work" -> {
+                SectionLabel("Photos & files / ${state.attachments.size}")
+                if (state.attachments.isEmpty()) Text(if (state.loading) "Loading\u2026" else "No photos or files yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 state.attachments.forEach { att ->
                     FlatPanel {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -159,47 +168,52 @@ fun JobDetailScreen(
                     }
                 }
                 attachmentOpenError?.let { ErrorBanner(it) }
-                if(LocalCalibre.current) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Text("Activity includes private workshop notes. Customer-visible conversations are in Messages.", Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SecondaryAction(onClick = onPhotos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Photos & files") }
+                SectionLabel("Work logs")
+                SecondaryAction(onClick = onWorkLogs, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Log work") }
+                SectionLabel("Shop notes")
+                val notes = job.internalNotes?.takeIf { it.isNotBlank() }
+                if (notes != null) SummaryCard("Internal notes", notes, null)
+                else Text("No internal notes yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add shop note") }
             }
-            "messages" -> MessageThreadScreen("repair-jobs", shownId, { tab = "summary" }, embedded = true)
+            "money" -> {
+                SummaryCard("Quotes & invoicing", listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} deposit" }, job.preQuoteCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} pre-quote" }).joinToString(" \u00b7 ").ifBlank { "No charges recorded yet" },
+                    "View charges or record payment", { onQuotes(shownId) })
+                FlatPanel {
+                    Text("Balance", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(formatCents(state.outstandingCents(job), currency) + " outstanding", style = MaterialTheme.typography.titleMedium)
+                    if (state.invoiceTotalCents > 0) Text("Invoiced ${formatCents(state.invoiceTotalCents, currency)} \u00b7 paid ${formatCents(state.invoicePaidCents, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else Text("No invoice raised yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if(TokenStore.canManageInvoices()) SecondaryAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("job-quote-payment")) {
+                    Text(if(state.outstandingCents(job) > 0 && state.invoiceTotalCents > 0) "Take payment" else "Quote & payment")
+                }
+                if(LocalCalibre.current && job.status == "awaiting_collection") {
+                    val outstandingCents = state.outstandingCents(job)
+                    val paid = outstandingCents == 0
+                    SectionLabel(if(paid) "Payment recorded" else "Check before handing over")
+                    CalibreCheckRow(true, "Service complete", "Repair has reached ${statusLabel(job.status).lowercase()}")
+                    CalibreCheckRow(state.smsLog.isNotEmpty(), if(state.smsLog.isNotEmpty()) "Customer notified" else "Customer not yet notified",
+                        if(state.smsLog.isNotEmpty()) "${state.smsLog.size} ${if(state.smsLog.size == 1) "message" else "messages"} sent" else "No message logged for this job")
+                    CalibreCheckRow(paid, if(paid) "Payment verified" else "Payment not yet verified", if(paid) null else "Balance outstanding")
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        MonoLabel(if(paid) "Payment recorded" else "Outstanding")
+                        Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+                        if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    AccentAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
+                }
+            }
             else -> {
                 val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("watch", shownId)
-                JobNavBar(au.mainspring.nativeapp.JobNavContext.position("watch", shownId), prevId, nextId, { shownId = it; tab = "summary" }, enabled = !state.statusBusy)
+                JobNavBar(au.mainspring.nativeapp.JobNavContext.position("watch", shownId), prevId, nextId, { shownId = it; tab = "overview" }, enabled = !state.statusBusy)
                 if(LocalCalibre.current) JobHeroPhoto("watch", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
                 ContactQuickActions(job.customerPhone, job.customerEmail)
                 DaysInShopLabel(au.mainspring.nativeapp.daysInShop(job.createdAt))
                 WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status, au.mainspring.nativeapp.suggestedWatchStatuses(job.status), ::watchStatusLabel,
                     enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
-                if(TokenStore.canManageInvoices()) SecondaryAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("job-quote-payment")) {
-                    Text(if(state.outstandingCents(job) > 0 && state.invoiceTotalCents > 0) "Take payment" else "Quote & payment")
-                }
-                if(LocalCalibre.current) {
-                    if(job.status == "awaiting_collection") {
-                        val outstandingCents = state.outstandingCents(job)
-                        val paid = outstandingCents == 0
-                        SectionLabel(if(paid) "Payment recorded" else "Check before handing over")
-                        CalibreCheckRow(true, "Service complete", "Repair has reached ${statusLabel(job.status).lowercase()}")
-                        CalibreCheckRow(state.smsLog.isNotEmpty(), if(state.smsLog.isNotEmpty()) "Customer notified" else "Customer not yet notified",
-                            if(state.smsLog.isNotEmpty()) "${state.smsLog.size} ${if(state.smsLog.size == 1) "message" else "messages"} sent" else "No message logged for this job")
-                        CalibreCheckRow(paid, if(paid) "Payment verified" else "Payment not yet verified", if(paid) null else "Balance outstanding")
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            MonoLabel(if(paid) "Payment recorded" else "Outstanding")
-                            Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-                            if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        AccentAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
-                    }
-                    if(state.history.isNotEmpty()) {
-                        SectionLabel("Repair history / ${state.history.size} ${if(state.history.size == 1) "event" else "events"}")
-                        state.history.take(3).forEach { h ->
-                            ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
-                        }
-                    }
-                }
                 FlatPanel {
                     Text(job.title, style = MaterialTheme.typography.titleMedium)
                     job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -231,10 +245,6 @@ fun JobDetailScreen(
                         }
                     }
                 }
-                SummaryCard("Quotes & invoicing", listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} deposit" }, job.preQuoteCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} pre-quote" }).joinToString(" \u00b7 ").ifBlank { "No charges recorded yet" },
-                    "View charges or record payment", { onQuotes(shownId) })
-                SummaryCard("Activity & work notes", "Intake and workshop record", "Status changes, approvals and internal notes", { tab = "activity" })
-                job.internalNotes?.takeIf { it.isNotBlank() }?.let { SummaryCard("Internal notes", it, null) }
                 FlatPanel {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -368,3 +378,12 @@ fun JobDetailScreen(
 /** Starts an external call/email intent; returns an error message when no app can handle it. */
 internal fun launchContact(context: android.content.Context, intent: Intent): String? =
     try { context.startActivity(intent); null } catch (e: android.content.ActivityNotFoundException) { "No app available to handle this." }
+
+/** Phone-first tab set shared by the watch and shoe job details: counts are shown only when non-zero. */
+internal fun detailTabs(photos: Int, events: Int): List<Pair<String, String>> = listOf(
+    "overview" to "Overview",
+    "work" to if (photos > 0) "Work $photos" else "Work",
+    "money" to "Money",
+    "history" to if (events > 0) "History $events" else "History",
+    "messages" to "Messages",
+)
