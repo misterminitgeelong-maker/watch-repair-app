@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,7 +51,7 @@ fun CustomersScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     RefreshOnResume(viewModel::refresh)
     val calibre = LocalCalibre.current
-    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(if(calibre) 12.dp else 8.dp)) {
+    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(if(calibre) 0.dp else 8.dp)) {
         if(calibre) item { CalibreCustomersTop(state.query, state.sort, viewModel::setQuery, viewModel::setSort, viewModel::refresh, onNewCustomer) }
         else {
             item { LargeHeader("Directory · Accounts", "Customers", onAdd = onNewCustomer, addDescription = "New customer") }
@@ -74,15 +75,15 @@ fun CustomersScreen(
         if (state.loading && state.customers.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = { viewModel.refresh() }) } }
         if (!state.loading && state.error == null && state.customers.isEmpty()) item { EmptyState("No customers found", "Try a different name, or add a new customer with the + button.", icon = "customers") }
-        if (state.customers.isNotEmpty()) item(key = "count") {
+        if (state.customers.isNotEmpty() && !calibre) item(key = "count") {
             Text(countLabel(state.customers.size, "customer", more = state.canLoadMore), Modifier.padding(horizontal = 24.dp).testTag("customers-count"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        val byName = state.sort.startsWith("name")
+        val byName = state.sort.startsWith("name") && !calibre
         val sections = if (byName) alphaSections(state.customers) { it.fullName } else listOf("" to state.customers)
         sections.forEach { (letter, rows) ->
             if (letter.isNotEmpty()) stickyHeader(key = "letter-$letter-${rows.first().id}", contentType = "letter") { SectionHeader(letter) }
             items(rows, key = { it.id }) { c ->
-                if(calibre) CalibreCustomerCard(c, { onOpenCustomer(c.id) }, Modifier.padding(horizontal = 20.dp))
+                if(calibre) CalibreCustomerRow(c, { onOpenCustomer(c.id) }, first = c.id == rows.first().id, last = c.id == rows.last().id && !state.canLoadMore, modifier = Modifier.padding(horizontal = 20.dp))
                 else ListCard({ onOpenCustomer(c.id) }, Modifier.padding(horizontal = 20.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -104,8 +105,16 @@ fun CustomersScreen(
 
 /** One bordered white card per customer, as on the web: name in the accent colour, email, phone, added date. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun CalibreCustomerCard(c: CustomerRead, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(onClick, modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = CalibreCardShape, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+@Composable private fun CalibreCustomerRow(c: CustomerRead, onClick: () -> Unit, first: Boolean, last: Boolean, modifier: Modifier = Modifier) {
+    val light = MaterialTheme.colorScheme.outlineVariant
+    val dark = MaterialTheme.colorScheme.onSurface
+    Surface(onClick, modifier.fillMaxWidth().drawBehind {
+        val w = 1.dp.toPx()
+        drawLine(light, androidx.compose.ui.geometry.Offset(w / 2, 0f), androidx.compose.ui.geometry.Offset(w / 2, size.height), w)
+        drawLine(light, androidx.compose.ui.geometry.Offset(size.width - w / 2, 0f), androidx.compose.ui.geometry.Offset(size.width - w / 2, size.height), w)
+        if(first) drawLine(light, androidx.compose.ui.geometry.Offset(0f, w / 2), androidx.compose.ui.geometry.Offset(size.width, w / 2), w)
+        drawLine(if(last) light else dark, androidx.compose.ui.geometry.Offset(0f, size.height - w / 2), androidx.compose.ui.geometry.Offset(size.width, size.height - w / 2), w)
+    }, color = MaterialTheme.colorScheme.surface, shape = androidx.compose.ui.graphics.RectangleShape) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(c.fullName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, maxLines = 1)
             Spacer(Modifier.height(6.dp))
@@ -121,19 +130,23 @@ fun CustomersScreen(
 /** Web-style customers header: title and Add Customer, then search and a sort select in one row. */
 @Composable private fun CalibreCustomersTop(query: String, sort: String, onQuery: (String) -> Unit, onSort: (String) -> Unit, onSearch: () -> Unit, onNewCustomer: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Customers", Modifier.weight(1f).semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge))
-            PrimaryAction(onNewCustomer, Modifier.semantics { contentDescription = "New customer" }) { Text("+ Add Customer") }
+    var mergeInfo by remember { mutableStateOf(false) }
+    Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        PageTitle("Customers", Modifier.padding(start = 0.dp))
+        Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SecondaryAction({ mergeInfo = true }, Modifier.heightIn(min = 48.dp).testTag("merge-duplicates"), shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)) { Text("Merge duplicates") }
+            PrimaryAction(onNewCustomer, Modifier.semantics { contentDescription = "New customer" }, shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)) { Text("+  Add Customer") }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AtelierTextField(
                 value = query, onValueChange = onQuery, singleLine = true, placeholder = { Text("Search customers…") },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f), shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp),
+                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             )
             Box {
-                SecondaryAction({ open = true }, Modifier.heightIn(min = 56.dp).testTag("customer-sort")) {
+                SecondaryAction({ open = true }, Modifier.heightIn(min = 56.dp).testTag("customer-sort"), shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)) {
                     Text((CUSTOMER_SORTS.firstOrNull { it.first == sort }?.second ?: "Sort") + " ▾", maxLines = 1)
                 }
                 DropdownMenu(open, { open = false }) {
@@ -142,4 +155,7 @@ fun CustomersScreen(
             }
         }
     }
+    if(mergeInfo) AlertDialog(onDismissRequest = { mergeInfo = false }, title = { Text("Merge duplicates") },
+        text = { Text("Open the customer you want to keep and choose \"Merge a duplicate customer\" on their page. Their watches and jobs move across and the duplicate is deleted.") },
+        confirmButton = { TextButton({ mergeInfo = false }) { Text("OK") } })
 }

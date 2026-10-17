@@ -27,7 +27,7 @@ data class JobsUiState(
     val technicianId: String? = null,
     val users: List<TeamUser> = emptyList(),
     /** Board (kanban) view instead of the list. */
-    val board: Boolean = false,
+    val board: Boolean = true,
     val movingId: String? = null,
     val savedViews: List<SavedJobView> = emptyList(),
     /** Completed tab (web "Completed") instead of Active. */
@@ -125,6 +125,19 @@ class JobsViewModel : ViewModel() {
         }
     }
     fun setBoard(value: Boolean) { _state.update { it.copy(board = value) } }
+
+    /** List-card delete (owner/manager only, as on the web); drops the job from the loaded list on success. */
+    fun deleteJob(id: String) {
+        if (!TokenStore.canManageInvoices()) return
+        viewModelScope.launch {
+            try {
+                au.mainspring.nativeapp.api.ApiClient.service(au.mainspring.nativeapp.api.JobAdminApi::class.java).deleteRepairJob(id)
+                    .let { r -> if (!r.isSuccessful) throw retrofit2.HttpException(r); r.body()?.close() }
+                _state.update { s -> s.copy(jobs = s.jobs.filter { it.id != id }) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _state.update { it.copy(error = e.userMessage()) } }
+        }
+    }
 
     /** Board "Move to": changes one job's status and swaps the returned job into the list. */
     fun moveJob(id: String, status: String) {

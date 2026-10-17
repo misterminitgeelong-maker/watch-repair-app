@@ -1,6 +1,9 @@
 package au.mainspring.nativeapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.platform.testTag
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,6 +44,14 @@ import au.mainspring.nativeapp.ui.SecondaryAction
 import au.mainspring.nativeapp.ui.formatCents
 import au.mainspring.nativeapp.watchStatusLabel
 
+/** CSV of the loaded watch jobs for the Export CSV button. */
+internal fun watchJobsCsv(jobs: List<au.mainspring.nativeapp.api.RepairJobRead>, currency: String): String {
+    fun q(v: String?): String = "\"" + (v ?: "").replace("\"", "\"\"") + "\""
+    val rows = jobs.map { j -> listOf(j.jobNumber, j.title, j.customerName, j.customerPhone, j.customerEmail, listOfNotNull(j.watchBrand, j.watchModel).joinToString(" "),
+        watchStatusLabel(j.status), j.priority, j.preQuoteCents.takeIf { it > 0 }?.let { formatCents(it, currency) }, j.createdAt).joinToString(",") { q(it) } }
+    return (listOf(listOf("Job", "Title", "Customer", "Phone", "Email", "Watch", "Status", "Priority", "Quote", "Created").joinToString(",") { q(it) }) + rows).joinToString("\r\n") + "\r\n"
+}
+
 private val URGENT_STATUSES = setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent")
 
 /**
@@ -48,6 +59,7 @@ private val URGENT_STATUSES = setOf("no_go", "failed_job", "job_delayed", "decli
  * Active | Completed, search + Filters, the list or board, and a floating "New Job" button.
  * [onOpenQueue] shows the Queue button (the repair queue) when given.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun JobsScreen(
     onOpenJob: (String) -> Unit,
@@ -69,22 +81,42 @@ fun JobsScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     val currency = TokenStore.shopValue("currency") ?: "AUD"
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var exportInfo by remember { mutableStateOf<String?>(null) }
+    var deleting by remember { mutableStateOf<au.mainspring.nativeapp.api.RepairJobRead?>(null) }
+    val csvSaver = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) scope.launch {
+            exportInfo = try { au.mainspring.nativeapp.saveReportExport(context, uri, watchJobsCsv(state.jobs, currency).toByteArray(Charsets.UTF_8)); "CSV saved (${state.jobs.size} jobs)." }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) { e.message ?: "Could not save the CSV." }
+        }
+    }
+    val canDelete = TokenStore.canManageInvoices()
+    val muted = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+
     val header: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ServiceTitle("Watch repairs", Modifier.padding(top = 8.dp))
-            if (tab == "jobs") Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            ServiceTitle("Watch Repairs", Modifier.padding(top = 8.dp))
+            androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextToggle(listOf(ToggleOption("board", "Board", "view-board"), ToggleOption("list", "List", "view-list")),
                     if (state.board) "board" else "list", { viewModel.setBoard(it == "board") })
-                if (onOpenQueue != null) SecondaryAction(onOpenQueue, Modifier.padding(start = 8.dp)) { Text("Queue") }
+                if (onOpenQueue != null) IconLabelButton("queue", "Queue", onOpenQueue)
+                IconLabelButton("download", "Export CSV", { csvSaver.launch("watch-repairs.csv") }, Modifier.testTag("export-csv"), enabled = state.jobs.isNotEmpty())
             }
-            NewTicketButton("New Job Ticket", onNewJob)
-            UnderlineTabs(listOf(ToggleOption("jobs", "Jobs", "tab-jobs"), ToggleOption("catalogue", "Catalogue", "tab-catalogue")), tab, { tab = it })
+            exportInfo?.let { Text(it, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = muted) }
+            NewTicketButton("New Job Ticket", onNewJob, fullWidth = false)
+            Text("Movement services, batteries, pressure testing, and full servicing.", style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, color = muted)
+            SandSegmented(listOf(ToggleOption("jobs", "Jobs", "tab-jobs"), ToggleOption("catalogue", "Catalogue", "tab-catalogue")), tab, { tab = it })
             if (tab == "jobs") {
-                TextToggle(listOf(ToggleOption("active", "Active (${state.activeCount})", "segment-active"), ToggleOption("completed", "Completed (${state.completedCount})", "segment-completed")),
+                SandSegmented(listOf(ToggleOption("active", "Active (${state.activeCount})", "segment-active"), ToggleOption("completed", "Completed (${state.completedCount})", "segment-completed")),
                     if (state.showCompleted) "completed" else "active", { viewModel.setShowCompleted(it == "completed") })
                 SearchFiltersRow(state.query, viewModel::setQuery, "Search jobs…", { filtersOpen = true }, state.activeFilterCount, onSearch = viewModel::refresh)
                 if (state.loading && state.jobs.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = { viewModel.refresh() }) }
+                if (!state.loading && state.error == null) Text(
+                    if (state.canLoadMore) "Showing the first ${state.jobs.size} jobs for this filter." else "All matching jobs are loaded for this filter (${state.jobs.size} rows).",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = muted, modifier = Modifier.testTag("jobs-loaded-note"))
                 if (!state.loading && state.error == null && state.visibleJobs.isEmpty()) {
                     au.mainspring.nativeapp.ui.EmptyState("No repairs found", "Try a different search or filter, or start a new repair.")
                 }
@@ -105,9 +137,12 @@ fun JobsScreen(
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     header()
                     val order = WATCH_PICKER_STATUSES.filter { isWatchCompleted(it) == state.showCompleted }
-                    val cards = state.visibleJobs.map { BoardCard(it.id, it.title, listOfNotNull(it.jobNumber, it.customerName?.takeIf { n -> n.isNotBlank() }).joinToString(" · "), it.status) }
+                    val cards = state.visibleJobs.map { j -> BoardCard(j.id, j.title, listOfNotNull(j.jobNumber, j.customerName?.takeIf { n -> n.isNotBlank() }).joinToString(" · "), j.status,
+                        number = j.jobNumber, brand = listOfNotNull(j.watchBrand, j.watchModel).joinToString(" "), days = "${au.mainspring.nativeapp.daysInShop(j.createdAt)}d",
+                        description = j.description, customerLine = listOfNotNull(j.customerName?.takeIf { n -> n.isNotBlank() }, j.customerPhone?.takeIf { n -> n.isNotBlank() }).joinToString(" "),
+                        assignee = state.users.firstOrNull { u -> u.id == j.assignedUserId }?.name ?: j.claimedByName, price = j.preQuoteCents.takeIf { c -> c > 0 }?.let { c -> formatCents(c, currency) }) }
                     JobsBoard(buildBoardColumns(cards, order, ::watchStatusLabel), WATCH_PICKER_STATUSES.map { it to watchStatusLabel(it) },
-                        canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob, fillHeight = false)
+                        canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob, fillHeight = false, web = true)
                 }
             }
         } else {
@@ -115,11 +150,11 @@ fun JobsScreen(
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item { header() }
                     items(state.visibleJobs, key = { it.id }) { job ->
-                        ServiceJobCard({ onOpenJob(job.id) }, job.jobNumber, job.title, job.customerName, au.mainspring.nativeapp.ui.statusLabel(job.status), job.status,
+                        ServiceJobCard({ onOpenJob(job.id) }, "#${job.jobNumber}", job.title, job.customerName, au.mainspring.nativeapp.ui.statusLabel(job.status), job.status,
                             shortDaysInShop(au.mainspring.nativeapp.daysInShop(job.createdAt)),
                             job.preQuoteCents.takeIf { it > 0 }?.let { "Quote ${formatCents(it, currency)}" },
                             thumb = { JobThumb("watch", job.id, size = 56.dp) }, urgent = job.status in URGENT_STATUSES,
-                            modifier = Modifier.padding(horizontal = 16.dp))
+                            modifier = Modifier.padding(horizontal = 16.dp), onDelete = if (canDelete) ({ deleting = job }) else null)
                     }
                     if (state.canLoadMore) item {
                         SecondaryAction(viewModel::loadMore, Modifier.padding(horizontal = 16.dp).fillMaxWidth(), enabled = !state.loading) { Text("Load more repairs") }
@@ -130,6 +165,9 @@ fun JobsScreen(
         NewJobFab(onNewJob, Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
     }
 
+    deleting?.let { job ->
+        DeleteJobDialog("${job.jobNumber} · ${job.title}", { deleting = null; viewModel.deleteJob(job.id) }, { deleting = null })
+    }
     if (filtersOpen) {
         val me = TokenStore.currentUserId()
         FiltersSheet(onDismiss = { filtersOpen = false }, onReset = {
