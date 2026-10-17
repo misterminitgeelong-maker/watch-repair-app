@@ -13,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.ReportExtrasViewModel
@@ -33,7 +36,7 @@ private fun money(cents: Long) = "$" + BigDecimal.valueOf(cents, 2).toPlainStrin
 
 /** Sales by category (calendar period or custom range) with CSV export, GST, technician and trend breakdowns, plus the shop audit log. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun ReportExtrasScreen(onBack: () -> Unit, viewModel: ReportExtrasViewModel = viewModel()) {
+@Composable fun ReportExtrasScreen(onBack: () -> Unit, viewModel: ReportExtrasViewModel = viewModel(), embedded: Boolean = false) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -52,18 +55,26 @@ private fun money(cents: Long) = "$" + BigDecimal.valueOf(cents, 2).toPlainStrin
             catch(e: Exception) { viewModel.setExportBusy(false, e.userMessage()) }
         }
     }
-    Scaffold(topBar = { BackLargeHeader("More", "Reports", "Sales & activity", onBack) }) { padding ->
+    Scaffold(contentWindowInsets = if(embedded) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets, containerColor = MaterialTheme.colorScheme.background,
+        topBar = { if(!embedded) FinTitle("Sales & activity", onBack = onBack, insets = true) }) { padding ->
         if(!state.allowed) {
             Box(Modifier.fillMaxSize().padding(padding).padding(16.dp)) { EmptyState("Owner or manager only", "Sales and activity reports need an owner or manager account.") }
             return@Scaffold
         }
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("report-extras"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { SectionLabel("Sales by category") }
+        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("report-extras"), contentPadding = PaddingValues(start = FinGutter, end = FinGutter, top = 12.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            state.summary?.let { sm ->
+                val all = listOfNotNull(sm.watch, sm.shoe, sm.mobile)
+                val rev = all.sumOf { it.revenueCents }; val cost = all.sumOf { it.costCents }; val out = all.sumOf { it.outstandingCents }
+                item { FinKpiCard("Revenue", money(rev), "dollar", FinKpi.RevenueTint, FinKpi.RevenueBg, valueTag = "kpi-Revenue") }
+                item { FinKpiCard("Cost", money(cost), "wallet", FinKpi.CostTint, FinKpi.CostBg, valueTag = "kpi-Cost") }
+                item { FinKpiCard("Gross profit", money(rev - cost), "scales", FinKpi.ProfitTint, FinKpi.ProfitBg, valueTag = "kpi-Profit") }
+                item { FinKpiCard("Outstanding", money(out), "bars", FinKpi.OutstandingTint, FinKpi.OutstandingBg, valueTag = "kpi-Outstanding") }
+            }
+            item { Text("Sales by Category", Modifier.padding(top = 8.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)) }
             item {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("day", "week", "month", "quarter").forEach { p -> TabChip(state.period == p, { viewModel.selectPeriod(p) }, label = { Text(p.replaceFirstChar { it.uppercase() }) }) }
-                    TabChip(state.period == ReportRange.CUSTOM, { viewModel.selectPeriod(ReportRange.CUSTOM); rangeOpen = true }, label = { Text("Custom") }, modifier = Modifier.testTag("range-custom"))
-                }
+                FinPillSwitch(listOf("day", "week", "month", "quarter").map { it to it.replaceFirstChar { c -> c.uppercase() } } + (ReportRange.CUSTOM to "Custom"), state.period, { p ->
+                    viewModel.selectPeriod(p); if(p == ReportRange.CUSTOM) rangeOpen = true
+                })
             }
             if(state.period == ReportRange.CUSTOM) item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -86,18 +97,14 @@ private fun money(cents: Long) = "$" + BigDecimal.valueOf(cents, 2).toPlainStrin
             state.techsError?.let { item { ErrorBanner("Technician breakdown: $it", onRetry = viewModel::refresh) } }
             if(state.techs.isNotEmpty()) item { TechLeaderboardPanel(state.techs) }
             item {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(6, 12).forEach { m -> TabChip(state.trendMonths == m, { viewModel.selectTrendMonths(m) }, label = { Text("$m months") }) }
-                }
+                FinPillSwitch(listOf(6, 12).map { it.toString() to "$it months" }, state.trendMonths.toString(), { viewModel.selectTrendMonths(it.toInt()) })
             }
             state.trendsError?.let { item { ErrorBanner("Trends: $it", onRetry = viewModel::refresh) } }
             if(state.trends.isNotEmpty()) item { TrendsPanel(state.trends) }
             item {
                 FlatPanel {
                     Text("Download the sales rows for this period. Choose where to save the file.", style = MaterialTheme.typography.bodySmall)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("all" to "All", "watch" to "Watch", "shoe" to "Shoe", "mobile" to "Mobile").forEach { (key, label) -> TabChip(category == key, { category = key }, label = { Text(label) }) }
-                    }
+                    FinPillSwitch(listOf("all" to "All", "watch" to "Watch", "shoe" to "Shoe", "mobile" to "Mobile"), category, { category = it })
                     SecondaryAction({ generation = TokenStore.sessionGeneration(); saver.launch("mainspring-sales-$category-${state.range.fileLabel()}.csv") }, Modifier.fillMaxWidth().testTag("sales-export"), enabled = !state.exportBusy && state.range.validate() == null) {
                         Text(if(state.exportBusy) "Preparing…" else "Download sales CSV")
                     }

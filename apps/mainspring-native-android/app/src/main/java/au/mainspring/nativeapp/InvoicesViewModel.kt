@@ -25,16 +25,17 @@ data class InvoicesUiState(
 data class ListedInvoice(
     val id: String, val number: String, val status: String, val totalCents: Int, val currency: String,
     val createdAt: String, val customerName: String?, val title: String, val mobile: Boolean, val jobId: String,
+    val subtotalCents: Int? = null, val taxCents: Int? = null,
 )
 
 /** Merge, filter and search like the web InvoicesPage. `type` is null (all), "watch" or "mobile". */
 fun mergedInvoices(state: InvoicesUiState, type: String?, status: String?, query: String): List<ListedInvoice> {
     val watch = state.invoices.map { inv ->
         val job = state.jobs[inv.repairJobId]
-        ListedInvoice(inv.id, inv.invoiceNumber, inv.status, inv.totalCents, inv.currency, inv.createdAt, job?.customerName, job?.title ?: "Repair invoice", false, inv.repairJobId)
+        ListedInvoice(inv.id, inv.invoiceNumber, inv.status, inv.totalCents, inv.currency, inv.createdAt, job?.customerName, job?.title ?: "Repair invoice", false, inv.repairJobId, inv.subtotalCents, inv.taxCents)
     }
     val mobile = state.mobile.map {
-        ListedInvoice(it.id, it.number, it.status, it.totalCents, it.currency, it.createdAt, it.customerName, it.jobNumber?.let { n -> "Mobile job $n" } ?: "Mobile invoice", true, it.jobId)
+        ListedInvoice(it.id, it.number, it.status, it.totalCents, it.currency, it.createdAt, it.customerName, it.jobNumber?.let { n -> "Mobile job $n" } ?: "Mobile invoice", true, it.jobId, it.subtotal, it.tax)
     }
     val term = query.trim().lowercase()
     return (watch + mobile).filter { row ->

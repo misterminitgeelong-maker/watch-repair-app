@@ -51,7 +51,9 @@ fun QuoteDetailScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Column {
+            if (au.mainspring.nativeapp.ui.LocalCalibre.current) FinTitle("Quote", onBack = onBack, insets = true,
+                actions = { TextButton(onClick = vm::load, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } })
+            else Column {
                 au.mainspring.nativeapp.ui.BackLargeHeader("Quotes", "Quote approval", "Quote", onBack)
                 TextButton(onClick = vm::load, enabled = !state.loading, modifier = Modifier.padding(start = 12.dp).heightIn(min = 48.dp)) { Text("Refresh") }
             }
