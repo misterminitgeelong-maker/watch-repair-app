@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 /** One row of the unified Jobs list: a watch, shoe or mobile-services job. */
 data class HubJob(
     val id: String, val service: String, val number: String, val title: String, val customer: String?,
-    val status: String, val urgent: Boolean, val dueDate: String?, val assignedToMe: Boolean, val sortKey: String,
+    val status: String, val urgent: Boolean, val dueDate: String?, val assignedToMe: Boolean, val sortKey: String, val createdAt: String = "",
 ) {
     val ready get() = status in READY_STATUSES
     val active get() = status !in DONE_STATUSES
@@ -29,7 +29,7 @@ data class HubJob(
 
 data class JobsHubState(
     val loading: Boolean = false, val error: String? = null, val jobs: List<HubJob> = emptyList(),
-    val query: String = "", val segment: String = "active", val service: String = "all",
+    val query: String = "", val segment: String = "active", val service: String = "all", val sort: String = "default",
 ) {
     val visible: List<HubJob> get() {
         val q = query.trim()
@@ -37,7 +37,7 @@ data class JobsHubState(
             (service == "all" || j.service == service) &&
             when(segment) { "mine" -> j.assignedToMe && j.active; "ready" -> j.ready; else -> j.active } &&
             (q.isEmpty() || listOf(j.title, j.number, j.customer.orEmpty()).any { it.contains(q, ignoreCase = true) })
-        }.sortedBy { it.sortKey }
+        }.let { sortHubJobs(it, sort) }
     }
     val activeCount get() = jobs.count { it.active }
     val mineCount get() = jobs.count { it.assignedToMe && it.active }
@@ -53,6 +53,7 @@ class JobsHubViewModel(private val services: Set<String> = setOf("watch", "shoe"
     fun setQuery(value: String) { _state.update { it.copy(query = value) } }
     fun setSegment(value: String) { _state.update { it.copy(segment = value) } }
     fun setService(value: String) { _state.update { it.copy(service = value) } }
+    fun setSort(value: String) { _state.update { it.copy(sort = value) } }
 
     fun refresh() {
         viewModelScope.launch {
@@ -66,11 +67,11 @@ class JobsHubViewModel(private val services: Set<String> = setOf("watch", "shoe"
                     val w = watch.await(); val s = shoe.await(); val m = mobile.await()
                     if(w == null && s == null && m == null) throw java.io.IOException("jobs unavailable")
                     (w.orEmpty().map { HubJob(it.id, "watch", it.jobNumber, it.title, it.customerName, it.status, it.priority in listOf("urgent", "high"), it.collectionDate,
-                        me.isNotBlank() && (it.claimedByUserId == me || it.assignedUserId == me), (it.collectionDate ?: "9999") + it.jobNumber) } +
+                        me.isNotBlank() && (it.claimedByUserId == me || it.assignedUserId == me), (it.collectionDate ?: "9999") + it.jobNumber, it.createdAt) } +
                     s.orEmpty().map { HubJob(it.id, "shoe", it.jobNumber, it.title, null, it.status, it.priority in listOf("urgent", "high"), it.collectionDate,
-                        me.isNotBlank() && it.assignedUserId == me, (it.collectionDate ?: "9999") + it.jobNumber) } +
+                        me.isNotBlank() && it.assignedUserId == me, (it.collectionDate ?: "9999") + it.jobNumber, it.createdAt) } +
                     m.orEmpty().map { HubJob(it.id, "auto_key", it.jobNumber, it.title, it.customerName, it.status, it.priority in listOf("urgent", "high"), it.scheduledAt?.take(10),
-                        me.isNotBlank() && it.assignedUserId == me, (it.scheduledAt?.take(10) ?: "9999") + it.jobNumber) })
+                        me.isNotBlank() && it.assignedUserId == me, (it.scheduledAt?.take(10) ?: "9999") + it.jobNumber, it.createdAt) })
                 }
                 _state.update { it.copy(loading = false, jobs = rows) }
             } catch(e: CancellationException) { throw e }

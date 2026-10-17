@@ -27,11 +27,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.TodayViewModel
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.bookingInstant
+import au.mainspring.nativeapp.countLabel
 import au.mainspring.nativeapp.ui.*
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 /** Atelier "Dispatch": route illustration, Today / This week / Pool pills and "Next on the road". */
 @Composable
 fun DispatchScreen(
@@ -70,15 +72,16 @@ fun DispatchScreen(
         }
         item {
             if(LocalCalibre.current) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { MonoLabel("Today"); Text("Next on the road", style = MaterialTheme.typography.titleLarge) }
+                Column(Modifier.weight(1f)) { MonoLabel("Today · " + countLabel(shown.size, "appointment")); Text("Next on the road", style = MaterialTheme.typography.titleLarge) }
                 LinkAction(onClick = onOpenPlanner) { Text("Planner", style = MaterialTheme.typography.labelLarge) }
             } else Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Next on the road", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Text(countLabel(shown.size, "appointment"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = onOpenPlanner, modifier = Modifier.heightIn(min = 44.dp)) { Text("Planner", style = MaterialTheme.typography.labelLarge) }
             }
         }
-        if(extra.technicians.isNotEmpty() || riskFirst || state.jobs.any { it.assignedUserId == null }) item {
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if(extra.technicians.isNotEmpty() || riskFirst || state.jobs.any { it.assignedUserId == null }) stickyHeader(key = "lanes", contentType = "lanes") {
+            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PillChip("All lanes", lane == "all", { lane = "all" })
                     extra.technicians.forEach { t -> PillChip(t.name, lane == t.id, { lane = t.id }) }
