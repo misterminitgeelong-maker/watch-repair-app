@@ -44,7 +44,7 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                 var tab by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("jobs") }
                 var jobView by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("active") }
                 val inView = { status: String -> (status in CUSTOMER_NON_ACTIVE_STATUSES) == (jobView == "completed") }
-                LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 20.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if(au.mainspring.nativeapp.ui.LocalCalibre.current) 14.dp else 8.dp)) {
                     item {
                         if(state.loading || state.paging != null) LinearProgressIndicator(Modifier.fillMaxWidth())
                         state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::load) }
