@@ -54,57 +54,63 @@ fun AutoKeyJobsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var dateOpen by remember { mutableStateOf(false) }
+    var filtersOpen by remember { mutableStateOf(false) }
     au.mainspring.nativeapp.ui.RefreshOnResume(viewModel::refresh)
     Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0), containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
         au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(
             Modifier.padding(padding).fillMaxSize(),
             contentPadding = PaddingValues(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if(onOpenBookingRequests != null) item { au.mainspring.nativeapp.ui.PendingBookingsBanner(onOpenBookingRequests, Modifier.padding(horizontal = 16.dp)) }
             item {
-                au.mainspring.nativeapp.ui.AtelierTextField(state.query, viewModel::query, label = { Text("Search jobs, customers or registration") }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), singleLine = true)
-                au.mainspring.nativeapp.ui.FilterRow(listOf("active" to "Active", "completed" to "Completed", "all" to "All").map { (k, v) -> k as String? to v }, if(state.focus == null) state.directory else null, { viewModel.directory(it ?: "active") })
-                au.mainspring.nativeapp.ui.FilterRow(listOf("today" to "Today", "unscheduled" to "Unscheduled", "unassigned" to "Unassigned", "needs_quote" to "Needs quote", "completed_unpaid" to "Completed, unpaid").map { (k, v) -> k as String? to v },
-                    state.focus, { viewModel.focus(if(state.focus == it) null else it) })
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { dateOpen = true }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Schedule by day") }
-                    state.day?.let { Text(au.mainspring.nativeapp.ui.formatShopDate(it), style = MaterialTheme.typography.titleMedium) }
-                    TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
-                }
-                state.day?.let {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { viewModel.shiftDay(-1) }) { Text("Previous day") }
-                        TextButton(onClick = { viewModel.shiftDay(1) }) { Text("Next day") }
-                        TextButton(onClick = { viewModel.day(null) }) { Text("Clear date") }
-                    }
-                }
-                if(state.loading) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), onRetry = { viewModel.refresh() }) }
-                Text("${state.jobs.size} of ${state.total} " + (if(state.day != null) "appointments" else "jobs") + (if(state.day != null) " \u00b7 ${au.mainspring.nativeapp.TokenStore.calendarTimezone()}" else ""),
-                    Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            items(state.jobs, key = { it.id }) { j ->
-                au.mainspring.nativeapp.ui.ListCard({ onOpenJob(j.id) }, Modifier.padding(horizontal = 16.dp)) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextToggle(listOf(ToggleOption("active", "Active", "segment-active"), ToggleOption("completed", "Completed", "segment-completed")),
+                        if(state.focus == null) state.directory else "", { viewModel.directory(it) })
+                    SearchFiltersRow(state.query, viewModel::query, "Search jobs…", { filtersOpen = true }, (if(state.focus != null) 1 else 0) + (if(state.focus == null && state.directory == "all") 1 else 0))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(listOf(j.jobNumber, if(j.scheduledAt != null) bookingTime(j.scheduledAt) else null).filterNotNull().joinToString(" \u00b7 "), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            au.mainspring.nativeapp.slaChip(j)?.let { au.mainspring.nativeapp.ui.SlaChip(it) }
-                            if(j.priority == "high" || j.priority == "urgent") au.mainspring.nativeapp.ui.StatusPill("urgent")
-                            au.mainspring.nativeapp.ui.StatusPill(j.status)
+                        Text("${state.jobs.size} of ${state.total} " + (if(state.day != null) "appointments" else "jobs") + (if(state.day != null) " · ${au.mainspring.nativeapp.TokenStore.calendarTimezone()}" else ""),
+                            Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = { dateOpen = true }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Schedule by day") }
+                    }
+                    state.day?.let {
+                        Text(au.mainspring.nativeapp.ui.formatShopDate(it), style = MaterialTheme.typography.titleMedium)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { viewModel.shiftDay(-1) }) { Text("Previous day") }
+                            TextButton(onClick = { viewModel.shiftDay(1) }) { Text("Next day") }
+                            TextButton(onClick = { viewModel.day(null) }) { Text("Clear date") }
                         }
                     }
-                    Text(j.title, style = MaterialTheme.typography.titleMedium)
-                    val vehicle = listOfNotNull(j.vehicleMake, j.vehicleModel, j.vehicleYear?.toString()).filter { it.isNotBlank() }.joinToString(" ")
-                    val detail = listOf(vehicle, j.customerName.orEmpty()).filter { it.isNotBlank() }.joinToString(" \u00b7 ")
-                    if(detail.isNotBlank()) Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    j.jobAddress?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    if(state.day == null) j.scheduledAt?.let { Text(au.mainspring.nativeapp.ui.formatShopDate(it, au.mainspring.nativeapp.TokenStore.calendarTimezone()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    if(state.loading) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+                    state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = { viewModel.refresh() }) }
                 }
+            }
+            items(state.jobs, key = { it.id }) { j ->
+                val vehicle = listOfNotNull(j.vehicleMake, j.vehicleModel, j.vehicleYear?.toString()).filter { it.isNotBlank() }.joinToString(" ")
+                val detail = listOf(vehicle, j.customerName.orEmpty()).filter { it.isNotBlank() }.joinToString(" · ")
+                val when_ = if(j.scheduledAt != null) (if(state.day == null) au.mainspring.nativeapp.ui.formatShopDate(j.scheduledAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()) + " " else "") + bookingTime(j.scheduledAt) else null
+                ServiceJobCard({ onOpenJob(j.id) }, j.jobNumber, j.title, detail.ifBlank { null }, au.mainspring.nativeapp.ui.statusLabel(j.status), j.status, when_,
+                    j.jobAddress?.takeIf { it.isNotBlank() }, thumb = { au.mainspring.nativeapp.ui.JobThumb("auto_key", j.id, size = 56.dp) },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    badges = {
+                        au.mainspring.nativeapp.slaChip(j)?.let { au.mainspring.nativeapp.ui.SlaChip(it) }
+                        if(j.priority == "high" || j.priority == "urgent") au.mainspring.nativeapp.ui.StatusPill("urgent")
+                    })
             }
             if(!state.loading && state.jobs.isEmpty() && state.error == null) item { au.mainspring.nativeapp.ui.EmptyState("No jobs match this view", "Try another filter or search.") }
             if(state.jobs.size < state.total) item { OutlinedButton(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("Load more jobs") } }
         } }
+    }
+    if(filtersOpen) {
+        FiltersSheet(onDismiss = { filtersOpen = false }, onReset = { viewModel.focus(null); viewModel.directory("active") }) {
+            FilterSection("Directory") {
+                listOf("active" to "Active", "completed" to "Completed", "all" to "All").forEach { (k, v) -> SheetChip(v, state.focus == null && state.directory == k, { viewModel.directory(k) }) }
+            }
+            FilterSection("Focus") {
+                listOf("today" to "Today", "unscheduled" to "Unscheduled", "unassigned" to "Unassigned", "needs_quote" to "Needs quote", "completed_unpaid" to "Completed, unpaid")
+                    .forEach { (k, v) -> SheetChip(v, state.focus == k, { viewModel.focus(if(state.focus == k) null else k) }) }
+            }
+        }
     }
     if(dateOpen) {
         val initial = state.day?.let(java.time.LocalDate::parse) ?: java.time.LocalDate.now(java.time.ZoneId.of(au.mainspring.nativeapp.TokenStore.calendarTimezone()))

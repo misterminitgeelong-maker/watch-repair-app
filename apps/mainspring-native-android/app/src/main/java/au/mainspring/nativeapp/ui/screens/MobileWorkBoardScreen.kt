@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,13 +26,17 @@ import java.time.*
 @Composable fun MobileWorkBoardScreen(apiBaseUrl: String,onBack: () -> Unit,onOpenJob: (String) -> Unit,onNewJob: () -> Unit,onNavigate: (String)->Unit) {
     var mode by rememberSaveable {mutableStateOf("list")}
     var selected by rememberSaveable {mutableStateOf<String?>(null)}
-    Scaffold(
-        topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Mobile services")},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},
-            actions={TextButton({onNavigate("route")},modifier=Modifier.heightIn(min=48.dp)) {Text("Map")}
-                if(TokenStore.canWorkJobs()) au.mainspring.nativeapp.ui.RoundPlusButton(onNewJob,"New job",Modifier.padding(end=12.dp))})},
-    ) {padding->
+    Scaffold(contentWindowInsets=WindowInsets(0,0,0,0),containerColor=androidx.compose.ui.graphics.Color.Transparent,
+        floatingActionButton={if(TokenStore.canWorkJobs()) NewJobFab(onNewJob)}) {padding->
     Column(Modifier.fillMaxSize().padding(padding)) {
-        FilterRow(listOf("list" to "List","board" to "Kanban","planner" to "Planner"),mode,{mode=it ?: "list"})
+        Column(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            ServiceTitle("Jobs & dispatch",Modifier.padding(top=8.dp))
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
+                TextToggle(listOf(ToggleOption("list","List","view-list"),ToggleOption("board","Kanban","view-board"),ToggleOption("planner","Planner","view-planner")),mode,{mode=it})
+                SecondaryAction({onNavigate("route")},Modifier.padding(start=8.dp)) {Text("Map")}
+            }
+            if(TokenStore.canWorkJobs()) NewTicketButton("New Job Ticket",onNewJob)
+        }
         BoxWithConstraints(Modifier.weight(1f)) {
             when(mode) {
                 "board" -> MobileKanbanScreen(onBack,onOpenJob,onNewJob)

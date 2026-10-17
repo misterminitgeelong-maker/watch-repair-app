@@ -142,7 +142,8 @@ internal data class ToggleOption(val key: String, val label: String, val tag: St
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun ServiceJobCard(onClick: () -> Unit, number: String, title: String, customer: String?, statusText: String, statusKey: String,
-    daysText: String?, priceLine: String?, thumb: (@Composable () -> Unit)? = null, urgent: Boolean = false, modifier: Modifier = Modifier) {
+    daysText: String?, priceLine: String?, thumb: (@Composable () -> Unit)? = null, urgent: Boolean = false, modifier: Modifier = Modifier,
+    badges: (@Composable () -> Unit)? = null) {
     Surface(onClick, modifier.fillMaxWidth().semantics { role = Role.Button }, shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
@@ -152,6 +153,7 @@ internal data class ToggleOption(val key: String, val label: String, val tag: St
                 if(!customer.isNullOrBlank()) Text(customer, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     TonePill(statusText, if(urgent) StatusTone.Late else statusTone(statusKey))
+                    badges?.invoke()
                     if(daysText != null) Text(daysText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
                 if(priceLine != null) Text(priceLine, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
