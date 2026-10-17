@@ -377,6 +377,7 @@ fun MainspringAppShell(
                         onBack = { navController.popBackStack() },
                         onOpenJob = { id -> navController.navigate("shoeJob/$id") },
                         onNewJob = { navController.navigate("shoe_intake") },
+                        onOpenQueue = { navController.navigate("repairQueue") },
                     )
                 }
                 composable("shoe_intake?customerId={customerId}", arguments = listOf(navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
