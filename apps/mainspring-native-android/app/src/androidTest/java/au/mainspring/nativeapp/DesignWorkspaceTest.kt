@@ -104,7 +104,7 @@ class DesignWorkspaceTest {
     }
     @Test fun ownerCanReachMoreAndThemeChoicePersistsAcrossComposition() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
-        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-group-settings").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasText("Atelier"))
+        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasTestTag("more-group-settings"));compose.onNodeWithTag("more-group-settings").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasText("Atelier"))
         compose.onNodeWithText("Atelier").assertExists()
         compose.onNodeWithText("Night Workshop").performScrollTo().performClick();Assert.assertEquals(AppAppearance.NIGHT,DesignPreferences.appearance.value)
         Assert.assertEquals("NIGHT",InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("mainspring_appearance",0).getString("appearance",null))

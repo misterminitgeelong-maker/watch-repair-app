@@ -63,7 +63,7 @@ class ShopSessionWorkflowTest {
             key(state.sessionKey) { MainspringAppShell(state.sessionSummary,server.url("/").toString(),{},state.features,
                 sites = state.sites,activeSiteId = state.activeSiteId,onSwitchSite = model::switchSite) }
         } }
-        compose.onNodeWithTag("nav-more").performClick(); compose.onNodeWithTag("more-group-settings").performClick(); compose.onNodeWithTag("more-list").performScrollToNode(androidx.compose.ui.test.hasText("Switch shop")); compose.onAllNodesWithText("Switch shop").onFirst().performClick()
+        compose.onNodeWithTag("nav-more").performClick(); compose.onNodeWithTag("more-list").performScrollToNode(hasTestTag("more-group-settings"));compose.onNodeWithTag("more-group-settings").performClick(); compose.onNodeWithTag("more-list").performScrollToNode(androidx.compose.ui.test.hasText("Switch shop")); compose.onAllNodesWithText("Switch shop").onFirst().performClick()
         compose.onNodeWithText("New Shop").performClick()
         compose.waitUntil(10_000) { model.state.value.activeSiteId == "new-shop" && !model.state.value.loading }
         Assert.assertNotEquals(oldKey,model.state.value.sessionKey); Assert.assertEquals("",TokenStore.bindDrafts().loadMessageDraft("unfinished"))
