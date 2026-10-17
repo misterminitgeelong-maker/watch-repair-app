@@ -118,7 +118,7 @@ fun MainspringAppShell(
     var switchOpen by remember { mutableStateOf(false) }
     val selectedSite = sites.firstOrNull { it.tenantId == activeSiteId }
     val todayContent: @Composable () -> Unit = {
-        au.mainspring.nativeapp.ui.screens.TodayHubScreen(features, selectedSite?.name,
+        au.mainspring.nativeapp.ui.screens.TodayHubScreen(features, selectedSite?.name, planName = sessionSummary?.substringAfterLast(" · ", "")?.takeIf { it.isNotBlank() }, siteCount = sites.size.coerceAtLeast(1),
             onNewIntake = { navController.navigate("new_intake") },
             onOpenJob = { navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(it)) },
             onViewAll = { navController.navigate("jobs") { launchSingleTop = true } },
@@ -222,7 +222,7 @@ fun MainspringAppShell(
                     composable(key) { au.mainspring.nativeapp.ui.screens.ToolsGridScreen(key, features, { navController.popBackStack() }, { navController.navigate(it) }) }
                 }
                 composable("more") { au.mainspring.nativeapp.ui.screens.MoreScreen(selectedSite?.name,sessionSummary,features,sites.size>1,
-                    {switchOpen=true},{navController.navigate(it)},onLogout) }
+                    {switchOpen=true},{navController.navigate(it)},onLogout,{ if(!navController.popBackStack()) navController.navigate("today") }) }
                 composable("route") { au.mainspring.nativeapp.ui.screens.RouteScreen({navController.popBackStack()},{navController.navigate("autoKeyJob/$it")}) }
                 composable("team") { au.mainspring.nativeapp.ui.screens.TeamScreen({navController.popBackStack()}) }
                 composable("leads") { au.mainspring.nativeapp.ui.screens.LeadHubScreen({navController.popBackStack()},{navController.navigate(it)}) }

@@ -104,7 +104,7 @@ class DesignWorkspaceTest {
     }
     @Test fun ownerCanReachMoreAndThemeChoicePersistsAcrossComposition() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
-        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasTestTag("more-group-settings"));compose.onNodeWithTag("more-group-settings").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasText("Atelier"))
+        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasTestTag("more-group-settings"));compose.onNodeWithTag("more-group-settings").performClick();compose.onNodeWithTag("settings-list").performScrollToNode(hasText("Atelier"))
         compose.onNodeWithText("Atelier").assertExists()
         compose.onNodeWithText("Night Workshop").performScrollTo().performClick();Assert.assertEquals(AppAppearance.NIGHT,DesignPreferences.appearance.value)
         Assert.assertEquals("NIGHT",InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("mainspring_appearance",0).getString("appearance",null))
@@ -171,7 +171,7 @@ class DesignWorkspaceTest {
     @Test fun ownerDashboardLoadsNativePeriodMetricsAndComparisons() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
         compose.onNodeWithTag("nav-today").performClick()
-        compose.onNodeWithText("Needs your attention").assertExists()
+        compose.onNodeWithTag("home-list").performScrollToNode(hasText("Needs your attention")); compose.onNodeWithText("Needs your attention").assertExists()
         compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithTag("more-search").performTextInput("Report")
         compose.onNodeWithText("Reports").performClick()
@@ -349,14 +349,14 @@ class DesignWorkspaceTest {
 
     @Test fun workspaceNavigationKeepsTodaySelectedAndReturnsFromMore() {
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key"))}}
-        compose.waitUntil(10_000) {compose.onAllNodesWithText("Needs your attention").fetchSemanticsNodes().isNotEmpty()}
+        compose.waitUntil(10_000) {compose.onAllNodesWithTag("home-list").fetchSemanticsNodes().isNotEmpty()};compose.onNodeWithTag("home-list").performScrollToNode(hasText("Needs your attention"))
         compose.onNodeWithTag("nav-today").assertIsSelected()
         saveNativeQaImage(compose.onRoot(),"aligned-shell.png")
         compose.onNodeWithTag("nav-more").performClick()
         compose.onNodeWithTag("nav-more").assertIsSelected()
         compose.onNodeWithTag("nav-today").performClick()
         compose.onNodeWithTag("nav-today").assertIsSelected()
-        compose.onNodeWithText("Needs your attention").assertExists()
+        compose.onNodeWithTag("home-list").performScrollToNode(hasText("Needs your attention")); compose.onNodeWithText("Needs your attention").assertExists()
     }
     @Test fun largeTextTodayKeepsDetailsAndScheduleReachable() {
         val vm=TodayViewModel();compose.waitUntil(10_000) {!vm.state.value.loading}

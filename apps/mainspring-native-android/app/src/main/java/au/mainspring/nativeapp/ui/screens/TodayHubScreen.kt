@@ -1,6 +1,7 @@
 package au.mainspring.nativeapp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +13,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +49,8 @@ fun TodayHubScreen(
     onOpenQuotes: () -> Unit,
     onOpenInvoices: () -> Unit,
     onOpenRoute: (String) -> Unit = {},
+    planName: String? = null,
+    siteCount: Int = 1,
     jobs: JobsHubViewModel = viewModel(factory = JobsHubFactory(features)),
     dashboard: DashboardViewModel = viewModel(),
 ) {
@@ -55,9 +65,12 @@ fun TodayHubScreen(
     val widgets = dash.widgets
     val summary = dash.summary?.takeIf { TokenStore.canManageInvoices() }
     val calibre = LocalCalibre.current
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    var refreshedAt by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    androidx.compose.runtime.LaunchedEffect(hub.loading, dash.loading) { if(!hub.loading && !dash.loading) refreshedAt = System.currentTimeMillis() }
+    LazyColumn(Modifier.fillMaxSize().testTag("home-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if(calibre) {
-            item { CalibreHomeTop(shopName, hub, canWork, features, TokenStore.canManageInvoices(), TokenStore.canManageTeam(), widgets, summary, onNewIntake, onViewAll, onOpenQuotes, onOpenInvoices, onOpenRoute) }
+            item { CalibreHomeTop(hub, canWork, features, TokenStore.canManageInvoices(), TokenStore.canManageTeam(), widgets, summary, planName, siteCount, refreshedAt, hub.loading || dash.loading,
+                { jobs.refresh(); dashboard.refresh() }, onNewIntake, onViewAll, onOpenQuotes, onOpenInvoices, onOpenRoute, onOpenJob) }
         } else {
         item { LargeHeader((shopName ?: TokenStore.shopValue("name") ?: "Your shop") + " · Shop workspace", "Today", onAdd = if(canWork) onNewIntake else null, addDescription = "New intake") }
             item {
@@ -127,16 +140,6 @@ fun TodayHubScreen(
         dash.inboxCount?.takeIf { it > 0 }?.let { n ->
             item { AttentionCard("Inbox", if(n == 1) "1 unread alert" else "$n unread alerts") { onOpenRoute("inbox") } }
         }
-        if(calibre) {
-            item {
-                val queue = hub.jobs.filter { it.active }.sortedBy { it.sortKey }.take(6)
-                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BlockHeader("Live Service Queue", onSeeAll = onViewAll, seeAllDescription = "See all jobs")
-                    if(queue.isEmpty() && !hub.loading) Text("No active jobs right now.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    queue.forEach { job -> QueueRow(job) { onOpenJob(job) } }
-                }
-            }
-        }
         if(canWork && !calibre) item {
             PrimaryAction(onClick = onNewIntake, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
                 Text("New intake", style = MaterialTheme.typography.titleMedium)
@@ -187,57 +190,166 @@ private val HomeBorder @Composable get() = BorderStroke(1.dp, MaterialTheme.colo
     else Surface(modifier, color = MaterialTheme.colorScheme.surface, shape = CalibreCardShape, border = HomeBorder) { body() }
 }
 
-@Composable private fun HomeTile(label: String, value: String, caption: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+/** Small bold uppercase sans caption, as on the web tiles. [spacing] widens the tracking for the overview eyebrow. */
+@Composable private fun CapsLabel(text: String, modifier: Modifier = Modifier, spacing: Float = 0.6f) {
+    Text(text.uppercase(), modifier, style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = spacing.sp),
+        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+}
+
+/** Web stat tile: caps label with a line icon at the right, bold sans value, muted caption. */
+@Composable private fun HomeTile(label: String, value: String, caption: String, icon: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     HomeCard(modifier, onClick) {
-        MonoLabel(label.uppercase())
-        KpiNumber(value)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            CapsLabel(label, Modifier.weight(1f))
+            ToolIcon(icon, size = 20.dp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(value, Modifier.padding(top = 4.dp), style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 34.sp), color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
         Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
     }
 }
 
-@Composable private fun QueueRow(job: HubJob, onClick: () -> Unit) {
-    HomeCard(Modifier.fillMaxWidth(), onClick) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                MonoLabel(job.reference())
-                Text(job.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-            }
-            StatusPill(job.status)
-        }
-        job.dueDate?.take(10)?.takeIf { it.isNotBlank() }?.let { Text("Due ${formatShopDate(it)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+@Composable private fun KpiCell(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier.padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        CapsLabel(label)
+        Text(value, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 30.sp), color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
     }
 }
 
-/** Calibre Home, matching the web phone view: title, one overview card, then a two-column grid of tappable tiles. */
+private fun queueServiceLabel(service: String) = when(service) { "watch" -> "Watch"; "shoe" -> "Shoe"; else -> "Mobile" }
+
+/** Web Live Service Queue: one card with a header and divided rows (SERVICE · #REF, title, date, status pill). */
+@Composable private fun LiveServiceQueue(queue: List<HubJob>, loading: Boolean, onOpenWorkflow: () -> Unit, onOpenJob: (HubJob) -> Unit) {
+    HomeCardFlush(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Live Service Queue", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
+                Text("Newest activity across your service lines.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text("OPEN WORKFLOW", Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onOpenWorkflow).heightIn(min = 44.dp).wrapContentHeight(Alignment.CenterVertically).padding(start = 12.dp)
+                .semantics { contentDescription = "See all jobs" },
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp), color = MaterialTheme.colorScheme.primary)
+        }
+        if(queue.isEmpty() && !loading) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("No recent jobs yet.", Modifier.padding(18.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        queue.forEach { job ->
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenJob(job) }.padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    CapsLabel(queueServiceLabel(job.service) + " \u00b7 " + job.number.let { if(it.startsWith("#")) it else "#$it" }, spacing = 0.5f)
+                    Text(job.title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), maxLines = 2)
+                    (job.createdAt.takeIf { it.isNotBlank() } ?: job.dueDate)?.let { Text(formatShopDate(it).substringBefore(' '), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+                StatusPill(job.status)
+            }
+        }
+    }
+}
+
+@Composable private fun HomeCardFlush(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Surface(modifier, color = MaterialTheme.colorScheme.surface, shape = CalibreCardShape, border = HomeBorder) { Column(Modifier.fillMaxWidth(), content = content) }
+}
+
+private data class ChecklistItem(val label: String, val done: Boolean, val route: String)
+
+private fun checklistKey() = "launch_checklist_dismissed_" + (TokenStore.shopValue("name") ?: "shop")
+private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mainspring_home", android.content.Context.MODE_PRIVATE)
+
+/** Web launch checklist: progress, Dismiss (remembered per shop on this device) and Done / Next rows. */
+@Composable private fun LaunchChecklist(items: List<ChecklistItem>, onOpenRoute: (String) -> Unit) {
+    var dismissed by remember { mutableStateOf(runCatching { checklistPrefs()?.getBoolean(checklistKey(), false) }.getOrNull() ?: false) }
+    if(dismissed) return
+    HomeCard(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Launch checklist", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                Text("Progress ${items.count { it.done }}/${items.size} completed", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton({ dismissed = true; runCatching { checklistPrefs()?.edit()?.putBoolean(checklistKey(), true)?.apply() } }, Modifier.heightIn(min = 44.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
+                Text("Dismiss", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        items.forEach { item ->
+            val shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+            Surface({ onOpenRoute(item.route) }, Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = shape,
+                color = if(item.done) androidx.compose.ui.graphics.Color(0xFFEAF4EA) else MaterialTheme.colorScheme.background, border = HomeBorder) {
+                Text(androidx.compose.ui.text.buildAnnotatedString { withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold)) { append(if(item.done) "Done" else "Next") }; append(" \u00b7 ${item.label}") },
+                    Modifier.padding(horizontal = 14.dp, vertical = 14.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+}
+
+/** Calibre Home, matching the web phone view: title, refresh row, overview card with KPIs, launch checklist, stat tiles and the live queue. */
 @Suppress("USELESS_CAST", "SENSELESS_COMPARISON")
 @Composable private fun CalibreHomeTop(
-    shopName: String?, hub: au.mainspring.nativeapp.JobsHubState, canWork: Boolean, features: Set<String>, canMoney: Boolean, isOwner: Boolean,
+    hub: au.mainspring.nativeapp.JobsHubState, canWork: Boolean, features: Set<String>, canMoney: Boolean, isOwner: Boolean,
     widgets: au.mainspring.nativeapp.api.DashboardWidgetsResponse?, summary: au.mainspring.nativeapp.api.ReportsSummaryResponse?,
-    onNewIntake: () -> Unit, onViewAll: () -> Unit, onOpenQuotes: () -> Unit, onOpenInvoices: () -> Unit, onOpenRoute: (String) -> Unit,
+    planName: String?, siteCount: Int, refreshedAt: Long, refreshing: Boolean, onRefresh: () -> Unit,
+    onNewIntake: () -> Unit, onViewAll: () -> Unit, onOpenQuotes: () -> Unit, onOpenInvoices: () -> Unit, onOpenRoute: (String) -> Unit, onOpenJob: (HubJob) -> Unit,
 ) {
+    val financials = summary?.financials as au.mainspring.nativeapp.api.ReportsFinancials?
+    fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Home", Modifier.weight(1f).semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge))
-            if(canWork) PrimaryAction(onNewIntake, Modifier.semantics { contentDescription = "New intake" }) { Text("New intake") }
+        Column { PageTitle("Operations Dashboard") }
+        Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Last refreshed " + java.time.Instant.ofEpochMilli(refreshedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("h:mm:ss a", Locale.US)),
+                Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SecondaryAction(onRefresh, Modifier.heightIn(min = 44.dp), enabled = !refreshing, shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)) {
+                Text(if(refreshing) "Refreshing\u2026" else "Refresh now", style = MaterialTheme.typography.labelLarge)
+            }
         }
-        HomeCard(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
-            MonoLabel("SHOP-WIDE OVERVIEW")
-            Text("All your repairs, one place.", style = calibreDisplayStyle(MaterialTheme.typography.headlineMedium))
-            Text("${hub.activeCount} active ${if(hub.activeCount == 1) "job" else "jobs"} across your service lines.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if(canWork) PrimaryAction(onNewIntake, Modifier.padding(horizontal = 20.dp).fillMaxWidth().semantics { contentDescription = "New intake" }) { Text("New intake") }
+        HomeCardFlush(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 24.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                CapsLabel("SHOP-WIDE OVERVIEW", spacing = 3f)
+                Text("All your repairs, one place.", style = calibreDisplayStyle(MaterialTheme.typography.headlineMedium))
+                Text("${hub.activeCount} active ${if(hub.activeCount == 1) "job" else "jobs"} across your service lines.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    listOfNotNull(planName?.let { it.replace('_', ' ').replaceFirstChar { c -> c.uppercase() } + " plan" }, "$siteCount ${if(siteCount == 1) "site" else "sites"} linked").forEach { chip ->
+                        Text(chip, Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), androidx.compose.foundation.shape.CircleShape).padding(horizontal = 14.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+            if(financials != null) {
+                val approval = ((summary?.salesFunnel as au.mainspring.nativeapp.api.SalesFunnelSummary?)?.approvalRatePercent ?: 0.0).let { if(it % 1.0 == 0.0) it.toInt().toString() else String.format(Locale.US, "%.1f", it) }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    KpiCell("Revenue", money(financials.revenueCents), Modifier.weight(1f)); VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    KpiCell("Gross profit", money(financials.grossProfitCents), Modifier.weight(1f))
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    KpiCell("Approval rate", "$approval%", Modifier.weight(1f)); VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    KpiCell("Avg / job", money(summary?.operations?.avgRevenuePerJobCents ?: 0), Modifier.weight(1f))
+                }
+            }
+        }
+        if(summary != null) {
+            val funnel = summary.salesFunnel as au.mainspring.nativeapp.api.SalesFunnelSummary?
+            LaunchChecklist(listOf(
+                ChecklistItem("Add your first customer", summary.counts.customers > 0, "customers"),
+                ChecklistItem("Create a watch repair", summary.counts.jobs > 0, "watch_jobs"),
+                ChecklistItem("Send a quote", (funnel?.sentQuotes ?: 0) > 0 || summary.counts.quotes > 0, "quotes"),
+                ChecklistItem("Raise an invoice", summary.counts.invoices > 0, "invoices"),
+            ), onOpenRoute)
         }
         val by = hub.jobs.filter { it.active }.groupingBy { it.service }.eachCount()
         val caption = listOfNotNull(
             "watch".takeIf { it in features }?.let { "Watch: ${by[it] ?: 0}" }, "shoe".takeIf { it in features }?.let { "Shoe: ${by[it] ?: 0}" },
             "auto_key".takeIf { "auto_key" in features }?.let { "Mobile: ${by.entries.filter { e -> e.key != "watch" && e.key != "shoe" }.sumOf { e -> e.value }}" },
-        ).joinToString(" · ").ifBlank { "On the bench" }
-        val revenue = (summary?.financials as au.mainspring.nativeapp.api.ReportsFinancials?)?.let { String.format(Locale.US, "$%,.0f", it.revenueCents / 100.0) }
+        ).joinToString(" \u00b7 ").ifBlank { "On the bench" }
+        val revenue = financials?.let { String.format(Locale.US, "$%,.0f", it.revenueCents / 100.0) }
         val tiles = buildList<@Composable (Modifier) -> Unit> {
-            add { m -> HomeTile("Active jobs", hub.activeCount.toString(), caption, m, onViewAll) }
-            add { m -> HomeTile("Customers", "All", "Directory and history", m) { onOpenRoute("people") } }
-            add { m -> HomeTile("Quotes", (widgets?.quotesPending7dCount ?: 0).toString(), "waiting 7+ days", m, onOpenQuotes) }
-            add { m -> HomeTile("Invoices", (widgets?.overdueInvoicesCount ?: 0).toString(), "overdue", m, onOpenInvoices) }
-            if(canMoney) add { m -> HomeTile("Work value", revenue ?: "Reports", "Revenue this period", m) { onOpenRoute("reports") } }
-            if(isOwner) add { m -> HomeTile("Team", "Manage", "Staff and roles", m) { onOpenRoute("team") } }
+            add { m -> HomeTile("Active jobs", hub.activeCount.toString(), caption, "jobs", m, onViewAll) }
+            add { m -> HomeTile("Customers", "All", "Directory and history", "customers", m) { onOpenRoute("people") } }
+            add { m -> HomeTile("Quotes", (widgets?.quotesPending7dCount ?: 0).toString(), "waiting 7+ days", "quotes", m, onOpenQuotes) }
+            add { m -> HomeTile("Invoices", (widgets?.overdueInvoicesCount ?: 0).toString(), "overdue", "invoices", m, onOpenInvoices) }
+            if(canMoney) add { m -> HomeTile("Work value", revenue ?: "Reports", "Revenue this period", "money", m) { onOpenRoute("reports") } }
+            if(isOwner) add { m -> HomeTile("Team", "Manage", "Staff and roles", "team", m) { onOpenRoute("team") } }
         }
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             tiles.chunked(2).forEach { pair ->
@@ -247,5 +359,6 @@ private val HomeBorder @Composable get() = BorderStroke(1.dp, MaterialTheme.colo
                 }
             }
         }
+        LiveServiceQueue(hub.jobs.filter { it.active }.sortedBy { it.sortKey }.take(6), hub.loading, onViewAll, onOpenJob)
     }
 }
