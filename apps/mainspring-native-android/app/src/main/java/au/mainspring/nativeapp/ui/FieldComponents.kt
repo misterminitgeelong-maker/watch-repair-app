@@ -364,7 +364,10 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         fun p(x: Float, y: Float) = Offset(x * s, y * s)
         fun ln(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(color, p(x1, y1), p(x2, y2), 1.6f * s, cap = StrokeCap.Round)
         when(name) {
-            "Today", "Dashboard" -> for(cx in listOf(7f, 17f)) for(cy in listOf(7f, 17f)) drawCircle(color, 3.4f * s, p(cx, cy), style = st)
+            "Today", "Dashboard" -> for(cx in listOf(5f, 14f)) for(cy in listOf(5f, 14f)) drawRoundRect(color, p(cx, cy), Size(6f * s, 6f * s), androidx.compose.ui.geometry.CornerRadius(1.6f * s), style = st)
+            "More" -> for(cx in listOf(5f, 12f, 19f)) drawCircle(color, 1.5f * s, p(cx, 12f))
+            "Mobile" -> { drawCircle(color, 3.6f * s, p(8f, 15f), style = st); ln(10.6f, 12.4f, 19f, 4f); ln(16f, 7f, 18.5f, 9.5f); ln(13.5f, 9.5f, 15.5f, 11.5f) }
+            "Shoe" -> { drawCircle(color, 2.6f * s, p(6f, 6f), style = st); drawCircle(color, 2.6f * s, p(6f, 18f), style = st); ln(8f, 7.6f, 20f, 18f); ln(8f, 16.4f, 20f, 6f) }
             "Jobs" -> { ln(4f, 20f, 14f, 10f); drawCircle(color, 3.4f * s, p(17f, 7f), style = st); ln(15f, 4f, 20f, 9f); ln(5f, 5f, 10f, 10f); ln(10f, 14f, 20f, 20f).also { } }
             "People", "Customers" -> { drawCircle(color, 3.4f * s, p(9f, 8f), style = st); drawArc(color, 200f, 140f, false, p(3f, 14f), Size(12f * s, 12f * s), style = st)
                 drawCircle(color, 2.8f * s, p(17f, 9f), style = st); drawArc(color, 200f, 140f, false, p(12.5f, 14.5f), Size(9f * s, 9f * s), style = st) }
@@ -504,7 +507,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 @Composable fun NavIcon(route: String, label: String, tint: Color) {
     val count = if(route == "inbox") au.mainspring.nativeapp.InboxCountStore.count.collectAsState().value else 0
     Box {
-        AtelierIcon(when(route) { "today" -> "Today"; "jobs" -> "Jobs"; "inbox" -> "Inbox"; "more" -> "More"; "people" -> "People"; else -> label }, tint)
+        AtelierIcon(when(route) { "today" -> "Today"; "watch", "jobs" -> "Jobs"; "mobile" -> "Mobile"; "shoe" -> "Shoe"; "inbox" -> "Inbox"; "more" -> "More"; "people" -> "People"; else -> label }, tint)
         if(count > 0) Box(Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp).defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
             .background(MaterialTheme.colorScheme.error, androidx.compose.foundation.shape.CircleShape).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
             Text(if(count > 99) "99+" else count.toString(), Modifier.semantics { contentDescription = "$count unread" }, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = MaterialTheme.colorScheme.onError)

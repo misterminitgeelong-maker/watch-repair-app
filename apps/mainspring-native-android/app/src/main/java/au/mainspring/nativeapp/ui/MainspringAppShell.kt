@@ -84,14 +84,6 @@ import kotlinx.coroutines.launch
 
 private val bottomDestinations = setOf("home", "today", "dispatch", "jobs", "watch_jobs", "people", "customers", "inbox", "leads", "more", "route", "dispatchPool", "counterSale", "reports", "stock", "auto_jobs", "quotes", "invoices", "shoe_jobs", "new_intake")
 
-/** Which of the five Atelier tabs a route belongs to. */
-private fun tabFor(route: String?) = when(route) {
-    "today", "home", "dispatch", "route", "dispatchPool", "new_intake" -> "today"
-    "jobs", "watch_jobs", "shoe_jobs", "auto_jobs", "counterSale" -> "jobs"
-    "inbox", "leads" -> "inbox"
-    else -> "more"
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainspringAppShell(
@@ -177,12 +169,14 @@ fun MainspringAppShell(
             contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
-                if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+                if (showBottomBar && !wide) AppHeader({ navController.navigate("search") { launchSingleTop = true } })
+                else if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
-                        listOf("today" to "Today", "jobs" to au.mainspring.nativeapp.ui.screens.jobsTabLabel(features), "inbox" to "Inbox", "more" to "More").forEach { (route, label) ->
-                            au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute) == route, { navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$route"))
+                        navTabs(features).forEach { (key, label) ->
+                            au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute, features) == key, { navController.navigate(tabRoute(key)) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$key"))
                         }
+                        SearchIconButton({ navController.navigate("search") { launchSingleTop = true } })
                     }
                     androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
@@ -190,14 +184,14 @@ fun MainspringAppShell(
             bottomBar = {
                 if (showBottomBar && !wide) {
                     FloatingTabBar(
-                        destinations = listOf("today" to "Today", "jobs" to au.mainspring.nativeapp.ui.screens.jobsTabLabel(features), "inbox" to "Inbox", "more" to "More"),
-                        isSelected = { it == tabFor(currentRoute) },
-                        onSelect = { route -> navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                        destinations = navTabs(features),
+                        isSelected = { it == tabFor(currentRoute, features) },
+                        onSelect = { key -> navController.navigate(tabRoute(key)) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
                     )
                 }
             },
         ) { paddingValues ->
-            androidx.compose.foundation.layout.Column(Modifier.padding(paddingValues)) {
+            androidx.compose.foundation.layout.Column(Modifier.padding(paddingValues).then(if(showBottomBar && !wide) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
             var bannerShowing by remember { mutableStateOf(false) }
             au.mainspring.nativeapp.ui.ConnectivityBanner(onOpenQueue = { navController.navigate("queuedChanges") }, onVisibleChange = { bannerShowing = it })
             au.mainspring.nativeapp.ui.SubscriptionBanner(subscriptionStatus, trialEnd, sessionRole)
