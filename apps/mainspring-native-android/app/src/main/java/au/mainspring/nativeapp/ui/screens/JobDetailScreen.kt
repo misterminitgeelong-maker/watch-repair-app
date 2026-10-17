@@ -65,6 +65,8 @@ fun JobDetailScreen(
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
     LaunchedEffect(state.clonedJobId) { state.clonedJobId?.let { vm.consumeClonedJob(); onDuplicated(it) } }
     val job = state.job
+    val suggested = job?.let { au.mainspring.nativeapp.suggestedWatchStatuses(it.status) } ?: emptyList()
+    val (prevJobId, nextJobId) = au.mainspring.nativeapp.JobNavContext.neighbors("watch", shownId)
     var niimbotLabel by remember { mutableStateOf<au.mainspring.nativeapp.niimbot.NiimbotLabelData?>(null) }
     niimbotLabel?.let { au.mainspring.nativeapp.niimbot.NiimbotPrintDialog(it) { niimbotLabel = null } }
     val adminReady = !state.loading && !state.statusBusy && !state.adminBusy
@@ -79,17 +81,33 @@ fun JobDetailScreen(
             state.error?.let { ErrorBanner(it, onRetry = vm::load) }
         }
     } else AtelierDetail(
-        backLabel = "Jobs", title = job.title,
-        reference = listOfNotNull(job.jobNumber, job.customerName?.takeIf { it.isNotBlank() }).joinToString(" \u00b7 "),
-        banner = listOfNotNull(watchStatusLabel(job.status), if (job.priority == "urgent" || job.priority == "high") "Urgent" else null,
-            if (state.outstandingCents(job) > 0) "Balance outstanding" else null).joinToString(" \u00b7 "),
+        backLabel = "Jobs", title = (if (job.jobNumber.startsWith("#")) job.jobNumber else "#" + job.jobNumber) + " \u00b7 " + job.title,
+        facts = run {
+            val days = au.mainspring.nativeapp.daysInShop(job.createdAt)
+            val quote = (if (state.invoiceTotalCents > 0) state.invoiceTotalCents else job.preQuoteCents).takeIf { it > 0 }
+            listOfNotNull(
+                DetailFact("Status", watchStatusLabel(job.status), pillStatus = job.status),
+                DetailFact("Priority", job.priority.replace('_', ' ').replaceFirstChar { it.uppercase() }),
+                quote?.let { DetailFact("Quote", formatCents(it, currency)) },
+                DetailFact("Created", formatShopDate(job.createdAt)),
+                DetailFact("In shop", if (days == 1) "1 day" else "$days days", tag = "days-in-shop",
+                    valueColor = when (au.mainspring.nativeapp.daysInShopSeverity(days)) { 2 -> MaterialTheme.colorScheme.error; 1 -> androidx.compose.ui.graphics.Color(0xFF9A5010); else -> null }),
+            )
+        },
         tabs = detailTabs(state.attachments.size, state.history.size + state.smsLog.size), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
-        primaryLabel = if (state.statusBusy) "Updating\u2026" else "Change status",
+        primaryLabel = if (state.statusBusy) "Updating\u2026" else suggested.firstOrNull()?.let { "\u2192 " + watchStatusLabel(it) } ?: "Change status",
         primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
-        onPrimary = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
-        footnote = listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "Deposit ${formatCents(it, currency)}" }, job.preQuoteCents.takeIf { it > 0 }?.let { "Pre-quote ${formatCents(it, currency)}" }).joinToString(" \u00b7 ").ifBlank { null },
-        menu = listOfNotNull(
+        primaryTag = suggested.firstOrNull()?.let { "rail-next-$it" } ?: "detail-primary",
+        onPrimary = { val s = suggested.firstOrNull(); if (s != null) vm.setStatus(s) else { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true } },
+        onChangeStatus = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
+        onPrev = prevJobId?.let { id -> { shownId = id; tab = "overview" } },
+        onNext = nextJobId?.let { id -> { shownId = id; tab = "overview" } },
+        header = {
+            ContactQuickActions(job.customerPhone, job.customerEmail)
+            WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status)
+        },
+        menu = suggested.drop(1).map { s -> DetailAction("Move to " + watchStatusLabel(s).lowercase(), !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs()) { vm.setStatus(s) } } + listOfNotNull(
             DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
             DetailAction("Refresh", !state.loading && !state.statusBusy, vm::load),
             DetailAction("Photos & files", true, onPhotos),
@@ -126,7 +144,6 @@ fun JobDetailScreen(
             if (TokenStore.canManageInvoices()) DetailAction("Delete job", adminReady) { confirmDelete = true } else null,
         ),
         scrollBody = tab != "messages",
-        service = "watch", bannerStatus = job.status,
     ) { active ->
         CounterStatusReview(state.statusUnknown, state.statusRequest, state.statusReviewed, state.loading, vm::load, vm::reviewedStatus)
         PendingStatusBanner(shownId)
@@ -134,27 +151,30 @@ fun JobDetailScreen(
         state.error?.let { ErrorBanner(it) }
         state.resendInfo?.let { Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) { Text(it, Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium) } }
         when (active) {
-            "history" -> {
-                if(LocalCalibre.current) MonoLabel("Repair activity / most recent first")
-                if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No activity recorded yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                state.history.forEach { h ->
-                    ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
-                }
-                state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} \u00b7 ${log.body}", "${log.toPhone} \u00b7 ${formatShopDate(log.createdAt)}") }
-                if(LocalCalibre.current) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Text("Activity includes private workshop notes. Customer-visible conversations are in Messages.", Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else Text("Activity includes status changes, approvals, photos and private workshop notes.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             "messages" -> MessageThreadScreen("repair-jobs", shownId, { tab = "overview" }, embedded = true)
             "work" -> {
-                SectionLabel("Photos & files / ${state.attachments.size}")
-                if (state.attachments.isEmpty()) Text(if (state.loading) "Loading\u2026" else "No photos or files yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                state.attachments.forEach { att ->
-                    FlatPanel {
+                FlatPanel {
+                    CardHeading("Work logs")
+                    Text("Record what was done on the bench for this repair.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SecondaryAction(onClick = onWorkLogs, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Log work") }
+                }
+                FlatPanel {
+                    CardHeading("Shop notes")
+                    val notes = job.internalNotes?.takeIf { it.isNotBlank() }
+                    if (notes != null) Text(notes, style = MaterialTheme.typography.bodyMedium)
+                    else Text("No internal notes yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add shop note") }
+                }
+            }
+            "attachments" -> {
+                if(LocalCalibre.current) JobHeroPhoto("watch", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
+                FlatPanel {
+                    CardHeading("Photos & files / ${state.attachments.size}")
+                    if (state.attachments.isEmpty()) Text(if (state.loading) "Loading…" else "No photos or files yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    state.attachments.forEach { att ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleMedium)
+                                Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleSmall)
                                 att.contentType?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
                             TextButton(onClick = {
@@ -166,24 +186,17 @@ fun JobDetailScreen(
                             }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open") }
                         }
                     }
+                    attachmentOpenError?.let { ErrorBanner(it) }
+                    SecondaryAction(onClick = onPhotos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Photos & files") }
                 }
-                attachmentOpenError?.let { ErrorBanner(it) }
-                SecondaryAction(onClick = onPhotos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Photos & files") }
-                SectionLabel("Work logs")
-                SecondaryAction(onClick = onWorkLogs, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Log work") }
-                SectionLabel("Shop notes")
-                val notes = job.internalNotes?.takeIf { it.isNotBlank() }
-                if (notes != null) SummaryCard("Internal notes", notes, null)
-                else Text("No internal notes yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add shop note") }
             }
             "money" -> {
-                SummaryCard("Quotes & invoicing", listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} deposit" }, job.preQuoteCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} pre-quote" }).joinToString(" \u00b7 ").ifBlank { "No charges recorded yet" },
+                SummaryCard("Quotes & invoicing", listOfNotNull(job.depositCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} deposit" }, job.preQuoteCents.takeIf { it > 0 }?.let { "${formatCents(it, currency)} pre-quote" }).joinToString(" · ").ifBlank { "No charges recorded yet" },
                     "View charges or record payment", { onQuotes(shownId) })
                 FlatPanel {
                     Text("Balance", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatCents(state.outstandingCents(job), currency) + " outstanding", style = MaterialTheme.typography.titleMedium)
-                    if (state.invoiceTotalCents > 0) Text("Invoiced ${formatCents(state.invoiceTotalCents, currency)} \u00b7 paid ${formatCents(state.invoicePaidCents, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (state.invoiceTotalCents > 0) Text("Invoiced ${formatCents(state.invoiceTotalCents, currency)} · paid ${formatCents(state.invoicePaidCents, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else Text("No invoice raised yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if(TokenStore.canManageInvoices()) SecondaryAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("job-quote-payment")) {
@@ -192,37 +205,36 @@ fun JobDetailScreen(
                 if(LocalCalibre.current && job.status == "awaiting_collection") {
                     val outstandingCents = state.outstandingCents(job)
                     val paid = outstandingCents == 0
-                    SectionLabel(if(paid) "Payment recorded" else "Check before handing over")
-                    CalibreCheckRow(true, "Service complete", "Repair has reached ${statusLabel(job.status).lowercase()}")
-                    CalibreCheckRow(state.smsLog.isNotEmpty(), if(state.smsLog.isNotEmpty()) "Customer notified" else "Customer not yet notified",
-                        if(state.smsLog.isNotEmpty()) "${state.smsLog.size} ${if(state.smsLog.size == 1) "message" else "messages"} sent" else "No message logged for this job")
-                    CalibreCheckRow(paid, if(paid) "Payment verified" else "Payment not yet verified", if(paid) null else "Balance outstanding")
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        MonoLabel(if(paid) "Payment recorded" else "Outstanding")
-                        Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-                        if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlatPanel {
+                        CardHeading(if(paid) "Payment recorded" else "Check before handing over")
+                        CalibreCheckRow(true, "Service complete", "Repair has reached ${statusLabel(job.status).lowercase()}")
+                        CalibreCheckRow(state.smsLog.isNotEmpty(), if(state.smsLog.isNotEmpty()) "Customer notified" else "Customer not yet notified",
+                            if(state.smsLog.isNotEmpty()) "${state.smsLog.size} ${if(state.smsLog.size == 1) "message" else "messages"} sent" else "No message logged for this job")
+                        CalibreCheckRow(paid, if(paid) "Payment verified" else "Payment not yet verified", if(paid) null else "Balance outstanding")
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            MonoLabel(if(paid) "Payment recorded" else "Outstanding")
+                            Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+                            if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        AccentAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
                     }
-                    AccentAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
                 }
             }
             else -> {
-                val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("watch", shownId)
-                JobNavBar(au.mainspring.nativeapp.JobNavContext.position("watch", shownId), prevId, nextId, { shownId = it; tab = "overview" }, enabled = !state.statusBusy)
-                if(LocalCalibre.current) JobHeroPhoto("watch", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
-                ContactQuickActions(job.customerPhone, job.customerEmail)
-                DaysInShopLabel(au.mainspring.nativeapp.daysInShop(job.createdAt))
-                WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status, au.mainspring.nativeapp.suggestedWatchStatuses(job.status), ::watchStatusLabel,
-                    enabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(), onMove = { vm.setStatus(it) })
                 FlatPanel {
+                    CardHeading("Job ticket")
                     Text(job.title, style = MaterialTheme.typography.titleMedium)
                     job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Text(listOfNotNull(job.claimedByName, job.collectionDate?.let { "Due ${formatShopDate(it)}" }, job.partsEta?.let { "Parts ${formatShopDate(it)}" }).joinToString(" \u00b7 ").ifBlank { "Unassigned" },
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    DetailRow("Job #", job.jobNumber)
+                    DetailRow("Status", watchStatusLabel(job.status))
+                    job.collectionDate?.takeIf { it.isNotBlank() }?.let { DetailRow("Due", formatShopDate(it)) }
+                    job.partsEta?.takeIf { it.isNotBlank() }?.let { DetailRow("Parts", formatShopDate(it)) }
+                    DetailRow("Created", formatShopDate(job.createdAt))
                 }
-                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Watch, job.id)
                 FlatPanel {
-                    Text("Customer & contact", style = MaterialTheme.typography.titleMedium)
+                    CardHeading("Customer & contact")
                     Text(job.customerName ?: "No customer recorded", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val phone = job.customerPhone?.takeIf { it.isNotBlank() }
                     val email = job.customerEmail?.takeIf { it.isNotBlank() }
@@ -236,13 +248,8 @@ fun JobDetailScreen(
                     val details = listOf("Brand" to w.brand, "Model" to w.model, "Serial" to w.serialNumber, "Movement" to w.movementType, "Condition" to w.conditionNotes)
                         .filter { !it.second.isNullOrBlank() }
                     if (details.isNotEmpty()) FlatPanel {
-                        Text("Watch", style = MaterialTheme.typography.titleMedium)
-                        details.forEach { (label, value) ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(label, Modifier.width(88.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(value.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
+                        CardHeading("Watch details")
+                        details.forEach { (label, value) -> DetailRow(label, value.orEmpty()) }
                     }
                 }
                 FlatPanel {
@@ -252,9 +259,19 @@ fun JobDetailScreen(
                             val assignedName = job.assignedUserId?.let { id -> state.users.firstOrNull { it.id == id }?.name ?: job.claimedByName ?: if (id == TokenStore.currentUserId()) "You" else "Assigned" }
                             Text(assignedName ?: job.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.titleMedium)
                         }
-                        if (job.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Claim for me") }
-                        else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "\u2026" else "Release") }
+                        if (job.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Claim for me") }
+                        else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Release") }
                     }
+                }
+                au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Watch, job.id)
+                FlatPanel {
+                    CardHeading("Repair activity")
+                    if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No activity recorded yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    state.history.forEach { h ->
+                        ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
+                    }
+                    state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} · ${log.body}", "${log.toPhone} · ${formatShopDate(log.createdAt)}") }
+                    Text("Activity includes status changes, approvals, photos and private workshop notes. Customer-visible conversations are in Messages.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -381,9 +398,9 @@ internal fun launchContact(context: android.content.Context, intent: Intent): St
 
 /** Phone-first tab set shared by the watch and shoe job details: counts are shown only when non-zero. */
 internal fun detailTabs(photos: Int, events: Int): List<Pair<String, String>> = listOf(
-    "overview" to "Overview",
-    "work" to if (photos > 0) "Work $photos" else "Work",
+    "overview" to "Details",
+    "work" to "Work Logs",
+    "attachments" to if (photos > 0) "Attachments $photos" else "Attachments",
     "money" to "Money",
-    "history" to if (events > 0) "History $events" else "History",
     "messages" to "Messages",
 )
