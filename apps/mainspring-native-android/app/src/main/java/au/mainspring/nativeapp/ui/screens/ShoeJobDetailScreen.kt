@@ -20,6 +20,7 @@ import au.mainspring.nativeapp.SHOE_JOB_STATUS_OPTIONS
 import au.mainspring.nativeapp.ShoeJobDetailViewModel
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.ui.*
+import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +48,7 @@ fun ShoeJobDetailScreen(
     val scope = rememberCoroutineScope()
     val j = state.job
     val suggested = j?.let { au.mainspring.nativeapp.suggestedShoeStatuses(it.status) } ?: emptyList()
+    val quoteFirst = j?.let { it.quoteStatus != "approved" && it.status == "awaiting_quote" } == true
     val (prevJobId, nextJobId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
     var niimbotLabel by remember { mutableStateOf<au.mainspring.nativeapp.niimbot.NiimbotLabelData?>(null) }
     niimbotLabel?.let { au.mainspring.nativeapp.niimbot.NiimbotPrintDialog(it) { niimbotLabel = null } }
@@ -80,7 +82,7 @@ fun ShoeJobDetailScreen(
             state.info?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) }
         }
     } else AtelierDetail(
-        backLabel = "Jobs", title = (if (j.jobNumber.startsWith("#")) j.jobNumber else "#" + j.jobNumber) + " · " + j.title,
+        backLabel = "Shoe Repairs", title = (if (j.jobNumber.startsWith("#")) j.jobNumber else "#" + j.jobNumber) + " · " + j.title,
         facts = run {
             val days = au.mainspring.nativeapp.daysInShop(j.createdAt)
             val quoteTotal = j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }
@@ -96,10 +98,10 @@ fun ShoeJobDetailScreen(
         },
         tabs = detailTabs(state.attachments.size, state.history.size + state.smsLog.size), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
-        primaryLabel = if (state.statusBusy) "Updating…" else suggested.firstOrNull()?.let { "→ " + statusLabel(it) } ?: "Change status",
-        primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
-        primaryTag = suggested.firstOrNull()?.let { "rail-next-$it" } ?: "detail-primary",
-        onPrimary = { val s = suggested.firstOrNull(); if (s != null) vm.setStatus(s) else { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true } },
+        primaryLabel = if (state.statusBusy) "Updating…" else if (quoteFirst) "Send Quote" else suggested.firstOrNull()?.let { "→ " + statusLabel(it) } ?: "Change status", primaryFilled = quoteFirst,
+        primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs() && !(quoteFirst && state.quoteBusy),
+        primaryTag = if (quoteFirst) "detail-send-quote" else suggested.firstOrNull()?.let { "rail-next-$it" } ?: "detail-primary",
+        onPrimary = { val s = suggested.firstOrNull(); if (quoteFirst) confirmQuote = true else if (s != null) vm.setStatus(s) else { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true } },
         onChangeStatus = { statusChangeNote = ""; statusCustomerNote = ""; statusPicker = true },
         onPrev = prevJobId?.let { id -> { shownId = id; tab = "overview" } },
         onNext = nextJobId?.let { id -> { shownId = id; tab = "overview" } },
@@ -107,7 +109,7 @@ fun ShoeJobDetailScreen(
             ContactQuickActions(state.customer?.phone, state.customer?.email)
             WorkflowRail(au.mainspring.nativeapp.SHOE_WORKFLOW_STEPS, j.status)
         },
-        menu = suggested.drop(1).map { s -> DetailAction("Move to " + statusLabel(s).lowercase(), !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs()) { vm.setStatus(s) } } + listOfNotNull(
+        menu = (if (quoteFirst) suggested else suggested.drop(1)).map { s -> DetailAction("Move to " + statusLabel(s).lowercase(), !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs()) { vm.setStatus(s) } } + listOfNotNull(
             DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
             DetailAction("Refresh", !state.loading && !state.statusBusy, vm::load),
             DetailAction("Photos & files", true, onPhotos),
@@ -196,6 +198,33 @@ fun ShoeJobDetailScreen(
                 if (j.depositCents > 0) SummaryCard("Deposit", formatCents(j.depositCents, currency), null)
             }
             else -> {
+                val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
+                WebCard {
+                    WebCardTitle("Photos", icon = "camera")
+                    if (state.attachments.isNotEmpty()) JobHeroPhoto("shoe", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        WebButton("Take photo", onPhotos, primary = true, icon = "camera", tag = "take-photo")
+                        DashedButton("Gallery upload", onPhotos, "upload")
+                    }
+                    if (state.attachments.isEmpty()) Column(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GlyphIcon("camera", size = 28.dp, color = MaterialTheme.colorScheme.outline)
+                        Text(if (state.loading) "Loading…" else "No photos yet. Tap to add intake or gallery photos.", style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
+                WebCard(padding = 0.dp) {
+                    val pairs = 1 + j.extraShoes.orEmpty().size
+                    WebCardTitle("Shoes", icon = "shoe", count = if (pairs == 1) "1 pair" else "$pairs pairs", modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp)) {
+                        if (j.shoe?.customerId != null) TextButton(onClick = { addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) {
+                            GlyphIcon("plus", size = 14.dp, color = LocalContentColor.current); Spacer(Modifier.width(4.dp)); Text("Add pair")
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        ShoePairCard(1, j.shoe, null, canEdit)
+                        j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }
+                    }
+                }
                 FlatPanel {
                     CardHeading("Job ticket")
                     Text(j.title, style = MaterialTheme.typography.titleMedium)
@@ -220,13 +249,6 @@ fun ShoeJobDetailScreen(
                         email?.let { e -> TextButton(onClick = { contactError = launchContact(context, Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + Uri.encode(e)))) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Email $e") } }
                         contactError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
                     }
-                }
-                val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
-                FlatPanel {
-                    CardHeading("Shoes")
-                    ShoePairCard(1, j.shoe, null, canEdit)
-                    j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }
-                    if(j.shoe?.customerId != null) SecondaryAction(onClick = { addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add pair") }
                 }
                 FlatPanel {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

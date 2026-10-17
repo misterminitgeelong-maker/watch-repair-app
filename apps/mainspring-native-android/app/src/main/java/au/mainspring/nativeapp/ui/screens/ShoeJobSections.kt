@@ -22,11 +22,11 @@ private fun ShoeRead.summary(): String =
 /** One pair: type, brand, colour and condition notes. [onRemove] is null for the job's primary pair. */
 @Composable
 fun ShoePairCard(index: Int, shoe: ShoeRead?, onRemove: (() -> Unit)?, enabled: Boolean) {
-    FlatPanel {
+    Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Pair $index", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(shoe?.summary() ?: "Shoe details not recorded", style = MaterialTheme.typography.titleMedium)
+                Text(if(index == 1) "PRIMARY PAIR" else "PAIR $index", style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(shoe?.summary() ?: "Shoe details not recorded", style = MaterialTheme.typography.bodyLarge)
                 shoe?.notes?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             if(onRemove != null) TextButton(onClick = onRemove, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove") }

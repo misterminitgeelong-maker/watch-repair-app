@@ -56,6 +56,7 @@ fun AtelierDetail(
     modifier: Modifier = Modifier,
     primaryEnabled: Boolean = true,
     primaryTag: String = "detail-primary",
+    primaryFilled: Boolean = false,
     backEnabled: Boolean = true,
     onPrev: (() -> Unit)? = null,
     onNext: (() -> Unit)? = null,
@@ -93,7 +94,10 @@ fun AtelierDetail(
             }
             if(!compact) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if(primaryLabel != null) SecondaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.heightIn(min = 48.dp).testTag(primaryTag),
+                    if(primaryLabel != null && primaryFilled) AccentAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.heightIn(min = 48.dp).testTag(primaryTag)) {
+                        Text(primaryLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+                    else if(primaryLabel != null) SecondaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.heightIn(min = 48.dp).testTag(primaryTag),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
                         val arrow = primaryLabel.startsWith("→")
                         if(arrow) { LineIcon("arrow", LocalContentColor.current, 18.dp); Spacer(Modifier.width(8.dp)) }

@@ -65,7 +65,7 @@ fun AutoKeyJobsScreen(
             if(onOpenBookingRequests != null) item { au.mainspring.nativeapp.ui.PendingBookingsBanner(onOpenBookingRequests, Modifier.padding(horizontal = 16.dp)) }
             item {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextToggle(listOf(ToggleOption("active", "Active", "segment-active"), ToggleOption("completed", "Completed", "segment-completed")),
+                    SandSegmented(listOf(ToggleOption("active", "Active", "segment-active"), ToggleOption("completed", "Completed", "segment-completed")),
                         if(state.focus == null) state.directory else "", { viewModel.directory(it) })
                     SearchFiltersRow(state.query, viewModel::query, "Search jobs…", { filtersOpen = true }, (if(state.focus != null) 1 else 0) + (if(state.focus == null && state.directory == "all") 1 else 0))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
