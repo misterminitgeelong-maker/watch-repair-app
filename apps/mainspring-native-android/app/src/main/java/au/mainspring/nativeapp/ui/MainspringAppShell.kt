@@ -82,7 +82,7 @@ import au.mainspring.nativeapp.ui.screens.ShoeJobDetailScreen
 import au.mainspring.nativeapp.ui.screens.ShoeJobsScreen
 import kotlinx.coroutines.launch
 
-private val bottomDestinations = setOf("home", "today", "dispatch", "jobs", "watch_jobs", "people", "customers", "inbox", "leads", "more", "route", "dispatchPool", "counterSale", "reports", "stock", "auto_jobs", "quotes", "invoices", "shoe_jobs", "new_intake")
+private val bottomDestinations = setOf("toolsWorkshop", "toolsMobile", "toolsShop", "home", "today", "dispatch", "jobs", "watch_jobs", "people", "customers", "inbox", "leads", "more", "route", "dispatchPool", "counterSale", "reports", "stock", "auto_jobs", "quotes", "invoices", "shoe_jobs", "new_intake")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -217,6 +217,9 @@ fun MainspringAppShell(
                         onOpenRoute = { navController.navigate("route") },
                         onOpenPlanner = { navController.navigate("auto_jobs") },
                         onOpenPool = { navController.navigate("dispatchPool") })
+                }
+                listOf("toolsWorkshop", "toolsMobile", "toolsShop").forEach { key ->
+                    composable(key) { au.mainspring.nativeapp.ui.screens.ToolsGridScreen(key, features, { navController.popBackStack() }, { navController.navigate(it) }) }
                 }
                 composable("more") { au.mainspring.nativeapp.ui.screens.MoreScreen(selectedSite?.name,sessionSummary,features,sites.size>1,
                     {switchOpen=true},{navController.navigate(it)},onLogout) }

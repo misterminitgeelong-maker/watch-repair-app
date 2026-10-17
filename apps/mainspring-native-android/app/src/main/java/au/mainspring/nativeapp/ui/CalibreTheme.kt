@@ -89,7 +89,7 @@ object Mainspring {
     val Muted = Color(0xFF596068)
     val Border = Color(0xFFE2E6EA)
     val BorderStrong = Color(0xFFC9CFD6)
-    val Accent = Color(0xFFD2361B)
+    val Accent = Color(0xFFC73218)
     val AccentHover = Color(0xFFB32D16)
     val AccentLight = Color(0xFFFDEAE6)
 }

@@ -24,7 +24,60 @@ import androidx.compose.ui.unit.sp
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.ui.*
 
-private data class MoreItem(val label: String, val route: String)
+internal data class MoreItem(val label: String, val route: String, val children: List<MoreItem> = emptyList())
+
+/** The More grid: a handful of main tools plus three group tiles that open a smaller grid of their own. */
+internal fun moreTools(features: Set<String>, owner: Boolean): List<MoreItem> {
+    val mobile = "auto_key" in features
+    val workshop = buildList {
+        if("watch" in features) add(MoreItem("Repair queue", "repairQueue"))
+        add(MoreItem("Customer Orders", "customerOrders"))
+        if("watch" in features) add(MoreItem("Catalogue", "catalogue"))
+        if("shoe" in features) add(MoreItem("Shoe services", "shoeServices"))
+        if(!mobile && "shop_mobile_booking" in features) add(MoreItem("Book mobile services", "bookingRequests"))
+    }
+    val mobileTools = if(!mobile) emptyList() else buildList {
+        add(MoreItem("Dispatch", "dispatch")); add(MoreItem("Map and today's route", "route")); add(MoreItem("Dispatch pool", "dispatchPool"))
+        add(MoreItem("POS / quick sale", "counterSale")); add(MoreItem("Lead inbox", "leads")); add(MoreItem("Prospects", "prospects")); add(MoreItem("Mobile toolkit", "toolkit"))
+        add(MoreItem("Book mobile services", "bookingRequests")); add(MoreItem("Send booking request", "sendBookingRequest"))
+        if(owner) add(MoreItem("Finance report", "financeReport"))
+        add(MoreItem("Revenue control", "revenueControl"))
+    }
+    val shop = buildList {
+        if(owner) { add(MoreItem("Sales & activity", "reportExtras")); add(MoreItem("Database", "database")); add(MoreItem("Team", "team")); add(MoreItem("Shop settings", "shopSettings")) }
+        add(MoreItem("Queued changes", "queuedChanges")); add(MoreItem("Accounts", "accounts"))
+    }
+    return buildList {
+        add(MoreItem("All jobs", "jobs"))
+        // A third service line does not fit in the bar, so it lives here.
+        if("shoe" in features && TAB_SHOE !in serviceTabKeys(features)) add(MoreItem("Shoe", "shoe_jobs"))
+        add(MoreItem("Customers", "customers")); add(MoreItem("Quotes", "quotes")); add(MoreItem("Invoices", "invoices"))
+        if(owner) add(MoreItem("Reports", "reports"))
+        add(MoreItem("Inventory", "stock"))
+        if("customer_accounts" in features) add(MoreItem("Customer Accounts", "businessAccounts"))
+        if(workshop.isNotEmpty()) add(MoreItem("Workshop tools", "toolsWorkshop", workshop))
+        if(mobileTools.isNotEmpty()) add(MoreItem("Mobile tools", "toolsMobile", mobileTools))
+        add(MoreItem("Shop & team", "toolsShop", shop))
+    }.distinctBy { it.route }
+}
+
+/** Title and tiles of one group tile, or null for an unknown key. */
+internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean): MoreItem? = moreTools(features, owner).firstOrNull { it.route == route && it.children.isNotEmpty() }
+
+/** The smaller grid a group tile opens. */
+@Composable fun ToolsGridScreen(route: String, features: Set<String>, onBack: () -> Unit, onNavigate: (String) -> Unit) {
+    val group = moreToolGroup(route, features, TokenStore.canManageInvoices())
+    LazyColumn(Modifier.fillMaxSize().testTag("tools-grid"), contentPadding = PaddingValues(bottom = 112.dp)) {
+        item { TextButton(onBack, Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp)) { Text("\u2039 More") } }
+        item { PageTitle(group?.label ?: "Tools") }
+        items((group?.children ?: emptyList()).chunked(MORE_COLUMNS), key = { row -> "row/" + row.first().route }) { row ->
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { tool -> MoreTile(tool.label, tool.route, Modifier.weight(1f)) { onNavigate(tool.route) } }
+                repeat(MORE_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
 
 /** Tool tiles per row on the More grid. */
 private const val MORE_COLUMNS = 4
@@ -42,34 +95,10 @@ private const val MORE_COLUMNS = 4
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     val owner = TokenStore.canManageInvoices()
-    val mobile = "auto_key" in features
-    val items = remember(features, owner) {
-        buildList {
-            add(MoreItem("All jobs", "jobs"))
-            // A third service line does not fit in the bar, so it lives here.
-            if("shoe" in features && TAB_SHOE !in serviceTabKeys(features)) add(MoreItem("Shoe", "shoe_jobs"))
-            add(MoreItem("Customers", "customers")); add(MoreItem("Quotes", "quotes")); add(MoreItem("Invoices", "invoices"))
-            if(owner) { add(MoreItem("Reports", "reports")); add(MoreItem("Sales & activity", "reportExtras")) }
-            add(MoreItem("Inventory", "stock"))
-            if("customer_accounts" in features) add(MoreItem("Customer Accounts", "businessAccounts"))
-            if(owner) { add(MoreItem("Database", "database")); add(MoreItem("Team", "team")); add(MoreItem("Shop settings", "shopSettings")) }
-            add(MoreItem("Queued changes", "queuedChanges"))
-            if("watch" in features) add(MoreItem("Repair queue", "repairQueue"))
-            add(MoreItem("Accounts", "accounts")); add(MoreItem("Customer Orders", "customerOrders"))
-            if("watch" in features) add(MoreItem("Catalogue", "catalogue"))
-            if("shoe" in features) add(MoreItem("Shoe services", "shoeServices"))
-            if(!mobile && "shop_mobile_booking" in features) add(MoreItem("Book mobile services", "bookingRequests"))
-            if(mobile) {
-                add(MoreItem("Dispatch", "dispatch")); add(MoreItem("Map and today's route", "route")); add(MoreItem("Dispatch pool", "dispatchPool"))
-                add(MoreItem("POS / quick sale", "counterSale")); add(MoreItem("Lead inbox", "leads")); add(MoreItem("Prospects", "prospects")); add(MoreItem("Mobile toolkit", "toolkit"))
-                add(MoreItem("Book mobile services", "bookingRequests")); add(MoreItem("Send booking request", "sendBookingRequest"))
-                if(owner) add(MoreItem("Finance report", "financeReport"))
-                add(MoreItem("Revenue control", "revenueControl"))
-            }
-        }.distinctBy { it.route }
-    }
+    val items = remember(features, owner) { moreTools(features, owner) }
+    val everyTool = remember(items) { items.flatMap { if(it.children.isEmpty()) listOf(it) else it.children }.distinctBy { it.route } }
     val q = query.trim()
-    val shown = if(q.isEmpty()) items else items.filter { it.label.contains(q, true) }
+    val shown = if(q.isEmpty()) items else everyTool.filter { it.label.contains(q, true) }
     LazyColumn(Modifier.fillMaxSize().testTag("more-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         item { PageTitle("More") }
         item {
@@ -96,7 +125,7 @@ private const val MORE_COLUMNS = 4
 }
 
 /** One icon-over-label tool tile, at least 76dp tall. */
-@Composable private fun MoreTile(label: String, route: String, modifier: Modifier, onClick: () -> Unit) {
+@Composable internal fun MoreTile(label: String, route: String, modifier: Modifier, onClick: () -> Unit) {
     val calibre = LocalCalibre.current
     val shape = if(calibre) CalibreCardShape else MaterialTheme.shapes.small
     Column(modifier.heightIn(min = 76.dp).background(if(calibre) calibreCardColor() else MaterialTheme.colorScheme.surfaceVariant, shape)

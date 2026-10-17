@@ -48,8 +48,10 @@ class NavigationShapeTest {
         compose.onNodeWithTag("nav-watch").assertExists()
         compose.onNodeWithTag("nav-mobile").assertDoesNotExist()
         compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("Workshop tools").assertExists()
+        compose.onNodeWithText("Mobile tools").assertDoesNotExist()
+        compose.onNodeWithText("Workshop tools").performClick()
         compose.onNodeWithText("Repair queue").assertExists()
-        compose.onNodeWithText("Dispatch pool").assertDoesNotExist()
     }
 
     @Test fun mobileOnlyShopHasMobileTabAndMobileTools() {
@@ -57,8 +59,8 @@ class NavigationShapeTest {
         compose.onNodeWithTag("nav-mobile").assertExists()
         compose.onNodeWithTag("nav-watch").assertDoesNotExist()
         compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("Mobile tools").performClick()
         compose.onNodeWithText("Dispatch pool").assertExists()
-        compose.onNodeWithText("Repair queue").assertDoesNotExist()
     }
 
     @Test fun headerSearchIconIsOnTabScreens() {
