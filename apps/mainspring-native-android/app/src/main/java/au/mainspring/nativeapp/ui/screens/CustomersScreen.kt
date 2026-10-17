@@ -1,10 +1,12 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import au.mainspring.nativeapp.alphaSections
@@ -17,6 +19,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -24,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.CustomersViewModel
+import au.mainspring.nativeapp.api.CustomerRead
 import au.mainspring.nativeapp.ui.*
 
 /** Sticky section header (letter / day) with an opaque background so rows scroll cleanly beneath it. */
@@ -43,22 +49,26 @@ fun CustomersScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     RefreshOnResume(viewModel::refresh)
-    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { LargeHeader("Directory · Accounts", "Customers", onAdd = onNewCustomer, addDescription = "New customer") }
-        item {
-            au.mainspring.nativeapp.ui.AtelierTextField(
-                value = state.query, onValueChange = viewModel::setQuery, singleLine = true,
-                placeholder = { Text("Search customers") }, shape = MaterialTheme.shapes.small,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { viewModel.refresh() }),
-            )
-        }
-        item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CUSTOMER_SORTS.forEach { (key, label) -> TabChip(state.sort == key, { viewModel.setSort(key) }, { Text(label) }, Modifier.testTag("customer-sort-$key")) }
+    val calibre = LocalCalibre.current
+    au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(if(calibre) 12.dp else 8.dp)) {
+        if(calibre) item { CalibreCustomersTop(state.query, state.sort, viewModel::setQuery, viewModel::setSort, viewModel::refresh, onNewCustomer) }
+        else {
+            item { LargeHeader("Directory · Accounts", "Customers", onAdd = onNewCustomer, addDescription = "New customer") }
+            item {
+                au.mainspring.nativeapp.ui.AtelierTextField(
+                    value = state.query, onValueChange = viewModel::setQuery, singleLine = true,
+                    placeholder = { Text("Search customers") }, shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { viewModel.refresh() }),
+                )
+            }
+            item {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    CUSTOMER_SORTS.forEach { (key, label) -> TabChip(state.sort == key, { viewModel.setSort(key) }, { Text(label) }, Modifier.testTag("customer-sort-$key")) }
+                }
             }
         }
         if (state.loading && state.customers.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
@@ -72,9 +82,9 @@ fun CustomersScreen(
         sections.forEach { (letter, rows) ->
             if (letter.isNotEmpty()) stickyHeader(key = "letter-$letter-${rows.first().id}", contentType = "letter") { SectionHeader(letter) }
             items(rows, key = { it.id }) { c ->
-            ListCard({ onOpenCustomer(c.id) }, Modifier.padding(horizontal = 20.dp)) {
+                if(calibre) CalibreCustomerCard(c, { onOpenCustomer(c.id) }, Modifier.padding(horizontal = 20.dp))
+                else ListCard({ onOpenCustomer(c.id) }, Modifier.padding(horizontal = 20.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.InitialsAvatar(c.fullName, size = 44.dp)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(c.fullName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                             listOfNotNull(c.phone, c.email, au.mainspring.nativeapp.customerAddedLabel(c.createdAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()).ifBlank { null }).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let {
@@ -90,4 +100,46 @@ fun CustomersScreen(
             SecondaryAction(onClick = viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) { Text("Load more customers") }
         }
     } }
+}
+
+/** One bordered white card per customer, as on the web: name in the accent colour, email, phone, added date. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun CalibreCustomerCard(c: CustomerRead, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(onClick, modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = CalibreCardShape, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(c.fullName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+            Spacer(Modifier.height(6.dp))
+            Text(c.email?.takeIf { it.isNotBlank() } ?: "No email", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            Text(c.phone?.takeIf { it.isNotBlank() } ?: "No phone", style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            au.mainspring.nativeapp.customerAddedLabel(c.createdAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()).ifBlank { null }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** Web-style customers header: title and Add Customer, then search and a sort select in one row. */
+@Composable private fun CalibreCustomersTop(query: String, sort: String, onQuery: (String) -> Unit, onSort: (String) -> Unit, onSearch: () -> Unit, onNewCustomer: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Customers", Modifier.weight(1f).semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge))
+            PrimaryAction(onNewCustomer, Modifier.semantics { contentDescription = "New customer" }) { Text("+ Add Customer") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AtelierTextField(
+                value = query, onValueChange = onQuery, singleLine = true, placeholder = { Text("Search customers…") },
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            )
+            Box {
+                SecondaryAction({ open = true }, Modifier.heightIn(min = 56.dp).testTag("customer-sort")) {
+                    Text((CUSTOMER_SORTS.firstOrNull { it.first == sort }?.second ?: "Sort") + " ▾", maxLines = 1)
+                }
+                DropdownMenu(open, { open = false }) {
+                    CUSTOMER_SORTS.forEach { (key, label) -> DropdownMenuItem({ Text(label) }, { onSort(key); open = false }, Modifier.testTag("customer-sort-$key")) }
+                }
+            }
+        }
+    }
 }

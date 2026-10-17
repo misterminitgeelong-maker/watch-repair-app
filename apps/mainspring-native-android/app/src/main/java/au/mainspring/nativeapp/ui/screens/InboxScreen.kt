@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.testTag
 import au.mainspring.nativeapp.INBOX_FILTERS
@@ -82,12 +85,16 @@ fun InboxScreen(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         containerColor = if (embedded) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.background,
         topBar = {
-            if (!embedded) au.mainspring.nativeapp.ui.LargeHeader("Messages · Activity", "Inbox")
+            if (!embedded) {
+                if (au.mainspring.nativeapp.ui.LocalCalibre.current) Text("Inbox", Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 8.dp).semantics { heading() },
+                    style = au.mainspring.nativeapp.ui.calibreDisplayStyle(MaterialTheme.typography.headlineLarge))
+                else au.mainspring.nativeapp.ui.LargeHeader("Messages · Activity", "Inbox")
+            }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                if (state.events.isNotEmpty()) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (state.events.isNotEmpty()) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     INBOX_FILTERS.forEach { (key, label) -> au.mainspring.nativeapp.ui.PillChip(label, filter == key, { filter = key }, Modifier.testTag("inbox-filter-$key")) }
                 } else Spacer(Modifier.weight(1f))
                 TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
@@ -95,7 +102,11 @@ fun InboxScreen(
             if (state.loading && state.events.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(16.dp), onRetry = { viewModel.refresh() }) }
             state.actionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp)) }
-            if (!state.loading && state.error == null && state.events.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("You're all caught up", "Customer replies and booking activity will show up here.")
+            if (!state.loading && state.error == null && state.events.isEmpty()) {
+                if (au.mainspring.nativeapp.ui.LocalCalibre.current) Text("No alerts yet. Quote approvals, declines, invoice payments, card payments that need attention, new website mobile key leads, and customer SMS replies will show up here.",
+                    Modifier.padding(horizontal = 20.dp, vertical = 24.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else au.mainspring.nativeapp.ui.EmptyState("You're all caught up", "Customer replies and booking activity will show up here.")
+            }
             au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 112.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -112,9 +123,8 @@ fun InboxScreen(
                     val isCard = ev.eventType == "card_payment_needs_attention"
                     val issue = if (isCard) ev.entityId?.let { state.issues[it] } else null
                     val busy = issue != null && state.busyIssueId == issue.id
-                    au.mainspring.nativeapp.ui.FlatPanel(
-                        Modifier.padding(horizontal = 4.dp).let { m -> if (route != null) m.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenEntity(route) } else m },
-                    ) {
+                    val cardMod = Modifier.padding(horizontal = 4.dp).let { m -> if (route != null) m.clickable(role = androidx.compose.ui.semantics.Role.Button) { onOpenEntity(route) } else m }
+                    val cardBody: @Composable ColumnScope.() -> Unit = {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(au.mainspring.nativeapp.ui.statusLabel(ev.eventType), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             Text(au.mainspring.nativeapp.ui.formatShopDate(ev.createdAt).substringBefore(' '), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -144,6 +154,10 @@ fun InboxScreen(
                             }
                         }
                     }
+                    if (au.mainspring.nativeapp.ui.LocalCalibre.current) androidx.compose.material3.Surface(cardMod.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = au.mainspring.nativeapp.ui.CalibreCardShape,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = cardBody)
+                    } else au.mainspring.nativeapp.ui.FlatPanel(cardMod, content = cardBody)
                 }
                 }
                 if (state.canLoadMore) {
