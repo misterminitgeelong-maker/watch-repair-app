@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.launch
 import au.mainspring.nativeapp.userMessage
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.InvoiceDetailViewModel
@@ -67,7 +68,8 @@ fun InvoiceDetailScreen(
 
     Scaffold(
         topBar = {
-            au.mainspring.nativeapp.ui.AtelierTopAppBar(
+            if(calibre) FinTitle(inv?.invoiceNumber ?: "Invoice", onBack = onBack, insets = true, actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.paymentBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } })
+            else au.mainspring.nativeapp.ui.AtelierTopAppBar(
                 title = { Text(inv?.invoiceNumber ?: "Invoice") },
                 navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) },
                 actions = { TextButton(onClick = vm::load, enabled = !state.loading && !state.paymentBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") } },
@@ -82,16 +84,14 @@ fun InvoiceDetailScreen(
                 val currency = d.invoice.currency
                 LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item {
-                        if(calibre) Column {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                au.mainspring.nativeapp.ui.MonoLabel(d.invoice.invoiceNumber)
-                                au.mainspring.nativeapp.ui.MonoLabel("/")
-                                au.mainspring.nativeapp.ui.MonoLabel(if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL", color = MaterialTheme.colorScheme.primary)
+                        if(calibre) FinCard(contentPadding = 20.dp) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Text(if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.8.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                FinStatusPill(d.invoice.status)
                             }
-                            HorizontalDivider(Modifier.padding(top = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                            Text(formatCents(remainingCents.coerceAtLeast(0), currency), Modifier.fillMaxWidth().padding(vertical = 14.dp), style = MaterialTheme.typography.displaySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Text("Total ${formatCents(d.invoice.totalCents, currency)} · Paid ${formatCents(paidCents, currency)} · ${formatShopDate(d.invoice.createdAt).substringBefore(' ')}", Modifier.padding(top = 10.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(formatCents(remainingCents.coerceAtLeast(0), currency), style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, fontSize = 34.sp))
+                            Text("Total ${formatCents(d.invoice.totalCents, currency)} · Paid ${formatCents(paidCents, currency)} · ${formatShopDate(d.invoice.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Subtotal ${formatCents(d.invoice.subtotalCents, currency)} · Tax ${formatCents(d.invoice.taxCents, currency)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else au.mainspring.nativeapp.ui.HeroCard {
                             Text((if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL"), style = MaterialTheme.typography.labelSmall)
                             Text(formatCents(remainingCents.coerceAtLeast(0), currency), style = MaterialTheme.typography.displaySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Light))
@@ -144,12 +144,9 @@ fun InvoiceDetailScreen(
                                 enabled = !state.paymentBusy,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                             ) { Text(if (state.paymentBusy) "Saving…" else "Record payment", style = MaterialTheme.typography.titleMedium) }
-                            if(calibre) Column(Modifier.fillMaxWidth()) {
-                                if(au.mainspring.nativeapp.TokenStore.canManageInvoices()) { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant); CalibreLink(if(state.sendBusy) "Sending…" else "Email invoice", onClick = { sendOpen = true }, enabled = !state.sendBusy) }
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                CalibreLink("Print / PDF", onClick = printAction, enabled = !state.loading && !state.paymentBusy)
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                au.mainspring.nativeapp.ui.MonoLabel("Status / ${d.invoice.status}", Modifier.padding(top = 10.dp))
+                            if(calibre) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if(au.mainspring.nativeapp.TokenStore.canManageInvoices()) FinOutlinedLabel(if(state.sendBusy) "Sending…" else "Email invoice", { sendOpen = true }, Modifier.weight(1f), enabled = !state.sendBusy)
+                                FinOutlinedLabel("Print / PDF", printAction, Modifier.weight(1f), enabled = !state.loading && !state.paymentBusy)
                             } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if(au.mainspring.nativeapp.TokenStore.canManageInvoices()) OutlinedButton(onClick = { sendOpen = true }, enabled = !state.sendBusy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(if(state.sendBusy) "Sending…" else "Email invoice") }
                                 OutlinedButton(onClick = printAction, enabled = !state.loading && !state.paymentBusy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Print / PDF") }

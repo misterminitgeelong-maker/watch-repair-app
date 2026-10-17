@@ -3,7 +3,7 @@ package au.mainspring.nativeapp.ui.screens
 import au.mainspring.nativeapp.ui.screens.LinkAction as OutlinedButton
 import au.mainspring.nativeapp.ui.FlatPanel
 import au.mainspring.nativeapp.ui.MetricStrip
-import au.mainspring.nativeapp.ui.SectionLabel
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -61,42 +61,59 @@ fun PeriodReportsScreen(onBack: () -> Unit, model: PeriodReportsViewModel = view
             finally { exportBusy = false }
         }
     }
-    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,topBar = { if(!embedded) au.mainspring.nativeapp.ui.BackLargeHeader("More", "Money & performance", "Reports", onBack) }) { padding ->
-        au.mainspring.nativeapp.ui.PullRefresh(state.loading, model::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("period-report-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    var tab by rememberSaveable { mutableStateOf("overview") }
+    val currency = TokenStore.shopValue("currency") ?: "AUD"
+    fun kpi(cents: Long) = au.mainspring.nativeapp.ui.formatCents(cents.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt(), currency)
+    val tabs = listOf(Triple("overview", "Overview", "bars" as String?), Triple("extras", "Sales & activity", "globe" as String?))
+    Scaffold(contentWindowInsets=if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, containerColor = MaterialTheme.colorScheme.background) { padding ->
+        if(tab == "extras") Column(Modifier.fillMaxSize().padding(padding)) {
+            if(!embedded) FinTitle("Reports")
+            FinTabs(tabs, tab, { tab = it }, Modifier.padding(horizontal = FinGutter))
+            ReportExtrasScreen(onBack, embedded = true)
+        } else au.mainspring.nativeapp.ui.PullRefresh(state.loading, model::refresh, Modifier.fillMaxSize().padding(padding)) { LazyColumn(Modifier.fillMaxSize().testTag("period-report-list"), contentPadding = PaddingValues(start = FinGutter, end = FinGutter, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("day", "week", "month", "quarter").forEach { period ->
-                        au.mainspring.nativeapp.ui.TabChip(state.period == period, { model.select(period = period) }, label = { Text(period.replaceFirstChar { it.uppercase() }) })
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if(!embedded) FinTitle("Reports", gutter = 0.dp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        FinPillSwitch(listOf("day", "week", "month", "quarter").map { it to it.replaceFirstChar { c -> c.uppercase() } }, state.period, { model.select(period = it) }, Modifier.weight(1f))
+                        FinSelect(if(exportBusy) "Preparing…" else "Export", listOf("csv" to "Export CSV", "date" to "Report date", "refresh" to "Refresh"), { key ->
+                            when(key) {
+                                "csv" -> if(!state.loading && state.current != null && !exportBusy) {
+                                    exportPeriod = state.period; exportDate = state.date; exportGeneration = TokenStore.sessionGeneration()
+                                    export.launch("mainspring-report-${state.period}-${state.date}.csv")
+                                }
+                                "date" -> dateOpen = true
+                                else -> model.refresh()
+                            }
+                        }, Modifier.width(112.dp), tag = "report-export", description = "Export")
                     }
+                    FinTabs(tabs, tab, { tab = it })
+                    Text("Report date: ${formatShopDate(state.date)}", Modifier.testTag("report-date"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    exportInfo?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                 }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton({ dateOpen = true },modifier=Modifier.fillMaxWidth()) { Text("Report date: ${formatShopDate(state.date)}") }
-                Row(Modifier.fillMaxWidth().padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(model::refresh, enabled = !state.loading, modifier=Modifier.weight(1f)) { Text("Refresh") }
-                    OutlinedButton(onClick = {
-                        exportPeriod = state.period; exportDate = state.date; exportGeneration = TokenStore.sessionGeneration()
-                        export.launch("mainspring-report-${state.period}-${state.date}.csv")
-                    }, enabled = !state.loading && state.current != null && !exportBusy, modifier=Modifier.weight(1f)) { Text(if(exportBusy) "Preparing…" else "Export CSV") }
-                }
-                exportInfo?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
             if(state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             state.error?.let { item { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = model::refresh) } }
             state.current?.let { current ->
+                item { FinKpiCard("Revenue", kpi(current.financials.revenue), "dollar", FinKpi.RevenueTint, FinKpi.RevenueBg, valueTag = "kpi-Revenue") }
+                item { FinKpiCard("Cost", kpi(current.financials.cost), "wallet", FinKpi.CostTint, FinKpi.CostBg, valueTag = "kpi-Cost") }
+                item { FinKpiCard("Gross profit", kpi(current.financials.profit), "scales", FinKpi.ProfitTint, FinKpi.ProfitBg, valueTag = "kpi-Profit") }
+                item { FinKpiCard("Outstanding", kpi((current.financials.billed - current.financials.revenue).coerceAtLeast(0)), "bars", FinKpi.OutstandingTint, FinKpi.OutstandingBg, valueTag = "kpi-Outstanding") }
                 item {
-                    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel(state.period.replaceFirstChar { it.uppercase() } + " report")
-                    Text("${formatShopDate(current.start)} – ${formatShopDate(current.end)}", style = if(au.mainspring.nativeapp.ui.LocalCalibre.current) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge)
-                    state.previous?.let { Text("Compared with ${formatShopDate(it.start)} – ${formatShopDate(it.end)}", style = MaterialTheme.typography.bodySmall) }
-                    state.comparisonError?.let { Text("Previous period unavailable: $it", color = MaterialTheme.colorScheme.error) }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("${state.period.replaceFirstChar { it.uppercase() }} report", style = MaterialTheme.typography.titleMedium)
+                        Text("${formatShopDate(current.start)} – ${formatShopDate(current.end)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        state.previous?.let { Text("Compared with ${formatShopDate(it.start)} – ${formatShopDate(it.end)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        state.comparisonError?.let { Text("Previous period unavailable: $it", color = MaterialTheme.colorScheme.error) }
+                    }
                 }
-                item { MetricStrip(listOf("Revenue" to reportAmount(current.financials.revenue),"Jobs" to current.jobs.toString(),"Avg / job" to reportAmount(current.operations.averageRevenue))) }
                 item { RevenueComparison(current.financials.revenue,state.previous?.financials?.revenue) }
                 item { FlatPanel {
-                    SectionLabel("Jobs by service")
+                    Text("Jobs by service", style = MaterialTheme.typography.titleMedium)
                     val max=maxOf(current.watchJobs,current.shoeJobs,current.mobileJobs,1L)
                     listOf("Watch" to current.watchJobs,"Shoe" to current.shoeJobs,"Mobile services" to current.mobileJobs).forEach {(label,value)->
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(label,style=MaterialTheme.typography.bodySmall);Text(value.toString(),style=MaterialTheme.typography.labelLarge)}
-                        LinearProgressIndicator(progress={value.toFloat()/max.toFloat()},modifier=Modifier.fillMaxWidth(),color=MaterialTheme.colorScheme.onSurface)
+                        LinearProgressIndicator(progress={value.toFloat()/max.toFloat()},modifier=Modifier.fillMaxWidth(),color=MaterialTheme.colorScheme.primary)
                     }
                 } }
                 item {

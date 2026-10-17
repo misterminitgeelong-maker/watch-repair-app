@@ -17,6 +17,8 @@ data class MobileListedInvoice(
     @SerializedName("created_at") val createdAt: String = "",
     @SerializedName("customer_name") val customerName: String? = null,
     @SerializedName("job_number") val jobNumber: String? = null,
+    @SerializedName("subtotal_cents") val subtotal: Int? = null,
+    @SerializedName("tax_cents") val tax: Int? = null,
 )
 
 /** Xero / online-payment fields of a watch invoice (read-only). */
