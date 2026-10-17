@@ -44,11 +44,11 @@ import androidx.compose.ui.unit.sp
 }
 
 /** Calibre card corner radius (the theme's own shapes are deliberately near-square). */
-val CalibreCardShape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+val CalibreCardShape: androidx.compose.ui.graphics.Shape @Composable get() = androidx.compose.foundation.shape.RoundedCornerShape(LocalCalibrePalette.current.cardRadius)
 
 @Composable fun FlatPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     if(LocalCalibre.current) {
-        Surface(modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = 1.dp,
+        Surface(modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = LocalCalibrePalette.current.cardElevation,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
         }
@@ -89,7 +89,7 @@ val CalibreCardShape = androidx.compose.foundation.shape.RoundedCornerShape(12.d
 
 @Composable fun MetricStrip(values: List<Pair<String, String>>, modifier: Modifier = Modifier, onItemClick: ((String) -> Unit)? = null) {
     if(LocalCalibre.current) {
-        Surface(modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = 1.dp,
+        Surface(modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = LocalCalibrePalette.current.cardElevation,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 values.forEach { (label, value) ->
@@ -177,7 +177,7 @@ val CalibreCardShape = androidx.compose.foundation.shape.RoundedCornerShape(12.d
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun SoftCard(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     if(!LocalCalibre.current) { ListCard(onClick, modifier, content); return }
-    Surface(onClick, modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = 1.dp,
+    Surface(onClick, modifier.fillMaxWidth(), color = calibreCardColor(), shape = CalibreCardShape, shadowElevation = LocalCalibrePalette.current.cardElevation,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
     }

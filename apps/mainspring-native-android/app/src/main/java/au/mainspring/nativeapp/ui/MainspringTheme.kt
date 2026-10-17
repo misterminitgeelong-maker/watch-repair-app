@@ -45,8 +45,20 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
         surfaceContainer = Color(0xFFF1F4F9), surfaceContainerHigh = Color(0xFFE8EDF5), surfaceContainerHighest = Color.White,
         outline = Color(0xFF8793A6), outlineVariant = Color(0xFFDDE3EE),
         error = Color(0xFFB3261E), errorContainer = Color(0xFFFCE4E1), onErrorContainer = Color(0xFF601410))
-    val calibre = (!night && appearance == AppAppearance.CALIBRE) || calibreDark
-    if(calibreDark) colors = darkColorScheme(
+    val mainspring = appearance == AppAppearance.MAINSPRING && darkTheme != true
+    val calibre = (!night && appearance == AppAppearance.CALIBRE) || calibreDark || mainspring
+    if(mainspring) colors = lightColorScheme(
+        primary = Mainspring.Accent, onPrimary = Color.White,
+        background = Mainspring.Background, surface = Mainspring.Surface, onSurface = Mainspring.Text,
+        onBackground = Mainspring.Text, secondary = Mainspring.Accent, onSecondary = Color.White,
+        primaryContainer = Mainspring.AccentLight, onPrimaryContainer = Mainspring.AccentHover,
+        secondaryContainer = Mainspring.SurfaceAlt, onSecondaryContainer = Mainspring.Text,
+        surfaceVariant = Mainspring.SurfaceAlt, onSurfaceVariant = Mainspring.Muted,
+        surfaceContainerLowest = Mainspring.Surface, surfaceContainerLow = Color(0xFFF9FAFB),
+        surfaceContainer = Mainspring.SurfaceAlt, surfaceContainerHigh = Color(0xFFE8ECEF), surfaceContainerHighest = Color(0xFFE2E6EA),
+        outline = Color(0xFF858D96), outlineVariant = Mainspring.Border,
+        error = Color(0xFFB3261E), errorContainer = Color(0xFFFCE4E1), onErrorContainer = Color(0xFF601410))
+    else if(calibreDark) colors = darkColorScheme(
         primary = Calibre.ForestDark, onPrimary = Calibre.OnForestDark,
         background = Calibre.DarkBackground, surface = Calibre.DarkBackground, onSurface = Calibre.DarkInk,
         onBackground = Calibre.DarkInk, secondary = Calibre.ForestDark, onSecondary = Calibre.OnForestDark,
@@ -75,8 +87,10 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
     }
     val baseline = Typography()
     fun style(base: TextStyle, size: Int, line: Int, weight: FontWeight, spacing: Double = 0.0) =
-        base.copy(fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = spacing.sp)
-    androidx.compose.runtime.CompositionLocalProvider(LocalCalibre provides calibre) {
+        base.copy(fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = spacing.sp,
+            fontFamily = if(mainspring) MainspringBody else base.fontFamily)
+    val palette = calibrePaletteFor(if(mainspring) AppAppearance.MAINSPRING else AppAppearance.CALIBRE, calibreDark)
+    androidx.compose.runtime.CompositionLocalProvider(LocalCalibre provides calibre, LocalCalibrePalette provides palette) {
     MaterialTheme(
         colorScheme = colors,
         typography = baseline.copy(
@@ -93,7 +107,8 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
             labelMedium = style(baseline.labelMedium, 12, 17, FontWeight.Medium),
             labelSmall = style(baseline.labelSmall, 11, 15, FontWeight.Medium, 0.6),
         ),
-        shapes = if(calibre) Shapes(extraSmall = RoundedCornerShape(2.dp), small = RoundedCornerShape(3.dp), medium = RoundedCornerShape(3.dp), large = RoundedCornerShape(4.dp), extraLarge = RoundedCornerShape(6.dp)) else Shapes(
+        shapes = if(mainspring) Shapes(extraSmall = RoundedCornerShape(4.dp), small = RoundedCornerShape(6.dp), medium = RoundedCornerShape(6.dp), large = RoundedCornerShape(6.dp), extraLarge = RoundedCornerShape(8.dp))
+        else if(calibre) Shapes(extraSmall = RoundedCornerShape(2.dp), small = RoundedCornerShape(3.dp), medium = RoundedCornerShape(3.dp), large = RoundedCornerShape(4.dp), extraLarge = RoundedCornerShape(6.dp)) else Shapes(
             extraSmall = RoundedCornerShape(10.dp), small = RoundedCornerShape(14.dp),
             medium = RoundedCornerShape(24.dp), large = RoundedCornerShape(24.dp),
             extraLarge = RoundedCornerShape(28.dp),

@@ -45,6 +45,9 @@ class ToneColors(val container: Color, val content: Color, val dot: Color)
 
 @Composable fun toneColors(tone: StatusTone): ToneColors {
     val dark = isSystemInDarkTheme()
+    LocalCalibrePalette.current.tones?.let { t ->
+        return when(tone) { StatusTone.Waiting -> t.waiting; StatusTone.Ready -> t.ready; StatusTone.Progress -> t.progress; StatusTone.Late -> t.late; StatusTone.Neutral -> t.neutral }
+    }
     return if(dark) when(tone) {
         StatusTone.Waiting -> ToneColors(Color(0xFF3A2D10), Color(0xFFF1CB7A), Color(0xFFE0A93A))
         StatusTone.Ready -> ToneColors(Color(0xFF1B3425), Color(0xFF9FD7B0), Color(0xFF5FB27C))

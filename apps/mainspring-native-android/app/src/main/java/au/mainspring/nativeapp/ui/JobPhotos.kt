@@ -93,7 +93,7 @@ fun jobServiceKey(service: String): String = when(service.lowercase().replace('-
 
 /** Soft tinted square used behind placeholders; mint in light, deep forest in dark. */
 @Composable private fun placeholderTint(): Color =
-    if(LocalCalibre.current) { if(isSystemInDarkTheme()) Calibre.DarkForestContainer else Calibre.ForestMint } else MaterialTheme.colorScheme.surfaceVariant
+    if(LocalCalibre.current) LocalCalibrePalette.current.placeholder else MaterialTheme.colorScheme.surfaceVariant
 
 /**
  * In-memory job photo source. A job's first intake photo is looked up lazily (one list call, one link, one download),

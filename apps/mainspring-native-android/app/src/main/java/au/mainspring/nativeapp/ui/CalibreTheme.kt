@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +29,70 @@ val CalibreMono = FontFamily(Font(R.font.plexmono_regular, FontWeight.Normal), F
 
 /** DM Serif Display (SIL OFL): warmer display face for Calibre titles and big numbers only. */
 val CalibreDisplay = FontFamily(Font(R.font.dmserifdisplay_regular, FontWeight.Normal))
+
+/** Instrument Serif (SIL OFL): the web display face, used for Mainspring titles and big numbers. */
+val MainspringDisplay = FontFamily(Font(R.font.instrumentserif_regular, FontWeight.Normal))
+
+/** Plus Jakarta Sans (SIL OFL, variable weight): the web body face for the Mainspring appearance. */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+val MainspringBody = FontFamily(listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map {
+    Font(R.font.plusjakartasans_variable, it, variationSettings = FontVariation.Settings(FontVariation.weight(it.weight)))
+})
+
+/** Status pill colours per tone (see [toneColors]). */
+class TonePalette(val waiting: ToneColors, val ready: ToneColors, val progress: ToneColors, val late: ToneColors, val neutral: ToneColors)
+
+/**
+ * Colours and shape values that differ between Calibre-family appearances and are not expressible as Material roles.
+ * [tones] and [avatars] null means "use the built-in Calibre defaults".
+ */
+class CalibrePalette(
+    val appearance: AppAppearance,
+    val dark: Boolean,
+    val card: Color,
+    val placeholder: Color,
+    val displayFont: FontFamily,
+    val cardRadius: Dp,
+    val cardElevation: Dp,
+    val wordmark: String,
+    val tones: TonePalette? = null,
+    val avatars: List<Pair<Color, Color>>? = null,
+)
+
+/** Pure palette selection: Mainspring is the web look (always light); Calibre is the green look and follows [dark]. */
+fun calibrePaletteFor(appearance: AppAppearance, dark: Boolean): CalibrePalette = when(appearance) {
+    AppAppearance.MAINSPRING -> CalibrePalette(appearance, false, card = Mainspring.Surface, placeholder = Mainspring.AccentLight,
+        displayFont = MainspringDisplay, cardRadius = 6.dp, cardElevation = 0.dp, wordmark = "Mainspring",
+        tones = TonePalette(
+            waiting = ToneColors(Color(0xFFFFF4DB), Color(0xFF7A4A00), Color(0xFFD9930D)),
+            ready = ToneColors(Color(0xFFE3F2E8), Color(0xFF1E5A33), Color(0xFF2E8B57)),
+            progress = ToneColors(Color(0xFFE3EAF1), Color(0xFF2B4258), Color(0xFF4F7396)),
+            late = ToneColors(Mainspring.AccentLight, Color(0xFF9B1C1C), Color(0xFFC62828)),
+            neutral = ToneColors(Mainspring.SurfaceAlt, Mainspring.TextMid, Color(0xFF8A929A))),
+        avatars = listOf(
+            Mainspring.AccentLight to Color(0xFF8A2412), Color(0xFFFFF4DB) to Color(0xFF6B4100), Color(0xFFE3F2E8) to Color(0xFF1E5A33),
+            Color(0xFFE3EAF1) to Color(0xFF2B4258), Mainspring.SurfaceAlt to Mainspring.TextMid, Color(0xFFF0DDD3) to Color(0xFF6B3A24)))
+    else -> CalibrePalette(appearance, dark, card = Calibre.Tint, placeholder = if(dark) Calibre.DarkForestContainer else Calibre.ForestMint,
+        displayFont = CalibreDisplay, cardRadius = 12.dp, cardElevation = 1.dp, wordmark = "atelier / calibre")
+}
+
+/** Provided by MainspringTheme. Defaults to light Calibre so previews and tests that skip the theme keep the old look. */
+val LocalCalibrePalette = staticCompositionLocalOf { calibrePaletteFor(AppAppearance.CALIBRE, false) }
+
+/** Web (Capacitor) design tokens from frontend/src/index.css. */
+object Mainspring {
+    val Background = Color(0xFFF6F7F9)
+    val Surface = Color.White
+    val SurfaceAlt = Color(0xFFEEF1F4)
+    val Text = Color(0xFF12141A)
+    val TextMid = Color(0xFF3C4249)
+    val Muted = Color(0xFF596068)
+    val Border = Color(0xFFE2E6EA)
+    val BorderStrong = Color(0xFFC9CFD6)
+    val Accent = Color(0xFFD2361B)
+    val AccentHover = Color(0xFFB32D16)
+    val AccentLight = Color(0xFFFDEAE6)
+}
 
 object Calibre {
     /** Very light green-grey card surface (Ink 16:1, Muted 5.7:1 on it). */
@@ -51,10 +117,10 @@ object Calibre {
 
 /** Soft card surface: light green-grey in light mode, the dark surface in night mode. */
 @Composable fun calibreCardColor(): Color =
-    if(MaterialTheme.colorScheme.background.luminance() < 0.5f) MaterialTheme.colorScheme.surfaceVariant else Calibre.Tint
+    if(MaterialTheme.colorScheme.background.luminance() < 0.5f) MaterialTheme.colorScheme.surfaceVariant else LocalCalibrePalette.current.card
 
-/** Display-face variant of [base] for Calibre (DM Serif Display ships only a regular weight). */
-fun calibreDisplayStyle(base: TextStyle): TextStyle = base.copy(fontFamily = CalibreDisplay, fontWeight = FontWeight.Normal, letterSpacing = 0.sp)
+/** Display-face variant of [base]: Instrument Serif for Mainspring, DM Serif Display for Calibre (both ship only a regular weight). */
+@Composable fun calibreDisplayStyle(base: TextStyle): TextStyle = base.copy(fontFamily = LocalCalibrePalette.current.displayFont, fontWeight = FontWeight.Normal, letterSpacing = 0.sp)
 
 /** Small uppercase monospace caption, e.g. "REPAIR HISTORY / 4 VISITS". */
 @Composable fun MonoLabel(text: String, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
@@ -65,14 +131,20 @@ fun calibreDisplayStyle(base: TextStyle): TextStyle = base.copy(fontFamily = Cal
 @Composable fun CalibreWordmark(shop: String?, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
     val markColor = MaterialTheme.colorScheme.primary
     Row(modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 14.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        androidx.compose.foundation.Canvas(Modifier.size(width = 20.dp, height = 22.dp)) {
+        if(LocalCalibrePalette.current.appearance == AppAppearance.MAINSPRING) androidx.compose.foundation.Canvas(Modifier.size(26.dp)) {
+            val c = markColor; val r = size.minDimension / 2f; val ctr = center
+            drawCircle(Mainspring.BorderStrong, r - 0.5.dp.toPx(), ctr, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+            drawCircle(c, r * 0.62f, ctr, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+            drawCircle(c, r * 0.34f, ctr, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+            drawCircle(c, 1.6.dp.toPx(), ctr)
+        } else androidx.compose.foundation.Canvas(Modifier.size(width = 20.dp, height = 22.dp)) {
             val bar = 3.dp.toPx(); val gap = 5.dp.toPx(); val c = markColor
             drawRect(c, androidx.compose.ui.geometry.Offset(0f, size.height * 0.15f), androidx.compose.ui.geometry.Size(bar, size.height * 0.7f))
             drawRect(c, androidx.compose.ui.geometry.Offset(bar + gap, 0f), androidx.compose.ui.geometry.Size(bar, size.height))
             drawRect(c, androidx.compose.ui.geometry.Offset((bar + gap) * 2, size.height * 0.25f), androidx.compose.ui.geometry.Size(bar, size.height * 0.5f))
         }
         Spacer(Modifier.width(10.dp))
-        Text("atelier / calibre", style = calibreDisplayStyle(MaterialTheme.typography.titleLarge), color = MaterialTheme.colorScheme.onSurface)
+        Text(LocalCalibrePalette.current.wordmark, style = calibreDisplayStyle(MaterialTheme.typography.titleLarge), color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.weight(1f))
         if(shop != null) MonoLabel(shop.take(22))
         trailing?.invoke()

@@ -42,7 +42,7 @@ fun initialsOf(name: String): String = name.split(' ').filter { it.isNotBlank() 
 /** Decorative initials circle tinted from a small green/earth palette by name hash; the name is always shown beside it, so it is hidden from TalkBack. */
 @Composable fun InitialsAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val pairs = if(dark) darkPairs else lightPairs
+    val pairs = LocalCalibrePalette.current.avatars ?: if(dark) darkPairs else lightPairs
     val (bg, fg) = pairs[(name.trim().lowercase().hashCode() and Int.MAX_VALUE) % pairs.size]
     Box(modifier.size(size).clip(CircleShape).background(bg).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
         Text(initialsOf(name), style = MaterialTheme.typography.titleMedium.copy(fontSize = (size.value * 0.36f).sp, fontWeight = FontWeight.SemiBold), color = fg, maxLines = 1)
