@@ -80,7 +80,7 @@ fun ShoeJobDetailScreen(
     } else AtelierDetail(
         backLabel = "Jobs", title = j.title, reference = listOfNotNull(j.jobNumber, state.customer?.fullName?.uppercase()).joinToString(" · "),
         banner = statusLabel(j.status).let { s -> val q = if (j.quoteStatus != "none") "Quote ${j.quoteStatus.replace('_', ' ')}" else null; if (q == null || q.equals(s, true)) s else "$s · $q" },
-        tabs = listOf("overview" to "Overview", "history" to "History", "messages" to "Messages"), selectedTab = tab, onTab = { tab = it },
+        tabs = detailTabs(state.attachments.size, state.history.size + state.smsLog.size), selectedTab = tab, onTab = { tab = it },
         onBack = onBack, backEnabled = !state.statusBusy,
         primaryLabel = if (state.statusBusy) "Updating\u2026" else "Update repair status",
         primaryEnabled = !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs(),
@@ -135,6 +135,11 @@ fun ShoeJobDetailScreen(
                 if (state.history.isEmpty()) Text("No history yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 state.history.forEach { h -> ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt)) }
                 state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} · ${log.body}", "${log.toPhone} · ${formatShopDate(log.createdAt)}") }
+            }
+            "messages" -> MessageThreadScreen("shoe-repair-jobs", shownId, { tab = "overview" }, embedded = true)
+            "work" -> {
+                SectionLabel("Photos & files / ${state.attachments.size}")
+                if (state.attachments.isEmpty()) Text(if (state.loading) "Loading\u2026" else "No photos or files yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 state.attachments.forEach { att ->
                     FlatPanel {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -153,8 +158,21 @@ fun ShoeJobDetailScreen(
                     }
                 }
                 attachmentOpenError?.let { ErrorBanner(it) }
+                SecondaryAction(onClick = onPhotos, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Photos & files") }
+                val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
+                SectionLabel("Services")
+                if(j.items.isEmpty()) Text("No services added yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                j.items.forEach { item -> ShoeServiceRow(item, currency, { removeItem = item.id }, canEdit) }
+                SecondaryAction(onClick = { vm.loadCatalogue(); pickServices = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add services") }
+                SectionLabel("Shop notes")
+                SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add note") }
             }
-            "messages" -> MessageThreadScreen("shoe-repair-jobs", shownId, { tab = "overview" }, embedded = true)
+            "money" -> {
+                SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
+                    "View services, pricing and payment")
+                if (j.quoteStatus != "approved") SecondaryAction(onClick = { confirmQuote = true }, enabled = !state.quoteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Send quote to customer") }
+                if (j.depositCents > 0) SummaryCard("Deposit", formatCents(j.depositCents, currency), null)
+            }
             else -> {
                 val (prevId, nextId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
                 JobNavBar(au.mainspring.nativeapp.JobNavContext.position("shoe", shownId), prevId, nextId, { shownId = it; tab = "overview" }, enabled = !state.statusBusy)
@@ -184,15 +202,9 @@ fun ShoeJobDetailScreen(
                 ShoePairCard(1, j.shoe, null, canEdit)
                 j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }
                 if(j.shoe?.customerId != null) SecondaryAction(onClick = { addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add pair") }
-                SectionLabel("Services")
-                if(j.items.isEmpty()) Text("No services added yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                j.items.forEach { item -> ShoeServiceRow(item, currency, { removeItem = item.id }, canEdit) }
-                SecondaryAction(onClick = { vm.loadCatalogue(); pickServices = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add services") }
                 j.estimatedReadyBy?.takeIf { it.isNotBlank() }?.let { SummaryCard("Estimated ready", formatShopDate(it), null) }
                 if (j.customerAccountId != null) SummaryCard("Business account", "Linked to a customer account", null)
                 SummaryCard(statusLabel(j.status), listOfNotNull(j.claimedByName?.let { "Assigned to $it" }, "Created ${formatShopDate(j.createdAt)}").joinToString(" \u00b7 "), null)
-                SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
-                    "View services, pricing and payment")
                 FlatPanel {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
