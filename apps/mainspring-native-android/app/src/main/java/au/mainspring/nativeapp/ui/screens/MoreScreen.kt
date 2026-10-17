@@ -18,6 +18,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,12 +87,13 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean)
 private const val MORE_COLUMNS = 4
 
 /**
- * More tab: a four-column grid of icon tiles for every tool that fits the shop's service plan and role, with search above,
- * then settings and sign out. Anything the bottom bar does not show is one tap away.
+ * More tab, as on the web phone view: a compact popup sheet anchored above the bottom bar over a dimmed page, with a
+ * four-column grid of icon tiles (every tool that fits the shop's plan and role, plus Settings), a divider and a red
+ * Sign out row. A small search field sits at the top of the sheet. Settings opens the settings and appearance panels.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun MoreScreen(shop: String?, summary: String?, features: Set<String>, canSwitch: Boolean,
-    onSwitch: () -> Unit, onNavigate: (String) -> Unit, onLogout: () -> Unit) {
+    onSwitch: () -> Unit, onNavigate: (String) -> Unit, onLogout: () -> Unit, onDismiss: () -> Unit = {}) {
     val fieldNavigation by DesignPreferences.fieldNavigation.collectAsState()
     val appearance by DesignPreferences.appearance.collectAsState()
     var signOut by remember { mutableStateOf(false) }
@@ -96,37 +101,77 @@ private const val MORE_COLUMNS = 4
     var query by rememberSaveable { mutableStateOf("") }
     val owner = TokenStore.canManageInvoices()
     val items = remember(features, owner) { moreTools(features, owner) }
-    val everyTool = remember(items) { items.flatMap { if(it.children.isEmpty()) listOf(it) else it.children }.distinctBy { it.route } }
+    val everyTool = remember(items) { (items.flatMap { if(it.children.isEmpty()) listOf(it) else it.children } + MoreItem("Settings", "settings")).distinctBy { it.route } }
     val q = query.trim()
-    val shown = if(q.isEmpty()) items else everyTool.filter { it.label.contains(q, true) }
-    LazyColumn(Modifier.fillMaxSize().testTag("more-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        item { PageTitle("More") }
-        item {
-            au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool") }, shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 12.dp).testTag("more-search"),
-                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary))
-        }
-        if(q.isNotEmpty() && shown.isEmpty()) item { Text("No tool matches \u201c$q\u201d.", Modifier.padding(horizontal = 20.dp, vertical = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        items(shown.chunked(MORE_COLUMNS), key = { row -> "row/" + row.first().route }) { row ->
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { tool -> MoreTile(tool.label, tool.route, Modifier.weight(1f)) { onNavigate(tool.route) } }
-                repeat(MORE_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+    val shown = if(q.isEmpty()) items + MoreItem("Settings", "settings") else everyTool.filter { it.label.contains(q, true) }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss))
+        Surface(Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 10.dp).widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight * 0.92f),
+            color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), shadowElevation = 14.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            LazyColumn(Modifier.testTag("more-list"), contentPadding = PaddingValues(top = 12.dp)) {
+                item {
+                    au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool") }, shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 6.dp).testTag("more-search"),
+                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.background, focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary))
+                }
+                if(q.isNotEmpty() && shown.isEmpty()) item { Text("No tool matches \u201c$q\u201d.", Modifier.padding(horizontal = 20.dp, vertical = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                items(shown.chunked(MORE_COLUMNS), key = { row -> "row/" + row.first().route }) { row ->
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
+                        row.forEach { tool ->
+                            val tag = if(tool.route == "settings") Modifier.testTag("more-group-settings") else Modifier
+                            MoreTile(tool.label, tool.route, Modifier.weight(1f).then(tag), plain = true) { if(tool.route == "settings") settingsOpen = true else onNavigate(tool.route) }
+                        }
+                        repeat(MORE_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                if(q.isEmpty()) {
+                    item(key = "divider") { HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.outlineVariant) }
+                    item(key = "signout") {
+                        val red = MaterialTheme.colorScheme.primary
+                        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { signOut = true }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                            SignOutGlyph(red); Spacer(Modifier.width(8.dp))
+                            Text("Sign out", style = MaterialTheme.typography.titleSmall, color = red)
+                        }
+                    }
+                }
             }
         }
-        if(q.isEmpty()) {
-            item(key = "h-settings") { MoreGroupHeader("Settings & appearance", "settings", settingsOpen, Modifier.testTag("more-group-settings")) { settingsOpen = !settingsOpen } }
-            if(settingsOpen) item(key = "settings") { SettingsPanels(shop, summary, features, canSwitch, onSwitch, fieldNavigation, appearance, owner) }
-            item(key = "signout") { TextButton({ signOut = true }, modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().heightIn(min = 56.dp)) { Text("Sign out") } }
+    }
+    if(settingsOpen) androidx.compose.ui.window.Dialog({ settingsOpen = false }, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            LazyColumn(Modifier.statusBarsPadding().testTag("settings-list"), contentPadding = PaddingValues(bottom = 48.dp)) {
+                item { TextButton({ settingsOpen = false }, Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp)) { Text("\u2039 More") } }
+                item { PageTitle("Settings & appearance") }
+                item(key = "settings") { SettingsPanels(shop, summary, features, canSwitch, onSwitch, fieldNavigation, appearance, owner) }
+            }
         }
     }
     if(signOut) AlertDialog(onDismissRequest = { signOut = false }, title = { Text("Sign out?") }, text = { Text("Saved drafts remain tied to this shop and account on this device.") },
         confirmButton = { TextButton({ signOut = false; onLogout() }) { Text("Sign out") } }, dismissButton = { TextButton({ signOut = false }) { Text("Cancel") } })
 }
 
-/** One icon-over-label tool tile, at least 76dp tall. */
-@Composable internal fun MoreTile(label: String, route: String, modifier: Modifier, onClick: () -> Unit) {
+/** Exit glyph: a door bracket with an arrow leaving it. */
+@Composable private fun SignOutGlyph(color: Color) {
+    androidx.compose.foundation.Canvas(Modifier.size(20.dp)) {
+        val s = size.width / 24f; val w = 1.8f * s
+        fun l(a: Float, b: Float, c: Float, d: Float) = drawLine(color, androidx.compose.ui.geometry.Offset(a * s, b * s), androidx.compose.ui.geometry.Offset(c * s, d * s), w, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        l(10f, 4f, 5f, 4f); l(5f, 4f, 5f, 20f); l(5f, 20f, 10f, 20f); l(10f, 12f, 21f, 12f); l(17f, 8f, 21f, 12f); l(17f, 16f, 21f, 12f)
+    }
+}
+
+/** One icon-over-label tool tile, at least 76dp tall. [plain] drops the card (the More sheet draws bare tiles). */
+@Composable internal fun MoreTile(label: String, route: String, modifier: Modifier, plain: Boolean = false, onClick: () -> Unit) {
     val calibre = LocalCalibre.current
+    if(plain) {
+        Column(modifier.heightIn(min = 76.dp).clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 2.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
+            ToolIcon(route, size = 24.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f))
+            Text(label, style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp, lineHeight = 14.sp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f))
+        }
+        return
+    }
     val shape = if(calibre) CalibreCardShape else MaterialTheme.shapes.small
     Column(modifier.heightIn(min = 76.dp).background(if(calibre) calibreCardColor() else MaterialTheme.colorScheme.surfaceVariant, shape)
         .then(if(calibre) Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), shape) else Modifier)
@@ -134,17 +179,6 @@ private const val MORE_COLUMNS = 4
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
         if(calibre) ToolIcon(route, size = 26.dp)
         Text(label, style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 13.sp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 3, color = MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-@Composable private fun MoreGroupHeader(title: String, key: String, open: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Column(modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).semantics { role = Role.Button; stateDescription = if(open) "Expanded" else "Collapsed" }.clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
-            if(LocalCalibre.current) { ToolIcon(key, size = 24.dp); Spacer(Modifier.width(14.dp)) }
-            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            Text(if(open) "\u2212" else "+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-        }
     }
 }
 

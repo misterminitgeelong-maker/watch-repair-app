@@ -86,8 +86,7 @@ fun InboxScreen(
         containerColor = if (embedded) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.background,
         topBar = {
             if (!embedded) {
-                if (au.mainspring.nativeapp.ui.LocalCalibre.current) Text("Inbox", Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 8.dp).semantics { heading() },
-                    style = au.mainspring.nativeapp.ui.calibreDisplayStyle(MaterialTheme.typography.headlineLarge))
+                if (au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.PageTitle("Inbox")
                 else au.mainspring.nativeapp.ui.LargeHeader("Messages · Activity", "Inbox")
             }
         },
@@ -97,14 +96,17 @@ fun InboxScreen(
                 if (state.events.isNotEmpty()) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     INBOX_FILTERS.forEach { (key, label) -> au.mainspring.nativeapp.ui.PillChip(label, filter == key, { filter = key }, Modifier.testTag("inbox-filter-$key")) }
                 } else Spacer(Modifier.weight(1f))
-                TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
+                TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             if (state.loading && state.events.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(16.dp), onRetry = { viewModel.refresh() }) }
             state.actionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp)) }
             if (!state.loading && state.error == null && state.events.isEmpty()) {
-                if (au.mainspring.nativeapp.ui.LocalCalibre.current) Text("No alerts yet. Quote approvals, declines, invoice payments, card payments that need attention, new website mobile key leads, and customer SMS replies will show up here.",
-                    Modifier.padding(horizontal = 20.dp, vertical = 24.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (au.mainspring.nativeapp.ui.LocalCalibre.current) Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    androidx.compose.material3.HorizontalDivider(Modifier.padding(start = 0.dp).fillMaxWidth(0.2f).align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.outlineVariant)
+                    Text("No alerts yet. Quote approvals, declines, invoice payments, card payments that need attention, new website mobile key leads, and customer SMS replies will show up here.",
+                        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 else au.mainspring.nativeapp.ui.EmptyState("You're all caught up", "Customer replies and booking activity will show up here.")
             }
             au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
