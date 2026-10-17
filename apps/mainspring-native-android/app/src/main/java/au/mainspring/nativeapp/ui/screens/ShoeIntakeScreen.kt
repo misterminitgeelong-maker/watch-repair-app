@@ -49,18 +49,15 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("shoe", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if(!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Pairs and services", "Job details", "Photos")[step],
-                if(step == 3) "Create / finish repair" else "Continue",
+            if(!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Pairs and services", "Job Details", "Photos")[step],
+                if(step == 3) "Create Shoe Repair" else "Next →",
                 { if(step < 3) vm.set("step", "${step + 1}") else vm.submit(context.applicationContext) },
                 !state.busy && valid,
-                if(step > 0) ({ vm.set("step", "${step - 1}") }) else null, !state.busy)
+                if(step > 0) ({ vm.set("step", "${step - 1}") }) else null, !state.busy, { if(!state.busy) leave = true })
         }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                au.mainspring.nativeapp.ui.MonoLabel("Step ${step + 1} of 4")
-                Text(listOf("Who is the customer?", "What are we repairing?", "Job details", "Add photos")[step], style = MaterialTheme.typography.headlineMedium)
-                au.mainspring.nativeapp.ui.MonoLabel("Your progress is saved on this device as you go.")
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                au.mainspring.nativeapp.ui.WizardStepChips(step, listOf("Customer", "Pairs and services", "Job Details", "Photos"))
             } else {
                 Text(listOf("Who is the customer?", "What are we repairing?", "Job details", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
                 Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -77,18 +74,15 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                 if(!state.complete || state.photoFailures.isNotEmpty()) OutlinedButton(onClick = { vm.submit(context.applicationContext) }, enabled = !state.busy) { Text("Finish intake / retry photos") }
             }
             @Composable fun field(key: String, label: String) {
-                au.mainspring.nativeapp.ui.AtelierTextField(vm.field(key), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = !locked)
+                au.mainspring.nativeapp.ui.WizardField(label, vm.field(key), { vm.set(key, it) }, modifier = Modifier.fillMaxWidth(), enabled = !locked, placeholder = when(key) { "name" -> "Jane Smith"; "phone" -> "0412 345 678"; "email" -> "jane@example.com"; "serviceQuery" -> "Search repairs…"; else -> null })
             }
             if(!state.complete) when(step) {
                 0 -> {
                     val new = vm.field("customerMode") == "new"
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        au.mainspring.nativeapp.ui.AtelierChip(selected = !new, onClick = { vm.set("customerMode", "existing") }, enabled = !locked, label = { Text("Existing") })
-                        au.mainspring.nativeapp.ui.AtelierChip(selected = new, onClick = { vm.set("customerMode", "new"); vm.set("customerId", "") }, enabled = !locked, label = { Text("New customer") })
-                    }
-                    if(new) { field("name", "Name *"); field("phone", "Phone"); field("email", "Email") }
+                    au.mainspring.nativeapp.ui.CustomerModeToggle(new, { vm.set("customerMode", "existing") }, { vm.set("customerMode", "new"); vm.set("customerId", "") }, !locked)
+                    if(new) { field("name", "Full Name *"); field("phone", "Phone"); field("email", "Email") }
                     else {
-                        au.mainspring.nativeapp.ui.AtelierTextField(vm.field("query"), { vm.set("query", it) }, label = { Text("Search customers") }, singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
+                        au.mainspring.nativeapp.ui.WizardField("Search Customer", vm.field("query"), { vm.set("query", it) }, placeholder = "Type name, phone or email...", singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.search() }))
                         state.customers.forEach { c -> au.mainspring.nativeapp.ui.SelectableCard(selected = vm.field("customerId") == c.id, onClick = { vm.set("customerId", c.id); vm.set("accountId", "") }, enabled = !locked) {
@@ -121,7 +115,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     }
                 }
                 2 -> {
-                    field("title", "Job title (or use selected services)"); field("description", "Instructions / fault description")
+                    field("title", "Job Title (or use selected services)"); field("description", "Instructions / Fault Description")
                     FieldCaption("Initial status")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("status").ifBlank { "awaiting_go_ahead" } == value, onClick = { vm.set("status", value) }, enabled = !locked, label = { Text(au.mainspring.nativeapp.ui.statusLabel(value)) }) }
@@ -130,7 +124,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("low", "normal", "high", "urgent").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("priority").ifBlank { "normal" } == value, onClick = { vm.set("priority", value) }, enabled = !locked, label = { Text(value.replaceFirstChar { it.uppercase() }) }) }
                     }
-                    field("salesperson", "Salesperson"); field("collection", "Collection date (DD/MM/YYYY)"); field("deposit", "Deposit ($, entire job)")
+                    field("salesperson", "Salesperson"); field("collection", "Collection Date (DD/MM/YYYY)"); field("deposit", "Deposit ($, entire job)")
                     val accounts = state.accounts.filter { it.active && (vm.field("customerId").isBlank() || vm.field("customerId") in it.customerIds) }
                     if(accounts.isNotEmpty()) {
                         FieldCaption("Customer account")

@@ -74,7 +74,7 @@ class CustomerHistoryWorkflowTest {
         compose.onNodeWithText("Avery Customer").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("New mobile job").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("New mobile job").performClick()
-        compose.onNodeWithText("Job title *").assertExists()
+        compose.onNode(hasContentDescription("Job Title *") and hasSetTextAction()).assertExists()
         val restored = MobileIntakeViewModel(SavedStateHandle()); Assert.assertEquals("customer-1",restored.field("customerId"))
     }
     @Test fun preselectionDoesNotReplaceAnExistingMobileDraft() {

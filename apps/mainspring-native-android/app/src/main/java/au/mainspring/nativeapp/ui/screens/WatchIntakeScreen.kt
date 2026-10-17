@@ -65,19 +65,16 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("watch", ::close, !state.busy, { discardDialog = true }, !state.busy && vm.field("uncertainWrite").isBlank() && state.savedJobIds.isEmpty(), services, onSwitchService) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Watches", "Job details", "Photos")[step],
-                if(step == 3) "Create / finish intake" else "Continue",
+            if (!state.complete) au.mainspring.nativeapp.ui.WizardBar(step, 4, listOf("Customer", "Watches", "Job Details", "Photos")[step],
+                if(step == 3) (if(vm.count() > 1) "Create ${vm.count()} Tickets" else "Create Job Ticket") else "Next →",
                 { focus.clearFocus(); keyboard?.hide(); if(step < 3) vm.setField("step", (step + 1).toString()) else vm.submit(context.applicationContext) },
                 !state.busy && valid,
-                if(step > 0) ({ vm.setField("step", (step - 1).toString()) }) else null, !state.busy)
+                if(step > 0) ({ vm.setField("step", (step - 1).toString()) }) else null, !state.busy, ::close)
         }) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
-                au.mainspring.nativeapp.ui.MonoLabel("Step ${step + 1} of 4")
-                Text(listOf("Who is the customer?", "Which watches are coming in?", "What needs doing?", "Add photos")[step], style = MaterialTheme.typography.headlineMedium)
-                au.mainspring.nativeapp.ui.MonoLabel("Your progress is saved on this device as you go.")
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                au.mainspring.nativeapp.ui.WizardStepChips(step, listOf("Customer", "Watches", "Job Details", "Photos"))
             } else {
                 Text(listOf("Who is the customer?", "Which watches are coming in?", "What needs doing?", "Add photos")[step], style = MaterialTheme.typography.titleLarge)
                 Text("Your progress is saved on this device as you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -103,22 +100,23 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                     }, enabled = !state.busy) { Text("Open Watch ${index + 1} job") }
                 }
             }
+            val placeholders = mapOf("name" to "Jane Smith", "phone" to "0412 345 678", "email" to "jane@example.com", "address" to "Unit 5/36 Grange Rd, Toorak 3142", "customerNotes" to "VIP, allergic to…",
+                "watch.$activeWatch.brand" to "Rolex", "watch.$activeWatch.model" to "Submariner", "watch.$activeWatch.condition" to "Scratches on crystal, crown missing…",
+                "title" to "e.g. Battery replacement, Band (Orange) — or type custom", "description" to "Quick service / overhaul. Watch losing 5 min per day…", "salesperson" to "Your initials or name",
+                "collection" to "DD/MM/YYYY", "deposit" to "0.00", "preQuote" to "0.00", "ticketOverride" to "e.g. 1234 — leave blank to auto-assign", "serviceQuery" to "Search repairs…")
             @Composable fun field(key: String, label: String, multiline: Boolean = false) {
-                au.mainspring.nativeapp.ui.AtelierTextField(value = vm.field(key), onValueChange = { vm.setField(key, it) }, label = { Text(label) },
+                au.mainspring.nativeapp.ui.WizardField(label, vm.field(key), { vm.setField(key, it) }, placeholder = placeholders[key],
                     keyboardOptions = KeyboardOptions(keyboardType = when(key) { "deposit", "preQuote" -> KeyboardType.Decimal; "phone" -> KeyboardType.Phone; "email" -> KeyboardType.Email; else -> KeyboardType.Text }),
                     singleLine = !multiline, enabled = !locked, modifier = Modifier.fillMaxWidth())
             }
             if (!state.complete) when(step) {
                 0 -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        au.mainspring.nativeapp.ui.AtelierChip(selected = !newCustomer, onClick = { vm.setField("customerMode", "existing") }, enabled = !locked, label = { Text("Existing") })
-                        au.mainspring.nativeapp.ui.AtelierChip(selected = newCustomer, onClick = { vm.setField("customerMode", "new"); vm.selectCustomer("") }, enabled = !locked, label = { Text("New customer") })
-                    }
+                    au.mainspring.nativeapp.ui.CustomerModeToggle(newCustomer, { vm.setField("customerMode", "existing") }, { vm.setField("customerMode", "new"); vm.selectCustomer("") }, !locked)
                     if (newCustomer) {
-                        field("name", "Customer name *"); field("phone", "Phone"); field("email", "Email")
-                        field("address", "Address", true); field("customerNotes", "Customer notes", true)
+                        field("name", "Full Name *"); field("phone", "Phone"); field("email", "Email")
+                        field("address", "Address"); field("customerNotes", "Notes", true)
                     } else {
-                        au.mainspring.nativeapp.ui.AtelierTextField(value = vm.field("customerQuery"), onValueChange = { vm.setField("customerQuery", it); vm.searchCustomers(it) }, label = { Text("Search name, phone or email") },
+                        au.mainspring.nativeapp.ui.WizardField("Search Customer", vm.field("customerQuery"), { vm.setField("customerQuery", it); vm.searchCustomers(it) }, placeholder = "Type name, phone or email...",
                             singleLine = true, enabled = !locked, modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { vm.searchCustomers(vm.field("customerQuery")); keyboard?.hide() }))
@@ -149,15 +147,15 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                         }
                     }
                     if (vm.field("$prefix.id").isBlank()) {
-                        field("$prefix.brand", "Brand"); field("$prefix.model", "Model"); field("$prefix.serial", "Serial number")
-                        field("$prefix.movement", "Movement type"); field("$prefix.condition", "Condition at intake", true)
+                        field("$prefix.brand", "Brand"); field("$prefix.model", "Model"); field("$prefix.serial", "Serial Number")
+                        field("$prefix.movement", "Movement"); field("$prefix.condition", "Condition on Intake", true)
                     }
                     au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("quickJob") == "true", { vm.setField("quickJob", it.toString()) }, enabled = !locked) {
                         Text("Quick counter job (photos optional)")
                     }
                 }
                 2 -> {
-                    field("serviceQuery", "Search repair catalogue")
+                    field("serviceQuery", "Select repairs (optional)")
                     val query = vm.field("serviceQuery")
                     state.catalogue.filter { it.name.contains(query, true) || it.groupLabel.orEmpty().contains(query, true) }.take(30).forEach { item ->
                         au.mainspring.nativeapp.ui.SelectableCard(selected = item.key in vm.selectedServices(), onClick = { vm.toggleService(item.key) }, enabled = !locked) {
@@ -165,7 +163,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                             Text(item.priceCents?.let { formatCents(it, "AUD") } ?: "Quote required", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    field("title", "Job title *"); field("description", "Instructions / fault description", true)
+                    field("title", "Job Title *"); field("description", "Instructions / Fault Description", true)
                     val quoteRequired = state.catalogue.any { it.key in vm.selectedServices() && it.pricingType == "quote" }
                     FieldCaption("Initial status")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -180,13 +178,13 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
                             au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("priority").ifBlank { "normal" } == priority, onClick = { vm.setField("priority", priority) }, enabled = !locked, label = { Text(priority.replaceFirstChar { it.uppercase() }) })
                         }
                     }
-                    field("salesperson", "Salesperson"); field("collection", "Collection date (DD/MM/YYYY)")
-                    field("deposit", "Deposit ($)"); field("preQuote", "Pre-quote ($)")
+                    field("salesperson", "Salesperson"); field("collection", "Collection Date")
+                    field("deposit", "Deposit ($)"); field("preQuote", "Pre-Quote ($)")
                     if (vm.count() > 1) Text("Deposit and pre-quote apply to each ticket, matching the web intake.")
-                    if(vm.count() == 1) field("ticketOverride", "Ticket number override (optional)")
+                    if(vm.count() == 1) field("ticketOverride", "Physical Ticket # (optional)")
                     val accounts = state.accounts.filter { it.active && (vm.field("customerId").isBlank() || vm.field("customerId") in it.customerIds) }
                     if(accounts.isNotEmpty()) {
-                        FieldCaption("Bill to customer account")
+                        FieldCaption("Customer Account (optional)")
                         au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId").isBlank(), onClick = { vm.setField("accountId", "") }, enabled = !locked, label = { Text("No account") })
                         accounts.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId") == account.id, onClick = { vm.setField("accountId", account.id) }, enabled = !locked, label = { Text(account.name) }) }
                     }

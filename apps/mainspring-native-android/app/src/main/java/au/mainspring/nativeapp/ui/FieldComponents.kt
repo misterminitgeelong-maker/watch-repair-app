@@ -13,6 +13,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -232,20 +234,94 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     }
 }
 
-/** Sticky bottom bar for multi-step forms: a step progress line plus Previous / primary buttons. */
-@Composable fun WizardBar(step: Int, steps: Int, stepTitle: String, primaryLabel: String, onPrimary: () -> Unit, primaryEnabled: Boolean, onPrevious: (() -> Unit)?, previousEnabled: Boolean = true) {
-    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = if(LocalCalibre.current) 0.dp else 2.dp) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if(LocalCalibre.current) HorizontalDivider(Modifier.offset(y = (-10).dp), color = MaterialTheme.colorScheme.outlineVariant)
-            if(LocalCalibre.current) {
-                Text("0${step + 1} / 0$steps  ${stepTitle.uppercase()}", Modifier.semantics { contentDescription = "Step ${step + 1} of $steps, $stepTitle" }, style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    (0 until steps).forEach { i -> Box(Modifier.weight(1f).height(3.dp).background(if(i <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) }
+/** Web "Steps" indicator: current step a filled sand pill with its label, finished steps green ticks, the rest small numbered circles. */
+@Composable fun WizardStepChips(step: Int, titles: List<String>, modifier: Modifier = Modifier) {
+    val sand = Color(0xFFA07028); val doneBg = Color(0xFFDCFCE7); val doneFg = Color(0xFF15803D); val todoBg = Color(0xFFF0EBE0); val todoFg = Color(0xFF7A5A44)
+    Row(modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).semantics(mergeDescendants = true) { contentDescription = "Step ${step + 1} of ${titles.size}, ${titles[step]}" },
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        titles.forEachIndexed { i, title ->
+            val bg = if(i == step) sand else if(i < step) doneBg else todoBg
+            val fg = if(i == step) Color.White else if(i < step) doneFg else todoFg
+            Row(Modifier.background(bg, androidx.compose.foundation.shape.RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(16.dp).border(1.dp, fg, androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+                    Text(if(i < step) "✓" else "${i + 1}", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold), color = fg)
                 }
-            } else {
-            Text("Step ${step + 1} of $steps \u00b7 $stepTitle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            LinearProgressIndicator(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
+                if(i == step) Text(title, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium), color = fg, maxLines = 1)
             }
+            if(i < titles.size - 1) Text("›", color = Color(0xFFD5C4A8), style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+/** Existing / New customer pair: the chosen side is a solid accent button, the other an outlined one (web NewJobModal). */
+@Composable fun CustomerModeToggle(newCustomer: Boolean, onExisting: () -> Unit, onNew: () -> Unit, enabled: Boolean = true, modifier: Modifier = Modifier) {
+    if(!LocalCalibre.current) {
+        Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AtelierChip(selected = !newCustomer, onClick = onExisting, enabled = enabled, label = { Text("Existing Customer") })
+            AtelierChip(selected = newCustomer, onClick = onNew, enabled = enabled, label = { Text("New Customer") })
+        }
+        return
+    }
+    @Composable fun side(label: String, selected: Boolean, onClick: () -> Unit, m: Modifier) {
+        Surface(onClick, m.heightIn(min = 48.dp).semantics { this.selected = selected; role = Role.Tab }, enabled = enabled, shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+            color = if(selected) MaterialTheme.colorScheme.secondary else Color.Transparent,
+            contentColor = (if(selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface).copy(alpha = if(enabled) 1f else 0.5f),
+            border = BorderStroke(1.dp, if(selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline)) {
+            Box(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), contentAlignment = Alignment.Center) { Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium), maxLines = 1) }
+        }
+    }
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        side("Existing Customer", !newCustomer, onExisting, Modifier.weight(1f))
+        side("New Customer", newCustomer, onNew, Modifier.weight(1f))
+    }
+}
+
+/**
+ * Wizard text input. Calibre/Mainspring: a small-caps label above a bordered input with placeholder (web `Input`);
+ * otherwise the original floating-label field. The label is also the field's accessible name in both modes.
+ */
+@Composable fun WizardField(label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, placeholder: String? = null,
+    singleLine: Boolean = true, keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
+    keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default) {
+    if(!LocalCalibre.current) {
+        AtelierTextField(value, onValueChange, modifier.semantics { contentDescription = label }, enabled, label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } },
+            keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, singleLine = singleLine)
+        return
+    }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label.uppercase(), Modifier.clearAndSetSemantics { }, style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        AtelierTextField(value, onValueChange, Modifier.fillMaxWidth().semantics { contentDescription = label }, enabled,
+            placeholder = placeholder?.let { { Text(it, color = LocalCalibrePalette.current.placeholder) } }, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
+            singleLine = singleLine, minLines = if(singleLine) 1 else 2,
+            colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface, disabledContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline, focusedBorderColor = MaterialTheme.colorScheme.primary))
+    }
+}
+
+/** Bordered, right-aligned wizard action row (web footer: outlined Cancel/Back then the accent Next/Create). */
+@Composable fun WizardActionRow(secondaryLabel: String?, onSecondary: () -> Unit, secondaryEnabled: Boolean, primaryLabel: String, onPrimary: () -> Unit, primaryEnabled: Boolean) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                if(secondaryLabel != null) SecondaryAction(onClick = onSecondary, enabled = secondaryEnabled, modifier = Modifier.heightIn(min = 48.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) { Text(secondaryLabel) }
+                PrimaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.heightIn(min = 48.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)) { Text(primaryLabel, style = MaterialTheme.typography.titleSmall) }
+            }
+        }
+    }
+}
+
+/** Bottom bar for multi-step forms. Mainspring: web-style Cancel/Back + Next. Otherwise a step progress line plus Previous / primary buttons. */
+@Composable fun WizardBar(step: Int, steps: Int, stepTitle: String, primaryLabel: String, onPrimary: () -> Unit, primaryEnabled: Boolean, onPrevious: (() -> Unit)?, previousEnabled: Boolean = true, onCancel: (() -> Unit)? = null) {
+    if(LocalCalibre.current) {
+        WizardActionRow(if(onPrevious != null) "← Back" else if(onCancel != null) "Cancel" else null, onPrevious ?: onCancel ?: {}, previousEnabled, primaryLabel, onPrimary, primaryEnabled)
+        return
+    }
+    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Step ${step + 1} of $steps · $stepTitle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LinearProgressIndicator(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if(onPrevious != null) SecondaryAction(onClick = onPrevious, enabled = previousEnabled, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Previous") }
                 PrimaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.weight(if(onPrevious != null) 1.5f else 1f).heightIn(min = 52.dp)) { Text(primaryLabel, style = MaterialTheme.typography.titleMedium) }
