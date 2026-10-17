@@ -96,26 +96,6 @@ internal data class ToggleOption(val key: String, val label: String, val tag: St
     }
 }
 
-/** Sand-coloured track with a white selected pill (web "Jobs | Catalogue", "Active (8) | Completed (0)"). */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable internal fun SandSegmented(options: List<ToggleOption>, selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(6.dp), color = androidx.compose.ui.graphics.Color(0xFFF1E8DC)) {
-        Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-            options.forEach { o ->
-                val on = o.key == selected
-                val tag = if(o.tag != null) Modifier.testTag(o.tag) else Modifier
-                Surface({ onSelect(o.key) }, tag.heightIn(min = 40.dp).semantics { role = Role.Tab }, shape = RoundedCornerShape(4.dp),
-                    color = if(on) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent) {
-                    Box(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-                        Text(o.label, style = MaterialTheme.typography.labelLarge, fontWeight = if(on) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if(on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /** Small line glyph for buttons: plus, queue, download, wrench, close. */
 @Composable internal fun ServiceGlyph(kind: String, modifier: Modifier = Modifier, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
     androidx.compose.foundation.Canvas(modifier.androidx_size()) {
