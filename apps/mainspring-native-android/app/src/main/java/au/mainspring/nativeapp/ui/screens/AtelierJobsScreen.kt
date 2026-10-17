@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.platform.testTag
+import au.mainspring.nativeapp.JOB_SORTS
+import au.mainspring.nativeapp.countLabel
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -64,9 +67,23 @@ internal fun HubJob.statusLine(): String {
     }
 }
 
+/** "13 jobs" on the left, a compact Sort menu on the right. */
+@Composable private fun JobsCountSortRow(count: Int, sort: String, onSort: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(countLabel(count, "job"), Modifier.weight(1f).testTag("jobs-count"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box {
+            TextButton({ open = true }, Modifier.heightIn(min = 48.dp).testTag("jobs-sort")) { Text("Sort: " + (JOB_SORTS.firstOrNull { it.first == sort }?.second ?: "Default") + " ▾") }
+            DropdownMenu(open, { open = false }) {
+                JOB_SORTS.forEach { (key, label) -> DropdownMenuItem({ Text(label) }, { onSort(key); open = false }, Modifier.testTag("jobs-sort-$key")) }
+            }
+        }
+    }
+}
+
 fun hubJobRoute(job: HubJob) = when(job.service) { "watch" -> "watchJob/${job.id}"; "shoe" -> "shoeJob/${job.id}"; else -> "autoKeyJob/${job.id}" }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun AtelierJobsScreen(
     features: Set<String>,
@@ -85,19 +102,18 @@ fun AtelierJobsScreen(
     val shown = state.visible
     au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { LargeHeader((shopName ?: "Your shop") + (if(services.size == 1) " \u00b7 " + services.single().second else " \u00b7 All services"), jobsTabLabel(features), onAdd = onNew, addDescription = "New job") }
-        item {
+        stickyHeader(key = "filters", contentType = "filters") {
+            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(top = 4.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             au.mainspring.nativeapp.ui.AtelierTextField(state.query, viewModel::setQuery, singleLine = true, placeholder = { Text("Job, customer or reference") },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp), shape = MaterialTheme.shapes.small,
                 colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.surface, focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))
-        }
-        item {
             SegmentedPills(listOf("active" to "Active ${state.activeCount}", "mine" to "Mine ${state.mineCount}", "ready" to "Ready ${state.readyCount}"),
                 state.segment, viewModel::setSegment, Modifier.padding(horizontal = 20.dp))
-        }
-        if(services.size > 1) item {
-            SegmentedPills(listOf("all" to "All") + services, state.service, viewModel::setService, Modifier.padding(horizontal = 20.dp))
+            if(services.size > 1) SegmentedPills(listOf("all" to "All") + services, state.service, viewModel::setService, Modifier.padding(horizontal = 20.dp))
+            JobsCountSortRow(shown.size, state.sort, viewModel::setSort)
+            }
         }
         if(state.loading && state.jobs.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = viewModel::refresh) } }

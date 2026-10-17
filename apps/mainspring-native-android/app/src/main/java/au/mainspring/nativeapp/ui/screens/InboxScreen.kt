@@ -1,6 +1,16 @@
 package au.mainspring.nativeapp.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.testTag
+import au.mainspring.nativeapp.INBOX_FILTERS
+import au.mainspring.nativeapp.filterInbox
+import au.mainspring.nativeapp.inboxDaySections
+import java.time.Instant
+import java.time.ZoneId
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,7 +45,7 @@ import au.mainspring.nativeapp.ui.formatCents
 
 private data class PendingCardAction(val issueId: String, val action: InboxViewModel.CardAction, val title: String, val text: String, val confirm: String)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun InboxScreen(
     onBack: () -> Unit,
@@ -44,7 +54,9 @@ fun InboxScreen(
     onOpenEntity: (route: String) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val zone = remember { runCatching { ZoneId.of(au.mainspring.nativeapp.TokenStore.calendarTimezone()) }.getOrDefault(ZoneId.systemDefault()) }
     var pendingDelete by remember { mutableStateOf<TenantEventLogRead?>(null) }
+    var filter by rememberSaveable { mutableStateOf("all") }
     var pendingCard by remember { mutableStateOf<PendingCardAction?>(null) }
 
     pendingDelete?.let { ev ->
@@ -74,7 +86,10 @@ fun InboxScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                if (state.events.isNotEmpty()) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    INBOX_FILTERS.forEach { (key, label) -> au.mainspring.nativeapp.ui.PillChip(label, filter == key, { filter = key }, Modifier.testTag("inbox-filter-$key")) }
+                } else Spacer(Modifier.weight(1f))
                 TextButton(onClick = { viewModel.refresh() }, enabled = !state.loading, modifier = Modifier.heightIn(min = 48.dp)) { Text("Refresh") }
             }
             if (state.loading && state.events.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -86,7 +101,13 @@ fun InboxScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                items(state.events, key = { it.id }) { ev ->
+                val shownEvents = filterInbox(state.events, filter)
+                if (shownEvents.isEmpty() && state.events.isNotEmpty()) item(key = "filter-empty") {
+                    Text("No ${INBOX_FILTERS.firstOrNull { it.first == filter }?.second.orEmpty().lowercase()} alerts in what's loaded.", Modifier.padding(8.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                inboxDaySections(shownEvents, Instant.now(), zone).forEach { (day, rows) ->
+                stickyHeader(key = "day-$day", contentType = "day") { SectionHeader(day) }
+                items(rows, key = { it.id }) { ev ->
                     val route = inboxRoute(ev)
                     val isCard = ev.eventType == "card_payment_needs_attention"
                     val issue = if (isCard) ev.entityId?.let { state.issues[it] } else null
@@ -123,6 +144,7 @@ fun InboxScreen(
                             }
                         }
                     }
+                }
                 }
                 if (state.canLoadMore) {
                     item(key = "load-more") {

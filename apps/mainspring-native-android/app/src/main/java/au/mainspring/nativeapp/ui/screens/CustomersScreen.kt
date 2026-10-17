@@ -4,6 +4,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import au.mainspring.nativeapp.alphaSections
+import au.mainspring.nativeapp.countLabel
 import au.mainspring.nativeapp.CUSTOMER_SORTS
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +26,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.CustomersViewModel
 import au.mainspring.nativeapp.ui.*
 
+/** Sticky section header (letter / day) with an opaque background so rows scroll cleanly beneath it. */
+@Composable internal fun SectionHeader(text: String, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal = 24.dp, vertical = 6.dp).semantics { heading() }) {
+        if(LocalCalibre.current) MonoLabel(text) else Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 /** People tab: customers as Atelier cards under a large "People" header with a round + button. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun CustomersScreen(
     onOpenCustomer: (String) -> Unit,
@@ -51,17 +64,25 @@ fun CustomersScreen(
         if (state.loading && state.customers.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = { viewModel.refresh() }) } }
         if (!state.loading && state.error == null && state.customers.isEmpty()) item { EmptyState("No customers found", "Try a different name, or add a new customer with the + button.", icon = "customers") }
-        items(state.customers, key = { it.id }) { c ->
+        if (state.customers.isNotEmpty()) item(key = "count") {
+            Text(countLabel(state.customers.size, "customer", more = state.canLoadMore), Modifier.padding(horizontal = 24.dp).testTag("customers-count"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        val byName = state.sort.startsWith("name")
+        val sections = if (byName) alphaSections(state.customers) { it.fullName } else listOf("" to state.customers)
+        sections.forEach { (letter, rows) ->
+            if (letter.isNotEmpty()) stickyHeader(key = "letter-$letter-${rows.first().id}", contentType = "letter") { SectionHeader(letter) }
+            items(rows, key = { it.id }) { c ->
             ListCard({ onOpenCustomer(c.id) }, Modifier.padding(horizontal = 20.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.InitialsAvatar(c.fullName, size = 44.dp)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(c.fullName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                        listOfNotNull(c.phone, c.email, au.mainspring.nativeapp.customerAddedLabel(c.createdAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()).ifBlank { null }).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let {
-                            Text(it.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.InitialsAvatar(c.fullName, size = 44.dp)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(c.fullName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                            listOfNotNull(c.phone, c.email, au.mainspring.nativeapp.customerAddedLabel(c.createdAt, au.mainspring.nativeapp.TokenStore.calendarTimezone()).ifBlank { null }).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let {
+                                Text(it.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            }
                         }
+                        Text("›", style = MaterialTheme.typography.titleLarge)
                     }
-                    Text("›", style = MaterialTheme.typography.titleLarge)
                 }
             }
         }
