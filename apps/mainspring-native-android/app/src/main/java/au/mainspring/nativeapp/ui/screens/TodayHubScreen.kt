@@ -216,10 +216,8 @@ private val HomeBorder @Composable get() = BorderStroke(1.dp, MaterialTheme.colo
     onNewIntake: () -> Unit, onViewAll: () -> Unit, onOpenQuotes: () -> Unit, onOpenInvoices: () -> Unit, onOpenRoute: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 840) CalibreWordmark(shopName ?: TokenStore.shopValue("name"))
         Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Home", Modifier.weight(1f).semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge))
-            SecondaryAction({ onOpenRoute("search") }, Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Search jobs, customers or invoices" }) { Text("Search") }
             if(canWork) PrimaryAction(onNewIntake, Modifier.semantics { contentDescription = "New intake" }) { Text("New intake") }
         }
         HomeCard(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {

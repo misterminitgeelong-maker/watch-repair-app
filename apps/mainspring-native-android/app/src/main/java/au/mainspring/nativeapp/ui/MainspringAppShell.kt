@@ -235,13 +235,8 @@ fun MainspringAppShell(
                 }
                 composable("jobs") { jobsContent() }
                 composable("watch_jobs") {
-                    Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Watch repairs") }, navigationIcon = { BackButton({ navController.popBackStack() }) },
-                        actions = { au.mainspring.nativeapp.ui.RoundPlusButton({ navController.navigate("watch_intake") }, "New repair", Modifier.padding(end = 12.dp)) }) },
-                        containerColor = MaterialTheme.colorScheme.background) { pad ->
-                        androidx.compose.foundation.layout.Box(Modifier.padding(pad)) {
-                            JobsScreen(onOpenJob = { id -> navController.navigate("watchJob/$id") }, onNewJob = { navController.navigate("watch_intake") })
-                        }
-                    }
+                    JobsScreen(onOpenJob = { id -> navController.navigate("watchJob/$id") }, onNewJob = { navController.navigate("watch_intake") },
+                        onOpenQueue = { navController.navigate("repairQueue") })
                 }
                 composable("watch_intake?customerId={customerId}", arguments = listOf(navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
                     WatchIntakeScreen(onSwitchService = { key -> navController.navigate(when(key) { "shoe" -> "shoe_intake"; "auto_key" -> "mobile_intake"; else -> "watch_intake" }) { popUpTo("new_intake") { inclusive = false }; launchSingleTop = true } },
