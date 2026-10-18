@@ -23,6 +23,15 @@ fun MainspringTheme(darkTheme: Boolean? = null, content: @Composable () -> Unit)
     // Calibre follows the system dark setting; the other light appearances only go dark through the explicit Night choice.
     val night = darkTheme ?: (appearance == AppAppearance.NIGHT || (appearance == AppAppearance.CALIBRE && systemDark))
     val calibreDark = darkTheme == null && night && appearance == AppAppearance.CALIBRE
+    // The app paints its own background, so the status and navigation bar icons must follow the app theme, not the phone setting
+    // (the default Mainspring look stays light when the phone is in dark mode, and white icons on it would vanish).
+    val hostView = androidx.compose.ui.platform.LocalView.current
+    if(!hostView.isInEditMode) androidx.compose.runtime.SideEffect {
+        (hostView.context as? android.app.Activity)?.window?.let { w ->
+            val bars = androidx.core.view.WindowCompat.getInsetsController(w, hostView)
+            bars.isAppearanceLightStatusBars = !night; bars.isAppearanceLightNavigationBars = !night
+        }
+    }
     var colors = if (night) darkColorScheme(
         primary = Color(0xFF7FA2FF), onPrimary = Color(0xFF0A1530),
         background = Color(0xFF0E141D), surface = Color(0xFF18212D), onSurface = Color(0xFFEDF1F8),

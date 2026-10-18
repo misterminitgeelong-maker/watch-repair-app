@@ -189,7 +189,7 @@ private fun Modifier.border6(color: Color): Modifier = this.then(Modifier.border
             Surface({ onSelect(key) }, Modifier.weight(1f).heightIn(min = 48.dp).semantics { this.selected = on; role = Role.Tab }, shape = RoundedCornerShape(6.dp),
                 color = if(on) MaterialTheme.colorScheme.surface else Color.Transparent, shadowElevation = if(on) 1.dp else 0.dp) {
                 Box(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = if(on) FontWeight.SemiBold else FontWeight.Medium), maxLines = 1,
+                    Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = if(on) FontWeight.SemiBold else FontWeight.Medium), maxLines = 1, softWrap = false,
                         color = if(on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

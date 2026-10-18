@@ -457,7 +457,15 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 
 /** Floating rounded tab bar. `destinations` are (route, label); selected entry is tinted with the accent. */
 @OptIn(ExperimentalMaterial3Api::class)
+/** The bottom bar keeps its labels on one line even at very large text sizes, so its text scale is capped at 1.25x. */
 @Composable fun FloatingTabBar(destinations: List<Pair<String, String>>, isSelected: (String) -> Boolean, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, minOf(density.fontScale, 1.25f))) {
+        FloatingTabBarContent(destinations, isSelected, onSelect, modifier)
+    }
+}
+
+@Composable private fun FloatingTabBarContent(destinations: List<Pair<String, String>>, isSelected: (String) -> Boolean, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
     if(LocalCalibre.current) {
         Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

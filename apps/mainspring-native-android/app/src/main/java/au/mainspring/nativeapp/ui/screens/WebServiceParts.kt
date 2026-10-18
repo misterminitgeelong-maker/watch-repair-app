@@ -281,6 +281,8 @@ internal data class WebKanbanColumn(val key: String, val label: String, val colo
     val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+    // Wider columns when the text is larger, so job numbers and titles still fit.
+    val columnWidth = columnWidth * (1f + (density.fontScale - 1f).coerceAtLeast(0f) * 0.6f)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box {
             Row(Modifier.horizontalScroll(scroll).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {

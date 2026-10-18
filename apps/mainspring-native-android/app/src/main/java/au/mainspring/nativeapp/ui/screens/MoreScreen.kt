@@ -72,20 +72,22 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean)
 /** The smaller grid a group tile opens. */
 @Composable fun ToolsGridScreen(route: String, features: Set<String>, onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val group = moreToolGroup(route, features, TokenStore.canManageInvoices())
+    val cols = moreColumns()
     LazyColumn(Modifier.fillMaxSize().testTag("tools-grid"), contentPadding = PaddingValues(bottom = 112.dp)) {
         item { TextButton(onBack, Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp)) { Text("\u2039 More") } }
         item { PageTitle(group?.label ?: "Tools") }
-        items((group?.children ?: emptyList()).chunked(MORE_COLUMNS), key = { row -> "row/" + row.first().route }) { row ->
+        items((group?.children ?: emptyList()).chunked(cols), key = { row -> "row/" + row.first().route }) { row ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { tool -> MoreTile(tool.label, tool.route, Modifier.weight(1f)) { onNavigate(tool.route) } }
-                repeat(MORE_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+                repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
 }
 
 /** Tool tiles per row on the More grid. */
-private const val MORE_COLUMNS = 4
+/** Four tiles per row, two when the text is very large so labels do not break mid-word. */
+@Composable private fun moreColumns(): Int = if(androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f) 2 else 4
 
 /**
  * More tab, as on the web phone view: a compact popup sheet anchored above the bottom bar over a dimmed page, with a
@@ -110,6 +112,7 @@ private const val MORE_COLUMNS = 4
         Surface(Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 10.dp).widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight * 0.92f),
             color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), shadowElevation = 14.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            val cols = moreColumns()
             LazyColumn(Modifier.testTag("more-list"), contentPadding = PaddingValues(top = 12.dp)) {
                 item {
                     au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool") }, shape = RoundedCornerShape(8.dp),
@@ -118,13 +121,13 @@ private const val MORE_COLUMNS = 4
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary))
                 }
                 if(q.isNotEmpty() && shown.isEmpty()) item { Text("No tool matches \u201c$q\u201d.", Modifier.padding(horizontal = 20.dp, vertical = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                items(shown.chunked(MORE_COLUMNS), key = { row -> "row/" + row.first().route }) { row ->
+                items(shown.chunked(cols), key = { row -> "row/" + row.first().route }) { row ->
                     Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
                         row.forEach { tool ->
                             val tag = if(tool.route == "settings") Modifier.testTag("more-group-settings") else Modifier
                             MoreTile(tool.label, tool.route, Modifier.weight(1f).then(tag), plain = true) { if(tool.route == "settings") settingsOpen = true else onNavigate(tool.route) }
                         }
-                        repeat(MORE_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+                        repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
                 if(q.isEmpty()) {

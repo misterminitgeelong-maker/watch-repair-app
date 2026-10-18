@@ -117,7 +117,7 @@ private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, 
     val square = RoundedCornerShape(2.dp)
     Row(modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         columns.forEach { col ->
-            Surface(Modifier.width(158.dp).testTag("board-column-${col.status}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
+            Surface(Modifier.width(158.dp * (1f + (androidx.compose.ui.platform.LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * 0.6f)).testTag("board-column-${col.status}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
                 Column {
                     Box(Modifier.fillMaxWidth().height(3.dp).background(BoardBrown))
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
