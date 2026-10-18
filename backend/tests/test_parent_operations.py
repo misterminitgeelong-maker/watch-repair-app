@@ -17,7 +17,7 @@ from app.main import app
 from app.minit_branding import MINIT_HQ_SLUG
 from app.models import Tenant, User
 from app.security import hash_password
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, unique_shop_base
 
 create_db_and_tables()
 client = TestClient(app)
@@ -111,7 +111,7 @@ def _setup_hq_network(suffix: str) -> dict[str, str]:
     op_boot = _bootstrap(op_slug, f"op-{suffix}@test.local", "basic_auto_key")
     hq_h = _headers(_login(hq_slug, hq_email))
 
-    shop_num = str(int(suffix[:4], 16) % 9000 + 1000)
+    shop_num = str(unique_shop_base())
     create_shop = client.post(
         "/v1/parent-accounts/me/create-tenant",
         headers=hq_h,
@@ -287,7 +287,7 @@ def test_invited_mobile_van_sales_still_reach_minit_hq():
 
     suffix = uuid4().hex[:8]
     ctx = _setup_hq_network(suffix)
-    van_num = str(int(suffix[:4], 16) % 8000 + 1000 + 77)
+    van_num = str(unique_shop_base() + 77)
     owner_email = f"van-owner-{suffix}@franchise.test"
 
     made = client.post(

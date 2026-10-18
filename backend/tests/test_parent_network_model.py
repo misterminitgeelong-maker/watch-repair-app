@@ -39,7 +39,7 @@ from app.models import (
     User,
 )
 from app.parent_network import parent_role_for_user, parents_for_user, resolve_common_parent_id
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, unique_shop_base
 
 create_db_and_tables()
 client = TestClient(app)
@@ -441,7 +441,7 @@ def test_regions_normalise_tss_strings_and_carry_a_manager():
     for n, region in (("1", "VIC South"), ("2", " vic  south ")):
         with Session(engine) as db:
             pass
-        num = str(int(suffix[:4], 16) % 8000 + 1000 + int(n))
+        num = str(unique_shop_base() + int(n))
         made = client.post(
             "/v1/parent-accounts/me/provision-shop",
             headers=hq_h,
@@ -513,7 +513,7 @@ def test_provision_shop_creates_a_mobile_operator_or_a_physical_shop():
     suffix = uuid4().hex[:8]
     net = _network(suffix)
     hq_h = net["hq"]
-    base = int(suffix[:4], 16) % 8000 + 1000
+    base = unique_shop_base()
 
     physical_num = str(base + 11)
     made = client.post(
@@ -560,7 +560,7 @@ def test_sites_carry_owner_contact_and_flag_the_shared_hq_login():
     hq_h = net["hq"]
 
     # A shop provisioned by HQ shares HQ's login — there is no franchisee to invite.
-    num = str(int(suffix[:4], 16) % 8000 + 1000 + 21)
+    num = str(unique_shop_base() + 21)
     made = client.post(
         "/v1/parent-accounts/me/provision-shop",
         headers=hq_h,
@@ -594,7 +594,7 @@ def test_provision_shop_can_take_the_owner_s_own_contact_details():
     suffix = uuid4().hex[:8]
     net = _network(suffix)
     hq_h = net["hq"]
-    base = int(suffix[:4], 16) % 8000 + 1000
+    base = unique_shop_base()
 
     num = str(base + 31)
     made = client.post(
@@ -700,7 +700,7 @@ def test_sites_show_whether_the_owner_invite_was_accepted():
     suffix = uuid4().hex[:8]
     net = _network(suffix)
     hq_h = net["hq"]
-    num = str(int(suffix[:4], 16) % 8000 + 1000 + 41)
+    num = str(unique_shop_base() + 41)
 
     made = client.post(
         "/v1/parent-accounts/me/provision-shop",
@@ -754,7 +754,7 @@ def test_sites_show_whether_the_owner_invite_was_accepted():
 def _invited_shop(net: dict, suffix: str, offset: int) -> tuple[str, str]:
     """Provision a shop with its own owner contact and send it an invite.
     Returns (tenant_id, invite token)."""
-    num = str(int(suffix[:4], 16) % 8000 + 1000 + offset)
+    num = str(unique_shop_base() + offset)
     made = client.post(
         "/v1/parent-accounts/me/provision-shop",
         headers=net["hq"],
@@ -962,7 +962,7 @@ def test_shared_login_copies_fold_into_one_staff_row_and_stay_invitable():
     suffix = uuid4().hex[:8]
     net = _network(suffix)
     hq_h = net["hq"]
-    base = int(suffix[:4], 16) % 8000 + 1000
+    base = unique_shop_base()
 
     shared_ids = []
     for offset in (101, 102, 103):
