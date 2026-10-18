@@ -41,6 +41,7 @@ object PushRegistration {
     /** Registers (or re-registers) this phone for the signed-in shop. Safe to call often; the server treats it as idempotent. */
     fun syncInBackground(context: Context) {
         val app = context.applicationContext
+        TokenStore.init(app)
         if(!firebaseReady(app)) return
         scope.launch { registrar.sync(currentToken(), signedIn = TokenStore.getAccessToken() != null, permitted = permitted(app)) }
     }
@@ -48,6 +49,8 @@ object PushRegistration {
     /** Called by Firebase when the token changes (reinstall, restore, rotation). */
     fun onNewToken(context: Context, token: String) {
         val app = context.applicationContext
+        // Firebase can start the app process in the background without opening the app, so the session store may not be set up yet.
+        TokenStore.init(app)
         scope.launch { registrar.sync(token, signedIn = TokenStore.getAccessToken() != null, permitted = permitted(app)) }
     }
 }
