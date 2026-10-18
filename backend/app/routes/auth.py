@@ -495,6 +495,17 @@ def _spend_password_check_time(password: str) -> None:
 def get_login_rate_limit():
     return settings.rate_limit_auth_login_test if settings.app_env == "test" else settings.rate_limit_auth_login
 
+NATIVE_CLIENT_HEADER = "X-Mainspring-Client"
+NATIVE_CLIENT_VALUES = {"native-android"}
+
+
+def _is_native_client(request: Request | None) -> bool:
+    """True when the caller identifies as the native app (exact value match)."""
+    if request is None:
+        return False
+    return (request.headers.get(NATIVE_CLIENT_HEADER) or "").strip().lower() in NATIVE_CLIENT_VALUES
+
+
 def _issue_session_tokens(
     session: Session,
     *,
@@ -515,7 +526,12 @@ def _issue_session_tokens(
     jti = uuid4().hex
     now = datetime.now(timezone.utc)
     access, access_exp = create_access_token(tenant_id, user_id, role, sid=str(sid))
-    refresh, refresh_exp = create_refresh_token(tenant_id, user_id, role, sid=str(sid), jti=jti)
+    native_minutes = (
+        settings.jwt_native_refresh_idle_days * 24 * 60 if _is_native_client(request) else None
+    )
+    refresh, refresh_exp = create_refresh_token(
+        tenant_id, user_id, role, sid=str(sid), jti=jti, expires_minutes=native_minutes
+    )
     user_agent = None
     if request is not None:
         user_agent = (request.headers.get("user-agent") or "")[:400] or None
@@ -946,6 +962,15 @@ def _refresh_tokens_impl(request: Request, response: Response, payload: RefreshR
             rs.jti = next_jti
             rs.rotated_at = now
         rs.last_used_at = now
+        if _is_native_client(request):
+            # Sliding window: idle days from now, capped at max days since login.
+            slid = min(
+                now + timedelta(days=settings.jwt_native_refresh_idle_days),
+                _as_utc(rs.created_at) + timedelta(days=settings.jwt_native_refresh_max_days),
+            )
+            if slid > rs_expires:
+                rs_expires = slid
+                rs.expires_at = slid
         session.add(rs)
         session.commit()
 
