@@ -47,3 +47,6 @@ Thumbs.db
 
 # local QA backend state (generated, machine-specific)
 artifacts/native-local-backend/
+
+# Firebase config (per-environment keys; never commit)
+google-services.json

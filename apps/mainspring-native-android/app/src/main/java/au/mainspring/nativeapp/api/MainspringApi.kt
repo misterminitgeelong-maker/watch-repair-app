@@ -9,6 +9,9 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface MainspringApi {
+    /** Registers this phone's push token for the signed-in user (idempotent; the token moves to whoever registered it last). */
+    @POST("v1/me/devices") suspend fun registerDevice(@Body body: DeviceRegisterBody): Response<Unit>
+
     @GET("v1/stock/items") suspend fun stockItems(@Query("search") search: String? = null, @Query("group_code") group: String? = null,
         @Query("hide_zero_stock") hideZero: Boolean = false, @Query("limit") limit: Int = 100, @Query("offset") offset: Int = 0): StockPage
     @GET("v1/reports/period-summary") suspend fun periodReport(@Query("period") period: String, @Query("reference_date") referenceDate: String): PeriodReport

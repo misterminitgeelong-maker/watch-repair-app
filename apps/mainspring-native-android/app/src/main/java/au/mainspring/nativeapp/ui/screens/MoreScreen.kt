@@ -220,6 +220,7 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean)
             }
         }
         AppLockSetting()
+        FlatPanel { au.mainspring.nativeapp.ui.PushSettingRow() }
         SectionLabel("Appearance")
         AppAppearance.entries.chunked(2).forEach { pair ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

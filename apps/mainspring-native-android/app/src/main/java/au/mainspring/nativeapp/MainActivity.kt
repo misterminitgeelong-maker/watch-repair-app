@@ -22,6 +22,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent); setIntent(intent)
+        PushRouteInbox.offer(intent.getStringExtra(PushNotifications.EXTRA_PATH))
         au.mainspring.nativeapp.DeepLinkInbox.offer(intent.data?.toString())
     }
 
@@ -34,6 +35,8 @@ class MainActivity : FragmentActivity() {
         au.mainspring.nativeapp.ui.RecentItems.init(applicationContext)
         au.mainspring.nativeapp.offline.OfflineSync.start()
         if (savedInstanceState == null) AppLock.onColdStart()
+        PushNotifications.ensureChannel(applicationContext)
+        if (savedInstanceState == null) PushRouteInbox.offer(intent?.getStringExtra(PushNotifications.EXTRA_PATH))
         lifecycle.addObserver(androidx.lifecycle.LifecycleEventObserver { _, event ->
             if(event == androidx.lifecycle.Lifecycle.Event.ON_STOP) AppLock.onBackground()
             if(event == androidx.lifecycle.Lifecycle.Event.ON_START) AppLock.onForeground()

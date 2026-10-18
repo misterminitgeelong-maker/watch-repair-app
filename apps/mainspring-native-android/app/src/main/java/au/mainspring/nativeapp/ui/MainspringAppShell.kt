@@ -106,6 +106,7 @@ fun MainspringAppShell(
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomDestinations
     androidx.compose.runtime.DisposableEffect(Unit) { au.mainspring.nativeapp.InboxCountStore.start(); onDispose { au.mainspring.nativeapp.InboxCountStore.stop() } }
+    au.mainspring.nativeapp.ui.PushSetupEffect { route -> navController.navigate(route) { launchSingleTop = true } }
     val routeArgId = navBackStackEntry?.arguments?.getString("jobId")
     androidx.compose.runtime.LaunchedEffect(currentRoute, routeArgId) {
         val base = currentRoute?.substringBefore("/{")

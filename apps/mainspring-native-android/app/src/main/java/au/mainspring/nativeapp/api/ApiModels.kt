@@ -603,3 +603,6 @@ data class CustomerOrderUpdate(
     @SerializedName("estimated_cost_cents") val estimatedCostCents: Int? = null,
     val notes: String? = null,
 )
+
+/** Body of POST v1/me/devices; platform is android for this app (the server also accepts ios). */
+data class DeviceRegisterBody(val token: String, val platform: String = "android")

@@ -4,6 +4,11 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+// Push notifications need app/google-services.json (never committed). Without it the app still builds and runs, just without push.
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
 def localProperties = new Properties()
 def localFile = rootProject.file('local.properties')
 if (localFile.exists()) {
@@ -72,6 +77,10 @@ dependencies {
     implementation 'androidx.compose.material3:material3'
     implementation 'androidx.activity:activity-compose:1.9.3'
     implementation 'androidx.biometric:biometric:1.1.0'
+    // biometric 1.1.0 pulls an old fragment library that breaks the permission result API used by Compose screens
+    implementation 'androidx.fragment:fragment:1.8.5'
+    implementation platform('com.google.firebase:firebase-bom:35.0.2')
+    implementation 'com.google.firebase:firebase-messaging'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.7'
