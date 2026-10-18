@@ -5,6 +5,8 @@ only care about the linked end state, so this goes through the real request
 and accept code paths and hands back the same response shape a direct link
 used to return.
 """
+import itertools
+
 from sqlmodel import Session, select
 
 from app.database import engine
@@ -61,3 +63,14 @@ def mark_owner_accepted(tenant_id) -> None:
             )
         )
         session.commit()
+
+
+# Shop numbers become tenant slugs (minit-{number}), which are unique across the
+# whole test database. Picking them at random made two tests collide now and then
+# ("Shop slug already exists"), so hand out non-overlapping blocks instead.
+_shop_number_blocks = itertools.count(1000, 150)
+
+
+def unique_shop_base() -> int:
+    """Start of a block of 150 shop numbers no other test in this run will use."""
+    return next(_shop_number_blocks)
