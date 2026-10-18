@@ -51,9 +51,11 @@ class TodayViewModel : ViewModel() {
                     val scheduled = rows.distinctBy { it.id }.filter { tab != "booked" || it.status in setOf("booked","booking_confirmed") }
                         .sortedBy { bookingInstant(it.scheduledAt) ?: Instant.MAX }
                     val u = unscheduled.await()
-                    mutable.update { it.copy(loading = false, offlineSnapshot=false,jobs = scheduled, unscheduled = u.items, todayCount = today.await().total,
-                        unscheduledCount = u.total, unpaidCount = unpaid.await().total, truncated = rows.size < first.total) }
-                    snapshots.saveToday(tab,mutable.value)
+                    // Save the offline copy before announcing the result, so anything that reacts to loading=false can rely on it being stored.
+                    val next = mutable.value.copy(loading = false, offlineSnapshot=false,jobs = scheduled, unscheduled = u.items, todayCount = today.await().total,
+                        unscheduledCount = u.total, unpaidCount = unpaid.await().total, truncated = rows.size < first.total)
+                    snapshots.saveToday(tab,next)
+                    mutable.value = next
                 }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) { mutable.update { it.copy(loading = false, offlineSnapshot=it.jobs.isNotEmpty() || it.unscheduled.isNotEmpty(),error = "Could not refresh today's jobs. ${e.userMessage()}") } }
