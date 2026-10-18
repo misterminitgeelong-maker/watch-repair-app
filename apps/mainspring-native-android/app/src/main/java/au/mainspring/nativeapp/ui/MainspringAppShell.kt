@@ -186,7 +186,16 @@ fun MainspringAppShell(
                     FloatingTabBar(
                         destinations = navTabs(features),
                         isSelected = { it == tabFor(currentRoute, features) },
-                        onSelect = { key -> navController.navigate(tabRoute(key)) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                        onSelect = { key ->
+                            // More is a popup menu, not a place: always open the sheet, never restore the tool that was last open under it.
+                            if(key == "more") { if(currentRoute != "more") navController.navigate("more") { launchSingleTop = true } }
+                            else {
+                                // Close the sheet first so its entry is not saved and restored as if it were part of the tab.
+                                if(currentRoute == "more") navController.popBackStack()
+                                // Home is the root: show it fresh. A saved stack here would bring back a tool that was opened from More.
+                                navController.navigate(tabRoute(key)) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = key != TAB_TODAY }
+                            }
+                        },
                     )
                 }
             },
@@ -222,7 +231,11 @@ fun MainspringAppShell(
                     composable(key) { au.mainspring.nativeapp.ui.screens.ToolsGridScreen(key, features, { navController.popBackStack() }, { navController.navigate(it) }) }
                 }
                 composable("more") { au.mainspring.nativeapp.ui.screens.MoreScreen(selectedSite?.name,sessionSummary,features,sites.size>1,
-                    {switchOpen=true},{navController.navigate(it)},onLogout,{ if(!navController.popBackStack()) navController.navigate("today") }) }
+                    {switchOpen=true},{ route ->
+                        // A tool from More replaces whatever tab was open (that tab's own stack is saved), so tabs never come back with a tool on top.
+                        if(route.startsWith("tools")) navController.navigate(route)
+                        else { navController.popBackStack(); navController.navigate(route) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true } }
+                    },onLogout,{ if(!navController.popBackStack()) navController.navigate("today") }) }
                 composable("route") { au.mainspring.nativeapp.ui.screens.RouteScreen({navController.popBackStack()},{navController.navigate("autoKeyJob/$it")}) }
                 composable("team") { au.mainspring.nativeapp.ui.screens.TeamScreen({navController.popBackStack()}) }
                 composable("leads") { au.mainspring.nativeapp.ui.screens.LeadHubScreen({navController.popBackStack()},{navController.navigate(it)}) }

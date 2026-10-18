@@ -54,7 +54,7 @@ import au.mainspring.nativeapp.ui.statusTone
  */
 
 /** Large display-serif page title (swap for the shared PageTitle once it lands). */
-@Composable internal fun ServiceTitle(text: String, modifier: Modifier = Modifier) { au.mainspring.nativeapp.ui.PageTitle(text, modifier) }
+@Composable internal fun ServiceTitle(text: String, modifier: Modifier = Modifier) { au.mainspring.nativeapp.ui.PageTitle(text, modifier, horizontalPadding = 4.dp) } // the service screens already pad their column by 16dp
 
 /** One option of a [TextToggle]: stored [key], visible [label] and an optional test tag. */
 internal data class ToggleOption(val key: String, val label: String, val tag: String? = null)

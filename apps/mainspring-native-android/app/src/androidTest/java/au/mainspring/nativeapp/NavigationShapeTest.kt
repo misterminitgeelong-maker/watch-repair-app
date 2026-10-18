@@ -84,4 +84,15 @@ class NavigationShapeTest {
         compose.onNodeWithText("Customers").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("New customer").fetchSemanticsNodes().isNotEmpty() || compose.onAllNodesWithText("New customer").fetchSemanticsNodes().isNotEmpty() }
     }
+
+    @Test fun moreAlwaysOpensTheSheetEvenAfterOpeningATool() {
+        shell(setOf("watch"))
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithText("Customers").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("New customer").fetchSemanticsNodes().isNotEmpty() || compose.onAllNodesWithContentDescription("New customer").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("nav-more").performClick()
+        compose.onNodeWithTag("more-list").assertExists()
+        compose.onNodeWithTag("nav-today").performClick()
+        compose.onNodeWithTag("nav-today").assertIsSelected()
+    }
 }

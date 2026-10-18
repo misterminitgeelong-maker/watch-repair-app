@@ -81,8 +81,8 @@ internal fun tabFor(route: String?, features: Set<String>): String {
 }
 
 /** Large display-serif page title with a short accent underline, as on the web. */
-@Composable fun PageTitle(text: String, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)) {
+@Composable fun PageTitle(text: String, modifier: Modifier = Modifier, horizontalPadding: androidx.compose.ui.unit.Dp = 20.dp) {
+    Column(modifier.fillMaxWidth().padding(start = horizontalPadding, end = horizontalPadding, top = 16.dp, bottom = 12.dp)) {
         Text(text, Modifier.semantics { heading() }, style = if(LocalCalibre.current) calibreDisplayStyle(MaterialTheme.typography.headlineLarge) else MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
         Box(Modifier.padding(top = 8.dp).width(28.dp).height(3.dp).background(MaterialTheme.colorScheme.primary))
