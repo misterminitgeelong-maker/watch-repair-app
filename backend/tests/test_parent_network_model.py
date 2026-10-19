@@ -535,7 +535,7 @@ def test_provision_shop_creates_a_mobile_operator_or_a_physical_shop():
     assert made.status_code == 200, made.text
     mobile = next(s for s in made.json()["sites"] if s["shop_number"] == mobile_num)
     assert mobile["network_role"] == "operator"
-    assert mobile["plan_code"] == "basic_auto_key"
+    assert mobile["plan_code"] == "minit_operator"
 
     # The two shops land in the lists HQ browses them by.
     retail = client.get("/v1/parent-accounts/me/sites", headers=hq_h, params={"plan_kind": "retail"}).json()

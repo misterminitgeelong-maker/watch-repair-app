@@ -319,7 +319,7 @@ def test_invited_mobile_van_sales_still_reach_minit_hq():
     me = client.get("/v1/auth/session", headers=van_h)
     assert me.status_code == 200, me.text
     assert me.json()["product"] == "minit"
-    assert me.json()["plan_code"] == "basic_auto_key"
+    assert me.json()["plan_code"] == "minit_operator"
     assert "auto_key" in me.json()["enabled_features"]
     assert me.json()["is_minit_hq_ui"] is False
 

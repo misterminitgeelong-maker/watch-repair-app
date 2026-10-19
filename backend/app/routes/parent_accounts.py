@@ -1405,6 +1405,7 @@ SHOP_OWNER_INVITE_EXPIRY_DAYS = 7
 MINIT_INVITE_PLAN_CODES: dict[str, str] = {
     "booking_only": "Retail shop — booking only",
     "basic_auto_key": "Mobile operator — Basic",
+    "minit_operator": "Mobile operator — Minit (uncapped)",
     "pro": "Mobile operator — Pro (multi-site)",
 }
 
@@ -2203,7 +2204,7 @@ def import_mobile_territory_routes(
 #: Basic plan and sits under the network's operator roll-up.
 _PROVISION_SHOP_TYPES: dict[str, tuple[str, str]] = {
     "physical": ("booking_only", NETWORK_ROLE_RETAIL),
-    "mobile": ("basic_auto_key", NETWORK_ROLE_OPERATOR),
+    "mobile": ("minit_operator", NETWORK_ROLE_OPERATOR),
 }
 
 
