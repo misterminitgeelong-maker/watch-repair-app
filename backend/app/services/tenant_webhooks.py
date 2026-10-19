@@ -13,6 +13,7 @@ import httpx
 from sqlmodel import Session, select
 
 from ..models import TenantWebhookSubscription
+from .webhook_url_guard import WebhookUrlError, validate_webhook_url
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,11 @@ def dispatch_tenant_webhooks(
             continue
         sig = hmac.new(sub.secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
         try:
+            validate_webhook_url(sub.url)  # re-check at send time (DNS may have changed)
+        except WebhookUrlError as exc:
+            logger.warning("webhook skipped sub=%s: %s", sub.id, exc)
+            continue
+        try:
             httpx.post(
                 sub.url,
                 content=body,
@@ -49,6 +55,7 @@ def dispatch_tenant_webhooks(
                     "X-Mainspring-Signature": sig,
                 },
                 timeout=5.0,
+                follow_redirects=False,
             )
         except Exception as exc:
             logger.warning("webhook delivery failed sub=%s: %s", sub.id, exc)

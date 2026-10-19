@@ -18,6 +18,7 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
 from .logging_config import configure_logging
+from .log_redaction import redact_path
 from .idempotency import MutationIdempotencyMiddleware
 from .upload_limits import RequestBodyLimitMiddleware
 from .config import settings, validate_runtime_config, sentry_dsn_looks_valid, sentry_release
@@ -298,7 +299,7 @@ async def request_id_and_log(request: Request, call_next):
     logger.info(
         "%s %s %s %.2fms request_id=%s",
         request.method,
-        request.url.path,
+        redact_path(request.url.path),
         response.status_code,
         duration_ms,
         request_id,
@@ -307,7 +308,7 @@ async def request_id_and_log(request: Request, call_next):
         logger.warning(
             "SLOW_REQUEST %s %s %s %.2fms request_id=%s",
             request.method,
-            request.url.path,
+            redact_path(request.url.path),
             response.status_code,
             duration_ms,
             request_id,
@@ -320,7 +321,7 @@ async def request_id_and_log(request: Request, call_next):
             logger.info(
                 "PUBLIC_LINK_SPENT %s %s %s request_id=%s",
                 request.method,
-                path,
+                redact_path(path),
                 response.status_code,
                 request_id,
             )
@@ -330,7 +331,7 @@ async def request_id_and_log(request: Request, call_next):
                 "CRITICAL_WORKFLOW_FAILURE type=%s %s %s %s request_id=%s",
                 workflow_type,
                 request.method,
-                path,
+                redact_path(path),
                 response.status_code,
                 request_id,
             )
@@ -339,10 +340,10 @@ async def request_id_and_log(request: Request, call_next):
                     scope.set_tag("critical_workflow", workflow_type)
                     scope.set_tag("http.status_code", str(response.status_code))
                     scope.set_extra("request_id", request_id)
-                    scope.set_extra("request_path", path)
+                    scope.set_extra("request_path", redact_path(path))
                     scope.set_extra("request_method", request.method)
                     sentry_sdk.capture_message(
-                        f"CRITICAL_WORKFLOW_FAILURE type={workflow_type} {request.method} {path} status={response.status_code} request_id={request_id}",
+                        f"CRITICAL_WORKFLOW_FAILURE type={workflow_type} {request.method} {redact_path(path)} status={response.status_code} request_id={request_id}",
                         level="error",
                     )
     return response
