@@ -134,14 +134,19 @@ def test_portal_booking_stays_with_the_shop(client, bootstrap_and_login, monkeyp
         row = s.get(IntakeJob, UUID(body["intake_job_id"]))
         assert row.status == "claimed"
         t = s.exec(select(Tenant).where(Tenant.slug == rival_slug)).one()
+        rival_id = t.id
         t.base_lat, t.base_lng, t.ring_radius_km = -37.8136, 144.9631, 50
         s.add(t)
         s.commit()
+    from network_link_helpers import put_operators_in_new_network
+
+    put_operators_in_new_network(rival_id)
     pool = client.get("/v1/pool", headers=rival)
     assert pool.status_code == 200, pool.text
     assert body["intake_job_id"] not in [j["id"] for j in pool.json()]
     claim = client.post(f"/v1/pool/{body['intake_job_id']}/claim", headers=rival)
-    assert claim.status_code == 409
+    # Rival is in no network with this job (404) or, if it were, would find it taken (409).
+    assert claim.status_code in (404, 409)
 
 
 def test_portal_wrong_code_is_rejected_and_locks_after_five_tries(client, bootstrap_and_login, monkeypatch):

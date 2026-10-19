@@ -42,6 +42,7 @@ from .tenant_scope import without_scope
 OPERATOR_PLAN_CODES: frozenset[str] = frozenset(
     {
         "basic_auto_key",
+        "minit_operator",
         "basic_shoe_auto_key",
         "basic_watch_auto_key",
         "basic_all_tabs",

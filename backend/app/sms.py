@@ -11,10 +11,13 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from .sms_controls import check_fair_use, is_suppressed
 from .money import format_cents
 from .config import settings
+from .log_redaction import mask_phone, redact_text
 from .database import engine
 from .datetime_utils import format_in_timezone
 from .models import JobMessage, SmsLog, Tenant, User
@@ -84,7 +87,7 @@ def _send_sms(to: str, body: str) -> tuple[str | None, str, str | None, int]:
     one of "sent" | "dry_run" | "failed".
     """
     if not (settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number):
-        logger.info("[SMS DRY-RUN] To=%s | %s", to, body)
+        logger.info("[SMS DRY-RUN] To=%s | %s", mask_phone(to), redact_text(body))
         return None, "dry_run", None, 0
 
     max_attempts = inline_retry_attempts()
@@ -97,19 +100,19 @@ def _send_sms(to: str, body: str) -> tuple[str | None, str, str | None, int]:
                 from_=settings.twilio_from_number,
                 to=to,
             )
-            logger.info("[SMS SENT] sid=%s to=%s", message.sid, to)
+            logger.info("[SMS SENT] sid=%s to=%s", message.sid, mask_phone(to))
             return message.sid, "sent", None, attempt
         except Exception as exc:  # noqa: BLE001
             last_error = str(exc)[:400]
             status = http_status_from_exc(exc)
             if status is not None and 400 <= status < 500:
-                logger.error("[SMS ERROR] to=%s error=%s", to, exc)
+                logger.error("[SMS ERROR] to=%s error=%s", mask_phone(to), exc)
                 return None, "failed", last_error, pin_attempts_if_permanent(attempt, permanent=True)
             retryable = is_retryable_http_status(status) or is_timeout_exc(exc) or is_transport_exc(exc)
             if retryable and attempt < max_attempts:
                 time.sleep(backoff_seconds(attempt - 1))
                 continue
-            logger.error("[SMS ERROR] to=%s error=%s", to, exc)
+            logger.error("[SMS ERROR] to=%s error=%s", mask_phone(to), exc)
             return None, "failed", last_error, attempt
     return None, "failed", last_error, max_attempts
 
@@ -165,6 +168,27 @@ def _logged_send(
     """Persist the attempt, then send. Failure mode is a spurious row, not a silent send."""
     now = datetime.now(timezone.utc)
     log_id = existing_log_id
+    if is_suppressed(session, to_phone):
+        # The customer texted STOP to the shared number: do not send, keep an audit row.
+        logger.info("[SMS SUPPRESSED] tenant=%s event=%s", tenant_id, event)
+        if log_id is None:
+            _begin_sms_log(
+                session,
+                tenant_id=tenant_id,
+                repair_job_id=repair_job_id,
+                shoe_repair_job_id=shoe_repair_job_id,
+                auto_key_job_id=auto_key_job_id,
+                to_phone=to_phone,
+                body=body,
+                event=event,
+                provider_sid=None,
+                status="suppressed",
+                attempt_count=0,
+                last_attempt_at=now,
+            )
+        else:
+            _finish_sms_log(session, log_id, status="suppressed", last_attempt_at=now)
+        return None, "suppressed"
     if log_id is None:
         log_id = _begin_sms_log(
             session,
@@ -189,6 +213,8 @@ def _logged_send(
         attempt_count=attempts,
         last_attempt_at=datetime.now(timezone.utc),
     )
+    if status in ("sent", "dry_run"):
+        check_fair_use(session, tenant_id)
     return sid, status
 
 
@@ -252,7 +278,22 @@ def send_custom_job_message(
     body: str,
 ) -> JobMessage:
     """Send a free-text SMS to a customer and persist it as an outbound JobMessage."""
-    sid, sms_status, _, _ = _send_sms(to_phone, body)
+    sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        shoe_repair_job_id=shoe_repair_job_id,
+        auto_key_job_id=auto_key_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="custom_message",
+    )
+    if sms_status == "suppressed":
+        session.commit()  # keep the audit row
+        raise HTTPException(
+            status_code=409,
+            detail="This customer has opted out of text messages (replied STOP), so the message was not sent.",
+        )
     msg = JobMessage(
         tenant_id=tenant_id,
         repair_job_id=repair_job_id,

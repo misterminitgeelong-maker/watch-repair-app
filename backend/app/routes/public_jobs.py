@@ -16,6 +16,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, or_
+from sqlalchemy import update as sa_update
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
@@ -1617,6 +1618,25 @@ def portal_message_to_shop(
 
 # ── Public auto-key quote portal ─────────────────────────────────────────────
 
+def _auto_key_quote_link_expired(quote: AutoKeyQuote) -> bool:
+    """True once the link is older than the watch-quote TTL (default 168h).
+
+    The link is "issued" when the quote was (re)sent; quotes without ``sent_at``
+    (links issued before the timestamp was tracked) fall back to ``created_at``.
+    Re-sending a quote refreshes ``sent_at`` and therefore the link's life.
+    """
+    issued = quote.sent_at or quote.created_at
+    if issued is None:
+        return False
+    if issued.tzinfo is None:
+        issued = issued.replace(tzinfo=timezone.utc)
+    ttl = timedelta(hours=settings.quote_approval_token_ttl_hours)
+    return datetime.now(timezone.utc) > issued + ttl
+
+
+_AUTO_KEY_QUOTE_EXPIRED_DETAIL = "This quote link has expired. Please contact the shop for a new one."
+
+
 @router.get("/auto-key-quote/{token}")
 @limiter.limit(get_public_read_rate_limit)
 def get_public_auto_key_quote(request: Request, token: str, session: Session = Depends(get_session)):
@@ -1625,6 +1645,8 @@ def get_public_auto_key_quote(request: Request, token: str, session: Session = D
     ).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
+    if quote.status in ("draft", "sent") and _auto_key_quote_link_expired(quote):
+        raise HTTPException(status_code=410, detail=_AUTO_KEY_QUOTE_EXPIRED_DETAIL)
 
     job = session.get(AutoKeyJob, quote.auto_key_job_id)
     if not job:
@@ -1697,13 +1719,26 @@ def decide_public_auto_key_quote(
         raise HTTPException(status_code=404, detail="Invalid or expired link")
 
     if quote.status not in ("draft", "sent"):
+        # Single-use: a second decision (any value) returns the recorded outcome.
         return {"ok": True, "status": quote.status, "message": f"Quote already {quote.status}."}
+    if _auto_key_quote_link_expired(quote):
+        raise HTTPException(status_code=410, detail=_AUTO_KEY_QUOTE_EXPIRED_DETAIL)
 
     job = session.get(AutoKeyJob, quote.auto_key_job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    quote.status = decision
+    # Atomically claim the decision so concurrent submissions cannot both win.
+    claimed = session.execute(
+        sa_update(AutoKeyQuote)
+        .where(AutoKeyQuote.id == quote.id, AutoKeyQuote.status.in_(("draft", "sent")))
+        .values(status=decision)
+    )
+    if claimed.rowcount != 1:
+        session.rollback()
+        session.refresh(quote)
+        return {"ok": True, "status": quote.status, "message": f"Quote already {quote.status}."}
+    session.refresh(quote)
     if decision == "approved" and job.status in ("quote_sent", "awaiting_quote"):
         job.status = "booking_confirmed"
 

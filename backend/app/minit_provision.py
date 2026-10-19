@@ -494,7 +494,7 @@ def ensure_minit_pilot_account(
             parent=parent,
             hq_owner=hq_owner,
             shop=op,
-            plan_code="basic_auto_key",
+            plan_code="minit_operator",
             tenant_slug="minit-mobile-3904",
         )
         if op_tenant:
@@ -712,7 +712,7 @@ def import_minit_mobile_operators(
     hq_owner_email: str | None = None,
     hq_owner: User | None = None,
     operators: list[ResolvedMobileOperator],
-    plan_code: str = "basic_auto_key",
+    plan_code: str = "minit_operator",
     apply: bool = False,
     commit: bool = True,
     on_progress: Callable[[int, int, str], None] | None = None,

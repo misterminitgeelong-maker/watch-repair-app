@@ -18,6 +18,7 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
 from .logging_config import configure_logging
+from .log_redaction import redact_path
 from .idempotency import MutationIdempotencyMiddleware
 from .upload_limits import RequestBodyLimitMiddleware
 from .config import settings, validate_runtime_config, sentry_dsn_looks_valid, sentry_release
@@ -39,6 +40,7 @@ from .routes.csv_import import router as csv_import_router
 from .routes.reports import router as report_router
 from .routes.vswt_reports import router as vswt_reports_router
 from .routes.inbox import router as inbox_router
+from .routes.sms_usage import router as sms_usage_router
 from .routes.public_jobs import router as public_jobs_router
 from .routes.customer_portal_public import router as customer_portal_public_router
 from .routes.users import router as users_router
@@ -60,6 +62,7 @@ from .routes.parent_shoe_operations import router as parent_shoe_operations_rout
 from .routes.parent_operations import router as parent_operations_router
 from .routes.parent_network_admin import router as parent_network_admin_router
 from .routes.parent_regions import router as parent_regions_router
+from .routes.hq_billing import router as hq_billing_router
 from .routes.billing import router as billing_router
 from .routes.xero_billing import router as xero_billing_router
 from .routes.xero_webhook import router as xero_webhook_router
@@ -296,7 +299,7 @@ async def request_id_and_log(request: Request, call_next):
     logger.info(
         "%s %s %s %.2fms request_id=%s",
         request.method,
-        request.url.path,
+        redact_path(request.url.path),
         response.status_code,
         duration_ms,
         request_id,
@@ -305,7 +308,7 @@ async def request_id_and_log(request: Request, call_next):
         logger.warning(
             "SLOW_REQUEST %s %s %s %.2fms request_id=%s",
             request.method,
-            request.url.path,
+            redact_path(request.url.path),
             response.status_code,
             duration_ms,
             request_id,
@@ -318,7 +321,7 @@ async def request_id_and_log(request: Request, call_next):
             logger.info(
                 "PUBLIC_LINK_SPENT %s %s %s request_id=%s",
                 request.method,
-                path,
+                redact_path(path),
                 response.status_code,
                 request_id,
             )
@@ -328,7 +331,7 @@ async def request_id_and_log(request: Request, call_next):
                 "CRITICAL_WORKFLOW_FAILURE type=%s %s %s %s request_id=%s",
                 workflow_type,
                 request.method,
-                path,
+                redact_path(path),
                 response.status_code,
                 request_id,
             )
@@ -337,10 +340,10 @@ async def request_id_and_log(request: Request, call_next):
                     scope.set_tag("critical_workflow", workflow_type)
                     scope.set_tag("http.status_code", str(response.status_code))
                     scope.set_extra("request_id", request_id)
-                    scope.set_extra("request_path", path)
+                    scope.set_extra("request_path", redact_path(path))
                     scope.set_extra("request_method", request.method)
                     sentry_sdk.capture_message(
-                        f"CRITICAL_WORKFLOW_FAILURE type={workflow_type} {request.method} {path} status={response.status_code} request_id={request_id}",
+                        f"CRITICAL_WORKFLOW_FAILURE type={workflow_type} {request.method} {redact_path(path)} status={response.status_code} request_id={request_id}",
                         level="error",
                     )
     return response
@@ -557,6 +560,7 @@ app.include_router(csv_import_router)
 app.include_router(report_router)
 app.include_router(vswt_reports_router)
 app.include_router(inbox_router)
+app.include_router(sms_usage_router)
 app.include_router(card_payment_issues_router)
 app.include_router(global_search_router)
 app.include_router(tenant_qol_router)
@@ -586,6 +590,7 @@ app.include_router(parent_shoe_operations_router)
 app.include_router(parent_operations_router)
 app.include_router(parent_network_admin_router)
 app.include_router(parent_regions_router)
+app.include_router(hq_billing_router)
 app.include_router(billing_router)
 app.include_router(xero_billing_router)
 app.include_router(xero_webhook_router)

@@ -29,6 +29,7 @@ from ..models import (
     AutoKeyJob,
     EmailLog,
     InboundEmail,
+    ProspectLead,
     MobileKpiDailyDetailRead,
     MobileKpiDailyListItem,
     MobileKpiDailyListRead,
@@ -70,6 +71,7 @@ from ..models import (
 )
 from .. import sms as sms_service
 from ..parent_network import (
+    linked_tenant_ids_for_parent,
     linked_tenants_for_parent,
     mobile_reporting_tenants_for_parent,
     regions_for_parent,
@@ -933,7 +935,23 @@ def get_lead_volume_report(
             (r if r.tzinfo else r.replace(tzinfo=timezone.utc)).astimezone(tz).date() for r in rows
         ]
 
-    sources = {"website_leads": created_dates(MobileLeadDispatch), "email_leads": created_dates(InboundEmail)}
+    # Website leads are ProspectLead(source='website_lead') rows created by the public
+    # ingest/key-enquiry routes. They carry the receiving tenant, not the parent, so scope
+    # via the network's linked sites. MobileLeadDispatch (the retired cascade table) is
+    # still counted so any historical rows are not lost.
+    network_tenant_ids = linked_tenant_ids_for_parent(session, parent.id)
+    website_dates = created_dates(MobileLeadDispatch)
+    if network_tenant_ids:
+        lead_rows = session.exec(
+            select(ProspectLead.created_at)
+            .where(ProspectLead.source == "website_lead")
+            .where(col(ProspectLead.tenant_id).in_(network_tenant_ids))
+            .where(col(ProspectLead.created_at) >= since.astimezone(timezone.utc))
+        ).all()
+        website_dates += [
+            (r if r.tzinfo else r.replace(tzinfo=timezone.utc)).astimezone(tz).date() for r in lead_rows
+        ]
+    sources = {"website_leads": website_dates, "email_leads": created_dates(InboundEmail)}
 
     def build(starts: list[date], key) -> list[LeadVolumeBucket]:
         buckets = {d: LeadVolumeBucket(period_start=d.isoformat()) for d in starts}

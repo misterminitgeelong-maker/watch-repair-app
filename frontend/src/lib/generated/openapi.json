@@ -385,7 +385,7 @@
           "auth"
         ],
         "summary": "Export tenant data for portability (GDPR-style)",
-        "description": "Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.",
+        "description": "Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.\n\nOwner (or platform admin) only: this is a bulk dump of customer contact details.\nEvery export is recorded in the tenant event log.",
         "operationId": "export_my_data_v1_auth_export_my_data_get",
         "responses": {
           "200": {
@@ -6369,6 +6369,64 @@
         }
       }
     },
+    "/v1/sms/usage": {
+      "get": {
+        "tags": [
+          "sms-usage"
+        ],
+        "summary": "Get Sms Usage",
+        "description": "Outbound SMS this calendar month (Melbourne) against the soft fair-use limit.\n\nOwners see their own shop; a platform admin sees any tenant; an owner of an HQ\ntenant sees the operators linked to its network.",
+        "operationId": "get_sms_usage_v1_sms_usage_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Operator to inspect; defaults to your own shop",
+              "title": "Tenant Id"
+            },
+            "description": "Operator to inspect; defaults to your own shop"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsUsageRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/card-payment-issues/{issue_id}": {
       "get": {
         "tags": [
@@ -8612,6 +8670,23 @@
               ],
               "title": "X-Mobile-Lead-Secret"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -8663,6 +8738,23 @@
               "type": "string",
               "format": "uuid",
               "title": "Ingest Public Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -9461,17 +9553,36 @@
           "intake-dispatch"
         ],
         "summary": "Submit Public Intake",
-        "description": "Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.",
+        "description": "Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.\n\nIdempotent: a repeat of the same submission (same Idempotency-Key, or same normalised\npayload within 10 minutes) returns the original job and creates nothing new.",
         "operationId": "submit_public_intake_v1_public_intake_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/IntakeSubmitBody"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -19099,6 +19210,186 @@
         }
       }
     },
+    "/v1/hq-billing/monthly-summary": {
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Monthly Summary",
+        "operationId": "monthly_summary_v1_hq_billing_monthly_summary_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM, default current month",
+              "title": "Month"
+            },
+            "description": "YYYY-MM, default current month"
+          },
+          {
+            "name": "routing",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Routing"
+            }
+          },
+          {
+            "name": "prospecting",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Prospecting"
+            }
+          },
+          {
+            "name": "parent_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/monthly-summary.csv": {
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Monthly Summary Csv",
+        "operationId": "monthly_summary_csv_v1_hq_billing_monthly_summary_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "name": "routing",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Routing"
+            }
+          },
+          {
+            "name": "prospecting",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Prospecting"
+            }
+          },
+          {
+            "name": "parent_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/billing/limits": {
       "get": {
         "tags": [
@@ -22688,6 +22979,7 @@
               "basic_all_tabs",
               "booking_only",
               "minit_hq",
+              "minit_operator",
               "pro"
             ],
             "title": "Plan Code"
@@ -25123,6 +25415,7 @@
               "basic_all_tabs",
               "booking_only",
               "minit_hq",
+              "minit_operator",
               "pro"
             ],
             "title": "Plan Code"
@@ -28995,6 +29288,18 @@
               }
             ],
             "title": "Description"
+          },
+          "ingest_public_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingest Public Id"
           }
         },
         "type": "object",
@@ -31741,6 +32046,7 @@
                   "basic_all_tabs",
                   "booking_only",
                   "minit_hq",
+                  "minit_operator",
                   "pro"
                 ]
               },
@@ -40533,6 +40839,91 @@
         ],
         "title": "SmsLogRead"
       },
+      "SmsUsageRead": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Australia/Melbourne"
+          },
+          "sent": {
+            "type": "integer",
+            "title": "Sent"
+          },
+          "suppressed": {
+            "type": "integer",
+            "title": "Suppressed"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "percent_used": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent Used"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining"
+          },
+          "warn_threshold_reached": {
+            "type": "boolean",
+            "title": "Warn Threshold Reached"
+          },
+          "limit_reached": {
+            "type": "boolean",
+            "title": "Limit Reached"
+          },
+          "enforced": {
+            "type": "boolean",
+            "title": "Enforced",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "period_start",
+          "period_end",
+          "sent",
+          "suppressed",
+          "limit",
+          "percent_used",
+          "remaining",
+          "warn_threshold_reached",
+          "limit_reached"
+        ],
+        "title": "SmsUsageRead"
+      },
       "StockImportSummaryResponse": {
         "properties": {
           "imported": {
@@ -41451,6 +41842,7 @@
                   "basic_all_tabs",
                   "booking_only",
                   "minit_hq",
+                  "minit_operator",
                   "pro"
                 ]
               },
@@ -41565,6 +41957,7 @@
               "basic_all_tabs",
               "booking_only",
               "minit_hq",
+              "minit_operator",
               "pro"
             ],
             "title": "Plan Code"
@@ -41616,6 +42009,7 @@
                   "basic_all_tabs",
                   "booking_only",
                   "minit_hq",
+                  "minit_operator",
                   "pro"
                 ]
               },

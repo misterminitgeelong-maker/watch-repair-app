@@ -20,6 +20,7 @@ import httpx
 from sqlmodel import Session
 
 from .config import settings
+from .log_redaction import mask_email
 from .database import engine
 from .email_templates import ShopInfo, render_transactional_email
 from .models import EmailLog
@@ -1302,11 +1303,11 @@ def _send_email(
 
     from_addr = _from_email()
     if not _enabled():
-        logger.info("email (disabled) %s to %s: %s", event, to_email, subject)
+        logger.info("email (disabled) %s to %s: %s", event, mask_email(to_email), subject)
         return _finish(False, "dry_run", None, 0)
     key = _api_key()
     if not key:
-        logger.info("email (dry-run, no SENDGRID_API_KEY) %s to %s: %s", event, to_email, subject)
+        logger.info("email (dry-run, no SENDGRID_API_KEY) %s to %s: %s", event, mask_email(to_email), subject)
         return _finish(False, "dry_run", None, 0)
     # text/plain must precede text/html per RFC / SendGrid ordering rules.
     content: list[dict] = [{"type": "text/plain", "value": body_plain}]
@@ -1364,7 +1365,7 @@ def _send_email(
                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 )
             if 200 <= resp.status_code < 300:
-                logger.info("Twilio SendGrid sent %s to %s from %s", event, to_email, from_addr)
+                logger.info("Twilio SendGrid sent %s to %s from %s", event, mask_email(to_email), from_addr)
                 return _finish(True, "sent", None, attempt)
             detail = (resp.text or "").strip()[:400]
             err = f"SendGrid HTTP {resp.status_code} (from={from_addr})"
@@ -1372,23 +1373,23 @@ def _send_email(
                 err = f"{err}: {detail}"
             last_error = err
             if 400 <= resp.status_code < 500:
-                logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, err)
+                logger.warning("Twilio SendGrid %s failed for %s: %s", event, mask_email(to_email), err)
                 return _finish(False, "failed", err, attempt, permanent=True)
             if attempt < max_attempts and is_retryable_http_status(resp.status_code):
                 time.sleep(backoff_seconds(attempt - 1))
                 continue
-            logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, err)
+            logger.warning("Twilio SendGrid %s failed for %s: %s", event, mask_email(to_email), err)
             return _finish(False, "failed", err, attempt)
         except Exception as e:
             last_error = str(e)[:400]
             retryable = is_timeout_exc(e) or is_transport_exc(e)
             status = http_status_from_exc(e)
             if status is not None and 400 <= status < 500:
-                logger.warning("Twilio SendGrid %s failed for %s: %s", event, to_email, e)
+                logger.warning("Twilio SendGrid %s failed for %s: %s", event, mask_email(to_email), e)
                 return _finish(False, "failed", last_error, attempt, permanent=True)
             if retryable and attempt < max_attempts:
                 time.sleep(backoff_seconds(attempt - 1))
                 continue
-            logger.exception("Twilio SendGrid %s failed for %s: %s", event, to_email, e)
+            logger.exception("Twilio SendGrid %s failed for %s: %s", event, mask_email(to_email), e)
             return _finish(False, "failed", last_error, attempt)
     return _finish(False, "failed", last_error, max_attempts)

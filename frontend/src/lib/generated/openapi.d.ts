@@ -271,6 +271,9 @@ export interface paths {
         /**
          * Export tenant data for portability (GDPR-style)
          * @description Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.
+         *
+         *     Owner (or platform admin) only: this is a bulk dump of customer contact details.
+         *     Every export is recorded in the tenant event log.
          */
         get: operations["export_my_data_v1_auth_export_my_data_get"];
         put?: never;
@@ -1910,6 +1913,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sms/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sms Usage
+         * @description Outbound SMS this calendar month (Melbourne) against the soft fair-use limit.
+         *
+         *     Owners see their own shop; a platform admin sees any tenant; an owner of an HQ
+         *     tenant sees the operators linked to its network.
+         */
+        get: operations["get_sms_usage_v1_sms_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/card-payment-issues/{issue_id}": {
         parameters: {
             query?: never;
@@ -3077,6 +3103,9 @@ export interface paths {
         /**
          * Submit Public Intake
          * @description Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.
+         *
+         *     Idempotent: a repeat of the same submission (same Idempotency-Key, or same normalised
+         *     payload within 10 minutes) returns the original job and creates nothing new.
          */
         post: operations["submit_public_intake_v1_public_intake_post"];
         delete?: never;
@@ -6064,6 +6093,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/hq-billing/monthly-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Monthly Summary */
+        get: operations["monthly_summary_v1_hq_billing_monthly_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hq-billing/monthly-summary.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Monthly Summary Csv */
+        get: operations["monthly_summary_csv_v1_hq_billing_monthly_summary_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billing/limits": {
         parameters: {
             query?: never;
@@ -7208,7 +7271,7 @@ export interface components {
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro";
             /** Enabled Features */
             enabled_features: string[];
             /**
@@ -7887,7 +7950,7 @@ export interface components {
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro";
         };
         /** BillingCheckoutRequest */
         BillingCheckoutRequest: {
@@ -9113,6 +9176,8 @@ export interface components {
             registration_plate?: string | null;
             /** Description */
             description?: string | null;
+            /** Ingest Public Id */
+            ingest_public_id?: string | null;
         };
         /** IntegrationHealthRead */
         IntegrationHealthRead: {
@@ -10149,7 +10214,7 @@ export interface components {
             /** Tenant Slug */
             tenant_slug: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro") | null;
             /** Business Address */
             business_address?: string | null;
             /** Shop Number */
@@ -13137,6 +13202,48 @@ export interface components {
              */
             created_at: string;
         };
+        /** SmsUsageRead */
+        SmsUsageRead: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /**
+             * Timezone
+             * @default Australia/Melbourne
+             */
+            timezone: string;
+            /** Sent */
+            sent: number;
+            /** Suppressed */
+            suppressed: number;
+            /** Limit */
+            limit: number;
+            /** Percent Used */
+            percent_used: number | null;
+            /** Remaining */
+            remaining: number | null;
+            /** Warn Threshold Reached */
+            warn_threshold_reached: boolean;
+            /** Limit Reached */
+            limit_reached: boolean;
+            /**
+             * Enforced
+             * @default false
+             */
+            enforced: boolean;
+        };
         /** StockImportSummaryResponse */
         StockImportSummaryResponse: {
             /** Imported */
@@ -13494,7 +13601,7 @@ export interface components {
             /** Owner Password */
             owner_password: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro") | null;
         };
         /** TenantEventLogRead */
         TenantEventLogRead: {
@@ -13532,7 +13639,7 @@ export interface components {
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro";
         };
         /** TenantSignupRequest */
         TenantSignupRequest: {
@@ -13547,7 +13654,7 @@ export interface components {
             /** Password */
             password: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro") | null;
         };
         /** TenantSignupResponse */
         TenantSignupResponse: {
@@ -17525,6 +17632,38 @@ export interface operations {
             };
         };
     };
+    get_sms_usage_v1_sms_usage_get: {
+        parameters: {
+            query?: {
+                /** @description Operator to inspect; defaults to your own shop */
+                tenant_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmsUsageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_card_payment_issue_v1_card_payment_issues__issue_id__get: {
         parameters: {
             query?: never;
@@ -19094,6 +19233,7 @@ export interface operations {
             query?: never;
             header?: {
                 "X-Mobile-Lead-Secret"?: string | null;
+                "Idempotency-Key"?: string | null;
             };
             path: {
                 ingest_public_id: string;
@@ -19129,7 +19269,9 @@ export interface operations {
     submit_key_enquiry_v1_public_key_enquiry__ingest_public_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 ingest_public_id: string;
             };
@@ -19606,7 +19748,9 @@ export interface operations {
     submit_public_intake_v1_public_intake_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -25278,6 +25422,75 @@ export interface operations {
             path: {
                 region_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    monthly_summary_v1_hq_billing_monthly_summary_get: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM, default current month */
+                month?: string | null;
+                routing?: boolean;
+                prospecting?: boolean;
+                parent_account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    monthly_summary_csv_v1_hq_billing_monthly_summary_csv_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+                routing?: boolean;
+                prospecting?: boolean;
+                parent_account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
