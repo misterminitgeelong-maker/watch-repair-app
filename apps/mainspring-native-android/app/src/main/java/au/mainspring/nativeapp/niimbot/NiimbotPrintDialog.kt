@@ -61,12 +61,22 @@ fun niimbotUnavailableMessage(a: NiimbotAvailability): String = when (a) {
  * Bluetooth is missing, off or denied. BLE I/O has not been verified on hardware.
  */
 @Composable
-fun NiimbotPrintDialog(label: NiimbotLabelData, onDismiss: () -> Unit) {
+fun NiimbotPrintDialog(label: NiimbotLabelData, onDismiss: () -> Unit) = NiimbotPrintDialog(listOf(label), onDismiss)
+
+/**
+ * Prints every label in [labels] as one job (two per job: workshop + customer copy; all jobs for a multi-watch
+ * intake). With [autoConnect] it connects straight to the last printer that worked and only falls back to the
+ * scan list if that fails.
+ */
+@Composable
+fun NiimbotPrintDialog(labels: List<NiimbotLabelData>, onDismiss: () -> Unit, autoConnect: Boolean = true) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var ui by remember { mutableStateOf<NiimbotUiState>(NiimbotUiState.Checking) }
     var scanJob by remember { mutableStateOf<Job?>(null) }
     var printJob by remember { mutableStateOf<Job?>(null) }
+    var autoNote by remember { mutableStateOf<String?>(null) }
+    val lastPrinter = remember { NiimbotLastPrinter(context) }
 
     fun startScan() {
         scanJob?.cancel()
@@ -81,13 +91,46 @@ fun NiimbotPrintDialog(label: NiimbotLabelData, onDismiss: () -> Unit) {
                     ui = NiimbotUiState.Choose(known.values.toList(), scanning = true)
                 }
             }
-            ui = NiimbotUiState.Choose(known.values.toList(), scanning = false, note = failure ?: if (known.isEmpty()) "No Niimbot printer found. Switch it on and keep it close." else null)
+            ui = NiimbotUiState.Choose(known.values.toList(), scanning = false, note = failure ?: autoNote ?: if (known.isEmpty()) "No Niimbot printer found. Switch it on and keep it close." else null)
+        }
+    }
+
+    fun print(device: NiimbotDevice, auto: Boolean = false) {
+        scanJob?.cancel()
+        printJob = scope.launch {
+            var transport: NiimbotBleTransport? = null
+            var session: NiimbotSession? = null
+            try {
+                ui = NiimbotUiState.Working("Connecting to ${device.name}…")
+                transport = NiimbotBleTransport.connect(context, device.address)
+                session = NiimbotSession(transport)
+                val dots = session.handshake() ?: NiimbotProtocol.DEFAULT_LABEL
+                lastPrinter.save(device)
+                ui = NiimbotUiState.Working(if (labels.size > 1) "Printing ${labels.size} labels…" else "Printing label…")
+                val pages = withContext(Dispatchers.Default) { labels.map { NiimbotLabelRenderer.toRaster(it, dots) } }
+                session.print(pages)
+                ui = NiimbotUiState.Done
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val msg = e.message?.takeIf { it.isNotBlank() } ?: "Could not print the label."
+                if (auto) {
+                    // The remembered printer is off or out of range: show the scan list instead of a dead end.
+                    autoNote = "Could not reach ${device.name} ($msg). Pick a printer."
+                    startScan()
+                } else ui = NiimbotUiState.Failed(msg)
+            } finally {
+                session?.close()
+                transport?.close()
+            }
         }
     }
 
     fun begin() {
         val a = niimbotAvailability(context)
-        if (a == NiimbotAvailability.READY) startScan() else ui = NiimbotUiState.Unavailable(a)
+        if (a != NiimbotAvailability.READY) { ui = NiimbotUiState.Unavailable(a); return }
+        val last = if (autoConnect) lastPrinter.load() else null
+        if (last != null) print(last, auto = true) else startScan()
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { begin() }
@@ -98,38 +141,13 @@ fun NiimbotPrintDialog(label: NiimbotLabelData, onDismiss: () -> Unit) {
     }
     DisposableEffect(Unit) { onDispose { scanJob?.cancel(); printJob?.cancel() } }
 
-    fun print(device: NiimbotDevice) {
-        scanJob?.cancel()
-        printJob = scope.launch {
-            var transport: NiimbotBleTransport? = null
-            var session: NiimbotSession? = null
-            try {
-                ui = NiimbotUiState.Working("Connecting to ${device.name}…")
-                transport = NiimbotBleTransport.connect(context, device.address)
-                session = NiimbotSession(transport)
-                val dots = session.handshake() ?: NiimbotProtocol.DEFAULT_LABEL
-                ui = NiimbotUiState.Working("Printing label…")
-                val page = withContext(Dispatchers.Default) { NiimbotLabelRenderer.toRaster(label, dots) }
-                session.print(listOf(page))
-                ui = NiimbotUiState.Done
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                ui = NiimbotUiState.Failed(e.message?.takeIf { it.isNotBlank() } ?: "Could not print the label.")
-            } finally {
-                session?.close()
-                transport?.close()
-            }
-        }
-    }
-
     val busy = ui is NiimbotUiState.Working
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
         title = { Text("Print label (Niimbot)") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (LocalCalibre.current) MonoLabel("Label / ${label.jobNumber}")
+                if (LocalCalibre.current) MonoLabel("Label / ${labels.map { it.jobNumber }.distinct().joinToString(", ")}")
                 when (val s = ui) {
                     NiimbotUiState.Checking -> Text("Checking Bluetooth…", style = MaterialTheme.typography.bodyMedium)
                     is NiimbotUiState.Unavailable -> Text(niimbotUnavailableMessage(s.availability), style = MaterialTheme.typography.bodyMedium)
@@ -146,7 +164,7 @@ fun NiimbotPrintDialog(label: NiimbotLabelData, onDismiss: () -> Unit) {
                     is NiimbotUiState.Working -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         CircularProgressIndicator(strokeWidth = 2.dp); Text(s.message, style = MaterialTheme.typography.bodyMedium)
                     }
-                    NiimbotUiState.Done -> Text("Label sent to the printer.", style = MaterialTheme.typography.bodyMedium)
+                    NiimbotUiState.Done -> Text(if (labels.size > 1) "${labels.size} labels sent to the printer." else "Label sent to the printer.", style = MaterialTheme.typography.bodyMedium)
                     is NiimbotUiState.Failed -> Text(s.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                 }
             }

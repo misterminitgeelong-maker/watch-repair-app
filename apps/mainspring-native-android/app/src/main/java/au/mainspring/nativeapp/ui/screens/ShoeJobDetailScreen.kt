@@ -51,8 +51,8 @@ fun ShoeJobDetailScreen(
     val suggested = j?.let { au.mainspring.nativeapp.suggestedShoeStatuses(it.status) } ?: emptyList()
     val quoteFirst = j?.let { it.quoteStatus != "approved" && it.status == "awaiting_quote" } == true
     val (prevJobId, nextJobId) = au.mainspring.nativeapp.JobNavContext.neighbors("shoe", shownId)
-    var niimbotLabel by remember { mutableStateOf<au.mainspring.nativeapp.niimbot.NiimbotLabelData?>(null) }
-    niimbotLabel?.let { au.mainspring.nativeapp.niimbot.NiimbotPrintDialog(it) { niimbotLabel = null } }
+    var niimbotLabels by remember { mutableStateOf<List<au.mainspring.nativeapp.niimbot.NiimbotLabelData>?>(null) }
+    niimbotLabels?.let { au.mainspring.nativeapp.niimbot.NiimbotPrintDialog(it, { niimbotLabels = null }) }
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     var statusPicker by remember { mutableStateOf(false) }
     var addNoteOpen by remember { mutableStateOf(false) }
@@ -131,14 +131,8 @@ fun ShoeJobDetailScreen(
                 } catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "Could not print", android.widget.Toast.LENGTH_LONG).show() }
             },
             DetailAction("Print label (Niimbot)", true) {
-                val pairs = listOfNotNull(j.shoe) + j.extraShoes.orEmpty().mapNotNull { it.shoe }
-                niimbotLabel = au.mainspring.nativeapp.niimbot.NiimbotLabelData(
-                    jobNumber = j.jobNumber, customerName = state.customer?.fullName,
-                    itemTitle = pairs.joinToString("; ") { listOfNotNull(it.brand, it.shoeType, it.color).joinToString(" ") }.ifBlank { j.title },
-                    services = j.items.firstOrNull()?.name ?: j.title.takeIf { it.isNotBlank() },
-                    dateIn = formatShopDate(j.createdAt),
-                    qrText = au.mainspring.nativeapp.ui.intakeStatusUrl(apiBaseUrl, au.mainspring.nativeapp.ui.IntakeTicketKind.SHOE, j.statusToken),
-                )
+                niimbotLabels = au.mainspring.nativeapp.ui.shoeJobBundle(j, state.customer?.fullName, state.customer?.phone, au.mainspring.nativeapp.ui.JobPrintContext(
+                    apiBaseUrl, TokenStore.shopValue("name"), TokenStore.shopValue("phone"), { formatCents(it, currency) }, { formatShopDate(it) })).labels
             },
             DetailAction("Edit customer", adminReady && j.shoe?.customerId != null) { j.shoe?.customerId?.let(onEditCustomer) },
             DetailAction("Business account", adminReady && !state.accountBusy && TokenStore.canWorkJobs()) { vm.loadAccounts(); accountPicker = true },
