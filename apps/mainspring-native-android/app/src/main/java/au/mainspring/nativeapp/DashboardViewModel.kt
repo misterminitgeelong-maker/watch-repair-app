@@ -20,6 +20,8 @@ data class DashboardUiState(
     val summary: ReportsSummaryResponse? = null,
     val widgets: DashboardWidgetsResponse? = null,
     val inboxCount: Int? = null,
+    /** Number of accounts in the shop; only loaded for owners (null otherwise or on failure). */
+    val teamCount: Int? = null,
 )
 
 class DashboardViewModel : ViewModel() {
@@ -39,6 +41,7 @@ class DashboardViewModel : ViewModel() {
                 var widgets: DashboardWidgetsResponse? = null
                 var inbox: Int? = null
                 var err: String? = null
+                var team: Int? = null
                 coroutineScope {
                     val s = async {
                         try {
@@ -62,12 +65,17 @@ class DashboardViewModel : ViewModel() {
                             null
                         }
                     }
+                    val t = async {
+                        if(!TokenStore.canManageTeam()) null
+                        else try { api.teamUsers().size } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+                    }
+                    team = t.await()
                     inbox = i.await()
                     summary = s.await()
                     widgets = w.await()
                 }
                 _state.update {
-                    it.copy(loading = false, summary = summary, widgets = widgets, inboxCount = inbox, error = err)
+                    it.copy(loading = false, summary = summary, widgets = widgets, inboxCount = inbox, teamCount = team, error = err)
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = e.userMessage()) }

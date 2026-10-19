@@ -116,7 +116,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     loading = false,
                     error = null,
                     loggedIn = true,
-                    sessionSummary = "${s.user.fullName} · @${s.tenantSlug} · ${s.planCode}",
+                    sessionSummary = friendlySessionSummary(s.user.fullName, s.user.role, s.shopName, s.planCode),
                     features = s.enabledFeatures.toSet(),
                     sessionKey = "${s.tenantId}|${s.user.id}|$generation",
                     sites = s.sites.orEmpty(),
@@ -228,3 +228,11 @@ private fun humanError(e: Exception): String {
     if (e is java.io.IOException) return "Can't reach the server. Check your internet connection or the server address under Connection settings."
     return e.message ?: "Sign-in failed. Try again."
 }
+
+
+private fun words(code: String) = code.replace('_', ' ').trim().replaceFirstChar { it.uppercase() }
+
+/** "Name · Role · Shop · Pro plan": no internal slug, role and plan in words. The plan is always the last part. */
+fun friendlySessionSummary(fullName: String, role: String, shopName: String?, planCode: String): String =
+    listOfNotNull(fullName.trim().takeIf { it.isNotBlank() }, role.takeIf { it.isNotBlank() }?.let(::words), shopName?.trim()?.takeIf { it.isNotBlank() },
+        planCode.takeIf { it.isNotBlank() }?.let { words(it) + " plan" }).joinToString(" · ")

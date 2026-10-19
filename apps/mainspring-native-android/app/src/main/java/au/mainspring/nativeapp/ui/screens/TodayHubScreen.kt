@@ -69,7 +69,7 @@ fun TodayHubScreen(
     androidx.compose.runtime.LaunchedEffect(hub.loading, dash.loading) { if(!hub.loading && !dash.loading) refreshedAt = System.currentTimeMillis() }
     LazyColumn(Modifier.fillMaxSize().testTag("home-list"), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if(calibre) {
-            item { CalibreHomeTop(hub, canWork, features, TokenStore.canManageInvoices(), TokenStore.canManageTeam(), widgets, summary, planName, siteCount, refreshedAt, hub.loading || dash.loading,
+            item { CalibreHomeTop(hub, canWork, features, TokenStore.canManageInvoices(), TokenStore.canManageTeam(), widgets, summary, planName, siteCount, dash.teamCount, refreshedAt, hub.loading || dash.loading,
                 { jobs.refresh(); dashboard.refresh() }, onNewIntake, onViewAll, onOpenQuotes, onOpenInvoices, onOpenRoute, onOpenJob) }
         } else {
         item { LargeHeader((shopName ?: TokenStore.shopValue("name") ?: "Your shop") + " · Shop workspace", "Today", onAdd = if(canWork) onNewIntake else null, addDescription = "New intake") }
@@ -251,7 +251,18 @@ private fun queueServiceLabel(service: String) = when(service) { "watch" -> "Wat
     Surface(modifier, color = MaterialTheme.colorScheme.surface, shape = CalibreCardShape, border = HomeBorder) { Column(Modifier.fillMaxWidth(), content = content) }
 }
 
-private data class ChecklistItem(val label: String, val done: Boolean, val route: String)
+internal data class ChecklistItem(val label: String, val done: Boolean, val route: String)
+
+/** Launch checklist as on the web. "Set up team accounts" needs the user count, so it only appears once that is known (owners). */
+internal fun launchChecklistItems(customers: Int, jobs: Int, quotesSent: Boolean, invoices: Int, teamCount: Int?): List<ChecklistItem> = buildList {
+    add(ChecklistItem("Add your first customer", customers > 0, "customers"))
+    add(ChecklistItem("Create a watch repair", jobs > 0, "watch_jobs"))
+    add(ChecklistItem("Send a quote", quotesSent, "quotes"))
+    add(ChecklistItem("Raise an invoice", invoices > 0, "invoices"))
+    if(teamCount != null) add(ChecklistItem("Set up team accounts", teamCount > 1, "team"))
+}
+
+internal fun checklistProgressLabel(items: List<ChecklistItem>) = "Progress ${items.count { it.done }}/${items.size} completed"
 
 private fun checklistKey() = "launch_checklist_dismissed_" + (TokenStore.shopValue("name") ?: "shop")
 private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mainspring_home", android.content.Context.MODE_PRIVATE)
@@ -264,7 +275,7 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Launch checklist", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-                Text("Progress ${items.count { it.done }}/${items.size} completed", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(checklistProgressLabel(items), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton({ dismissed = true; runCatching { checklistPrefs()?.edit()?.putBoolean(checklistKey(), true)?.apply() } }, Modifier.heightIn(min = 44.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
                 Text("Dismiss", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
@@ -287,7 +298,7 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
 @Composable private fun CalibreHomeTop(
     hub: au.mainspring.nativeapp.JobsHubState, canWork: Boolean, features: Set<String>, canMoney: Boolean, isOwner: Boolean,
     widgets: au.mainspring.nativeapp.api.DashboardWidgetsResponse?, summary: au.mainspring.nativeapp.api.ReportsSummaryResponse?,
-    planName: String?, siteCount: Int, refreshedAt: Long, refreshing: Boolean, onRefresh: () -> Unit,
+    planName: String?, siteCount: Int, teamCount: Int?, refreshedAt: Long, refreshing: Boolean, onRefresh: () -> Unit,
     onNewIntake: () -> Unit, onViewAll: () -> Unit, onOpenQuotes: () -> Unit, onOpenInvoices: () -> Unit, onOpenRoute: (String) -> Unit, onOpenJob: (HubJob) -> Unit,
 ) {
     val financials = summary?.financials as au.mainspring.nativeapp.api.ReportsFinancials?
@@ -330,12 +341,7 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
         }
         if(summary != null) {
             val funnel = summary.salesFunnel as au.mainspring.nativeapp.api.SalesFunnelSummary?
-            LaunchChecklist(listOf(
-                ChecklistItem("Add your first customer", summary.counts.customers > 0, "customers"),
-                ChecklistItem("Create a watch repair", summary.counts.jobs > 0, "watch_jobs"),
-                ChecklistItem("Send a quote", (funnel?.sentQuotes ?: 0) > 0 || summary.counts.quotes > 0, "quotes"),
-                ChecklistItem("Raise an invoice", summary.counts.invoices > 0, "invoices"),
-            ), onOpenRoute)
+            LaunchChecklist(launchChecklistItems(summary.counts.customers, summary.counts.jobs, (funnel?.sentQuotes ?: 0) > 0 || summary.counts.quotes > 0, summary.counts.invoices, teamCount), onOpenRoute)
         }
         val by = hub.jobs.filter { it.active }.groupingBy { it.service }.eachCount()
         val caption = listOfNotNull(
