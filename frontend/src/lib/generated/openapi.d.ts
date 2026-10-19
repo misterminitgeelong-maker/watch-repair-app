@@ -12822,6 +12822,8 @@ export interface components {
             shop_number?: string | null;
             /** Region */
             region?: ("AU" | "NZ") | null;
+            /** Timezone */
+            timezone?: string | null;
         };
         /** ShopMobileBookingCreate */
         ShopMobileBookingCreate: {
