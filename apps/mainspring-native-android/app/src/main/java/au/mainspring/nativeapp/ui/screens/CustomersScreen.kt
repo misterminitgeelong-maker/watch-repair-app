@@ -52,7 +52,7 @@ fun CustomersScreen(
     RefreshOnResume(viewModel::refresh)
     val calibre = LocalCalibre.current
     au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.fillMaxSize()) { LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp), verticalArrangement = Arrangement.spacedBy(if(calibre) 0.dp else 8.dp)) {
-        if(calibre) item { CalibreCustomersTop(state.query, state.sort, viewModel::setQuery, viewModel::setSort, viewModel::refresh, onNewCustomer) }
+        if(calibre) item { CalibreCustomersTop(state.query, state.sort, viewModel::setQuery, viewModel::setSort, viewModel::refresh, onNewCustomer, state.customers) }
         else {
             item { LargeHeader("Directory · Accounts", "Customers", onAdd = onNewCustomer, addDescription = "New customer") }
             item {
@@ -128,7 +128,7 @@ fun CustomersScreen(
 }
 
 /** Web-style customers header: title and Add Customer, then search and a sort select in one row. */
-@Composable private fun CalibreCustomersTop(query: String, sort: String, onQuery: (String) -> Unit, onSort: (String) -> Unit, onSearch: () -> Unit, onNewCustomer: () -> Unit) {
+@Composable private fun CalibreCustomersTop(query: String, sort: String, onQuery: (String) -> Unit, onSort: (String) -> Unit, onSearch: () -> Unit, onNewCustomer: () -> Unit, customers: List<CustomerRead>) {
     var open by remember { mutableStateOf(false) }
     var mergeInfo by remember { mutableStateOf(false) }
     Column(Modifier.padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -155,7 +155,5 @@ fun CustomersScreen(
             }
         }
     }
-    if(mergeInfo) AlertDialog(onDismissRequest = { mergeInfo = false }, title = { Text("Merge duplicates") },
-        text = { Text("Open the customer you want to keep and choose \"Merge a duplicate customer\" on their page. Their watches and jobs move across and the duplicate is deleted.") },
-        confirmButton = { TextButton({ mergeInfo = false }) { Text("OK") } })
+    if(mergeInfo) MergeDuplicatesSheet(customers, { mergeInfo = false }, onMerged = onSearch)
 }
