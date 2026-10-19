@@ -119,7 +119,7 @@ fun MainspringAppShell(
     var switchOpen by remember { mutableStateOf(false) }
     val selectedSite = sites.firstOrNull { it.tenantId == activeSiteId }
     val todayContent: @Composable () -> Unit = {
-        au.mainspring.nativeapp.ui.screens.TodayHubScreen(features, selectedSite?.name, planName = sessionSummary?.substringAfterLast(" · ", "")?.takeIf { it.isNotBlank() }, siteCount = sites.size.coerceAtLeast(1),
+        au.mainspring.nativeapp.ui.screens.TodayHubScreen(features, selectedSite?.name, planName = sessionSummary?.substringAfterLast(" · ", "")?.removeSuffix(" plan")?.takeIf { it.isNotBlank() }, siteCount = sites.size.coerceAtLeast(1),
             onNewIntake = { navController.navigate("new_intake") },
             onOpenJob = { navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(it)) },
             onViewAll = { navController.navigate("jobs") { launchSingleTop = true } },
