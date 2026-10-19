@@ -28,6 +28,8 @@ interface MainspringApi {
     @GET("v1/reports/auto-key/commission") suspend fun mobileCommission(@Query("date_from") from: String, @Query("date_to") to: String): com.google.gson.JsonObject
     @POST("v1/users") suspend fun createTeamUser(@Body body: com.google.gson.JsonObject): TeamUser
     @retrofit2.http.PATCH("v1/users/{id}") suspend fun updateTeamUser(@Path("id") id: String,@Body body: com.google.gson.JsonObject): TeamUser
+    @GET("v1/auto-key-jobs/quote-suggestions") suspend fun quoteSuggestions(@Query("job_type") jobType: String?, @Query("key_quantity") quantity: Int, @Query("pricing_tier") tier: String, @Query("additional_presets") presets: String?): QuoteSuggestionRead
+    @GET("v1/vehicle-key-specs/search") suspend fun vehicleKeySpecs(@Query("make") make: String?, @Query("model") model: String?, @Query("year") year: Int?): VehicleKeySpecSearch
     @GET("v1/vehicle-key-specs/job-context") suspend fun vehicleJobContext(@Query("make") make: String?,@Query("model") model: String?,@Query("year") year: Int?,@Query("job_type") type: String?,@Query("blade_code") blade: String?): com.google.gson.JsonObject
     @GET("v1/users") suspend fun teamUsers(): List<TeamUser>
     @GET("v1/pool")
