@@ -253,7 +253,8 @@ fun MainspringAppShell(
                 composable("jobs") { jobsContent() }
                 composable("watch_jobs") {
                     JobsScreen(onOpenJob = { id -> navController.navigate("watchJob/$id") }, onNewJob = { navController.navigate("watch_intake") },
-                        onOpenQueue = { navController.navigate("repairQueue") })
+                        onOpenQueue = { navController.navigate("repairQueue") },
+                        onLogWork = { navController.navigate("watchJob/$it?tab=work") })
                 }
                 composable("watch_intake?customerId={customerId}", arguments = listOf(navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
                     WatchIntakeScreen(onSwitchService = { key -> navController.navigate(when(key) { "shoe" -> "shoe_intake"; "auto_key" -> "mobile_intake"; else -> "watch_intake" }) { popUpTo("new_intake") { inclusive = false }; launchSingleTop = true } },
@@ -303,8 +304,8 @@ fun MainspringAppShell(
                         onBack = { navController.popBackStack() }, onCustomer = { navController.popBackStack() })
                 }
                 composable(
-                    route = "watchJob/{jobId}",
-                    arguments = listOf(navArgument("jobId") { type = NavType.StringType }),
+                    route = "watchJob/{jobId}?tab={tab}",
+                    arguments = listOf(navArgument("jobId") { type = NavType.StringType }, navArgument("tab") { type = NavType.StringType; defaultValue = "overview" }),
                 ) { entry ->
                     val id = entry.arguments?.getString("jobId") ?: return@composable
                     JobDetailScreen(
@@ -320,6 +321,7 @@ fun MainspringAppShell(
                         onDuplicated = { navController.navigate("watchJob/$it") },
                         onEditCustomer = { navController.navigate("editCustomer/$it") },
                         onEditWatch = { c, w -> navController.navigate("watchEditor/$c?watchId=$w") },
+                        initialTab = entry.arguments?.getString("tab") ?: "overview",
                     )
                 }
                 composable("jobQuotes/{jobId}", arguments = listOf(navArgument("jobId") { type = NavType.StringType })) { entry ->
@@ -392,6 +394,7 @@ fun MainspringAppShell(
                         onOpenJob = { id -> navController.navigate("shoeJob/$id") },
                         onNewJob = { navController.navigate("shoe_intake") },
                         onOpenQueue = { navController.navigate("repairQueue") },
+                        onLogWork = { navController.navigate("shoeJob/$it?tab=work") },
                     )
                 }
                 composable("shoe_intake?customerId={customerId}", arguments = listOf(navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
@@ -399,8 +402,8 @@ fun MainspringAppShell(
                         services = listOfNotNull(if("watch" in features) "watch" to "Watch" else null, if("shoe" in features) "shoe" to "Shoe" else null, if("auto_key" in features) "auto_key" to "Mobile" else null), preselectedCustomerId = entry.arguments?.getString("customerId"), onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("shoeJob/$it") { popUpTo("shoe_intake?customerId={customerId}") { inclusive = true } } })
                 }
                 composable(
-                    route = "shoeJob/{jobId}",
-                    arguments = listOf(navArgument("jobId") { type = NavType.StringType }),
+                    route = "shoeJob/{jobId}?tab={tab}",
+                    arguments = listOf(navArgument("jobId") { type = NavType.StringType }, navArgument("tab") { type = NavType.StringType; defaultValue = "overview" }),
                 ) { entry ->
                     val id = entry.arguments?.getString("jobId") ?: return@composable
                     ShoeJobDetailScreen(
@@ -413,6 +416,7 @@ fun MainspringAppShell(
                         onDeleted = { navController.popBackStack() },
                         onDuplicated = { navController.navigate("shoeJob/$it") },
                         onEditCustomer = { navController.navigate("editCustomer/$it") },
+                        initialTab = entry.arguments?.getString("tab") ?: "overview",
                     )
                 }
                 composable("auto_jobs") {

@@ -109,11 +109,12 @@ fun SavedViewsRow(
     onSave: (SavedJobView) -> Unit,
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 16.dp,
 ) {
     var naming by remember { mutableStateOf(false) }
     var managing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
-    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = horizontalPadding, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         views.forEach { v -> TabChip(selected = false, onClick = { onApply(v) }, label = { Text(v.name) }, modifier = Modifier.testTag("saved-view-${v.name}")) }
         TabChip(selected = false, onClick = { draft = ""; naming = true }, label = { Text("+ Save view") }, modifier = Modifier.testTag("saved-view-save"))

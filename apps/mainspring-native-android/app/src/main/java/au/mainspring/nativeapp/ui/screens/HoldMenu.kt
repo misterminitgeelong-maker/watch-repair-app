@@ -46,12 +46,12 @@ data class BoardMoveToast(val id: String, val from: String, val to: String, val 
 
 /**
  * One kanban ticket that opens on a normal tap and, on press-and-hold (about half a second, cancelled if the finger scrolls),
- * pops a small menu beside it: Open job, Move to (opens the stage list) and Call customer.
+ * pops a small menu beside it: Open job, Log work (when [onLogWork] is given), Move to (opens the stage list) and Call customer.
  * [targets] are (status, label) pairs; [onMove] gets the chosen status and the reason when [REASON_STATUSES] asked for one.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable internal fun HoldMenuTicket(label: String, status: String, targets: List<Pair<String, String>>, canMove: Boolean, phone: String?,
-    onOpen: () -> Unit, onMove: (status: String, reason: String?) -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    onOpen: () -> Unit, onMove: (status: String, reason: String?) -> Unit, modifier: Modifier = Modifier, onLogWork: (() -> Unit)? = null, content: @Composable () -> Unit) {
     var menu by remember { mutableIntStateOf(0) }  // 0 closed, 1 main, 2 stage list
     var reasonFor by remember { mutableStateOf<Pair<String, String>?>(null) }
     val haptic = LocalHapticFeedback.current
@@ -63,6 +63,7 @@ data class BoardMoveToast(val id: String, val from: String, val to: String, val 
         content()
         DropdownMenu(expanded = menu == 1, onDismissRequest = { menu = 0 }, modifier = Modifier.testTag("hold-menu")) {
             DropdownMenuItem(text = { Text("Open job") }, onClick = { menu = 0; onOpen() }, modifier = Modifier.testTag("hold-open"))
+            if(onLogWork != null) DropdownMenuItem(text = { Text("Log work") }, onClick = { menu = 0; onLogWork() }, modifier = Modifier.testTag("hold-log-work"))
             if(canMoveNow) DropdownMenuItem(text = { Row(Modifier.fillMaxWidth()) { Text("Move to", Modifier.weight(1f)); Text("›") } }, onClick = { menu = 2 }, modifier = Modifier.testTag("hold-move"))
             if(!phone.isNullOrBlank()) DropdownMenuItem(text = { Text("Call customer") }, modifier = Modifier.testTag("hold-call"), onClick = {
                 menu = 0

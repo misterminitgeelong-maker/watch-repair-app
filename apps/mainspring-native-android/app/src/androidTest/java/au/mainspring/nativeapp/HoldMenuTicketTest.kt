@@ -20,9 +20,12 @@ class HoldMenuTicketTest {
     private var opened = 0
     private val moves = mutableListOf<Pair<String, String?>>()
 
-    private fun ticket(canMove: Boolean = true, phone: String? = "0400 111 222") {
+    private var logged = 0
+
+    private fun ticket(canMove: Boolean = true, phone: String? = "0400 111 222", logWork: Boolean = false) {
         compose.setContent { MainspringTheme {
-            HoldMenuTicket("Strap replacement", "awaiting_quote", targets, canMove, phone, { opened++ }, { st, why -> moves.add(st to why) }, Modifier_tag()) { Text("Strap replacement") }
+            HoldMenuTicket("Strap replacement", "awaiting_quote", targets, canMove, phone, { opened++ }, { st, why -> moves.add(st to why) }, Modifier_tag(),
+                onLogWork = if (logWork) ({ logged++ }) else null) { Text("Strap replacement") }
         } }
     }
     private fun Modifier_tag() = androidx.compose.ui.Modifier.testTag("ticket")
@@ -37,6 +40,21 @@ class HoldMenuTicketTest {
         compose.onNodeWithText("Move to").assertExists()
         compose.onNodeWithText("Call customer").assertExists()
         Assert.assertEquals(1, opened)
+    }
+
+    @Test fun logWorkItemOpensWorkLogsWhenOffered() {
+        ticket(logWork = true)
+        compose.onNodeWithTag("ticket").performTouchInput { longClick() }
+        compose.onNodeWithTag("hold-log-work").assertExists().performClick()
+        Assert.assertEquals(1, logged)
+        Assert.assertEquals(0, opened)
+        compose.onNodeWithTag("hold-menu").assertDoesNotExist()
+    }
+
+    @Test fun noLogWorkItemWhenNotOffered() {
+        ticket()
+        compose.onNodeWithTag("ticket").performTouchInput { longClick() }
+        compose.onNodeWithTag("hold-log-work").assertDoesNotExist()
     }
 
     @Test fun moveToListsStagesMarksTheCurrentOneAndMovesInOneTap() {
