@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from app.database import create_db_and_tables, engine
 from app.main import app
 from app.models import ShopMobileBookingRequest, SmsLog, Tenant
-from network_link_helpers import link_and_accept
+from network_link_helpers import link_and_accept, mark_owner_accepted
 
 create_db_and_tables()
 client = TestClient(app)
@@ -66,7 +66,7 @@ def _site_by_slug(headers: dict[str, str], tenant_slug: str) -> dict:
     return next(site for site in res.json()["sites"] if site["tenant_slug"] == tenant_slug)
 
 
-def _setup_parent_network(suffix: str) -> tuple[dict[str, str], dict[str, str], str, str]:
+def _setup_parent_network(suffix: str, *, live: bool = True) -> tuple[dict[str, str], dict[str, str], str, str]:
     """HQ (enterprise) links operator + booking_only shop under one parent account."""
     hq_email = f"hq-{suffix}@test.local"
     op_email = f"op-{suffix}@test.local"
@@ -98,6 +98,9 @@ def _setup_parent_network(suffix: str) -> tuple[dict[str, str], dict[str, str], 
         json={"tenant_slug": op_slug, "owner_email": op_email},
     )
     assert link.status_code == 200, link.text
+    if live:
+        # Operators only receive work once their owner has accepted the invite.
+        mark_owner_accepted(UUID(op_boot["tenant_id"]))
 
     route = client.post(
         "/v1/parent-accounts/me/mobile-lead-routes",
@@ -522,3 +525,10 @@ def test_shop_notified_on_accept_when_shop_phone_configured():
     assert len(logs) == 1
     assert logs[0].to_phone == "+61400999888"
     assert "accepted" in logs[0].body.lower()
+
+
+def test_operator_without_accepted_invite_is_not_offered_work():
+    shop_h, _op_h, _shop_tid, _op_tid = _setup_parent_network(uuid4().hex[:8], live=False)
+    assert client.get("/v1/shop-mobile-bookings/operators", headers=shop_h).json() == []
+    res = client.post("/v1/shop-mobile-bookings", headers=shop_h, json=_booking_payload())
+    assert res.status_code == 422, res.text

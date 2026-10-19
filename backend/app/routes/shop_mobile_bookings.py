@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import update as sa_update
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from ..config import settings
@@ -14,6 +16,7 @@ from ..parent_network import (
     mobile_dispatch_parent_ids_for_tenant,
     resolve_common_parent_id,
     tenant_dispatch_enabled,
+    tenant_is_live,
 )
 from ..database import get_session, unscoped_session
 from ..dispatch_utils import geocode_address
@@ -221,7 +224,7 @@ def _tenant_has_auto_key(session: Session, tenant_id: UUID) -> bool:
 
 def _tenant_is_bookable_operator(session: Session, tenant_id: UUID) -> bool:
     """An operator is whatever its network says it is, not whatever it is billed for."""
-    return tenant_dispatch_enabled(session, tenant_id)
+    return tenant_dispatch_enabled(session, tenant_id) and tenant_is_live(session, tenant_id)
 
 
 def _next_auto_key_job_number(session: Session, tenant_id: UUID) -> str:
@@ -300,6 +303,7 @@ def _maybe_move_pending_to_pool(session: Session, row: ShopMobileBookingRequest)
             description=f"Shop booking from {shop_label} — no response within the offer window.",
             status="unclaimed",
             current_ring=1,
+            parent_account_id=row.parent_account_id,
         )
         session.add(intake)
         session.flush()
@@ -428,6 +432,8 @@ def list_operators(
         for tenant in dispatch_operators_for_parent(session, parent_id):
             if tenant.id == auth.tenant_id or tenant.id in seen:
                 continue
+            if not tenant_is_live(session, tenant.id):
+                continue  # invite not accepted yet: never offered work
             seen.add(tenant.id)
             options.append(
                 ShopMobileOperatorOption(
@@ -750,6 +756,20 @@ def accept_booking(
 
     conflict_warning = _schedule_conflict_warning(session, row.target_operator_tenant_id, row.preferred_scheduled_at)
 
+    # Take the booking with one conditional UPDATE before creating anything: of two
+    # concurrent accepts (or an accept racing cancel/decline/expiry) only one matches
+    # status='pending'; the other gets a clean 409 instead of a duplicate job / 500.
+    taken = session.exec(
+        sa_update(ShopMobileBookingRequest)
+        .where(ShopMobileBookingRequest.id == row.id)
+        .where(ShopMobileBookingRequest.status == "pending")
+        .values(status="accepting")
+    )
+    if taken.rowcount != 1:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="This booking is no longer pending")
+    session.refresh(row)
+
     operator_tid = row.target_operator_tenant_id
     ak_count = int(
         session.exec(select(func.count()).select_from(AutoKeyJob).where(AutoKeyJob.tenant_id == operator_tid)).one()
@@ -854,7 +874,11 @@ def accept_booking(
             event_summary=f"{shop_name} booking accepted as job #{job.job_number}",
         )
     )
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="This booking is no longer pending")
     session.refresh(row)
     _notify_shop_booking_outcome(session, row, outcome="accepted")
     session.commit()
