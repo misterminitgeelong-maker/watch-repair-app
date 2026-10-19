@@ -1,12 +1,14 @@
 """Ring-map dispatch: public intake form + operator job pool + claim endpoint."""
 
-from datetime import timezone
+import re
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from sqlalchemy import update as sa_update
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, Field
-from sqlmodel import Session, func, select
+from sqlmodel import Session, col, func, select
 
 from ..database import get_session
 from ..dependencies import (
@@ -18,8 +20,14 @@ from ..dependencies import (
 )
 from ..dispatch_utils import geocode_address, operator_ring_for_job
 from ..limiter import limiter
-from ..parent_network import tenant_is_operator
-from ..models import AutoKeyJob, Customer, IntakeJob, Tenant, TenantEventLog
+from ..parent_network import (
+    mobile_dispatch_parent_ids_for_tenant,
+    parent_ids_for_tenant,
+    tenant_is_live,
+    tenant_is_operator,
+)
+from ..public_dedupe import find_existing, make_ref
+from ..models import AutoKeyJob, Customer, IntakeJob, ParentAccount, Tenant, TenantEventLog
 
 router = APIRouter(tags=["intake-dispatch"])
 
@@ -28,6 +36,34 @@ def _require_dispatch_enabled(session: Session, tenant_id: UUID) -> None:
     tenant = session.get(Tenant, tenant_id)
     if not tenant or not tenant.is_active or tenant.mobile_dispatch_paused or tenant.merged_into_tenant_id:
         raise HTTPException(status_code=409, detail="New dispatch is paused for this shop")
+    # Same rule as website-lead routing: only operators whose owner accepted the invite.
+    if not tenant_is_live(session, tenant_id):
+        raise HTTPException(status_code=409, detail="Dispatch opens once your account invite is accepted")
+
+
+def _operator_parent_ids(session: Session, tenant_id: UUID) -> list[UUID]:
+    """HQ networks this operator belongs to (site link or explicit dispatch consent)."""
+    return list(dict.fromkeys(
+        parent_ids_for_tenant(session, tenant_id) + mobile_dispatch_parent_ids_for_tenant(session, tenant_id)
+    ))
+
+
+_AU_STATES = r"(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)"
+_AREA_RE = re.compile(rf"([A-Za-z][A-Za-z .'\-]*?)\s*,?\s+({_AU_STATES})\s+(\d{{4}})\s*$", re.IGNORECASE)
+
+
+def redact_job_address(address: str | None) -> dict[str, str | None]:
+    """Suburb / postcode only. Street, number and anything else is withheld pre-claim."""
+    text = (address or "").strip().rstrip(",")
+    m = _AREA_RE.search(text)
+    if m:
+        suburb = m.group(1).split(",")[-1].strip()
+        return {"suburb": suburb, "state": m.group(2).upper(), "postcode": m.group(3)}
+    pc = re.search(r"\b(\d{4})\s*$", text)
+    if pc:
+        before = text[: pc.start()].rstrip(", ")
+        return {"suburb": before.split(",")[-1].strip() or None, "state": None, "postcode": pc.group(1)}
+    return {"suburb": None, "state": None, "postcode": None}
 
 # ---------------------------------------------------------------------------
 # Public intake endpoint (no auth — embedded on customer-facing website)
@@ -44,16 +80,44 @@ class IntakeSubmitBody(BaseModel):
     vehicle_year: str | None = Field(default=None, max_length=10)
     registration_plate: str | None = Field(default=None, max_length=32)
     description: str | None = Field(default=None, max_length=4000)
+    #: Which HQ network's pool this goes to. Optional when only one HQ exists.
+    ingest_public_id: UUID | None = None
 
 
 @router.post("/v1/public/intake")
 @limiter.limit("30/minute")
 async def submit_public_intake(
     request: Request,
+    response: Response,
     body: IntakeSubmitBody,
     session: Session = Depends(get_session),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", max_length=200),
 ):
-    """Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool."""
+    """Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.
+
+    Idempotent: a repeat of the same submission (same Idempotency-Key, or same normalised
+    payload within 10 minutes) returns the original job and creates nothing new.
+    """
+    if body.ingest_public_id is not None:
+        parent = session.exec(
+            select(ParentAccount).where(ParentAccount.mobile_lead_ingest_public_id == body.ingest_public_id)
+        ).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Unknown intake form")
+        parent_id: UUID | None = parent.id
+    else:
+        # Single-HQ deployments need no id; with several the job is unscoped and
+        # stays out of every pool until an admin assigns it.
+        parents = session.exec(select(ParentAccount.id).limit(2)).all()
+        parent_id = parents[0] if len(parents) == 1 else None
+
+    ref, is_key = make_ref(
+        parent_id, idempotency_key, body.model_dump(mode="json", exclude={"ingest_public_id"})
+    )
+    existing = find_existing(session, IntakeJob, ref, is_client_key=is_key)
+    if existing is not None:
+        response.headers["X-Idempotent-Replay"] = "true"
+        return {"id": str(existing.id), "message": "Job submitted. A technician will be in touch shortly."}
     try:
         lat, lng = await geocode_address(body.job_address)
     except ValueError as exc:
@@ -71,9 +135,19 @@ async def submit_public_intake(
         vehicle_year=body.vehicle_year.strip() if body.vehicle_year else None,
         registration_plate=body.registration_plate.strip() if body.registration_plate else None,
         description=body.description.strip() if body.description else None,
+        parent_account_id=parent_id,
+        external_ref=ref,
     )
     session.add(job)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        existing = find_existing(session, IntakeJob, ref, is_client_key=is_key)
+        if existing is None:
+            raise
+        response.headers["X-Idempotent-Replay"] = "true"
+        return {"id": str(existing.id), "message": "Job submitted. A technician will be in touch shortly."}
     session.refresh(job)
     return {"id": str(job.id), "message": "Job submitted. A technician will be in touch shortly."}
 
@@ -98,9 +172,13 @@ def list_pool(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
+    parent_ids = _operator_parent_ids(session, auth.tenant_id)
+    if not parent_ids:
+        return []
     unclaimed = session.exec(
         select(IntakeJob)
         .where(IntakeJob.status == "unclaimed")
+        .where(col(IntakeJob.parent_account_id).in_(parent_ids))
         .order_by(IntakeJob.created_at)
     ).all()
 
@@ -115,15 +193,15 @@ def list_pool(
             continue
         if max_ring is not None and ring > max_ring:
             continue
+        # Pre-acceptance view: area + job type + vehicle make/model only. Name, street
+        # address, plate, phone and free-text notes are released by /claim.
         results.append({
             "id": str(job.id),
-            "customer_name": job.customer_name,
-            "job_address": job.job_address,
+            "job_type": "Mobile Key",
+            **redact_job_address(job.job_address),
             "vehicle_make": job.vehicle_make,
             "vehicle_model": job.vehicle_model,
             "vehicle_year": job.vehicle_year,
-            "registration_plate": job.registration_plate,
-            "description": job.description,
             "ring": ring,
             "created_at": job.created_at.isoformat(),
         })
@@ -149,7 +227,10 @@ def claim_pool_job(
     _require_dispatch_enabled(session, auth.tenant_id)
 
     job = session.get(IntakeJob, job_id)
-    if not job:
+    if not job or job.parent_account_id is None or job.parent_account_id not in _operator_parent_ids(
+        session, auth.tenant_id
+    ):
+        # Other HQs' jobs are indistinguishable from jobs that do not exist.
         raise HTTPException(status_code=404, detail="Job not found")
     if job.status != "unclaimed":
         raise HTTPException(status_code=409, detail="Job has already been claimed.")
@@ -163,7 +244,6 @@ def claim_pool_job(
 
     # Claim with one conditional UPDATE so two operators tapping at once can't
     # both win: whoever's statement runs second matches no row.
-    from datetime import datetime
     claimed = session.exec(
         sa_update(IntakeJob)
         .where(IntakeJob.id == job.id)
@@ -199,6 +279,11 @@ def claim_pool_job(
         "auto_key_job_id": str(ak_job.id),
         "job_number": ak_job.job_number,
         "customer_id": str(customer.id),
+        # Released only now that the job is this operator's.
+        "customer_name": job.customer_name,
+        "customer_phone": job.customer_phone,
+        "job_address": job.job_address,
+        "registration_plate": job.registration_plate,
     }
 
 

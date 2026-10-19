@@ -229,6 +229,10 @@ class IntakeJob(SQLModel, table=True):
     #: Set once this job has been folded into a "jobs waiting nearby" digest alert — a job is
     #: alerted at most once, ever, regardless of how long it stays unclaimed after that.
     alerted_at: Optional[datetime] = Field(default=None, index=True)
+    #: The HQ network this job belongs to. Pool listing/claim are scoped to it.
+    parent_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="parentaccount.id")
+    #: Public-submission dedupe key; see ProspectLead.external_ref.
+    external_ref: Optional[str] = Field(default=None, max_length=200, sa_column_kwargs={"unique": True})
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 #: What a site *is* inside its network, independent of what it is billed for.
@@ -574,6 +578,9 @@ class ProspectLead(SQLModel, table=True):
     visit_scheduled_at: Optional[datetime] = None
     next_follow_up_on: Optional[date] = None
     customer_account_id: Optional[UUID] = Field(default=None, index=True)
+    #: Public-submission dedupe key (``k:<parent>:<hash>`` for a client Idempotency-Key,
+    #: ``f:<parent>:<fingerprint>:<bucket>`` for a payload fingerprint). Unique when set.
+    external_ref: Optional[str] = Field(default=None, max_length=200, sa_column_kwargs={"unique": True})
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
