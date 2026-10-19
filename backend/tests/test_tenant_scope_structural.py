@@ -245,6 +245,7 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
         "platform_hqs",          # platform admin creates and configures company HQs (a new tenant plus its network)
         "shop_mobile_bookings",  # dispatch between a requesting and an operator shop
         "shop_owner_invites",    # onboards a shop that is not the caller's tenant
+        "sms_usage",              # HQ owner or platform admin reads a linked operator's monthly SMS count
     }
     assert actual == expected, (
         "the set of tenant-boundary-crossing route modules changed.\n"

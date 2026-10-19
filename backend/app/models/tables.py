@@ -833,10 +833,38 @@ class SmsLog(SQLModel, table=True):
     body: str
     event: str  # e.g. "quote_sent", "job_live", "status_ready"
     provider_sid: Optional[str] = None  # Twilio message SID
-    status: str = "dry_run"  # "sent" | "dry_run" | "failed"
+    status: str = "dry_run"  # "sent" | "dry_run" | "failed" | "suppressed"
     attempt_count: int = 0
     last_attempt_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SmsSuppression(SQLModel, table=True):
+    """A phone number that texted STOP (or equivalent) to the shared sending number.
+
+    Deliberately NOT tenant-scoped: the opt-out is addressed to the number, which
+    every operator shares, and carriers/Twilio block all further traffic from it
+    regardless of which shop sent it. One row per normalised phone; `active` flips
+    back to False on START/UNSTOP so the history of the opt-out is kept.
+    `source_tenant_id` (not named tenant_id, so the tenant scope does not hide the
+    row from other shops' sends) is only the shop the reply was attributed to.
+    """
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    phone_normalized: str = Field(unique=True, index=True, max_length=32)
+    active: bool = Field(default=True, index=True)
+    keyword: Optional[str] = Field(default=None, max_length=32)
+    source_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", ondelete="SET NULL")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class InboundSmsReceipt(SQLModel, table=True):
+    """One row per Twilio MessageSid already processed by the inbound webhook, so a
+    replayed (validly signed) POST is a no-op. Written in the same transaction as
+    the message it guards."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    message_sid: str = Field(unique=True, index=True, max_length=64)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 class EmailLog(SQLModel, table=True):
     """Audit trail for every email sent or attempted — customer-facing and operator alerts.
