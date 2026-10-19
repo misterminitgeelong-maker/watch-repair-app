@@ -117,6 +117,14 @@ class Settings(BaseSettings):
     email_from_name: str = ""  # Display name; defaults to Mainspring
     email_reply_to_address: str = ""  # Monitored mailbox; per-message shop replies take precedence
 
+    # Soft fair-use ceiling on outbound SMS per operator per calendar month
+    # (Australia/Melbourne). Never blocks a send: crossing 80% and 100% records a
+    # TenantEventLog row and a warning. 0 disables metering.
+    sms_monthly_fair_use_limit: int = 300
+    # Inbound replies from a phone known to several shops are attributed to the shop
+    # that last texted it only if that text was this recent; otherwise nothing is acted on.
+    sms_attribution_window_days: int = 30
+
     # Sentry (leave blank to disable)
     sentry_dsn: str = ""
     # Release to tag Sentry events with, so a new error can be traced to the
