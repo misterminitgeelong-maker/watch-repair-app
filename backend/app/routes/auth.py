@@ -307,7 +307,11 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
     enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES[LOWEST_PLAN_CODE]))
     product = tenant_product(tenant)
     available_sites = _session_available_sites(session, tenant, user)
-    cal_tz = settings.schedule_calendar_timezone
+    cal_tz = (getattr(tenant, "timezone", None) or "").strip() or settings.schedule_calendar_timezone
+    try:
+        ZoneInfo(cal_tz)
+    except Exception:
+        cal_tz = settings.schedule_calendar_timezone
     now_shop = datetime.now(ZoneInfo(cal_tz))
     shop_today = now_shop.strftime("%Y-%m-%d")
     return AuthSessionResponse(

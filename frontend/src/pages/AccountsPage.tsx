@@ -621,6 +621,7 @@ function ShopIdentityCard() {
   const [shopNumber, setShopNumber] = useState('')
   const [abn, setAbn] = useState('')
   const [region, setRegion] = useState<'AU' | 'NZ'>('AU')
+  const [timezone, setTimezone] = useState('Australia/Melbourne')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [paymentInstructions, setPaymentInstructions] = useState('')
@@ -634,6 +635,7 @@ function ShopIdentityCard() {
       setShopNumber(data.shop_number ?? '')
       setAbn(data.abn ?? '')
       setRegion(data.region ?? 'AU')
+      setTimezone(data.timezone ?? 'Australia/Melbourne')
       setPhone(data.shop_phone ?? '')
       setEmail(data.shop_email ?? '')
       setPaymentInstructions(data.payment_instructions ?? '')
@@ -653,6 +655,7 @@ function ShopIdentityCard() {
       shop_number: shopNumber.trim() || null,
       abn: abn.trim() || null,
       region,
+      timezone,
       shop_phone: phone.trim() || null,
       shop_email: email.trim() || null,
       payment_instructions: paymentInstructions.trim() || null,
@@ -699,7 +702,13 @@ function ShopIdentityCard() {
           </label>
           <select
             value={region}
-            onChange={e => { setRegion(e.target.value as 'AU' | 'NZ'); setSaved(false) }}
+            onChange={e => {
+              const next = e.target.value as 'AU' | 'NZ'
+              setRegion(next)
+              if (next === 'NZ') setTimezone('Pacific/Auckland')
+              else if (timezone === 'Pacific/Auckland') setTimezone('Australia/Melbourne')
+              setSaved(false)
+            }}
             className="w-full px-3 py-2 rounded-lg text-sm outline-none"
           >
             <option value="AU">Australia (AUD, GST 10%)</option>
@@ -707,6 +716,34 @@ function ShopIdentityCard() {
           </select>
           <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
             Sets currency, GST rate, timezone and Stripe payouts for this shop.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Timezone
+          </label>
+          <select
+            value={timezone}
+            onChange={e => { setTimezone(e.target.value); setSaved(false) }}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+          >
+            {(region === 'NZ'
+              ? [['Pacific/Auckland', 'New Zealand']]
+              : [
+                  ['Australia/Melbourne', 'Victoria'],
+                  ['Australia/Sydney', 'New South Wales / ACT'],
+                  ['Australia/Hobart', 'Tasmania'],
+                  ['Australia/Brisbane', 'Queensland'],
+                  ['Australia/Adelaide', 'South Australia'],
+                  ['Australia/Darwin', 'Northern Territory'],
+                  ['Australia/Perth', 'Western Australia'],
+                ]
+            ).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+            Booking and reminder texts show times on this clock.
           </p>
         </div>
         <Input
