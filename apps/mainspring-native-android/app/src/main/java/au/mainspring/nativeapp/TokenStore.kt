@@ -73,7 +73,10 @@ object TokenStore {
     }
     internal fun context(): Context? = if(::appContext.isInitialized) appContext else null
     internal fun referencesPhoto(uri: String): Boolean = prefs.all.values.any { it is String && it.contains(uri) }
-    @Synchronized fun clearTokens() { prefs.edit().remove(K_ACCESS).remove(K_REFRESH).putLong(K_GENERATION, sessionGeneration() + 1).apply() }
+    @Synchronized fun clearTokens() { prefs.edit().remove(K_ACCESS).remove(K_REFRESH).remove("session_cache").putLong(K_GENERATION, sessionGeneration() + 1).apply() }
+    /** Last good session summary (features, role, sites...), so the app can open with no signal. Not a credential: the tokens stay separate. */
+    fun saveSessionCache(json: String?) { if(::prefs.isInitialized) prefs.edit().apply { if(json == null) remove("session_cache") else putString("session_cache", json) }.apply() }
+    fun sessionCache(): String? = if(::prefs.isInitialized) prefs.getString("session_cache", null)?.takeIf { it.isNotBlank() } else null
     @Synchronized fun expireSession(expectedGeneration: Long): Boolean {
         if(sessionGeneration() != expectedGeneration) return false
         clearTokens(); expired.tryEmit(sessionGeneration()); return true

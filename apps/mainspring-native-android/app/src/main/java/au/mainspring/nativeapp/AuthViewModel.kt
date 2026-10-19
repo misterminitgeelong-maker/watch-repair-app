@@ -11,6 +11,10 @@ import au.mainspring.nativeapp.api.MultiSiteLoginRequest
 import au.mainspring.nativeapp.api.SiteSwitchRequest
 import au.mainspring.nativeapp.api.SessionSite
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +23,8 @@ import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 data class AuthUiState(
+    /** True while the app is open from the saved session because the server could not be reached; it keeps retrying in the background. */
+    val offline: Boolean = false,
     /** True when a saved sign-in ended on its own: the sign-in screen then says "Welcome back" and offers the shop ID and email again. */
     val sessionEnded: Boolean = false,
     val loading: Boolean = false,
@@ -120,12 +126,21 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     subscriptionStatus = s.subscriptionStatus,
                     trialEnd = s.trialEnd,
                     role = s.user.role,
+                    offline = false,
                 )
             }
+            retry?.cancel()
+            TokenStore.saveSessionCache(com.google.gson.Gson().toJson(_state.value.copy(loading = false, error = null, offline = false, sessionEnded = false)))
         } catch (e: Exception) {
             if(TokenStore.sessionGeneration() != generation) return
             val expired = e is retrofit2.HttpException && e.code() == 401
             if (expired) TokenStore.clearTokens()
+            // No signal (or the server is down): open from the saved session instead of dropping to sign-in, then keep retrying.
+            if(!expired && isUnreachable(e)) {
+                if(_state.value.offline && _state.value.loggedIn) return
+                val cached = cachedSession(generation)
+                if(cached != null) { _state.value = cached; scheduleRetry(generation); return }
+            }
             _state.update {
                 it.copy(
                     loading = false,
@@ -133,6 +148,33 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     loggedIn = false,
                     sessionSummary = null,
                 )
+            }
+        }
+    }
+
+    private var retry: Job? = null
+
+    private fun isUnreachable(e: Exception) = e is java.io.IOException || (e is retrofit2.HttpException && e.code() >= 500)
+
+    private fun cachedSession(generation: Long): AuthUiState? {
+        if(TokenStore.getAccessToken() == null) return null
+        val json = TokenStore.sessionCache() ?: return null
+        val cached = try { com.google.gson.Gson().fromJson(json, AuthUiState::class.java) } catch(_: Exception) { null } ?: return null
+        if(!cached.loggedIn || cached.sessionKey == null) return null
+        return cached.copy(loading = false, error = null, offline = true, sessionEnded = false, loggedIn = true,
+            sessionKey = cached.sessionKey.substringBeforeLast('|') + "|" + generation)
+    }
+
+    /** Tries the server again when the connection comes back (or every so often), until the real session loads. */
+    private fun scheduleRetry(generation: Long) {
+        retry?.cancel()
+        retry = viewModelScope.launch {
+            var wait = 10_000L
+            while(TokenStore.sessionGeneration() == generation && _state.value.offline) {
+                if(!ConnectivityMonitor.online.value) withTimeoutOrNull(wait) { ConnectivityMonitor.online.first { it } } else delay(wait)
+                if(TokenStore.sessionGeneration() != generation || !_state.value.offline) return@launch
+                loadSessionOrClear()
+                wait = minOf(wait * 2, 120_000L)
             }
         }
     }
