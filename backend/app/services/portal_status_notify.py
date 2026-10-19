@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from ..config import settings
+from ..log_redaction import mask_email
 from ..email_client import send_portal_status_email
 from ..models import AutoKeyJob, Customer, PortalSession, RepairJob, Shoe, ShoeRepairJob, Tenant, Watch
 from .. import sms
@@ -62,7 +63,7 @@ def notify_portal_status_change(
                 tenant_id=tenant_id,
             )
         except Exception:
-            logger.exception("portal status email failed email=%s job=%s", email, job_number)
+            logger.exception("portal status email failed email=%s job=%s", mask_email(email), job_number)
 
     if notify_sms:
         customer = session.exec(

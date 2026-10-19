@@ -15,6 +15,7 @@ from sqlmodel import Session, select
 
 from .money import format_cents
 from .config import settings
+from .log_redaction import mask_phone, redact_text
 from .database import engine
 from .datetime_utils import format_in_timezone
 from .models import JobMessage, SmsLog, Tenant, User
@@ -84,7 +85,7 @@ def _send_sms(to: str, body: str) -> tuple[str | None, str, str | None, int]:
     one of "sent" | "dry_run" | "failed".
     """
     if not (settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number):
-        logger.info("[SMS DRY-RUN] To=%s | %s", to, body)
+        logger.info("[SMS DRY-RUN] To=%s | %s", mask_phone(to), redact_text(body))
         return None, "dry_run", None, 0
 
     max_attempts = inline_retry_attempts()
@@ -97,19 +98,19 @@ def _send_sms(to: str, body: str) -> tuple[str | None, str, str | None, int]:
                 from_=settings.twilio_from_number,
                 to=to,
             )
-            logger.info("[SMS SENT] sid=%s to=%s", message.sid, to)
+            logger.info("[SMS SENT] sid=%s to=%s", message.sid, mask_phone(to))
             return message.sid, "sent", None, attempt
         except Exception as exc:  # noqa: BLE001
             last_error = str(exc)[:400]
             status = http_status_from_exc(exc)
             if status is not None and 400 <= status < 500:
-                logger.error("[SMS ERROR] to=%s error=%s", to, exc)
+                logger.error("[SMS ERROR] to=%s error=%s", mask_phone(to), exc)
                 return None, "failed", last_error, pin_attempts_if_permanent(attempt, permanent=True)
             retryable = is_retryable_http_status(status) or is_timeout_exc(exc) or is_transport_exc(exc)
             if retryable and attempt < max_attempts:
                 time.sleep(backoff_seconds(attempt - 1))
                 continue
-            logger.error("[SMS ERROR] to=%s error=%s", to, exc)
+            logger.error("[SMS ERROR] to=%s error=%s", mask_phone(to), exc)
             return None, "failed", last_error, attempt
     return None, "failed", last_error, max_attempts
 
