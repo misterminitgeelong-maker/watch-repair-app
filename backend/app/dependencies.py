@@ -76,6 +76,7 @@ VALID_PLAN_CODES: set[str] = {
     "basic_all_tabs",
     "booking_only",
     "minit_hq",
+    "minit_operator",
     "pro",
 }
 
@@ -117,6 +118,7 @@ PLAN_LIMITS: dict[str, dict[str, int]] = {
     "basic_shoe_auto_key": {"max_users": 8, "max_repair_jobs": 0, "max_shoe_jobs": 2000, "max_auto_key_jobs": 1000},
     "basic_all_tabs": {"max_users": 10, "max_repair_jobs": 2000, "max_shoe_jobs": 2000, "max_auto_key_jobs": 1000},
     "booking_only": {"max_users": 5, "max_repair_jobs": 0, "max_shoe_jobs": 0, "max_auto_key_jobs": 0},
+    "minit_operator": {"max_users": 0, "max_repair_jobs": 0, "max_shoe_jobs": 0, "max_auto_key_jobs": 0},
     "minit_hq": {"max_users": 20, "max_repair_jobs": 0, "max_shoe_jobs": 0, "max_auto_key_jobs": 0},
     "pro": {"max_users": 0, "max_repair_jobs": 0, "max_shoe_jobs": 0, "max_auto_key_jobs": 0},
 }
@@ -166,6 +168,7 @@ PLAN_FEATURES: dict[str, set[str]] = {
     "basic_shoe_auto_key": {"shoe", "auto_key", "customer_accounts"},
     "basic_all_tabs": {"watch", "shoe", "auto_key", "customer_accounts", "shop_mobile_booking"},
     "booking_only": {"shop_mobile_booking"},
+    "minit_operator": {"auto_key", "customer_accounts"},  # same as basic_auto_key
     "minit_hq": {"shop_mobile_booking", "multi_site"},
     "pro": set(ALL_PLAN_FEATURES),
 }

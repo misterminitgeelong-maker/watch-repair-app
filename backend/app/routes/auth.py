@@ -307,7 +307,11 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
     enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES[LOWEST_PLAN_CODE]))
     product = tenant_product(tenant)
     available_sites = _session_available_sites(session, tenant, user)
-    cal_tz = settings.schedule_calendar_timezone
+    cal_tz = (getattr(tenant, "timezone", None) or "").strip() or settings.schedule_calendar_timezone
+    try:
+        ZoneInfo(cal_tz)
+    except Exception:
+        cal_tz = settings.schedule_calendar_timezone
     now_shop = datetime.now(ZoneInfo(cal_tz))
     shop_today = now_shop.strftime("%Y-%m-%d")
     return AuthSessionResponse(
@@ -1045,16 +1049,32 @@ def _revoke_for_refresh_reuse(session: Session, rs: RefreshSession, request: Req
 
 @router.get("/export-my-data", summary="Export tenant data for portability (GDPR-style)")
 def export_my_data(
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    """Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability."""
+    """Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.
+
+    Owner (or platform admin) only: this is a bulk dump of customer contact details.
+    Every export is recorded in the tenant event log.
+    """
     customers = session.exec(select(Customer).where(Customer.tenant_id == auth.tenant_id)).all()
     watches = session.exec(select(Watch).where(Watch.tenant_id == auth.tenant_id)).all()
     jobs = session.exec(select(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)).all()
     from ..models import Quote, Invoice
     quotes = session.exec(select(Quote).where(Quote.tenant_id == auth.tenant_id)).all()
     invoices = session.exec(select(Invoice).where(Invoice.tenant_id == auth.tenant_id)).all()
+    actor = session.get(User, auth.user_id)
+    session.add(
+        TenantEventLog(
+            tenant_id=auth.tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=actor.email if actor else None,
+            entity_type="tenant",
+            event_type="data_export",
+            event_summary=f"Exported tenant data ({len(customers)} customers, {len(jobs)} repair jobs)",
+        )
+    )
+    session.commit()
     return {
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "customers": [{"id": str(c.id), "full_name": c.full_name, "email": c.email, "phone": c.phone, "created_at": c.created_at.isoformat() if c.created_at else None} for c in customers],

@@ -4156,15 +4156,16 @@ export const adjustLoyaltyPoints = (customerId: string, points_delta: number, no
 
 // ── Intake dispatch (ring-map job pool) ──────────────────────────────────────
 
+/** Pre-claim view: area only. Name, street address, plate and phone are released by claiming. */
 export interface IntakePoolJob {
   id: string
-  customer_name: string
-  job_address: string
+  job_type: string
+  suburb: string | null
+  state: string | null
+  postcode: string | null
   vehicle_make: string | null
   vehicle_model: string | null
   vehicle_year: string | null
-  registration_plate: string | null
-  description: string | null
   ring: number
   created_at: string
 }

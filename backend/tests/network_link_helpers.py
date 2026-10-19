@@ -74,3 +74,34 @@ _shop_number_blocks = itertools.count(1000, 150)
 def unique_shop_base() -> int:
     """Start of a block of 150 shop numbers no other test in this run will use."""
     return next(_shop_number_blocks)
+
+
+def put_operators_in_new_network(*tenant_ids, live: bool = True, lat: float = -37.8136, lng: float = 144.9631):
+    """New HQ network containing these tenants as operators (live = invite accepted), each with a
+    base location so the Dispatch Pool ring maths includes them. Returns the parent account id."""
+    from uuid import uuid4
+
+    from app.models import NETWORK_ROLE_HQ, NETWORK_ROLE_OPERATOR, ParentAccount
+    from app.parent_network import link_site
+
+    with Session(engine) as session:
+        parent = ParentAccount(name=f"Pool HQ {uuid4().hex[:6]}", owner_email=f"pool-{uuid4().hex[:6]}@test.local")
+        session.add(parent)
+        session.flush()
+        # An HQ-anchored network resolves the operators' role from this network, not
+        # from the single-shop network every signup is also placed in.
+        hq = Tenant(name="Pool HQ", slug=f"pool-hq-{uuid4().hex[:8]}")
+        session.add(hq)
+        session.flush()
+        link_site(session, parent_id=parent.id, tenant=hq, network_role=NETWORK_ROLE_HQ)
+        for tid in tenant_ids:
+            tenant = session.get(Tenant, tid)
+            tenant.base_lat, tenant.base_lng, tenant.ring_radius_km = lat, lng, 50
+            session.add(tenant)
+            link_site(session, parent_id=parent.id, tenant=tenant, network_role=NETWORK_ROLE_OPERATOR)
+        session.commit()
+        parent_id = parent.id
+    if live:
+        for tid in tenant_ids:
+            mark_owner_accepted(tid)
+    return parent_id

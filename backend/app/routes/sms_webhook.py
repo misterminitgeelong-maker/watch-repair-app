@@ -3,12 +3,13 @@ import hmac
 import logging
 from base64 import b64encode
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, select
 
 from ..config import settings
@@ -17,6 +18,7 @@ from ..models import (
     Approval,
     AutoKeyJob,
     Customer,
+    InboundSmsReceipt,
     JobMessage,
     JobStatusHistory,
     Quote,
@@ -28,6 +30,7 @@ from ..models import (
     TenantEventLog,
     Watch,
 )
+from ..sms_controls import classify_keyword, is_suppressed, set_suppression
 from ..phone_utils import (
     normalize_phone as _normalize_phone,
     phone_lookup_variants as _phone_lookup_variants,
@@ -263,42 +266,63 @@ def _find_sms_log_fallback(session: Session, from_phone: str) -> list[SmsLog]:
     )
 
 
-def _resolve_inbound_target(session: Session, from_phone: str) -> _InboundTarget | None:
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _resolve_inbound_target(session: Session, from_phone: str) -> tuple[_InboundTarget | None, bool]:
+    """Work out which shop (and job) an inbound text belongs to.
+
+    Returns (target, ambiguous). When the phone is known to more than one shop we
+    never guess: the shop whose outbound SmsLog to this phone is most recent (within
+    sms_attribution_window_days) wins; with no such recent text the result is
+    (None, True) and the caller must not act on the message.
+    """
     logs = _find_sms_log_fallback(session, from_phone)
-    if logs:
-        tenant_ids = list(dict.fromkeys(row.tenant_id for row in logs))
-        if len(tenant_ids) > 1:
-            logger.warning(
-                "sms_webhook.inbound multiple tenants texted %s tenants=%s; preferring most recent",
-                _mask_phone(from_phone),
-                [str(t) for t in tenant_ids],
-            )
-        preferred_tenant = logs[0].tenant_id
-        open_job = _find_open_job_target(session, from_phone, tenant_id=preferred_tenant)
-        if open_job:
-            return open_job
-        return _target_from_sms_log(logs[0])
-
-    open_job = _find_open_job_target(session, from_phone)
-    if open_job:
-        return open_job
-
     customers = _find_customers_by_phone(session, from_phone)
+
+    tenant_ids = {row.tenant_id for row in logs} | {c.tenant_id for c in customers}
+    if len(tenant_ids) > 1:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max(1, settings.sms_attribution_window_days))
+        recent = [row for row in logs if _aware(row.created_at) >= cutoff]
+        if not recent:
+            logger.warning(
+                "sms_webhook.inbound ambiguous sender %s across %d tenants and no recent outbound; not acting",
+                _mask_phone(from_phone),
+                len(tenant_ids),
+            )
+            return None, True
+        preferred = recent[0].tenant_id
+        if len({row.tenant_id for row in recent}) > 1:
+            logger.warning(
+                "sms_webhook.inbound multiple tenants texted %s recently; using most recent tenant=%s",
+                _mask_phone(from_phone),
+                preferred,
+            )
+        logs = [row for row in logs if row.tenant_id == preferred]
+        customers = [c for c in customers if c.tenant_id == preferred]
+
+    if logs:
+        open_job = _find_open_job_target(session, from_phone, tenant_id=logs[0].tenant_id)
+        return (open_job or _target_from_sms_log(logs[0])), False
+
     if customers:
+        tenant_id = customers[0].tenant_id
+        open_job = _find_open_job_target(session, from_phone, tenant_id=tenant_id)
+        if open_job:
+            return open_job, False
         # Known customer but no open job and no prior outbound SMS — still surface in inbox.
         customer = customers[0]
-        if len({c.tenant_id for c in customers}) > 1:
-            logger.warning(
-                "sms_webhook.inbound multiple tenants for unmatched phone %s; using first customer",
-                _mask_phone(from_phone),
-            )
-        return _InboundTarget(
-            tenant_id=customer.tenant_id,
-            customer_id=customer.id,
-            entity_type="customer",
+        return (
+            _InboundTarget(
+                tenant_id=customer.tenant_id,
+                customer_id=customer.id,
+                entity_type="customer",
+            ),
+            False,
         )
 
-    return None
+    return None, False
 
 
 @dataclass
@@ -420,6 +444,25 @@ def _ticket_label(session: Session, target: _InboundTarget) -> str | None:
     return None
 
 
+def _receipt_exists(session: Session, message_sid: str) -> bool:
+    return session.exec(
+        select(InboundSmsReceipt.id).where(InboundSmsReceipt.message_sid == message_sid)
+    ).first() is not None
+
+
+def _commit_receipt(session: Session, message_sid: str) -> bool:
+    """Commit the work plus its receipt. False when a concurrent replay won the race."""
+    try:
+        session.commit()
+        return True
+    except IntegrityError:
+        session.rollback()
+        if message_sid and _receipt_exists(session, message_sid):
+            logger.info("sms_webhook.inbound duplicate sid=%s lost race; ignored", message_sid)
+            return False
+        raise
+
+
 @router.post("/webhook/sms/incoming", include_in_schema=False)
 async def twilio_incoming_sms(
     request: Request,
@@ -435,11 +478,17 @@ async def twilio_incoming_sms(
     production). Dry-run / test without a token skips signature checks.
 
     Routing order:
-    1. Tenant(s) whose SmsLog most recently texted this phone — prefer an open
-       job in that tenant (warn when more than one tenant has history).
-    2. Else most recent open job across tenants (no SmsLog history).
+    0. A phone known to several shops is attributed only to the shop whose outbound
+       SmsLog to it is most recent within sms_attribution_window_days; with no
+       recent outbound nothing is acted on (never guessed).
+    1. Tenant whose SmsLog most recently texted this phone — prefer an open job.
+    2. Else the (single) tenant's open job for that phone.
     3. Else a known customer with no open job — inbox alert only.
     4. Unknown sender → no-op (no tenant context).
+
+    STOP/STOPALL/UNSUBSCRIBE/CANCEL/END/QUIT suppress the phone for all outbound
+    SMS; START/UNSTOP (and YES, only while suppressed) lift it. Each MessageSid is
+    processed once.
     """
     form = await request.form()
     form_params = {k: str(v) for k, v in form.items()}
@@ -450,9 +499,45 @@ async def twilio_incoming_sms(
     if not from_phone:
         raise HTTPException(status_code=422, detail="From is required")
 
-    target = _resolve_inbound_target(session, from_phone)
+    # Each Twilio MessageSid is processed once: a replayed (validly signed) POST is a no-op.
+    message_sid = (form_params.get("MessageSid") or form_params.get("SmsSid") or "").strip()[:64]
+    if message_sid and _receipt_exists(session, message_sid):
+        logger.info("sms_webhook.inbound duplicate sid=%s ignored", message_sid)
+        return Response(content=_EMPTY_TWIML, media_type="text/xml")
+    if message_sid:
+        session.add(InboundSmsReceipt(message_sid=message_sid))
+
+    target, ambiguous = _resolve_inbound_target(session, from_phone)
+
+    # Opt-out / opt-in applies to the phone number itself, not to any one shop.
+    keyword = classify_keyword(body_text)
+    opt_type = (form_params.get("OptOutType") or "").strip().upper()
+    if opt_type == "STOP":
+        keyword = "stop"
+    elif opt_type == "START":
+        keyword = "start"
+    is_stop = keyword == "stop"
+    opt_note = ""
+    if is_stop:
+        set_suppression(
+            session,
+            from_phone,
+            active=True,
+            keyword="".join(ch for ch in body_text.lower() if ch.isalnum())[:32] or "stop",
+            source_tenant_id=target.tenant_id if target else None,
+        )
+        opt_note = " [opted out of SMS]"
+    elif keyword == "start" and is_suppressed(session, from_phone):
+        set_suppression(session, from_phone, active=False, keyword="".join(
+            ch for ch in body_text.lower() if ch.isalnum())[:32] or "start")
+        opt_note = " [opted back in to SMS]"
+
     if not target:
-        logger.info("sms_webhook.inbound unmatched from=%s", _mask_phone(from_phone))
+        if ambiguous:
+            logger.warning("sms_webhook.inbound ambiguous from=%s logged only", _mask_phone(from_phone))
+        else:
+            logger.info("sms_webhook.inbound unmatched from=%s", _mask_phone(from_phone))
+        _commit_receipt(session, message_sid)
         return Response(content=_EMPTY_TWIML, media_type="text/xml")
 
     logger.info(
@@ -475,7 +560,7 @@ async def twilio_incoming_sms(
         from_phone=from_phone,
     ))
 
-    decision_result = _apply_keyword_quote_decision(session, target, body_text)
+    decision_result = None if is_stop else _apply_keyword_quote_decision(session, target, body_text)
 
     ticket = _ticket_label(session, target)
     summary_prefix = f"{ticket} · {from_phone}" if ticket else f"{from_phone} (no open ticket)"
@@ -484,9 +569,10 @@ async def twilio_incoming_sms(
         entity_type=target.entity_type,
         entity_id=target.entity_id,
         event_type="customer_sms_reply",
-        event_summary=f"{summary_prefix}: {body_text[:200]}",
+        event_summary=f"{summary_prefix}: {body_text[:200]}{opt_note}",
     ))
-    session.commit()
+    if not _commit_receipt(session, message_sid):
+        return Response(content=_EMPTY_TWIML, media_type="text/xml")
 
     if decision_result and decision_result.decision == "approved" and decision_result.job:
         from ..services.tenant_webhooks import dispatch_tenant_webhooks

@@ -45,6 +45,10 @@ Thumbs.db
 
 .claude/
 
+# Customer data (PII) - never commit. Supply locally / via secure storage.
+backend/seed/repairs_import.csv
+backend/seed/*import*.csv
+
 # local QA backend state (generated, machine-specific)
 artifacts/native-local-backend/
 

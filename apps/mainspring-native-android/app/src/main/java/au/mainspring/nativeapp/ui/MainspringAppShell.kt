@@ -264,6 +264,7 @@ fun MainspringAppShell(
                 composable("quotes") {
                     QuotesScreen(
                         onOpenQuote = { id -> navController.navigate("quote/$id") },
+                        onNewQuote = { jobId -> navController.navigate("jobQuotes/$jobId") },
                         onBack = { navController.popBackStack() },
                     )
                 }

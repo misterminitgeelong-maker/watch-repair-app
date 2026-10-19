@@ -218,7 +218,7 @@ def create_user(
 
     # Plan limit check
     user_count = int(
-        session.exec(select(func.count()).select_from(User).where(User.tenant_id == auth.tenant_id)).one()
+        session.exec(select(func.count()).select_from(User).where(User.tenant_id == auth.tenant_id).where(User.is_active == True)).one()  # noqa: E712 - only active seats count
     )
     enforce_plan_limit(auth, "user", user_count)
 

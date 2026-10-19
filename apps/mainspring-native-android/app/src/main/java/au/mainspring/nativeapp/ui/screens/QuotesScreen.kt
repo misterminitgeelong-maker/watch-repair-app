@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,8 +39,8 @@ fun QuotesScreen(
     onOpenQuote: (String) -> Unit,
     onBack: (() -> Unit)? = null,
     initialOlderThanDays: Int = 0,
-    /** Starts a new quote. Quotes are built from a job, so without a handler the button explains that. */
-    onNewQuote: (() -> Unit)? = null,
+    /** Opens the quote composer for the job picked from "+ New Quote". */
+    onNewQuote: ((String) -> Unit)? = null,
     viewModel: QuotesViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -51,7 +49,7 @@ fun QuotesScreen(
     var sort by rememberSaveable { mutableStateOf("newest") }
     var olderDays by rememberSaveable { mutableStateOf(initialOlderThanDays) }
     var filtersOpen by remember { mutableStateOf(false) }
-    var newQuoteInfo by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
     val shown = au.mainspring.nativeapp.visibleQuotes(state, filter, query, sort, olderDays)
     val activeFilters = (if(sort != "newest") 1 else 0) + (if(olderDays > 0) 1 else 0) + (if(query.isNotBlank()) 1 else 0)
     Column(Modifier.fillMaxSize()) {
@@ -61,7 +59,7 @@ fun QuotesScreen(
             modifier = Modifier.fillMaxSize().testTag("quotes-list"),
         ) {
             item { FinTitle("Quotes", gutter = 0.dp) }
-            item { FinPrimaryButton("+  New Quote", { if(onNewQuote != null) onNewQuote() else newQuoteInfo = true }, Modifier.testTag("new-quote")) }
+            item { FinPrimaryButton("+  New Quote", { picking = true }, Modifier.testTag("new-quote")) }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FinSelect(QUOTE_STATUSES.firstOrNull { it.first == filter }?.second ?: "All statuses", QUOTE_STATUSES, { filter = it }, Modifier.fillMaxWidth(), tag = "quote-status", description = "Status")
@@ -104,7 +102,5 @@ fun QuotesScreen(
             listOf(0 to "Any age", 7 to "Sent 7+ days", 14 to "Sent 14+ days", 21 to "Sent 21+ days").forEach { (k, l) -> SheetChip(l, olderDays == k, { olderDays = k }) }
         }
     }
-    if(newQuoteInfo) AlertDialog(onDismissRequest = { newQuoteInfo = false }, title = { Text("New quote") },
-        text = { Text("Quotes are created from a job. Open a job and choose Quote.") },
-        confirmButton = { TextButton({ newQuoteInfo = false }) { Text("OK") } })
+    if(picking) QuoteJobPickerSheet({ picking = false }, { id -> picking = false; onNewQuote?.invoke(id) })
 }

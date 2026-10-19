@@ -52,9 +52,14 @@ def _bootstrap_operator(slug: str, *, lat: float, lng: float, phone: str = "+614
     return tenant_id
 
 
-def _make_intake_job(*, lat: float, lng: float, age_minutes: int) -> UUID:
+def _make_intake_job(*, lat: float, lng: float, age_minutes: int, for_operator: UUID | None = None) -> UUID:
+    from app.parent_network import parent_ids_for_tenant
+
     with Session(engine) as session:
+        # Pool jobs belong to one HQ network; alerts only reach operators in it.
+        parent_id = parent_ids_for_tenant(session, for_operator)[0] if for_operator else None
         job = IntakeJob(
+            parent_account_id=parent_id,
             customer_name="Jane Doe",
             job_address="1 Test St",
             job_lat=lat,
@@ -71,7 +76,7 @@ def _make_intake_job(*, lat: float, lng: float, age_minutes: int) -> UUID:
 def test_stale_job_alerts_nearby_operator_once():
     suffix = uuid4().hex[:6]
     op_id = _bootstrap_operator(f"pa-near-{suffix}", lat=SYDNEY[0], lng=SYDNEY[1])
-    job_id = _make_intake_job(lat=SYDNEY[0], lng=SYDNEY[1], age_minutes=15)
+    job_id = _make_intake_job(lat=SYDNEY[0], lng=SYDNEY[1], age_minutes=15, for_operator=op_id)
 
     with Session(engine) as session:
         summary = process_stale_pool_jobs(session)
@@ -107,7 +112,7 @@ def test_stale_job_alerts_nearby_operator_once():
 def test_distant_operator_not_alerted():
     suffix = uuid4().hex[:6]
     op_id = _bootstrap_operator(f"pa-far-{suffix}", lat=PERTH[0], lng=PERTH[1])
-    _make_intake_job(lat=SYDNEY[0], lng=SYDNEY[1], age_minutes=15)
+    _make_intake_job(lat=SYDNEY[0], lng=SYDNEY[1], age_minutes=15, for_operator=op_id)
 
     with Session(engine) as session:
         process_stale_pool_jobs(session)
@@ -121,8 +126,8 @@ def test_distant_operator_not_alerted():
 
 def test_fresh_job_not_yet_alerted():
     suffix = uuid4().hex[:6]
-    _bootstrap_operator(f"pa-fresh-{suffix}", lat=SYDNEY[0], lng=SYDNEY[1])
-    job_id = _make_intake_job(lat=SYDNEY[0], lng=SYDNEY[1], age_minutes=2)
+    fresh_op = _bootstrap_operator(f"pa-fresh-{suffix}", lat=SYDNEY[0], lng=SYDNEY[1])
+    job_id = _make_intake_job(lat=SYDNEY[0], lng=SYDNEY[1], age_minutes=2, for_operator=fresh_op)
 
     with Session(engine) as session:
         process_stale_pool_jobs(session)

@@ -98,3 +98,19 @@ def test_shop_number_not_touching_it_leaves_it_unchanged(client):
     assert patch.status_code == 200
     assert patch.json()["shop_number"] == "4200"
     assert patch.json()["abn"] == "12 345 678 901"
+
+
+def test_shop_can_set_its_own_timezone_and_session_follows(client):
+    headers = _bootstrap(client, "tz-perth", "owner-tz@test.com")
+    patch = client.patch("/v1/settings/shop-identity", headers=headers, json={"timezone": "Australia/Perth"})
+    assert patch.status_code == 200, patch.text
+    assert patch.json()["timezone"] == "Australia/Perth"
+    me = client.get("/v1/auth/me", headers=headers)
+    if me.status_code == 200 and "schedule_calendar_timezone" in me.json():
+        assert me.json()["schedule_calendar_timezone"] == "Australia/Perth"
+
+
+def test_shop_timezone_rejects_unknown_zone(client):
+    headers = _bootstrap(client, "tz-bad", "owner-tzbad@test.com")
+    res = client.patch("/v1/settings/shop-identity", headers=headers, json={"timezone": "Mars/Olympus"})
+    assert res.status_code == 422

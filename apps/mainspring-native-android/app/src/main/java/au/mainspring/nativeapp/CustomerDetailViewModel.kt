@@ -21,6 +21,12 @@ data class CustomerDetailUiState(
     val merged: Boolean = false,
 )
 
+/** The one merge call, shared by the customer page and the Customers list "Merge duplicates" flow. */
+internal suspend fun mergeCustomerRecords(primaryId: String, duplicateId: String) {
+    val response = ApiClient.service(CustomerExtrasApi::class.java).mergeCustomers(CustomerMergeRequest(primaryId, duplicateId))
+    if(!response.isSuccessful) throw retrofit2.HttpException(response)
+}
+
 class CustomerDetailViewModel(private val customerId: String, private val features: Set<String> = setOf("watch","shoe","auto_key")) : ViewModel() {
     private val api = ApiClient.api
     private val extras get() = ApiClient.service(CustomerExtrasApi::class.java)
@@ -100,8 +106,7 @@ class CustomerDetailViewModel(private val customerId: String, private val featur
         mutable.update { it.copy(merging = true, mergeError = null) }
         viewModelScope.launch {
             try {
-                val response = extras.mergeCustomers(CustomerMergeRequest(customerId, duplicateId))
-                if(!response.isSuccessful) throw retrofit2.HttpException(response)
+                mergeCustomerRecords(customerId, duplicateId)
                 mutable.update { it.copy(merging = false, merged = true, mergeResults = emptyList()) }
                 load()
             } catch(e: CancellationException) { throw e }
