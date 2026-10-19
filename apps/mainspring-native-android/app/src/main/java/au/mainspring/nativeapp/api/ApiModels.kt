@@ -524,11 +524,14 @@ data class MobileInvoice(val id: String, @SerializedName("invoice_number") val n
     @SerializedName("subtotal_cents") val subtotal: Int? = null, @SerializedName("tax_cents") val tax: Int? = null,
     @SerializedName("created_at") val createdAt: String? = null, @SerializedName("customer_name") val customerName: String? = null,
     @SerializedName("job_number") val jobNumber: String? = null)
+/** Amount edit for an unpaid mobile invoice (web `updateAutoKeyInvoice` with subtotal/tax/total). */
+data class MobileInvoiceAmounts(@SerializedName("subtotal_cents") val subtotal: Int, @SerializedName("tax_cents") val tax: Int, @SerializedName("total_cents") val total: Int)
 data class MobileInvoiceUpdate(val status: String, @SerializedName("payment_method") val paymentMethod: String)
 data class MobileQuoteSend(val quote: MobileQuote, @SerializedName("email_sent") val sent: Boolean,
     @SerializedName("email_skipped_reason") val reason: String?)
 data class MobileInvoiceSend(val invoice: MobileInvoice, @SerializedName("email_sent") val emailSent: Boolean,
-    @SerializedName("sms_sent") val smsSent: Boolean, @SerializedName("email_skipped_reason") val reason: String?)
+    @SerializedName("sms_sent") val smsSent: Boolean, @SerializedName("email_skipped_reason") val reason: String?,
+    @SerializedName("sms_skipped_reason") val smsReason: String? = null, @SerializedName("email_error_detail") val emailError: String? = null)
 
 data class MobileJobPage(val items: List<AutoKeyJobRead> = emptyList(), val total: Int = 0)
 

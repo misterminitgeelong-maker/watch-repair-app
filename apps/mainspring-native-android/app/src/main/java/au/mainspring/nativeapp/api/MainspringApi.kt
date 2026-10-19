@@ -71,7 +71,8 @@ interface MainspringApi {
     @POST("v1/auto-key-jobs/quotes/{id}/send") suspend fun sendMobileQuote(@Path("id") id: String): MobileQuoteSend
     @GET("v1/auto-key-jobs/{id}/invoices") suspend fun mobileInvoices(@Path("id") id: String): List<MobileInvoice>
     @POST("v1/auto-key-jobs/{jobId}/invoices/from-quote/{quoteId}") suspend fun createMobileInvoice(@Path("jobId") jobId: String, @Path("quoteId") quoteId: String): MobileInvoice
-    @POST("v1/auto-key-jobs/invoices/{id}/send") suspend fun sendMobileInvoice(@Path("id") id: String): MobileInvoiceSend
+    @POST("v1/auto-key-jobs/invoices/{id}/send") suspend fun sendMobileInvoice(@Path("id") id: String, @Query("channel") channel: String = "both"): MobileInvoiceSend
+    @retrofit2.http.PATCH("v1/auto-key-jobs/invoices/{id}") suspend fun editMobileInvoiceAmounts(@Path("id") id: String, @Body body: MobileInvoiceAmounts): MobileInvoice
     @retrofit2.http.PATCH("v1/auto-key-jobs/invoices/{id}") suspend fun updateMobileInvoice(@Path("id") id: String, @Body body: MobileInvoiceUpdate): MobileInvoice
     @GET("v1/{resource}/{id}/messages") suspend fun messages(@Path("resource") resource: String, @Path("id") id: String): List<JobThreadMessage>
     @POST("v1/{resource}/{id}/messages") suspend fun sendMessage(@Path("resource") resource: String, @Path("id") id: String, @Body body: MessageCreate): JobThreadMessage

@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.InvoicesViewModel
+import kotlinx.coroutines.launch
 import au.mainspring.nativeapp.ui.formatCents
 
 /** Invoices list in the web phone layout: search, two segmented rows, then one bordered card per invoice. */
@@ -52,6 +53,13 @@ fun InvoicesScreen(
     var query by rememberSaveable { mutableStateOf("") }
     val shown = au.mainspring.nativeapp.mergedInvoices(state, type, filter, query)
     val clipboard = LocalClipboardManager.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val printScope = androidx.compose.runtime.rememberCoroutineScope()
+    var printError by remember { mutableStateOf<String?>(null) }
+    var amountDraft by remember { mutableStateOf("") }
+    var refDraft by remember { mutableStateOf("") }
+    val payTarget = state.payTarget
+    androidx.compose.runtime.LaunchedEffect(payTarget?.invoice?.id) { amountDraft = payTarget?.let { au.mainspring.nativeapp.ui.plainDollars(viewModel.remainingCents(it)) } ?: ""; refDraft = "" }
     Column(Modifier.fillMaxSize()) {
         au.mainspring.nativeapp.ui.PullRefresh(state.loading, viewModel::refresh, Modifier.weight(1f)) { LazyColumn(
             contentPadding = PaddingValues(start = FinGutter, end = FinGutter, bottom = 96.dp),
@@ -68,6 +76,7 @@ fun InvoicesScreen(
             }
             if(state.loading && state.invoices.isEmpty()) item { androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth()) }
             state.error?.let { e -> item { au.mainspring.nativeapp.ui.ErrorBanner(e, onRetry = viewModel::refresh) } }
+            (state.notice ?: printError)?.let { n -> item { au.mainspring.nativeapp.ui.ErrorBanner(n, onRetry = { viewModel.clearNotice(); printError = null }) } }
             if(!state.loading && state.error == null && shown.isEmpty()) item {
                 FinEmptyCard(if(query.isBlank() && type == null && filter == null) "No invoices yet." else "No invoices match these filters.")
             }
@@ -91,11 +100,14 @@ fun InvoicesScreen(
                     else Text(inv.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.heightIn(min = 6.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FinOutlinedLabel(if(inv.mobile) "Open job invoice" else "Open invoice", open, Modifier.weight(1f))
+                        if(!inv.mobile && inv.status == "unpaid" && au.mainspring.nativeapp.TokenStore.canManageInvoices())
+                            FinOutlinedLabel(if(state.payBusy) "Loading…" else "Record payment", { viewModel.beginPay(inv.id) }, Modifier.weight(1f).testTag("invoice-row-pay"), enabled = !state.payBusy)
+                        else FinOutlinedLabel(if(inv.mobile) "Open job invoice" else "Open invoice", open, Modifier.weight(1f))
                         Box {
                             FinOutlinedButton({ menu = true }, Modifier.width(56.dp).testTag("invoice-more")) { FinGlyph("dots", MaterialTheme.colorScheme.onSurface, 20.dp) }
                             DropdownMenu(menu, { menu = false }) {
                                 DropdownMenuItem({ Text("Open invoice") }, { menu = false; open() })
+                                DropdownMenuItem({ Text("Print / PDF") }, { menu = false; printScope.launch { try { au.mainspring.nativeapp.printInvoiceSummary(context, viewModel.summaryFor(inv)) } catch(e: kotlinx.coroutines.CancellationException) { throw e } catch(e: Exception) { printError = e.message ?: "Could not open printing." } } }, modifier = Modifier.testTag("invoice-row-print"))
                                 DropdownMenuItem({ Text("Copy invoice number") }, { menu = false; clipboard.setText(AnnotatedString(inv.number)) })
                             }
                         }
@@ -106,5 +118,17 @@ fun InvoicesScreen(
                 FinOutlinedLabel(if(state.loading) "Loadingâ€¦" else "Load more invoices", viewModel::loadMore, Modifier.fillMaxWidth(), enabled = !state.loading)
             }
         } }
+    }
+    if(payTarget != null) {
+        val cents = au.mainspring.nativeapp.InvoiceDetailViewModel.parseDollarsToCents(amountDraft)
+        val remaining = viewModel.remainingCents(payTarget)
+        androidx.compose.material3.AlertDialog(onDismissRequest = viewModel::dismissPay, title = { Text("Record payment") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("#${payTarget.invoice.invoiceNumber} · Remaining ${formatCents(remaining, payTarget.invoice.currency)}", style = MaterialTheme.typography.bodySmall)
+                au.mainspring.nativeapp.ui.AtelierTextField(value = amountDraft, onValueChange = { amountDraft = it }, label = { Text("Amount") }, singleLine = true, modifier = Modifier.testTag("invoice-row-pay-amount"))
+                au.mainspring.nativeapp.ui.AtelierTextField(value = refDraft, onValueChange = { refDraft = it }, label = { Text("Reference (optional)") }, singleLine = true)
+            } },
+            confirmButton = { androidx.compose.material3.Button(onClick = { cents?.let { viewModel.submitPay(it, refDraft) } }, enabled = !state.payBusy && cents != null && cents <= remaining) { Text(if(state.payBusy) "Saving…" else "Save") } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = viewModel::dismissPay) { Text("Cancel") } })
     }
 }

@@ -56,9 +56,16 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
    mutable.update { it.copy(info = "Opened the existing invoice for this quote.") }
   }
  }
- fun sendInvoice(id: String) = runAction {
-  val response = api.sendMobileInvoice(id)
-  mutable.update { it.copy(info = "Invoice delivery: email ${if(response.emailSent) "sent" else "not sent"}, SMS ${if(response.smsSent) "sent" else "not sent"}.") }
+ fun sendInvoice(id: String, channel: String = "both") = runAction {
+  val response = api.sendMobileInvoice(id, channel)
+  mutable.update { it.copy(info = invoiceSendFeedback(response, channel)) }
+ }
+ fun editInvoiceAmounts(id: String, amounts: au.mainspring.nativeapp.api.MobileInvoiceAmounts) {
+  if(mutable.value.invoices.none { it.id == id && it.status == "unpaid" }) return
+  runAction {
+   val invoice = api.editMobileInvoiceAmounts(id, amounts)
+   mutable.update { it.copy(invoices = it.invoices.map { row -> if(row.id == id) invoice else row }, info = "Invoice amounts updated.") }
+  }
  }
  fun checkedPayment() {
   if(mutable.value.loading || mutable.value.busy || !mutable.value.historyChecked) return

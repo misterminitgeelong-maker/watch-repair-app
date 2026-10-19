@@ -14,13 +14,14 @@ object PushRoutes {
     fun toRoute(path: String?): String? {
         if(path.isNullOrBlank()) return null
         val clean = path.trim().substringBefore('?').trimEnd('/')
+        val wantsMessages = path.substringAfter('?', "").split('&').any { it == "tab=messages" }
         val parts = clean.split('/').filter { it.isNotEmpty() }
         return when {
             parts.size == 1 && parts[0] == "inbox" -> "inbox"
             parts.size == 1 && parts[0] == "invoices" -> "invoices"
             parts.size == 2 && ID.matches(parts[1]) -> when(parts[0]) {
-                "jobs" -> "watchJob/${parts[1]}"
-                "shoe-repairs" -> "shoeJob/${parts[1]}"
+                "jobs" -> "watchJob/${parts[1]}" + if(wantsMessages) "?tab=messages" else ""
+                "shoe-repairs" -> "shoeJob/${parts[1]}" + if(wantsMessages) "?tab=messages" else ""
                 "auto-key" -> "autoKeyJob/${parts[1]}"
                 else -> null
             }
