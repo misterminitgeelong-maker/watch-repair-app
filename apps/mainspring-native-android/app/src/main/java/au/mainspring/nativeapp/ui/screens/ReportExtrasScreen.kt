@@ -22,6 +22,7 @@ import au.mainspring.nativeapp.ReportExtrasViewModel
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.api.CategorySales
 import au.mainspring.nativeapp.saveReportExport
+import au.mainspring.nativeapp.statusRows
 import au.mainspring.nativeapp.ui.*
 import au.mainspring.nativeapp.userMessage
 import kotlinx.coroutines.CancellationException
@@ -111,6 +112,16 @@ private fun money(cents: Long) = "$" + BigDecimal.valueOf(cents, 2).toPlainStrin
                     state.exportInfo?.let { Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("sales-export-info")) }
                 }
             }
+            item { SectionLabel("Status breakdown") }
+            state.statusError?.let { item { ErrorBanner("Status panels: $it", onRetry = viewModel::refresh) } }
+            state.statusSummary?.let { st ->
+                item { StatusPanel("Job status", statusRows(st.jobsByStatus), "No jobs yet.", "status-jobs") }
+                item { StatusPanel("Quote status", statusRows(st.quotesByStatus), "No quotes sent yet.", "status-quotes") }
+                if(st.counts.shoeJobs > 0 && st.shoeJobsByStatus != null) {
+                    item { StatusPanel("Shoe job status", statusRows(st.shoeJobsByStatus), "No shoe jobs yet.", "status-shoe-jobs") }
+                    st.shoeQuotes?.let { sq -> item { StatusPanel("Shoe quote status", statusRows(sq.byStatus), "No shoe quotes sent yet.", "status-shoe-quotes", footer = "Approval rate ${"%.0f".format(sq.approvalRatePercent)}%") } }
+                }
+            }
             item { SectionLabel("Shop activity") }
             state.activityError?.let { item { ErrorBanner(it, onRetry = viewModel::refresh) } }
             if(state.activity.isEmpty() && state.activityError == null && !state.loading) item { EmptyState("No activity yet", "Changes made by your team will be listed here.") }
@@ -148,5 +159,14 @@ private fun pickerDate(millis: Long): String = Instant.ofEpochMilli(millis).atZo
         MetricStrip(listOf("Jobs" to sales.jobs.toString(), "Billed" to money(sales.billedCents), "Received" to money(sales.revenueCents)))
         DetailRow("Outstanding", money(sales.outstandingCents))
         if(sales.costCents > 0) DetailRow("Recorded cost", money(sales.costCents))
+    }
+}
+
+@Composable private fun StatusPanel(title: String, rows: List<au.mainspring.nativeapp.StatusRow>, empty: String, tag: String, footer: String? = null) {
+    FlatPanel(Modifier.testTag(tag)) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        if(rows.isEmpty()) Text(empty, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        rows.forEach { DetailRow(it.label, it.count.toString()) }
+        footer?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }

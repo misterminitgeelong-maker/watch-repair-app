@@ -412,6 +412,9 @@ data class ReportsFinancials(
     @SerializedName("outstanding_cents") val outstandingCents: Int,
     @SerializedName("gross_profit_cents") val grossProfitCents: Int,
     @SerializedName("gross_margin_percent") val grossMarginPercent: Double,
+    @SerializedName("cost_outlier_jobs") val costOutlierJobs: Int = 0,
+    @SerializedName("cost_outlier_watch_jobs") val costOutlierWatchJobs: Int = 0,
+    @SerializedName("cost_outlier_shoe_jobs") val costOutlierShoeJobs: Int = 0,
 )
 
 data class ReportsOperations(

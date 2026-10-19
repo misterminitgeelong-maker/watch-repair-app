@@ -34,6 +34,9 @@ data class ReportExtrasState(
     val activityError: String? = null,
     val exportBusy: Boolean = false,
     val exportInfo: String? = null,
+    /** All-time job / quote / shoe status counts from GET /reports/summary (web Job Status, Quote Status, Shoe panels). */
+    val statusSummary: ReportsSummaryResponse? = null,
+    val statusError: String? = null,
 ) {
     val range: ReportRange get() = ReportRange(period, customFrom, customTo)
 }
@@ -42,6 +45,7 @@ data class ReportExtrasState(
 class ReportExtrasViewModel(
     private val api: OwnerAdminApi = ApiClient.service(OwnerAdminApi::class.java),
     private val breakdown: ReportBreakdownApi = ApiClient.service(ReportBreakdownApi::class.java),
+    private val main: MainspringApi = ApiClient.api,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(ReportExtrasState(allowed = TokenStore.canManageInvoices()))
     val state = mutable.asStateFlow()
@@ -75,7 +79,15 @@ class ReportExtrasViewModel(
 
     private fun today() = LocalDate.now(ZoneId.of(TokenStore.calendarTimezone())).toString()
 
-    fun refresh() { loadSummary(); loadActivity(); loadTechs(); loadTrends() }
+    fun refresh() { loadSummary(); loadActivity(); loadTechs(); loadTrends(); loadStatus() }
+
+    private fun loadStatus() {
+        viewModelScope.launch {
+            try { val r = main.getReportsSummary(); mutable.update { it.copy(statusSummary = r, statusError = null) } }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(statusError = e.userMessage()) } }
+        }
+    }
 
     fun loadSummary() {
         job?.cancel()
@@ -130,3 +142,10 @@ class ReportExtrasViewModel(
 
     fun setExportBusy(busy: Boolean, info: String? = null) = mutable.update { it.copy(exportBusy = busy, exportInfo = info) }
 }
+
+/** One status count row for the status panels: label like the web (underscores to spaces), biggest count first. */
+data class StatusRow(val key: String, val label: String, val count: Int)
+
+fun statusRows(counts: Map<String, Int>): List<StatusRow> =
+    counts.map { (k, v) -> StatusRow(k, k.replace('_', ' ').replaceFirstChar { c -> c.uppercase() }, v) }
+        .sortedWith(compareByDescending<StatusRow> { it.count }.thenBy { it.label })
