@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "20261019a_lead_routing_integrity"
-down_revision = "20261009a_hq_settings"
+down_revision = "20261019a_sms_controls"
 branch_labels = None
 depends_on = None
 
