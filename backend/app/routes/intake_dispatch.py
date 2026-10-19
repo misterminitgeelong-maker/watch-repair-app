@@ -106,9 +106,11 @@ async def submit_public_intake(
             raise HTTPException(status_code=404, detail="Unknown intake form")
         parent_id: UUID | None = parent.id
     else:
-        # Single-HQ deployments need no id; with several the job is unscoped and
+        # Only one HQ network takes mobile leads: no id needed. With several the job is unscoped and
         # stays out of every pool until an admin assigns it.
-        parents = session.exec(select(ParentAccount.id).limit(2)).all()
+        parents = session.exec(
+            select(ParentAccount.id).where(col(ParentAccount.mobile_lead_ingest_public_id).is_not(None)).limit(2)
+        ).all()
         parent_id = parents[0] if len(parents) == 1 else None
 
     ref, is_key = make_ref(
