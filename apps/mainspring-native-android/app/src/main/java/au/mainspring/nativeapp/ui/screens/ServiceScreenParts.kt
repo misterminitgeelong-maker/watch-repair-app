@@ -27,6 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -186,9 +190,18 @@ private fun Modifier.androidx_size(): Modifier = this.then(Modifier.size(18.dp))
                 if(priceLine != null) Text(priceLine, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             thumb?.invoke()
-            if(onDelete != null) Surface(onDelete, Modifier.size(44.dp).testTag("job-delete").semantics { contentDescription = "Delete $number" }, shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                Box(contentAlignment = Alignment.Center) { ServiceGlyph("close", color = MaterialTheme.colorScheme.primary, modifier = Modifier) }
+            if(onDelete != null) {
+                var menu by remember { mutableStateOf(false) }
+                Box {
+                    Surface({ menu = true }, Modifier.size(48.dp).testTag("job-more").semantics { contentDescription = "More actions for $number" }, shape = androidx.compose.foundation.shape.CircleShape,
+                        color = androidx.compose.ui.graphics.Color.Transparent) {
+                        Box(contentAlignment = Alignment.Center) { Text("⋯", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                    androidx.compose.material3.DropdownMenu(menu, { menu = false }) {
+                        androidx.compose.material3.DropdownMenuItem(text = { Text("Delete job", color = MaterialTheme.colorScheme.error) },
+                            onClick = { menu = false; onDelete() }, modifier = Modifier.testTag("job-delete"))
+                    }
+                }
             }
         }
     }

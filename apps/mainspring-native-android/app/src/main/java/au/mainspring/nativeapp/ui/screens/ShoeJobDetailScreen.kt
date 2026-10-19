@@ -35,6 +35,7 @@ fun ShoeJobDetailScreen(
     onDeleted: () -> Unit = {},
     onDuplicated: (String) -> Unit = {},
     onEditCustomer: (String) -> Unit = {},
+    initialTab: String = "overview",
 ) {
     // Prev/next steps through the list the job was opened from without leaving this screen.
     var shownId by androidx.compose.runtime.saveable.rememberSaveable(jobId) { mutableStateOf(jobId) }
@@ -73,7 +74,7 @@ fun ShoeJobDetailScreen(
     LaunchedEffect(state.clonedJobId) { state.clonedJobId?.let { vm.consumeClonedJob(); onDuplicated(it) } }
     val adminReady = !state.loading && !state.statusBusy && !state.adminBusy
 
-    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("overview") }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(initialTab) }
     if (j == null) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(16.dp)) {
             TextButton(onClick = onBack) { Text("\u2039 Jobs", style = MaterialTheme.typography.titleSmall) }

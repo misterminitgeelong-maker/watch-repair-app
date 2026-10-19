@@ -77,6 +77,7 @@ fun ShoeJobsScreen(
     onOpenJob: (String) -> Unit,
     onNewJob: () -> Unit,
     onOpenQueue: (() -> Unit)? = null,
+    onLogWork: ((String) -> Unit)? = null,
     viewModel: ShoeJobsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -113,6 +114,11 @@ fun ShoeJobsScreen(
                 WebSelect(if (state.statusFilter == "all") allLabel else statusLabel(state.statusFilter),
                     listOf("all" to allLabel) + (if (state.showCompleted) SHOE_CLOSED_STATUSES else SHOE_ACTIVE_STATUSES).map { it to statusLabel(it) },
                     viewModel::setStatusFilter, tag = "status-filter", description = "Filter by status")
+                if (state.savedViews.isNotEmpty()) Text("Saved views", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                au.mainspring.nativeapp.ui.SavedViewsRow(state.savedViews,
+                    { viewModel.currentView().copy(minDaysInShop = minDays.takeIf { it > 0 }, costOutliers = costOutliers) },
+                    { v -> viewModel.applyView(v); minDays = v.minDaysInShop ?: 0; costOutliers = v.costOutliers },
+                    viewModel::saveView, viewModel::deleteView, Modifier.testTag("saved-views"), horizontalPadding = 0.dp)
                 WebCheckRow("Cost outliers only", costOutliers, { costOutliers = it }, tag = "cost-outliers")
                 WebSelect(if (minDays == 0) "Any age" else "$minDays+ days in shop",
                     listOf("0" to "Any age", "7" to "7+ days in shop", "14" to "14+ days in shop", "21" to "21+ days in shop"),
@@ -146,7 +152,8 @@ fun ShoeJobsScreen(
                     val targets = au.mainspring.nativeapp.SHOE_JOB_STATUS_OPTIONS.map { it to statusLabel(it) }
                     WebKanban(columns) { card, color ->
                         val job = byId[card.id]
-                        ShoeBoardCard(card, job?.jobNumber ?: "", job?.let { state.customerName(it) }, color, canMove, targets, onOpenJob, viewModel::moveJob, { id, st, why -> viewModel.moveJob(id, st, why) })
+                        ShoeBoardCard(card, job?.jobNumber ?: "", job?.let { state.customerName(it) }, color, canMove, targets, onOpenJob, viewModel::moveJob, { id, st, why -> viewModel.moveJob(id, st, why) },
+                            onLogWork = if (TokenStore.canWorkJobs()) onLogWork else null)
                     }
                 }
             }
@@ -203,9 +210,9 @@ private fun ShoeCombosPanel(viewModel: ShoeServicesViewModel = viewModel()) {
 /** One job in a board column: job number in the column colour, title, customer, and the native "Move to..." menu. */
 @Composable
 private fun ShoeBoardCard(card: BoardCard, number: String, customer: String?, color: Color, canMove: Boolean, moveTargets: List<Pair<String, String>>,
-    onOpen: (String) -> Unit, onMove: (String, String) -> Unit, onMoveReason: (String, String, String?) -> Unit) {
+    onOpen: (String) -> Unit, onMove: (String, String) -> Unit, onMoveReason: (String, String, String?) -> Unit, onLogWork: ((String) -> Unit)? = null) {
     var menu by remember(card.id, card.status) { mutableStateOf(false) }
-    HoldMenuTicket(card.title, card.status, moveTargets, canMove, null, { onOpen(card.id) }, { st, why -> onMoveReason(card.id, st, why) }) {
+    HoldMenuTicket(card.title, card.status, moveTargets, canMove, null, { onOpen(card.id) }, { st, why -> onMoveReason(card.id, st, why) }, onLogWork = onLogWork?.let { f -> { f(card.id) } }) {
 Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(number, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = color, maxLines = 1)

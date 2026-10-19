@@ -67,8 +67,10 @@ fun JobsBoard(
     fillHeight: Boolean = true,
     /** Web phone look: bordered white columns with a brown top rule, count badge and rich job cards. */
     web: Boolean = false,
+    /** When given, the press-and-hold ticket menu offers "Log work" for that job (web look only). */
+    onLogWork: ((String) -> Unit)? = null,
 ) {
-    if(web) { WebBoard(columns, moveTargets, canMove, onOpen, onMoveReason, onMove, modifier); return }
+    if(web) { WebBoard(columns, moveTargets, canMove, onOpen, onMoveReason, onMove, modifier, onLogWork); return }
     val calibre = au.mainspring.nativeapp.ui.LocalCalibre.current
     Row((if(fillHeight) modifier.fillMaxHeight() else modifier).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         columns.forEach { col ->
@@ -112,7 +114,7 @@ private val BoardBrown = Color(0xFF8A6A2F)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, String>>, canMove: Boolean, onOpen: (String) -> Unit,
-    onMoveReason: (id: String, status: String, reason: String?) -> Unit, onMove: (id: String, status: String) -> Unit, modifier: Modifier) {
+    onMoveReason: (id: String, status: String, reason: String?) -> Unit, onMove: (id: String, status: String) -> Unit, modifier: Modifier, onLogWork: ((String) -> Unit)? = null) {
     val line = MaterialTheme.colorScheme.outlineVariant
     val square = RoundedCornerShape(2.dp)
     Row(modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -132,7 +134,7 @@ private fun WebBoard(columns: List<BoardColumn>, moveTargets: List<Pair<String, 
                             fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         col.cards.forEach { card ->
                             var menu by remember(card.id, card.status) { mutableStateOf(false) }
-                            HoldMenuTicket(card.title, card.status, moveTargets, canMove, card.phone, { onOpen(card.id) }, { st, why -> onMoveReason(card.id, st, why) }) {
+                            HoldMenuTicket(card.title, card.status, moveTargets, canMove, card.phone, { onOpen(card.id) }, { st, why -> onMoveReason(card.id, st, why) }, onLogWork = onLogWork?.let { f -> { f(card.id) } }) {
 Surface(Modifier.fillMaxWidth().testTag("board-card-${card.id}"), color = MaterialTheme.colorScheme.surface, shape = square, border = BorderStroke(1.dp, line)) {
                                 Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

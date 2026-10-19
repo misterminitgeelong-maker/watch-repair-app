@@ -39,6 +39,7 @@ fun JobDetailScreen(
     onDuplicated: (String) -> Unit = {},
     onEditCustomer: (String) -> Unit = {},
     onEditWatch: (String, String) -> Unit = { _, _ -> },
+    initialTab: String = "overview",
 ) {
     // Prev/next steps through the list the job was opened from without leaving this screen.
     var shownId by androidx.compose.runtime.saveable.rememberSaveable(jobId) { mutableStateOf(jobId) }
@@ -73,7 +74,7 @@ fun JobDetailScreen(
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     androidx.activity.compose.BackHandler(state.statusBusy) {}
 
-    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("overview") }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(initialTab) }
     if (job == null) {
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().padding(16.dp)) {
             TextButton(onClick = onBack, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {

@@ -65,6 +65,7 @@ fun JobsScreen(
     onOpenJob: (String) -> Unit,
     onNewJob: () -> Unit,
     onOpenQueue: (() -> Unit)? = null,
+    onLogWork: ((String) -> Unit)? = null,
     viewModel: JobsViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -142,7 +143,8 @@ fun JobsScreen(
                         description = j.description, customerLine = listOfNotNull(j.customerName?.takeIf { n -> n.isNotBlank() }, j.customerPhone?.takeIf { n -> n.isNotBlank() }).joinToString(" "),
                         assignee = state.users.firstOrNull { u -> u.id == j.assignedUserId }?.name ?: j.claimedByName, price = j.preQuoteCents.takeIf { c -> c > 0 }?.let { c -> formatCents(c, currency) }, phone = j.customerPhone) }
                     JobsBoard(buildBoardColumns(cards, order, ::watchStatusLabel), WATCH_PICKER_STATUSES.map { it to watchStatusLabel(it) },
-                        canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob, onMoveReason = { id, st, why -> viewModel.moveJob(id, st, why) }, fillHeight = false, web = true)
+                        canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob, onMoveReason = { id, st, why -> viewModel.moveJob(id, st, why) }, fillHeight = false, web = true,
+                        onLogWork = if (TokenStore.canWorkJobs()) onLogWork else null)
                 }
             }
         } else {
