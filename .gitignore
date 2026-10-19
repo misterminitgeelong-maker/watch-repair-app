@@ -48,3 +48,9 @@ Thumbs.db
 # Customer data (PII) - never commit. Supply locally / via secure storage.
 backend/seed/repairs_import.csv
 backend/seed/*import*.csv
+
+# local QA backend state (generated, machine-specific)
+artifacts/native-local-backend/
+
+# Firebase config (per-environment keys; never commit)
+google-services.json
