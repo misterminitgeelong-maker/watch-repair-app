@@ -18,6 +18,36 @@ data class NiimbotLabelData(
     /** Text encoded in the QR (the public status URL). */
     val qrText: String,
     val qrCaption: String = "Scan to track this repair",
+    /** True for the CUSTOMER COPY: header tag changes, deposit/balance line is hidden. */
+    val isCustomerCopy: Boolean = false,
+    /** Pre-formatted money for the workshop line "Dep: x  Bal: y"; both must be set for it to print. */
+    val depositLabel: String? = null,
+    val balanceLabel: String? = null,
+)
+
+fun niimbotCopyTag(data: NiimbotLabelData): String = if (data.isCustomerCopy) "CUSTOMER COPY" else "WORKSHOP COPY"
+
+/** "Dep: $20.00  Bal: $80.00" for the workshop copy only; null when not shown. */
+fun niimbotDepBalText(data: NiimbotLabelData): String? {
+    if (data.isCustomerCopy) return null
+    val d = data.depositLabel?.takeIf { it.isNotBlank() } ?: return null
+    val b = data.balanceLabel?.takeIf { it.isNotBlank() } ?: return null
+    return "Dep: $d  Bal: $b"
+}
+
+/** Balance still owing, never negative (quote falls back to the pre-quote when no cost is set yet). */
+fun niimbotBalanceCents(costCents: Int, preQuoteCents: Int, depositCents: Int): Int {
+    val quote = if (costCents > 0) costCents else preQuoteCents
+    return maxOf(quote - depositCents, 0)
+}
+
+/**
+ * The two labels printed per job, in print order: WORKSHOP COPY (with deposit/balance) then CUSTOMER COPY.
+ * [base] carries the shared fields; both copies encode the public status URL in [NiimbotLabelData.qrText].
+ */
+fun niimbotJobLabels(base: NiimbotLabelData, depositLabel: String?, balanceLabel: String?): List<NiimbotLabelData> = listOf(
+    base.copy(isCustomerCopy = false, depositLabel = depositLabel, balanceLabel = balanceLabel, qrCaption = "Scan for repair status"),
+    base.copy(isCustomerCopy = true, depositLabel = null, balanceLabel = null, qrCaption = "Scan to track this repair"),
 )
 
 fun niimbotTruncate(text: String, maxChars: Int): String = if (text.length <= maxChars) text else text.take(maxChars - 1) + "…"
@@ -49,7 +79,7 @@ object NiimbotLabelRenderer {
         c.drawRect(0f, 0f, w.toFloat(), headerH, ink)
         c.drawText("MAINSPRING", PAD, 20 * s, text(14f, bold = true, color = Color.WHITE))
         val tag = text(11f, color = Color.WHITE)
-        val tagText = "WORKSHOP COPY"
+        val tagText = niimbotCopyTag(data)
         c.drawText(tagText, w - PAD - tag.measureText(tagText), 20 * s, tag)
 
         val customer = data.customerName?.takeIf { it.isNotBlank() }
@@ -62,6 +92,7 @@ object NiimbotLabelRenderer {
             c.drawText(niimbotTruncate(data.itemTitle, 26), PAD, y, body); y += 25 * s
             data.services?.takeIf { it.isNotBlank() }?.let { c.drawText(niimbotTruncate(it, 26), PAD, y, body); y += 25 * s }
             data.dateIn?.takeIf { it.isNotBlank() }?.let { c.drawText(it, PAD, y, body); y += 25 * s }
+            niimbotDepBalText(data)?.let { c.drawText(it, PAD, y, text(16f)); y += 22 * s }
             val captionH = 18 * s
             val top = y + 10 * s
             val bottom = h - 10 * s - captionH
@@ -82,6 +113,8 @@ object NiimbotLabelRenderer {
             y += 23; c.drawText(niimbotTruncate(data.itemTitle, 24), PAD, y * s, body)
             data.services?.takeIf { it.isNotBlank() }?.let { y += 23; c.drawText(niimbotTruncate(it, 24), PAD, y * s, body) }
             data.dateIn?.takeIf { it.isNotBlank() }?.let { y += 23; c.drawText(it, PAD, y * s, body) }
+            niimbotDepBalText(data)?.let { y += 21; c.drawText(it, PAD, y * s, text(15f)) }
+            if (data.isCustomerCopy) c.drawText("Scan QR for live repair updates", PAD, h - 8f, text(11f, color = Color.parseColor("#444444")))
         }
         return bmp
     }

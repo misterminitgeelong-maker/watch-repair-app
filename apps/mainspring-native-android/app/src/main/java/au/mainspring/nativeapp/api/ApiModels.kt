@@ -232,7 +232,25 @@ data class MobileJobCreate(@SerializedName("customer_id") val customerId: String
     @SerializedName("tech_notes") val techNotes: String?,
     @SerializedName("deposit_cents") val deposit: Int, @SerializedName("send_booking_sms") val sendBookingSms: Boolean = false,
     @SerializedName("customer_account_id") val customerAccountId: String? = null,
-    @SerializedName("assigned_user_id") val assignedUserId: String? = null)
+    @SerializedName("assigned_user_id") val assignedUserId: String? = null,
+    @SerializedName("blade_code") val bladeCode: String? = null, @SerializedName("chip_type") val chipType: String? = null,
+    val salesperson: String? = null, @SerializedName("cost_cents") val costCents: Int? = null,
+    @SerializedName("apply_suggested_quote") val applySuggestedQuote: Boolean? = null,
+    @SerializedName("additional_services") val additionalServices: List<AdditionalServiceDto>? = null,
+    @SerializedName("commission_lead_source") val commissionLeadSource: String? = null)
+
+data class AdditionalServiceDto(val preset: String? = null, val custom: String? = null)
+data class QuoteSuggestionLineRead(val description: String = "", val quantity: Double = 1.0, @SerializedName("unit_price_cents") val unitPriceCents: Int = 0, @SerializedName("total_price_cents") val totalPriceCents: Int = 0)
+data class QuoteSuggestionRead(@SerializedName("pricing_tier") val pricingTier: String? = null, @SerializedName("total_cents") val totalCents: Int = 0,
+    @SerializedName("subtotal_cents") val subtotalCents: Int = 0, @SerializedName("tax_cents") val taxCents: Int = 0,
+    @SerializedName("line_items") val lineItems: List<QuoteSuggestionLineRead> = emptyList())
+data class KeyBlankRead(@SerializedName("primary_code") val primaryCode: String? = null, @SerializedName("blank_reference") val blankReference: String? = null)
+data class VehicleKeySpecMatch(val score: Int = 0, val label: String = "", @SerializedName("vehicle_make") val vehicleMake: String = "", @SerializedName("vehicle_model") val vehicleModel: String = "",
+    @SerializedName("year_from") val yearFrom: Int? = null, @SerializedName("year_to") val yearTo: Int? = null, @SerializedName("years_label") val yearsLabel: String? = null,
+    @SerializedName("key_type") val keyType: String? = null, @SerializedName("chip_type") val chipType: String? = null, @SerializedName("tech_notes") val techNotes: String? = null,
+    @SerializedName("key_blanks") val keyBlanks: List<KeyBlankRead>? = null, @SerializedName("suggested_blade_code") val suggestedBladeCode: String? = null,
+    @SerializedName("akl_complexity") val aklComplexity: String? = null)
+data class VehicleKeySpecSearch(val matches: List<VehicleKeySpecMatch> = emptyList())
 
 data class ShoeJobStatusHistoryRead(
     val id: String,
