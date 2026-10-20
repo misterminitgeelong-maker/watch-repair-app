@@ -184,6 +184,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         val access = TokenStore.getAccessToken()
         val baseUrl = ApiClient.getEffectiveBaseUrl()
         val device = TokenStore.deviceToken()
+        RecentSearches.clear()
         TokenStore.clear()
         if(access != null) au.mainspring.nativeapp.api.SignOutClient.revokeInBackground(baseUrl, access, device)
         _state.value = AuthUiState()

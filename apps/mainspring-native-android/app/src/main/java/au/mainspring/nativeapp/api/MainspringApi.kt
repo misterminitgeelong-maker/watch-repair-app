@@ -110,6 +110,8 @@ interface MainspringApi {
     @retrofit2.http.DELETE("v1/customer-accounts/{id}/customers/{customerId}") suspend fun removeAccountMember(@Path("id") id: String, @Path("customerId") customerId: String): Response<Unit>
     @GET("v1/watch-catalogue/items")
     suspend fun watchCatalogue(): List<WatchCatalogueItem>
+    @POST("v1/custom-services") suspend fun createCustomWatchService(@Body body: au.mainspring.nativeapp.CustomServiceCreate): WatchCatalogueItem
+    @POST("v1/custom-services") suspend fun createCustomShoeService(@Body body: au.mainspring.nativeapp.CustomServiceCreate): ShoeCatalogueItem
     @GET("v1/custom-services") suspend fun customWatchServices(@Query("service_type") type: String = "watch"): List<WatchCatalogueItem>
     @GET("v1/custom-services") suspend fun customShoeServices(@Query("service_type") type: String = "shoe"): List<ShoeCatalogueItem>
     @GET("v1/watch-catalogue/repairs-config")
