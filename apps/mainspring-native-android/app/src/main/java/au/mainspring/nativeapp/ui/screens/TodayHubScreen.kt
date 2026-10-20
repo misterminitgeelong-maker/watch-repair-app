@@ -378,7 +378,8 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
 /** Web Commercial Pulse, Operational Pressure and Financial Data Health cards (owner/manager only). */
 @Composable private fun PulsePanels(s: au.mainspring.nativeapp.api.ReportsSummaryResponse, w: au.mainspring.nativeapp.api.DashboardWidgetsResponse?, urgentJobs: Int, modifier: Modifier = Modifier) {
     fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
-    val f = s.financials
+    // The server always sends the financials block, but a short or older response must not crash the dashboard.
+    val f = (s.financials as au.mainspring.nativeapp.api.ReportsFinancials?) ?: return
     Column(modifier.testTag("pulse-panels"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeCard(Modifier.fillMaxWidth().testTag("pulse-commercial")) {
             Text("Commercial Pulse", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)

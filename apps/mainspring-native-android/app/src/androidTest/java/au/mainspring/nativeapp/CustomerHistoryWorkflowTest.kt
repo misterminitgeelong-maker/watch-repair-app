@@ -34,7 +34,7 @@ class CustomerHistoryWorkflowTest {
                         (if(older) 51..51 else 1..50).joinToString(",","[","]") { n -> """{"id":"watch-job-$n","job_number":"W$n","title":"Watch repair $n","status":"awaiting_quote"}""" }
                     }
                     "/v1/shoe-repair-jobs" -> { request.requestUrl!!.queryParameter("customer_id")?.let { Assert.assertEquals("customer-1", it) }; """[{"id":"shoe-job","job_number":"S001","title":"Counter shoe repair","status":"awaiting_go_ahead"}]""" }
-                    "/v1/auto-key-jobs" -> { request.requestUrl!!.queryParameter("customer_id")?.let { Assert.assertEquals("customer-1", it) }; """[{"id":"mobile-job","job_number":"M001","title":"Mobile replacement key","status":"awaiting_quote"}]""" }
+                    "/v1/auto-key-jobs" -> { if(request.requestUrl!!.queryParameter("limit") != "1") request.requestUrl!!.queryParameter("customer_id")?.let { Assert.assertEquals("customer-1", it) };  /* limit=1 is the intake last-vehicle lookup for whichever customer the draft holds */ """[{"id":"mobile-job","job_number":"M001","title":"Mobile replacement key","status":"awaiting_quote"}]""" }
                     "/v1/customer-accounts", "/v1/shoe-catalogue/items" -> "[]"
                     else -> return MockResponse().setResponseCode(404)
                 }
