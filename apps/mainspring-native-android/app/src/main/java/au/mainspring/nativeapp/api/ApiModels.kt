@@ -430,6 +430,9 @@ data class ReportsFinancials(
     @SerializedName("outstanding_cents") val outstandingCents: Int,
     @SerializedName("gross_profit_cents") val grossProfitCents: Int,
     @SerializedName("gross_margin_percent") val grossMarginPercent: Double,
+    @SerializedName("cost_outlier_jobs") val costOutlierJobs: Int = 0,
+    @SerializedName("cost_outlier_watch_jobs") val costOutlierWatchJobs: Int = 0,
+    @SerializedName("cost_outlier_shoe_jobs") val costOutlierShoeJobs: Int = 0,
 )
 
 data class ReportsOperations(
@@ -544,11 +547,14 @@ data class MobileInvoice(val id: String, @SerializedName("invoice_number") val n
     @SerializedName("job_number") val jobNumber: String? = null,
     @SerializedName("xero_sync_status") val xeroSyncStatus: String? = null,
     @SerializedName("xero_sync_error") val xeroSyncError: String? = null)
+/** Amount edit for an unpaid mobile invoice (web `updateAutoKeyInvoice` with subtotal/tax/total). */
+data class MobileInvoiceAmounts(@SerializedName("subtotal_cents") val subtotal: Int, @SerializedName("tax_cents") val tax: Int, @SerializedName("total_cents") val total: Int)
 data class MobileInvoiceUpdate(val status: String, @SerializedName("payment_method") val paymentMethod: String)
 data class MobileQuoteSend(val quote: MobileQuote, @SerializedName("email_sent") val sent: Boolean,
     @SerializedName("email_skipped_reason") val reason: String?)
 data class MobileInvoiceSend(val invoice: MobileInvoice, @SerializedName("email_sent") val emailSent: Boolean,
-    @SerializedName("sms_sent") val smsSent: Boolean, @SerializedName("email_skipped_reason") val reason: String?)
+    @SerializedName("sms_sent") val smsSent: Boolean, @SerializedName("email_skipped_reason") val reason: String?,
+    @SerializedName("sms_skipped_reason") val smsReason: String? = null, @SerializedName("email_error_detail") val emailError: String? = null)
 
 data class MobileJobPage(val items: List<AutoKeyJobRead> = emptyList(), val total: Int = 0)
 
@@ -564,6 +570,8 @@ data class ToolReadiness(val label: String, val tips: String?, @SerializedName("
 data class ProspectBusiness(val name: String, val address: String, val phone: String?, val website: String?, val category: String,
     @SerializedName("place_id") val placeId: String, val rating: Double?, @SerializedName("review_count") val reviews: Int?)
 data class ProspectResults(val results: List<ProspectBusiness>, val total: Int, val source: String)
+data class ProspectContact(@SerializedName("place_id") val placeId: String = "", val phone: String? = null, val website: String? = null, val attributions: List<String> = emptyList())
+data class ProspectCollectorStatus(val total: Int = 0)
 data class ProspectCategory(val key: String, val label: String)
 data class ProspectCategories(val categories: List<ProspectCategory>)
 data class ProspectLead(val id: String, val name: String, val address: String?, val phone: String?, val website: String?, val status: String,

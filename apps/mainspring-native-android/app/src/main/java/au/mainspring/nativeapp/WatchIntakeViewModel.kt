@@ -80,6 +80,17 @@ class WatchIntakeViewModel(private val saved: SavedStateHandle) : ViewModel() {
             if (field("customerId").isNotBlank()) loadWatches(field("customerId"))
         }
     }
+    /** Creates a custom watch service (POST /custom-services) and selects it, like the web picker. [onDone] gets an error message or null. */
+    fun addCustomService(name: String, priceCents: Int, onDone: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val item = api.createCustomWatchService(CustomServiceCreate("watch", name, priceCents))
+                mutable.update { it.copy(catalogue = (it.catalogue + item).distinctBy { row -> row.key }) }
+                if(item.key !in selectedServices()) toggleService(item.key)
+                onDone(null)
+            } catch(e: CancellationException) { throw e } catch(e: Exception) { onDone("Failed to add service. ${e.userMessage()}") }
+        }
+    }
     fun selectedServices() = field("services").split('|').filter(String::isNotBlank).toSet()
     fun toggleService(key: String) {
         val keys = selectedServices().toMutableSet().apply { if(!add(key)) remove(key) }

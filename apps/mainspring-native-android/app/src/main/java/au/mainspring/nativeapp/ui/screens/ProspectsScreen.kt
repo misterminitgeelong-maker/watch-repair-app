@@ -28,7 +28,7 @@ import java.time.format.DateTimeFormatter
  var tab by rememberSaveable { mutableStateOf(initialTab) }; var region by rememberSaveable { mutableStateOf("VIC") }
  var category by rememberSaveable { mutableStateOf("") }; var suburbs by rememberSaveable { mutableStateOf("") }
  var live by rememberSaveable { mutableStateOf(false) }; var query by rememberSaveable { mutableStateOf("") }
- var boardView by rememberSaveable { mutableStateOf(false) }; var advancing by remember { mutableStateOf<ProspectLead?>(null) }
+ var boardView by rememberSaveable { mutableStateOf(false) }; var visitsView by rememberSaveable { mutableStateOf(false) }; var advancing by remember { mutableStateOf<ProspectLead?>(null) }
  var stage by rememberSaveable { mutableStateOf("") }; var editing by rememberSaveable { mutableStateOf<String?>(null) }
  val enabled = !state.loading && !state.busy
  LaunchedEffect(state.categories) { if(category.isBlank()) category = state.categories.firstOrNull()?.key.orEmpty() }
@@ -66,7 +66,18 @@ import java.time.format.DateTimeFormatter
      item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       au.mainspring.nativeapp.ui.AtelierChip(!boardView, { boardView = false }, label = { Text("List") }, modifier = Modifier.testTag("prospects-view-list"))
       au.mainspring.nativeapp.ui.AtelierChip(boardView, { boardView = true }, label = { Text("Board") }, modifier = Modifier.testTag("prospects-view-board"))
+      au.mainspring.nativeapp.ui.AtelierChip(visitsView, { visitsView = !visitsView }, label = { Text("Visits") }, modifier = Modifier.testTag("prospects-view-visits"))
      } }
+     if(visitsView) {
+      val visits = prospectVisits(leads)
+      if(visits.isEmpty()) item { Text("No visits scheduled", Modifier.testTag("prospects-visits-empty")) }
+      items(visits, key = { "visit-" + it.id }) { lead -> CardOrFlat(spacing = 5.dp) { Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.testTag("prospect-visit-${lead.id}")) {
+       Text(au.mainspring.nativeapp.ui.formatShopDate(lead.visit.orEmpty(), TokenStore.calendarTimezone()), style = MaterialTheme.typography.labelLarge)
+       Text(lead.name, style = MaterialTheme.typography.titleMedium); lead.address?.let { Text(it) }
+       ProspectLinks(lead.name, lead.address, lead.phone, lead.website, "visit-${lead.id}")
+       OutlinedButton(onClick = { editing = lead.id }, enabled = enabled) { Text("Open prospect") }
+      } } }
+     } else {
      if(enabled && leads.isEmpty()) item { Text("No prospects match this view") }
      if(boardView) item { ProspectBoard(leads, enabled && state.uncertainLead.isBlank(), onOpen = { editing = it }, onAdvance = { advancing = it }) }
      else items(leads, key = { it.id }) { lead -> CardOrFlat(spacing = 5.dp) { Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -74,8 +85,10 @@ import java.time.format.DateTimeFormatter
       lead.address?.let { Text(it) }; lead.contactName?.let { Text("Contact: $it") }; lead.contactEmail?.let { Text(it) }; lead.phone?.let { Text(it) }
       lead.visit?.let { Text("Visit ${au.mainspring.nativeapp.ui.formatShopDate(it, TokenStore.calendarTimezone())}") }
       lead.notes?.let { Text(it) }; if(lead.accountId != null) Text("Linked to a customer account")
+      ProspectLinks(lead.name, lead.address, lead.phone, lead.website, "lead-${lead.id}")
       OutlinedButton(onClick = { editing = lead.id }, enabled = enabled) { Text("Open prospect") }
      } } }
+     }
     } else {
      item {
       Text("Search your stored business directory or request fresh results.")
@@ -87,10 +100,14 @@ import java.time.format.DateTimeFormatter
       au.mainspring.nativeapp.ui.LabeledCheckbox(live, { live = it }, enabled = enabled) { Text("Request fresh search (up to five suburbs)") }
       Button(onClick = { vm.search(category, region, suburbs, live) }, enabled = enabled && category.isNotBlank()) { Text("Search businesses") }
       state.source?.let { Text(if(it == "stored") "Results from the saved directory" else "Fresh search results") }
+      state.directoryTotal?.let { Text("$it businesses in the saved directory", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+      state.contactNote?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("prospect-contact-note")) }
      }
      items(state.results, key = { it.placeId }) { business -> CardOrFlat { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
       Text(business.name, style = MaterialTheme.typography.titleMedium); Text(business.address)
-      business.phone?.let { Text(it) }; business.website?.let { Text(it) }; business.rating?.let { Text("Rating $it · ${business.reviews ?: 0} reviews") }
+      business.rating?.let { Text("Rating $it · ${business.reviews ?: 0} reviews") }
+      ProspectLinks(business.name, business.address, business.phone, business.website, "result-${business.placeId}")
+      if(business.phone.isNullOrBlank() || business.website.isNullOrBlank()) OutlinedButton(onClick = { vm.lookupContact(business.placeId) }, enabled = enabled && state.lookingUp == null, modifier = Modifier.testTag("prospect-lookup-${business.placeId}")) { Text(if(state.lookingUp == business.placeId) "Looking up…" else "Find contact details") }
       val saved = state.leads.firstOrNull { it.placeId == business.placeId }
       OutlinedButton(onClick = { if(saved == null) vm.save(business, region) else { tab = 0; editing = saved.id } }, enabled = enabled) { Text(if(saved == null) "Save to board" else "Open saved prospect") }
      } } }
@@ -118,13 +135,14 @@ import java.time.format.DateTimeFormatter
  var notes by rememberSaveable { mutableStateOf(initial("notes", lead.notes.orEmpty())) }
  val localVisit = remember(lead.visit) { try { lead.visit?.let { au.mainspring.nativeapp.ui.scheduleInputDate(it, TokenStore.calendarTimezone()) }.orEmpty() } catch(_: Exception) { lead.visit.orEmpty() } }
  var visit by rememberSaveable { mutableStateOf(initial("visit", localVisit)) }
- var confirmAdvance by remember { mutableStateOf(false) }
+ var confirmAdvance by remember { mutableStateOf(false) }; var confirmRemove by remember { mutableStateOf(false) }
  fun persist() { val json = JsonObject().apply { addProperty("name", name); addProperty("email", email); addProperty("notes", notes); addProperty("visit", visit) }; drafts.saveMessageDraft("prospect-edit/${lead.id}", json.toString()) }
  AlertDialog(onDismissRequest = { if(enabled) onClose() }, title = { Text(lead.name) }, text = {
   Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
    state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
    if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    Text("Stage: ${lead.status}")
+   ProspectLinks(lead.name, lead.address, lead.phone, lead.website, "editor-${lead.id}")
    au.mainspring.nativeapp.ui.AtelierTextField(name, { name = it; persist() }, label = { Text("Contact name") }, enabled = enabled)
    au.mainspring.nativeapp.ui.AtelierTextField(email, { email = it; persist() }, label = { Text("Contact email") }, enabled = enabled)
    au.mainspring.nativeapp.ui.AtelierTextField(notes, { notes = it; persist() }, label = { Text("Notes") }, enabled = enabled)
@@ -132,9 +150,25 @@ import java.time.format.DateTimeFormatter
    Text("Visits use ${TokenStore.calendarTimezone()}. Leaving the visit blank clears it.")
    if(lead.status in listOf("new", "contacted", "visited", "quote_needed", "follow_up_due")) OutlinedButton(onClick = { confirmAdvance = true }, enabled = enabled && state.uncertainLead.isBlank()) { Text("Save and advance stage") }
    Text("Your draft is retained on this device until saved.")
+   TextButton(onClick = { confirmRemove = true }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp).testTag("prospect-remove")) { Text("Remove prospect", color = MaterialTheme.colorScheme.error) }
   }
  }, confirmButton = { Button(onClick = { vm.update(lead.id, name, email, notes, visit, false, onClose) }, enabled = enabled) { Text("Save details") } },
  dismissButton = { TextButton(onClick = onClose, enabled = enabled) { Text("Close") } })
+ if(confirmRemove) AlertDialog(onDismissRequest = { confirmRemove = false }, title = { Text("Remove prospect?") }, text = { Text("${lead.name} will be removed from your prospect board. This cannot be undone.") },
+  confirmButton = { Button(onClick = { confirmRemove = false; vm.remove(lead.id, onClose) }, enabled = enabled, modifier = Modifier.testTag("prospect-remove-confirm")) { Text("Remove") } }, dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("Cancel") } })
  if(confirmAdvance) AlertDialog(onDismissRequest = { confirmAdvance = false }, title = { Text("Advance prospect?") }, text = { Text(if(lead.status == "visited") "Save these contact details and create a customer account for this prospect." else "Save these contact details and move this prospect to the next stage.") },
   confirmButton = { Button(onClick = { confirmAdvance = false; vm.update(lead.id, name, email, notes, visit, true, onClose) }, enabled = enabled) { Text("Save and advance") } }, dismissButton = { TextButton(onClick = { confirmAdvance = false }) { Text("Cancel") } })
+}
+
+/** Call, Maps and Website links for a business or prospect (web ProspectResult / ProspectBoardPage rows). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable private fun ProspectLinks(name: String, address: String?, phone: String?, website: String?, tag: String) {
+ val context = androidx.compose.ui.platform.LocalContext.current
+ fun open(uri: String?) { if(uri != null) runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+ val tel = prospectTelUri(phone); val web = prospectWebsiteUri(website)
+ FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+  if(tel != null) TextButton({ open(tel) }, Modifier.heightIn(min = 48.dp).testTag("prospect-call-$tag")) { Text("Call ${phone?.trim()}") }
+  if(web != null) TextButton({ open(web) }, Modifier.heightIn(min = 48.dp).testTag("prospect-web-$tag")) { Text("Website") }
+  TextButton({ open(prospectMapsUri(name, address)) }, Modifier.heightIn(min = 48.dp).testTag("prospect-maps-$tag")) { Text("Maps") }
+ }
 }

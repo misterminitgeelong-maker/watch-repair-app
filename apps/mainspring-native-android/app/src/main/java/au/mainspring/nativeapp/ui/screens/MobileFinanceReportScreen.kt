@@ -39,20 +39,23 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
     var exportPeriod by rememberSaveable { mutableStateOf("week") }
     var exportGeneration by rememberSaveable { mutableStateOf(0L) }
     var exportBusy by remember { mutableStateOf(false) }
+    var rangeOpen by remember { mutableStateOf(false) }
+    var exportFrom by remember { mutableStateOf<String?>(null) }; var exportTo by remember { mutableStateOf<String?>(null) }
     var exportInfo by remember { mutableStateOf<String?>(null) }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if(uri != null) scope.launch {
             exportBusy = true; exportInfo = null
             try {
                 check(TokenStore.sessionGeneration() == exportGeneration) { "The signed-in shop changed. Open the report and choose an export location again." }
-                val bytes = viewModel.exportCsv(exportPeriod, exportKind)
+                val bytes = viewModel.exportCsv(exportPeriod, exportKind, exportFrom, exportTo)
                 saveReportExport(context, uri, bytes)
-                exportInfo = "CSV saved ($exportKind, ${mobileFinancePeriods[exportPeriod]})."
+                exportInfo = "CSV saved ($exportKind, ${mobileFinancePeriods[exportPeriod] ?: "$exportFrom to $exportTo"})."
             } catch(e: kotlinx.coroutines.CancellationException) { throw e }
             catch(e: Exception) { exportInfo = e.userMessage() }
             finally { exportBusy = false }
         }
     }
+    if(rangeOpen) FinanceRangeDialog(state.customFrom, state.customTo, viewModel::customRange) { rangeOpen = false }
     Scaffold(topBar = { BackLargeHeader("More", "Mobile services", "Finance report", onBack) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             item {
@@ -64,6 +67,15 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
             if(state.mode == "finance") item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     mobileFinancePeriods.forEach { (value, label) -> TabChip(state.period == value, { viewModel.period(value) }, { Text(label) }) }
+                    TabChip(state.period == ReportRange.CUSTOM, { viewModel.chooseCustom(); rangeOpen = true }, { Text("Custom") })
+                }
+            }
+            if(state.mode == "finance" && state.period == ReportRange.CUSTOM) item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedButton(onClick = { rangeOpen = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text(if(state.customFrom != null && state.customTo != null) "${formatShopDate(state.customFrom!!)} to ${formatShopDate(state.customTo!!)}" else "Choose start and end dates")
+                    }
+                    state.rangeError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 }
             }
             if(state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
@@ -76,7 +88,7 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("summary" to "Summary CSV", "invoices" to "Invoices CSV").forEach { (kind, label) ->
                             OutlinedButton(onClick = {
-                                exportKind = kind; exportPeriod = state.period; exportGeneration = TokenStore.sessionGeneration()
+                                exportKind = kind; exportPeriod = state.period; exportFrom = state.customFrom; exportTo = state.customTo; exportGeneration = TokenStore.sessionGeneration()
                                 export.launch("mainspring-mobile-finance-$kind-${state.period}.csv")
                             }, enabled = !state.loading && !exportBusy, modifier = Modifier.weight(1f)) { Text(if(exportBusy) "Preparing…" else label) }
                         }
@@ -86,6 +98,20 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun FinanceRangeDialog(from: String?, to: String?, onApply: (String, String) -> Unit, onDismiss: () -> Unit) {
+    fun millis(d: String?) = d?.let { java.time.LocalDate.parse(it).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() }
+    fun date(m: Long) = java.time.Instant.ofEpochMilli(m).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+    val picker = rememberDateRangePickerState(initialSelectedStartDateMillis = millis(from), initialSelectedEndDateMillis = millis(to))
+    DatePickerDialog(onDismissRequest = onDismiss, confirmButton = {
+        TextButton(onClick = {
+            val s = picker.selectedStartDateMillis; val e = picker.selectedEndDateMillis ?: s
+            if(s != null && e != null) onApply(date(s), date(e))
+            onDismiss()
+        }, enabled = picker.selectedStartDateMillis != null, modifier = Modifier.heightIn(min = 48.dp)) { Text("Apply range") }
+    }, dismissButton = { TextButton(onDismiss, Modifier.heightIn(min = 48.dp)) { Text("Cancel") } }) { DateRangePicker(picker, Modifier.height(480.dp)) }
 }
 
 private fun LazyListScope.operations(data: MobileCockpitResponse, currency: String) {

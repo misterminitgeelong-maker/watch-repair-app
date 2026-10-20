@@ -65,6 +65,9 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
         vm.searchCustomers(vm.field("customerQuery"))
     }
     val valid = when(step) { 0 -> if(newCustomer) vm.field("name").isNotBlank() else vm.field("customerId").isNotBlank(); 2 -> vm.field("title").isNotBlank(); else -> true }
+    var customOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var customBusy by remember { mutableStateOf(false) }; var customError by remember { mutableStateOf<String?>(null) }
+    if(customOpen) au.mainspring.nativeapp.ui.AddCustomServiceDialog(customBusy, customError, { n, c -> customBusy = true; customError = null; vm.addCustomService(n, c) { err -> customBusy = false; customError = err; if(err == null) customOpen = false } }, { customOpen = false; customError = null })
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("watch", ::close, !state.busy, { discardDialog = true }, !state.busy && vm.field("uncertainWrite").isBlank() && state.savedJobIds.isEmpty(), services, onSwitchService) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -166,6 +169,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
                             Text(item.priceCents?.let { formatCents(it, "AUD") } ?: "Quote required", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+                    OutlinedButton(onClick = { customOpen = true }, enabled = !locked, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add custom service") }
                     field("title", "Job Title *"); field("description", "Instructions / Fault Description", true)
                     val quoteRequired = state.catalogue.any { it.key in vm.selectedServices() && it.pricingType == "quote" }
                     FieldCaption("Initial status")

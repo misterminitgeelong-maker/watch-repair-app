@@ -29,6 +29,7 @@ import au.mainspring.nativeapp.ui.*
 fun SearchScreen(onBack: () -> Unit, onOpenRoute: (String) -> Unit, viewModel: SearchViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
+    val recent by au.mainspring.nativeapp.RecentSearches.hits.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { try { focus.requestFocus() } catch (_: Exception) { } }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 112.dp)) {
         item { BackLargeHeader("Back", "Find", "Search", onBack) }
@@ -47,6 +48,10 @@ fun SearchScreen(onBack: () -> Unit, onOpenRoute: (String) -> Unit, viewModel: S
         } else if (state.searched && state.hits.isEmpty()) {
             item { EmptyState("No results", "Nothing matched \"${state.query.trim()}\".") }
         }
+        if (state.query.trim().length < SearchViewModel.MIN_CHARS && recent.isNotEmpty()) {
+            item(key = "h-recent") { SectionLabel("Recent", Modifier.padding(horizontal = 20.dp)) }
+            items(recent, key = { "recent-${it.kind}-${it.id}" }) { hit -> HitRow(hit, onOpenRoute) }
+        }
         section("Jobs", state.jobs, onOpenRoute)
         section("Customers", state.customers, onOpenRoute)
         section("Invoices", state.invoices, onOpenRoute)
@@ -61,9 +66,12 @@ private fun kindLabel(kind: String) = when (kind) {
 private fun LazyListScope.section(title: String, hits: List<SearchHit>, onOpenRoute: (String) -> Unit) {
     if (hits.isEmpty()) return
     item(key = "h-$title") { SectionLabel(title, Modifier.padding(horizontal = 20.dp)) }
-    items(hits, key = { "${it.kind}-${it.id}" }) { hit ->
+    items(hits, key = { "${it.kind}-${it.id}" }) { hit -> HitRow(hit, onOpenRoute) }
+}
+
+@Composable private fun HitRow(hit: SearchHit, onOpenRoute: (String) -> Unit) {
         Column(
-            Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { searchRoute(hit)?.let(onOpenRoute) }.heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { searchRoute(hit)?.let { au.mainspring.nativeapp.RecentSearches.push(hit); onOpenRoute(it) } }.heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -73,5 +81,4 @@ private fun LazyListScope.section(title: String, hits: List<SearchHit>, onOpenRo
             MonoLabel(listOfNotNull(kindLabel(hit.kind), hit.subtitle?.takeIf { it.isNotBlank() }, hit.status?.takeIf { it.isNotBlank() && it != hit.subtitle }?.let(::statusLabel)).joinToString(" · "))
         }
         HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant)
-    }
 }

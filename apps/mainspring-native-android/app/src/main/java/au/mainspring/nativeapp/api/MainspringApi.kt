@@ -54,6 +54,9 @@ interface MainspringApi {
     @POST("v1/prospect-leads") suspend fun saveProspect(@Body body: ProspectSave): ProspectLead
     @retrofit2.http.PATCH("v1/prospect-leads/{id}") suspend fun updateProspect(@Path("id") id: String, @Body body: com.google.gson.JsonObject): ProspectLead
     @POST("v1/prospect-leads/{id}/advance") suspend fun advanceProspect(@Path("id") id: String, @Body body: com.google.gson.JsonObject): ProspectLead
+    @retrofit2.http.DELETE("v1/prospect-leads/{id}") suspend fun deleteProspect(@Path("id") id: String): okhttp3.ResponseBody
+    @GET("v1/prospects/contact-details") suspend fun prospectContactDetails(@Query("place_id") placeId: String): ProspectContact
+    @GET("v1/prospects/collector-status") suspend fun prospectCollectorStatus(): ProspectCollectorStatus
     @GET("v1/prospects/categories") suspend fun prospectCategories(): ProspectCategories
     @GET("v1/prospects/search") suspend fun prospectSearch(@Query("category") category: String, @Query("state") state: String, @Query("suburbs") suburbs: String? = null, @Query("live") live: Boolean = false): ProspectResults
     @GET("v1/toolkit/catalog") suspend fun toolkitCatalog(): ToolkitCatalog
@@ -73,9 +76,10 @@ interface MainspringApi {
     @POST("v1/auto-key-jobs/quotes/{id}/send") suspend fun sendMobileQuote(@Path("id") id: String): MobileQuoteSend
     @GET("v1/auto-key-jobs/{id}/invoices") suspend fun mobileInvoices(@Path("id") id: String): List<MobileInvoice>
     @POST("v1/auto-key-jobs/{jobId}/invoices/from-quote/{quoteId}") suspend fun createMobileInvoice(@Path("jobId") jobId: String, @Path("quoteId") quoteId: String): MobileInvoice
-    @POST("v1/auto-key-jobs/invoices/{id}/send") suspend fun sendMobileInvoice(@Path("id") id: String): MobileInvoiceSend
+    @POST("v1/auto-key-jobs/invoices/{id}/send") suspend fun sendMobileInvoice(@Path("id") id: String, @Query("channel") channel: String = "both"): MobileInvoiceSend
     @POST("v1/auto-key-jobs/bulk-status") suspend fun bulkMobileStatus(@Body body: au.mainspring.nativeapp.BulkMobileStatus): retrofit2.Response<Unit>
     @POST("v1/auto-key-jobs/invoices/{id}/xero/retry") suspend fun retryMobileInvoiceXero(@Path("id") id: String): MobileInvoice
+    @retrofit2.http.PATCH("v1/auto-key-jobs/invoices/{id}") suspend fun editMobileInvoiceAmounts(@Path("id") id: String, @Body body: MobileInvoiceAmounts): MobileInvoice
     @retrofit2.http.PATCH("v1/auto-key-jobs/invoices/{id}") suspend fun updateMobileInvoice(@Path("id") id: String, @Body body: MobileInvoiceUpdate): MobileInvoice
     @GET("v1/{resource}/{id}/messages") suspend fun messages(@Path("resource") resource: String, @Path("id") id: String): List<JobThreadMessage>
     @POST("v1/{resource}/{id}/messages") suspend fun sendMessage(@Path("resource") resource: String, @Path("id") id: String, @Body body: MessageCreate): JobThreadMessage
@@ -108,6 +112,8 @@ interface MainspringApi {
     @retrofit2.http.DELETE("v1/customer-accounts/{id}/customers/{customerId}") suspend fun removeAccountMember(@Path("id") id: String, @Path("customerId") customerId: String): Response<Unit>
     @GET("v1/watch-catalogue/items")
     suspend fun watchCatalogue(): List<WatchCatalogueItem>
+    @POST("v1/custom-services") suspend fun createCustomWatchService(@Body body: au.mainspring.nativeapp.CustomServiceCreate): WatchCatalogueItem
+    @POST("v1/custom-services") suspend fun createCustomShoeService(@Body body: au.mainspring.nativeapp.CustomServiceCreate): ShoeCatalogueItem
     @GET("v1/custom-services") suspend fun customWatchServices(@Query("service_type") type: String = "watch"): List<WatchCatalogueItem>
     @GET("v1/custom-services") suspend fun customShoeServices(@Query("service_type") type: String = "shoe"): List<ShoeCatalogueItem>
     @GET("v1/watch-catalogue/repairs-config")

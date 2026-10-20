@@ -128,8 +128,12 @@ fun TodayHubScreen(
         }
         items(attention, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
         if(actions.isNotEmpty()) item {
-            Column(Modifier.padding(horizontal = 20.dp)) {
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if(calibre) SectionLabel("Action needed") else Text("Action needed", style = MaterialTheme.typography.titleMedium)
+                au.mainspring.nativeapp.followUpSweepTarget(widgets)?.let { target ->
+                    PrimaryAction(onClick = { when(target) { "quotes" -> onOpenQuotes(); "invoices" -> onOpenInvoices(); else -> onOpenRoute(target) } },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("follow-up-sweep")) { Text("Start follow-up sweep") }
+                }
             }
         }
         items(actions, key = { it.first }) { (title, detail, route) ->
@@ -140,6 +144,7 @@ fun TodayHubScreen(
         dash.inboxCount?.takeIf { it > 0 }?.let { n ->
             item { AttentionCard("Inbox", if(n == 1) "1 unread alert" else "$n unread alerts") { onOpenRoute("inbox") } }
         }
+        if(summary != null) item { PulsePanels(summary, widgets, hub.jobs.count { it.active && it.urgent }, Modifier.padding(horizontal = 20.dp)) }
         if(canWork && !calibre) item {
             PrimaryAction(onClick = onNewIntake, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
                 Text("New intake", style = MaterialTheme.typography.titleMedium)
@@ -366,5 +371,34 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
             }
         }
         LiveServiceQueue(hub.jobs.filter { it.active }.sortedBy { it.sortKey }.take(6), hub.loading, onViewAll, onOpenJob)
+    }
+}
+
+
+/** Web Commercial Pulse, Operational Pressure and Financial Data Health cards (owner/manager only). */
+@Composable private fun PulsePanels(s: au.mainspring.nativeapp.api.ReportsSummaryResponse, w: au.mainspring.nativeapp.api.DashboardWidgetsResponse?, urgentJobs: Int, modifier: Modifier = Modifier) {
+    fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
+    val f = s.financials
+    Column(modifier.testTag("pulse-panels"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        HomeCard(Modifier.fillMaxWidth().testTag("pulse-commercial")) {
+            Text("Commercial Pulse", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+            Text("What the shop has billed, recovered, and still needs to chase.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            DetailRow("Billed total", money(f.billedCents)); DetailRow("Revenue received", money(f.revenueCents))
+            DetailRow("Outstanding", money(f.outstandingCents)); DetailRow("Gross margin", "${f.grossMarginPercent.let { if(it % 1.0 == 0.0) it.toInt().toString() else String.format(Locale.US, "%.1f", it) }}%")
+        }
+        HomeCard(Modifier.fillMaxWidth().testTag("pulse-operational")) {
+            Text("Operational Pressure", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+            Text("Where workflow congestion is starting to show.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            DetailRow("Watch OK wait", (s.jobsByStatus["awaiting_go_ahead"] ?: 0).toString())
+            DetailRow("Quotes pending", au.mainspring.nativeapp.quotesPendingCount(s.quotesByStatus).toString())
+            DetailRow("Urgent jobs", urgentJobs.toString())
+            DetailRow("Unpaid invoices", (w?.overdueInvoicesCount ?: 0).toString())
+        }
+        HomeCard(Modifier.fillMaxWidth().testTag("pulse-data-health")) {
+            Text("Financial Data Health", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+            Text("Flags imported cost outliers excluded from gross profit.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            DetailRow("Watch outlier jobs", f.costOutlierWatchJobs.toString()); DetailRow("Shoe outlier jobs", f.costOutlierShoeJobs.toString())
+            DetailRow("Total suppressed jobs", f.costOutlierJobs.toString())
+        }
     }
 }

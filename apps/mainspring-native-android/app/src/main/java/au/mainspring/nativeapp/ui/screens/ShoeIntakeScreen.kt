@@ -49,6 +49,9 @@ fun ShoeIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (St
     }
     LaunchedEffect(Unit) { if(preselectedCustomerId != null && state.fields.isEmpty()) { vm.set("customerId",preselectedCustomerId); vm.set("customerMode","existing"); vm.set("step","1") }; vm.search() }
     val valid = step != 0 || vm.field("customerId").isNotBlank() || (vm.field("customerMode") == "new" && vm.field("name").isNotBlank())
+    var customOpen by rememberSaveable { mutableStateOf(false) }
+    var customBusy by remember { mutableStateOf(false) }; var customError by remember { mutableStateOf<String?>(null) }
+    if(customOpen) au.mainspring.nativeapp.ui.AddCustomServiceDialog(customBusy, customError, { n, c -> customBusy = true; customError = null; vm.addCustomService(pair, n, c) { err -> customBusy = false; customError = err; if(err == null) customOpen = false } }, { customOpen = false; customError = null })
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("shoe", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -116,6 +119,7 @@ fun ShoeIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (St
                             field("pair.$pair.note.${item.key}", "Service notes")
                         }
                     }
+                    OutlinedButton(onClick = { customOpen = true }, enabled = !locked, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add custom service") }
                 }
                 2 -> {
                     field("title", "Job Title (or use selected services)"); field("description", "Instructions / Fault Description")

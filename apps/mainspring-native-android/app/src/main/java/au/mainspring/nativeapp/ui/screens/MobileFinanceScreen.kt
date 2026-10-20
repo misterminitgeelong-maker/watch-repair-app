@@ -29,6 +29,9 @@ import au.mainspring.nativeapp.ui.formatCents
  var composing by rememberSaveable { mutableStateOf(false) }
  LaunchedEffect(state.lastCreatedQuoteId,state.unknownQuote) { if(state.lastCreatedQuoteId != null || state.unknownQuote) composing=false }
  var confirm by remember { mutableStateOf<Pair<String, String>?>(null) }; var method by rememberSaveable { mutableStateOf("card") }
+ var channel by rememberSaveable { mutableStateOf("both") }
+ var editInvoiceId by remember { mutableStateOf<String?>(null) }
+ var editSubtotal by remember { mutableStateOf("") }; var editTax by remember { mutableStateOf("") }; var editTotal by remember { mutableStateOf("") }
  val calibre = LocalCalibre.current
  val enabled = !state.busy && !state.loading && state.historyChecked && TokenStore.canWorkJobs()
  Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Mobile quotes and invoices") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
@@ -92,7 +95,8 @@ import au.mainspring.nativeapp.ui.formatCents
       details = listOfNotNull(invoice.customerName?.let { "Customer: $it" },invoice.jobNumber?.let { "Job: $it" },invoice.createdAt?.let { "Created ${au.mainspring.nativeapp.ui.formatShopDate(it)}" },invoice.paymentMethod?.let { "Payment method: ${au.mainspring.nativeapp.ui.statusLabel(it)}" }),
       totals = listOfNotNull(invoice.subtotal?.let { "Subtotal" to formatCents(it,invoice.currency) },invoice.tax?.let { "Tax / GST" to formatCents(it,invoice.currency) },"Total" to formatCents(invoice.total,invoice.currency))))
     } catch(e: Exception) { printError = e.userMessage() } },enabled = !state.loading && !state.busy) { Text("Print / save invoice summary") }
-    OutlinedButton(onClick = { confirm = "sendInvoice" to invoice.id }, enabled = enabled) { Text("Send invoice") }
+    OutlinedButton(onClick = { confirm = "sendInvoice" to invoice.id }, enabled = enabled, modifier = Modifier.testTag("mobile-invoice-send")) { Text("Send invoice") }
+    if(invoice.status == "unpaid") OutlinedButton(onClick = { editInvoiceId = invoice.id; editSubtotal = centsText(invoice.subtotal ?: invoice.total); editTax = centsText(invoice.tax ?: 0); editTotal = centsText(invoice.total) }, enabled = enabled, modifier = Modifier.testTag("mobile-invoice-edit")) { Text("Edit amounts") }
     if(invoice.status == "unpaid") OutlinedButton(onClick = { confirm = "paid" to invoice.id }, enabled = enabled && state.paymentReviewId==null) { Text("Mark paid") }
    } } }
    if(state.unknownQuote) OutlinedButton(onClick = vm::checkedQuotes, enabled = enabled && state.historyChecked) { Text("I checked for the saved quote") }
@@ -131,8 +135,30 @@ import au.mainspring.nativeapp.ui.formatCents
   text = { Column { if(action.first == "paid") {
    Text("Record this only after receiving the full invoice amount.")
    listOf("cash", "card", "bank_transfer").forEach { option -> au.mainspring.nativeapp.ui.LabeledRadio(method == option, { method = option }) { Text(au.mainspring.nativeapp.ui.statusLabel(option)) } }
+  } else if(action.first == "sendInvoice") {
+   Text("Choose how to send this invoice using the customer's saved contact details.")
+   INVOICE_CHANNELS.forEach { (key, label) -> au.mainspring.nativeapp.ui.LabeledRadio(channel == key, { channel = key }) { Text(label) } }
   } else Text("${if(action.first == "invoice") "Create the invoice using this quote's totals." else "Send this document using the customer's saved contact details."}") } },
-  confirmButton = { Button(onClick = { confirm = null; when(action.first) { "quote" -> vm.sendQuote(action.second); "invoice" -> vm.createInvoice(action.second); "paid" -> vm.markPaid(action.second, method); else -> vm.sendInvoice(action.second) } }) { Text("Confirm") } },
+  confirmButton = { Button(onClick = { confirm = null; when(action.first) { "quote" -> vm.sendQuote(action.second); "invoice" -> vm.createInvoice(action.second); "paid" -> vm.markPaid(action.second, method); else -> vm.sendInvoice(action.second, channel) } }) { Text("Confirm") } },
   dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } }) }
+ editInvoiceId?.let { id ->
+  val parsed = parseInvoiceAmounts(editSubtotal, editTax, editTotal)
+  AlertDialog(onDismissRequest = { editInvoiceId = null }, title = { Text("Edit invoice amounts") },
+   text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    au.mainspring.nativeapp.ui.AtelierTextField(editSubtotal, { editSubtotal = it; editTotal = sumText(it, editTax) }, label = { Text("Subtotal") }, singleLine = true, modifier = Modifier.testTag("invoice-edit-subtotal"))
+    au.mainspring.nativeapp.ui.AtelierTextField(editTax, { editTax = it; editTotal = sumText(editSubtotal, it) }, label = { Text("Tax / GST") }, singleLine = true, modifier = Modifier.testTag("invoice-edit-tax"))
+    au.mainspring.nativeapp.ui.AtelierTextField(editTotal, { editTotal = it }, label = { Text("Total") }, singleLine = true, modifier = Modifier.testTag("invoice-edit-total"))
+    parsed.second?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+   } },
+   confirmButton = { Button(onClick = { parsed.first?.let { vm.editInvoiceAmounts(id, it); editInvoiceId = null } }, enabled = parsed.first != null && enabled) { Text("Save") } },
+   dismissButton = { TextButton(onClick = { editInvoiceId = null }) { Text("Cancel") } })
+ }
 }
 
+
+private fun centsText(cents: Int) = java.math.BigDecimal(cents).movePointLeft(2).setScale(2).toPlainString()
+private fun sumText(a: String, b: String): String {
+ fun c(x: String) = x.trim().removePrefix("$").replace(",", "").toBigDecimalOrNull()
+ val x = c(a); val y = c(b)
+ return if(x != null && y != null) (x + y).setScale(2, java.math.RoundingMode.HALF_UP).toPlainString() else ""
+}

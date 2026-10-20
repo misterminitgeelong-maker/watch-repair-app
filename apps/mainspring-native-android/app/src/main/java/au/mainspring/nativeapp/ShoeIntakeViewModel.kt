@@ -31,6 +31,17 @@ class ShoeIntakeViewModel(private val saved: SavedStateHandle): ViewModel() {
         val json = gson.toJson(fields); saved["draft"] = json; drafts.saveShoeDraft(json); if(key == "uncertain") TokenStore.flushDraftCheckpoint(); if(oldPhoto.isNotBlank() && oldPhoto != value) deleteUnusedOwnedPhoto(oldPhoto) }
     fun finish() { saved["draft"] = "{}"; drafts.clearShoeDraft(); cleanupUnusedOwnedPhotos() }
     fun discard() { if(!mutable.value.busy) { finish(); mutable.update { it.copy(fields = emptyMap(), error = null, complete = false, photoFailures = emptyList()) } } }
+    /** Creates a custom shoe service (POST /custom-services) and selects it on pair [pair]. [onDone] gets an error message or null. */
+    fun addCustomService(pair: Int, name: String, priceCents: Int, onDone: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val item = api.createCustomShoeService(CustomServiceCreate("shoe", name, priceCents))
+                mutable.update { it.copy(catalogue = (it.catalogue + item).distinctBy { row -> row.key }) }
+                if(item.key !in field("pair.$pair.services").split('|')) toggle(pair, item.key)
+                onDone(null)
+            } catch(e: CancellationException) { throw e } catch(e: Exception) { onDone("Failed to add service. ${e.userMessage()}") }
+        }
+    }
     fun toggle(i: Int, key: String) { val keys = field("pair.$i.services").split('|').filter(String::isNotBlank).toMutableSet()
         if(!keys.add(key)) keys.remove(key); set("pair.$i.services", keys.joinToString("|")) }
     init { viewModelScope.launch {

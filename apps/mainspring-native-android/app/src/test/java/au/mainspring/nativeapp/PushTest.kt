@@ -47,7 +47,9 @@ class PushTest {
 
     @Test fun tappedNotificationPathsOpenTheRightScreen() {
         assertEquals("watchJob/abc-123", PushRoutes.toRoute("/jobs/abc-123"))
-        assertEquals("watchJob/abc-123", PushRoutes.toRoute("/jobs/abc-123?tab=messages"))
+        assertEquals("watchJob/abc-123?tab=messages", PushRoutes.toRoute("/jobs/abc-123?tab=messages"))
+        assertEquals("watchJob/abc-123", PushRoutes.toRoute("/jobs/abc-123?tab=other"))
+        assertEquals("shoeJob/9f2?tab=messages", PushRoutes.toRoute("/shoe-repairs/9f2?tab=messages"))
         assertEquals("shoeJob/9f2", PushRoutes.toRoute("/shoe-repairs/9f2"))
         assertEquals("autoKeyJob/77a", PushRoutes.toRoute("/auto-key/77a"))
         assertEquals("invoices", PushRoutes.toRoute("/invoices"))
