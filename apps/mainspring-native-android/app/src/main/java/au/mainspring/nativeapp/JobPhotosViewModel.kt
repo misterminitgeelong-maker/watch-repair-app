@@ -71,6 +71,29 @@ class JobPhotosViewModel(private val resource: String, private val id: String) :
             catch(e: Exception) { mutable.update { it.copy(loading = false, error = e.userMessage()) } }
         }
     }
+    /** Uploads any file (PDF, document, image...) as-is, as the web "Upload File" button does. */
+    fun uploadFile(context: Context, uri: Uri) {
+        val snapshot = mutable.value
+        if(snapshot.loading || snapshot.busy || snapshot.uncertain) return
+        mutable.update { it.copy(busy = true, error = null, info = null) }
+        viewModelScope.launch {
+            try {
+                val resolver = context.contentResolver
+                val name = withContext(Dispatchers.IO) {
+                    resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if(c.moveToFirst()) c.getString(0) else null }
+                } ?: "file-${UUID.randomUUID()}"
+                val type = resolver.getType(uri) ?: "application/octet-stream"
+                val bytes = withContext(Dispatchers.IO) { resolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Could not read that file.") }
+                require(bytes.size <= MAX_FILE_BYTES) { "That file is larger than 25 MB." }
+                val part = MultipartBody.Part.createFormData("file", name, bytes.toRequestBody(type.toMediaType()))
+                val saved = api.uploadJobPhoto(part, watchId = id.takeIf { resource == "repair-jobs" }, shoeId = id.takeIf { resource == "shoe-repair-jobs" },
+                    mobileId = id.takeIf { resource == "auto-key-jobs" }, label = name.take(64))
+                mutable.update { it.copy(files = (listOf(saved) + it.files).distinctBy { row -> row.id }, info = "File saved on this job.") }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) } }
+            finally { mutable.update { it.copy(busy = false) } }
+        }
+    }
     fun checkedFiles() {
         if(!mutable.value.historyChecked || mutable.value.busy) return
         drafts.setPendingOperation(key, false); mutable.update { it.copy(uncertain = false) }
@@ -100,7 +123,7 @@ class JobPhotosViewModel(private val resource: String, private val id: String) :
             } finally { mutable.update { it.copy(busy = false) } }
         }
     }
-    companion object { fun factory(resource: String, id: String) = object: ViewModelProvider.Factory {
+    companion object { const val MAX_FILE_BYTES = 25 * 1024 * 1024; fun factory(resource: String, id: String) = object: ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T: ViewModel> create(modelClass: Class<T>): T = JobPhotosViewModel(resource, id) as T
     } }
 }

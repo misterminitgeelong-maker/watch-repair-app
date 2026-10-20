@@ -15,4 +15,6 @@ interface JobAdminApi {
     @DELETE("v1/shoe-repair-jobs/{id}") suspend fun deleteShoeJob(@Path("id") id: String): Response<ResponseBody>
     @POST("v1/repair-jobs/{id}/clone") suspend fun cloneRepairJob(@Path("id") id: String): ClonedJob
     @POST("v1/shoe-repair-jobs/{id}/clone") suspend fun cloneShoeJob(@Path("id") id: String): ClonedJob
+    /** Every watch job as CSV from the server (web `exportRepairJobsCsv`), not just the rows loaded on the phone. */
+    @retrofit2.http.Streaming @retrofit2.http.GET("v1/repair-jobs/export.csv") suspend fun exportRepairJobsCsv(): ResponseBody
 }

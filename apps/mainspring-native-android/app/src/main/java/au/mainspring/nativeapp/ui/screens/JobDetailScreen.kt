@@ -63,6 +63,9 @@ fun JobDetailScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmDuplicate by remember { mutableStateOf(false) }
     var accountPicker by remember { mutableStateOf(false) }
+    var movementPicker by remember { mutableStateOf(false) }
+    var stepToMove by remember { mutableStateOf<au.mainspring.nativeapp.WorkflowStep?>(null) }
+    var stepNote by remember { mutableStateOf("") }
     LaunchedEffect(state.deleted) { if (state.deleted) onDeleted() }
     LaunchedEffect(state.clonedJobId) { state.clonedJobId?.let { vm.consumeClonedJob(); onDuplicated(it) } }
     val job = state.job
@@ -109,7 +112,8 @@ fun JobDetailScreen(
         onNext = nextJobId?.let { id -> { shownId = id; tab = "overview" } },
         header = {
             ContactQuickActions(job.customerPhone, job.customerEmail)
-            WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status)
+            WorkflowRail(au.mainspring.nativeapp.WATCH_WORKFLOW_STEPS, job.status,
+                onStepClick = if (TokenStore.canWorkJobs() && !state.statusBusy && !state.statusUnknown) ({ step -> stepNote = ""; stepToMove = step }) else null)
         },
         menu = suggested.drop(1).map { s -> DetailAction("Move to " + watchStatusLabel(s).lowercase(), !state.statusBusy && !state.loading && !state.statusUnknown && TokenStore.canWorkJobs()) { vm.setStatus(s) } } + listOfNotNull(
             DetailAction("Edit repair details", !state.loading && !state.statusBusy, onEdit),
@@ -117,6 +121,13 @@ fun JobDetailScreen(
             DetailAction("Photos & files", true, onPhotos),
             DetailAction("Log work", true, onWorkLogs),
             DetailAction("Notify customer", !state.resendBusy) { resendPicker = true },
+            DetailAction("Copy status link", job.statusToken != null) {
+                val url = au.mainspring.nativeapp.ui.intakeStatusUrl(apiBaseUrl, au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH, job.statusToken.orEmpty())
+                (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("Status link", url))
+                android.widget.Toast.makeText(context, "Status link copied", android.widget.Toast.LENGTH_SHORT).show()
+            },
+            DetailAction("Set quote from movement", !state.movementBusy && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) { vm.loadMovements(); movementPicker = true },
             DetailAction("Assign technician", !state.assignBusy && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) { vm.loadUsers(); assignPicker = true },
             DetailAction("Add shop note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
             DetailAction("Print intake ticket", job.statusToken != null) {
@@ -183,12 +194,17 @@ fun JobDetailScreen(
             }
             "attachments" -> {
                 if(LocalCalibre.current) JobHeroPhoto("watch", shownId, known = state.attachments.takeIf { !state.loading }, onClick = onPhotos)
-                var sortByName by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+                var sortField by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("date") }
+                val sortByName = sortField == "name"
                 var sortReversed by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
                 var sortMenu by remember { mutableStateOf(false) }
                 var orderMenu by remember { mutableStateOf(false) }
                 val files = state.attachments.let { list ->
-                    val sorted = if (sortByName) list.sortedBy { (it.fileName ?: it.storageKey).lowercase() } else list.sortedBy { it.createdAt }
+                    val sorted = when (sortField) {
+                        "name" -> list.sortedBy { (it.fileName ?: it.storageKey).lowercase() }
+                        "size" -> list.sortedBy { it.fileSizeBytes ?: 0 }
+                        else -> list.sortedBy { it.createdAt }
+                    }
                     // Newest / Z-A is the default (descending); the other option flips it.
                     if (sortReversed) sorted else sorted.reversed()
                 }
@@ -196,11 +212,12 @@ fun JobDetailScreen(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box {
                         SecondaryAction(onClick = { sortMenu = true }, modifier = Modifier.heightIn(min = 44.dp).testTag("attachments-sort"), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
-                            Text("Sort: " + if (sortByName) "Name" else "Date"); Spacer(Modifier.width(6.dp)); Text("▾")
+                            Text("Sort: " + when (sortField) { "name" -> "Name"; "size" -> "Size"; else -> "Date" }); Spacer(Modifier.width(6.dp)); Text("▾")
                         }
                         DropdownMenu(sortMenu, { sortMenu = false }) {
-                            DropdownMenuItem(text = { Text("Sort: Date") }, onClick = { sortByName = false; sortMenu = false })
-                            DropdownMenuItem(text = { Text("Sort: Name") }, onClick = { sortByName = true; sortMenu = false })
+                            DropdownMenuItem(text = { Text("Sort: Date") }, onClick = { sortField = "date"; sortMenu = false })
+                            DropdownMenuItem(text = { Text("Sort: Name") }, onClick = { sortField = "name"; sortMenu = false })
+                            DropdownMenuItem(text = { Text("Sort: Size") }, onClick = { sortField = "size"; sortMenu = false }, modifier = Modifier.testTag("attachments-sort-size"))
                         }
                     }
                     Box {
@@ -232,7 +249,7 @@ fun JobDetailScreen(
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(att.fileName ?: att.storageKey, style = MaterialTheme.typography.titleSmall)
-                                att.contentType?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                listOfNotNull(att.contentType, att.fileSizeBytes?.takeIf { it > 0 }?.let { "%.1f KB".format(java.util.Locale.US, it / 1024.0) }).joinToString(" \u00b7 ").takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
                             TextButton(onClick = {
                                 attachmentOpenError = null
@@ -378,6 +395,50 @@ fun JobDetailScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { statusPicker = false }) { Text("Close") } },
+        )
+    }
+
+    stepToMove?.let { step ->
+        val target = step.statuses.first()
+        AlertDialog(
+            onDismissRequest = { stepToMove = null },
+            title = { Text("Move to ${watchStatusLabel(target)}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Step: ${step.label}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    au.mainspring.nativeapp.ui.AtelierTextField(stepNote, { stepNote = it }, label = { Text("Note (optional)") },
+                        modifier = Modifier.fillMaxWidth().testTag("step-note"), minLines = 2, singleLine = false)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { vm.setStatus(target, stepNote.trim().takeIf { it.isNotEmpty() }); stepToMove = null }, modifier = Modifier.heightIn(min = 48.dp).testTag("step-confirm")) { Text("Move") }
+            },
+            dismissButton = { TextButton(onClick = { stepToMove = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } },
+        )
+    }
+
+    if (movementPicker) {
+        var movementQuery by remember { mutableStateOf("") }
+        val shown = state.movements.filter { movementQuery.isBlank() || it.name.contains(movementQuery.trim(), ignoreCase = true) }.take(40)
+        AlertDialog(
+            onDismissRequest = { movementPicker = false },
+            title = { Text("Set quote from movement") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    au.mainspring.nativeapp.ui.AtelierTextField(movementQuery, { movementQuery = it }, label = { Text("Search ETA, Miyota, Ronda...") },
+                        modifier = Modifier.fillMaxWidth().testTag("movement-search"), singleLine = true)
+                    if (state.movementsLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                        shown.forEach { m ->
+                            TextButton(onClick = { vm.applyMovementQuote(m.key); movementPicker = false }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("movement-${m.key}")) {
+                                Text(m.name + (m.quoteCents?.let { " \u00b7 " + formatCents(it, currency) } ?: ""), Modifier.fillMaxWidth())
+                            }
+                        }
+                        if (!state.movementsLoading && shown.isEmpty()) Text("No movements found.", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { movementPicker = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close") } },
         )
     }
 

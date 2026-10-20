@@ -1,6 +1,7 @@
 package au.mainspring.nativeapp
 
 import au.mainspring.nativeapp.api.ShoeRepairJobRead
+import java.time.LocalDate
 
 /** Shoe queue lane in order; mirrors web `RepairQueueModal` STATUS_NEXT keys plus its terminal step. */
 val SHOE_QUEUE_SEQUENCE: List<String> = listOf(
@@ -13,7 +14,17 @@ fun nextShoeQueueStatus(status: String): String? {
     return if (i < 0) null else SHOE_QUEUE_SEQUENCE.getOrNull(i + 1)
 }
 
-/** Shoe jobs the queue can triage: on the lane and not yet collected, ordered by due date (no date last), then job number. */
-fun shoeQueueEligibleJobs(jobs: List<ShoeRepairJobRead>): List<ShoeRepairJobRead> = jobs
-    .filter { it.status in SHOE_QUEUE_SEQUENCE && it.status != "collected" }
-    .sortedWith(compareBy<ShoeRepairJobRead> { it.collectionDate.isNullOrBlank() }.thenBy { it.collectionDate.orEmpty() }.thenBy { it.jobNumber })
+/** The status a back step returns to (used by undo only; the shoe lane has no back swipe). */
+fun previousShoeQueueStatus(status: String): String? {
+    val i = SHOE_QUEUE_SEQUENCE.indexOf(status)
+    return if (i <= 0) null else SHOE_QUEUE_SEQUENCE[i - 1]
+}
+
+fun ShoeRepairJobRead.toQueueRow() = QueueRow(id, status, priority, collectionDate, createdAt)
+
+/** Shoe jobs the queue can triage: on the lane and not yet collected, in queue order (urgency, priority, age). */
+fun shoeQueueEligibleJobs(jobs: List<ShoeRepairJobRead>, today: LocalDate = LocalDate.now()): List<ShoeRepairJobRead> {
+    val eligible = jobs.filter { it.status in SHOE_QUEUE_SEQUENCE && it.status != "collected" }
+    val byId = eligible.associateBy { it.id }
+    return sortQueueRows(eligible.map { it.toQueueRow() }, today).mapNotNull { byId[it.id] }
+}

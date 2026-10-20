@@ -39,6 +39,7 @@ import au.mainspring.nativeapp.JobsViewModel
 import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.WATCH_PICKER_STATUSES
 import au.mainspring.nativeapp.isWatchCompleted
+import au.mainspring.nativeapp.userMessage
 import au.mainspring.nativeapp.ui.JobThumb
 import au.mainspring.nativeapp.ui.SecondaryAction
 import au.mainspring.nativeapp.ui.formatCents
@@ -88,9 +89,9 @@ fun JobsScreen(
     var deleting by remember { mutableStateOf<au.mainspring.nativeapp.api.RepairJobRead?>(null) }
     val csvSaver = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri != null) scope.launch {
-            exportInfo = try { au.mainspring.nativeapp.saveReportExport(context, uri, watchJobsCsv(state.jobs, currency).toByteArray(Charsets.UTF_8)); "CSV saved (${state.jobs.size} jobs)." }
+            exportInfo = try { au.mainspring.nativeapp.saveReportExport(context, uri, viewModel.downloadCsv()); "CSV saved (all jobs, from the server)." }
             catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (e: Exception) { e.message ?: "Could not save the CSV." }
+            catch (e: Exception) { e.userMessage() }
         }
     }
     val canDelete = TokenStore.canManageInvoices()
@@ -103,7 +104,7 @@ fun JobsScreen(
                 TextToggle(listOf(ToggleOption("board", "Board", "view-board"), ToggleOption("list", "List", "view-list")),
                     if (state.board) "board" else "list", { viewModel.setBoard(it == "board") })
                 if (onOpenQueue != null) IconLabelButton("queue", "Queue", onOpenQueue)
-                IconLabelButton("download", "Export CSV", { csvSaver.launch("watch-repairs.csv") }, Modifier.testTag("export-csv"), enabled = state.jobs.isNotEmpty())
+                IconLabelButton("download", "Export CSV", { csvSaver.launch("watch-repairs.csv") }, Modifier.testTag("export-csv"), enabled = !state.exporting)
             }
             exportInfo?.let { Text(it, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = muted) }
             NewTicketButton("New Job Ticket", onNewJob, fullWidth = false)
@@ -175,12 +176,21 @@ fun JobsScreen(
         val me = TokenStore.currentUserId()
         FiltersSheet(onDismiss = { filtersOpen = false }, onReset = {
             viewModel.setSort(JobSort.NEWEST); viewModel.filterMinDays(null); viewModel.filterStatus(null); viewModel.filterTechnician(null)
+            viewModel.setSortDescending(true); viewModel.setCostOutliersOnly(false); viewModel.setPastCollectionOnly(false)
         }) {
             FilterSection("Status") {
                 SheetChip("All", state.statusFilter == null, { viewModel.filterStatus(null) })
                 WATCH_PICKER_STATUSES.forEach { s -> SheetChip(watchStatusLabel(s), state.statusFilter == s, { viewModel.filterStatus(s) }) }
             }
             FilterSection("Sort by") { JobSort.values().forEach { s -> SheetChip(s.label, state.sort == s, { viewModel.setSort(s) }, "sort-${s.name}") } }
+            if (state.sort.hasDirection) FilterSection("Direction") {
+                SheetChip("Descending", state.sortDescending, { viewModel.setSortDescending(true) }, "sort-desc")
+                SheetChip("Ascending", !state.sortDescending, { viewModel.setSortDescending(false) }, "sort-asc")
+            }
+            FilterSection("Only show") {
+                SheetChip("Cost outliers", state.costOutliersOnly, { viewModel.setCostOutliersOnly(!state.costOutliersOnly) }, "filter-cost-outliers")
+                SheetChip("Past collection date", state.pastCollectionOnly, { viewModel.setPastCollectionOnly(!state.pastCollectionOnly) }, "filter-past-collection")
+            }
             FilterSection("Days in shop") {
                 listOf<Int?>(null, 7, 14, 21).forEach { d -> SheetChip(if (d == null) "Any age" else "$d+ days", state.minDaysInShop == d, { viewModel.filterMinDays(d) }) }
             }
