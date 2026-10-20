@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -53,6 +54,12 @@ import au.mainspring.nativeapp.*
         Text(customer.fullName,style = MaterialTheme.typography.titleMedium)
         customer.phone?.takeIf { it.isNotBlank() }?.let { Text(it,style = MaterialTheme.typography.bodyMedium,color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
      state.accounts.filter { it.active && f("customerId") in it.customerIds }.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(f("accountId") == account.id,{ vm.set("accountId",if(f("accountId") == account.id) "" else account.id) },enabled = !locked,label = { Text("Account: ${account.name}") }) }
+     if(f("customerId").isNotBlank() && state.linkJobs.isNotEmpty()) {
+      Text("Link to job (optional)",style = MaterialTheme.typography.labelLarge,modifier = Modifier.padding(top = 4.dp))
+      au.mainspring.nativeapp.ui.AtelierChip(f("linkJobId").isBlank(),{ vm.set("linkJobId","") },enabled = !locked,label = { Text("Create new job") },modifier = Modifier.heightIn(min = 48.dp).testTag("pos-link-new"))
+      state.linkJobs.forEach { job -> au.mainspring.nativeapp.ui.AtelierChip(f("linkJobId") == job.id,{ vm.set("linkJobId",if(f("linkJobId") == job.id) "" else job.id) },enabled = !locked,
+       label = { Text("${job.jobNumber} · ${listOfNotNull(job.vehicleMake,job.vehicleModel).joinToString(" ").ifBlank { job.title }}") },modifier = Modifier.heightIn(min = 48.dp).testTag("pos-link-${job.id}")) }
+     }
     }
     if(au.mainspring.nativeapp.ui.LocalCalibre.current) { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant); au.mainspring.nativeapp.ui.MonoLabel("Cart",Modifier.padding(top = 6.dp)) } else { HorizontalDivider(); Text("Items",style = MaterialTheme.typography.titleLarge) }
     QuoteComposer("quote-composer/pos",f("accountId").isNotBlank(),!locked && TokenStore.canWorkJobs(),catalogue = true,quickSale = true,buttonLabel = if(f("mode").ifBlank { "sale" } == "sale") "Review counter sale" else "Review quote",onSave = { lines,gst,inclusive ->

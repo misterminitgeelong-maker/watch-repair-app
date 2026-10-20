@@ -7,7 +7,7 @@ import java.time.Instant
 enum class SlaKind(val label: String, val weight: Int) { LATE("Late", 3), AT_RISK("At risk", 2), AGING("Unscheduled aging", 1) }
 
 private val SLA_STOP_CLOCK = setOf("en_route", "on_site", "working_on", "service")
-private val SLA_CLOSED = setOf("work_completed", "completed", "booking_completed", "awaiting_collection", "collected", "invoice_paid", "paid",
+internal val SLA_CLOSED = setOf("work_completed", "completed", "booking_completed", "awaiting_collection", "collected", "invoice_paid", "paid",
     "lost", "cancelled", "no_go", "failed_job", "declined")
 private const val AT_RISK_MINUTES = 30L
 private const val AGING_HOURS = 24L

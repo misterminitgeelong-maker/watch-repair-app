@@ -30,6 +30,18 @@ class CounterSaleWorkflowTest {
   try { createCounterSale(request(),fields,gateway){ _,_-> };Assert.fail("Unknown save retried") }catch(_: IllegalArgumentException){}
   Assert.assertEquals(1,gateway.jobs);Assert.assertEquals(1,gateway.quotes)
  }
+ @Test fun linkedJobIsReusedAndNoNewJobOrCustomerIsCreated()=runBlocking {
+  val fields=mutableMapOf<String,String>();val gateway=Fake()
+  val linked=request().copy(customerId="c9",linkJobId="existing-job")
+  val job=createCounterSale(linked,fields,gateway){ _,_-> }
+  Assert.assertEquals("existing-job",job);Assert.assertEquals("existing-job",fields["jobId"])
+  Assert.assertEquals(0,gateway.customers);Assert.assertEquals(0,gateway.jobs)
+  Assert.assertEquals(1,gateway.quotes);Assert.assertEquals(1,gateway.invoices);Assert.assertEquals(1,gateway.completions)
+ }
+ @Test fun linkedQuoteOnlyAttachesQuoteToExistingJob()=runBlocking {
+  val gateway=Fake();createCounterSale(request("quote").copy(customerId="c9",linkJobId="existing-job"),mutableMapOf(),gateway){ _,_-> }
+  Assert.assertEquals(0,gateway.jobs);Assert.assertEquals(1,gateway.quotes);Assert.assertEquals(0,gateway.invoices)
+ }
  @Test fun invalidCartNeverCreatesResources()=runBlocking {
   val gateway=Fake(); val invalid=request().copy(lines=listOf(MobileQuoteLine("",1.0,100)))
   try { createCounterSale(invalid,mutableMapOf(),gateway){ _,_-> };Assert.fail("Invalid line accepted") }catch(_: IllegalArgumentException){}
