@@ -101,7 +101,7 @@ fun InvoicesScreen(
                     Spacer(Modifier.heightIn(min = 6.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if(!inv.mobile && inv.status == "unpaid" && au.mainspring.nativeapp.TokenStore.canManageInvoices())
-                            FinOutlinedLabel(if(state.payBusy) "Loading…" else "Record payment", { viewModel.beginPay(inv.id) }, Modifier.weight(1f).testTag("invoice-row-pay"), enabled = !state.payBusy)
+                            FinOutlinedLabel(if(state.payBusy) "Loadingâ€¦" else "Record payment", { viewModel.beginPay(inv.id) }, Modifier.weight(1f).testTag("invoice-row-pay"), enabled = !state.payBusy)
                         else FinOutlinedLabel(if(inv.mobile) "Open job invoice" else "Open invoice", open, Modifier.weight(1f))
                         Box {
                             FinOutlinedButton({ menu = true }, Modifier.width(56.dp).testTag("invoice-more")) { FinGlyph("dots", MaterialTheme.colorScheme.onSurface, 20.dp) }
@@ -124,11 +124,11 @@ fun InvoicesScreen(
         val remaining = viewModel.remainingCents(payTarget)
         androidx.compose.material3.AlertDialog(onDismissRequest = viewModel::dismissPay, title = { Text("Record payment") },
             text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("#${payTarget.invoice.invoiceNumber} · Remaining ${formatCents(remaining, payTarget.invoice.currency)}", style = MaterialTheme.typography.bodySmall)
+                Text("#${payTarget.invoice.invoiceNumber} Â· Remaining ${formatCents(remaining, payTarget.invoice.currency)}", style = MaterialTheme.typography.bodySmall)
                 au.mainspring.nativeapp.ui.AtelierTextField(value = amountDraft, onValueChange = { amountDraft = it }, label = { Text("Amount") }, singleLine = true, modifier = Modifier.testTag("invoice-row-pay-amount"))
                 au.mainspring.nativeapp.ui.AtelierTextField(value = refDraft, onValueChange = { refDraft = it }, label = { Text("Reference (optional)") }, singleLine = true)
             } },
-            confirmButton = { androidx.compose.material3.Button(onClick = { cents?.let { viewModel.submitPay(it, refDraft) } }, enabled = !state.payBusy && cents != null && cents <= remaining) { Text(if(state.payBusy) "Saving…" else "Save") } },
+            confirmButton = { androidx.compose.material3.Button(onClick = { cents?.let { viewModel.submitPay(it, refDraft) } }, enabled = !state.payBusy && cents != null && cents <= remaining) { Text(if(state.payBusy) "Savingâ€¦" else "Save") } },
             dismissButton = { androidx.compose.material3.TextButton(onClick = viewModel::dismissPay) { Text("Cancel") } })
     }
 }
