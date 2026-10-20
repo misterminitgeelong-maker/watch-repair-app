@@ -20,6 +20,8 @@ data class CatalogueMovement(
     @SerializedName("quote_cents") val quoteCents: Int? = null,
     @SerializedName("purchase_cost_cents") val purchaseCostCents: Int? = null,
 )
+/** Service quote for one movement (`GET watch-catalogue/movements/{key}/quote`). */
+data class MovementQuote(@SerializedName("quote_cents") val quoteCents: Int = 0, @SerializedName("cost_cents") val costCents: Int? = null)
 data class CatalogueMovements(val movements: List<CatalogueMovement> = emptyList(), val currency: String? = null,
     @SerializedName("default_margin_percent") val defaultMarginPercent: Int? = null)
 data class ShoeComboRule(
@@ -33,6 +35,7 @@ interface CatalogueApi {
     @GET("v1/watch-catalogue/groups") suspend fun watchGroups(): List<CatalogueGroup>
     @GET("v1/watch-catalogue/items") suspend fun watchItems(@Query("q") q: String? = null, @Query("group") group: String? = null): List<CataloguePriceItem>
     @GET("v1/watch-catalogue/movements") suspend fun watchMovements(): CatalogueMovements
+    @GET("v1/watch-catalogue/movements/{key}/quote") suspend fun watchMovementQuote(@retrofit2.http.Path("key") key: String): MovementQuote
     @GET("v1/shoe-catalogue/groups") suspend fun shoeGroups(): List<CatalogueGroup>
     @GET("v1/shoe-catalogue/items") suspend fun shoeItems(@Query("q") q: String? = null, @Query("group") group: String? = null): List<CataloguePriceItem>
     @GET("v1/shoe-catalogue/combos") suspend fun shoeCombos(): List<ShoeComboRule>

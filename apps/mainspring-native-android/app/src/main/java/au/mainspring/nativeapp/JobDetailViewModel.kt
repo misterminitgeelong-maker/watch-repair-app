@@ -50,11 +50,17 @@ data class JobDetailUiState(
     val statusUnknown: Boolean = false, val statusReviewed: Boolean = false, val statusRequest: String = "",
     /** Invoices raised for this job; the deposit alone does not show whether the customer has paid. */
     val invoiceTotalCents: Int = 0, val invoicePaidCents: Int = 0,
+    /** Watch movements for "Set quote from movement". */
+    val movements: List<au.mainspring.nativeapp.api.CatalogueMovement> = emptyList(),
+    val movementsLoading: Boolean = false, val movementBusy: Boolean = false,
 ) {
     /** What the customer still owes: unpaid invoice amounts when invoiced, otherwise quote less deposit. */
     fun outstandingCents(job: RepairJobRead): Int =
         if (invoiceTotalCents > 0) (invoiceTotalCents - invoicePaidCents).coerceAtLeast(0) else (job.preQuoteCents - job.depositCents).coerceAtLeast(0)
 }
+
+/** Body for `PATCH repair-jobs/{id}` that sets both the job cost and the pre-quote (web `updateJob`). */
+internal fun movementQuoteFields(quoteCents: Int): JsonObject = JsonObject().apply { addProperty("cost_cents", quoteCents); addProperty("pre_quote_cents", quoteCents) }
 
 class JobDetailViewModel(
     private val jobId: String,
@@ -298,6 +304,33 @@ class JobDetailViewModel(
             catch(e: Exception) { _state.update { it.copy(adminBusy = false, error = e.userMessage()) } }
         }
     }
+    fun loadMovements() {
+        if(_state.value.movementsLoading || _state.value.movements.isNotEmpty()) return
+        _state.update { it.copy(movementsLoading = true) }
+        viewModelScope.launch {
+            try {
+                val list = ApiClient.service(au.mainspring.nativeapp.api.CatalogueApi::class.java).watchMovements().movements.sortedBy { it.name.lowercase() }
+                _state.update { it.copy(movementsLoading = false, movements = list) }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(movementsLoading = false, error = e.userMessage()) } }
+        }
+    }
+
+    /** Applies a movement's service quote to the job (web `applyMovementQuote`: cost and pre-quote both become the quote). */
+    fun applyMovementQuote(key: String) {
+        val snapshot = _state.value
+        if(snapshot.job == null || key.isBlank() || snapshot.movementBusy || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(movementBusy = true, error = null, resendInfo = null) }
+        viewModelScope.launch {
+            try {
+                val quote = ApiClient.service(au.mainspring.nativeapp.api.CatalogueApi::class.java).watchMovementQuote(key)
+                api.updateCounterWatch(jobId, movementQuoteFields(quote.quoteCents))
+                _state.update { it.copy(movementBusy = false, job = fetchJob(), resendInfo = "Quote set to ${quote.quoteCents / 100}.${"%02d".format(quote.quoteCents % 100)} from the movement.") }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(movementBusy = false, error = e.userMessage()) } }
+        }
+    }
+
     fun consumeClonedJob() { _state.update { it.copy(clonedJobId = null) } }
 
     fun loadAccounts() {

@@ -1,6 +1,7 @@
 package au.mainspring.nativeapp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -62,6 +63,8 @@ fun WorkflowRail(
     steps: List<WorkflowStep>,
     status: String,
     modifier: Modifier = Modifier,
+    /** When given, each step is tappable (web rail): the callback gets the step so the caller can ask for a note and move the job. */
+    onStepClick: ((WorkflowStep) -> Unit)? = null,
 ) {
     val current = workflowStepIndex(steps, status)
     val primary = MaterialTheme.colorScheme.primary
@@ -70,7 +73,8 @@ fun WorkflowRail(
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 14.dp)) {
             steps.forEachIndexed { i, step ->
                 val state = if (i < current) "done" else if (i == current) "current" else "upcoming"
-                Column(Modifier.width(80.dp).semantics(mergeDescendants = true) { contentDescription = "${step.label}, $state" },
+                Column(Modifier.width(80.dp).then(if (onStepClick != null) Modifier.heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onStepClick(step) }.testTag("workflow-step-${step.key}") else Modifier)
+                    .semantics(mergeDescendants = true) { contentDescription = "${step.label}, $state" },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(Modifier.size(30.dp)
                         .background(if (i <= current) primary else Color.Transparent, CircleShape)

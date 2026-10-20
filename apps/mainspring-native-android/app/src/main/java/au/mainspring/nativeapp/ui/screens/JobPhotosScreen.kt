@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +45,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
             vm.select(uri.toString())
         }
     }
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if(uri != null) vm.uploadFile(context, uri) }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success -> vm.cameraFinished(success) }
     Scaffold(contentWindowInsets = if(embedded) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets, topBar = { if(!embedded) au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Job photos and files") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -68,6 +70,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
                             vm.cameraStarted(uri.toString()); camera.launch(uri)
                         } catch(e: Exception) { localError = e.message ?: "Could not open the camera." }
                     }, enabled = editable) { Text("Camera") }
+                    OutlinedButton(onClick = { filePicker.launch(arrayOf("*/*")) }, enabled = editable, modifier = Modifier.testTag("upload-any-file")) { Text("Upload file") }
                     OutlinedButton(onClick = { picker.launch(arrayOf("image/jpeg", "image/png", "image/webp")) }, enabled = editable) { Text("Choose photo") }
                 }
                 if(state.draft.uri.isNotBlank()) {
@@ -86,6 +89,7 @@ fun JobPhotosScreen(resource: String, id: String, onBack: () -> Unit,
             items(state.files, key = { it.id }) { file ->
                 au.mainspring.nativeapp.ui.FlatPanel { Column {
                     Text(file.label?.takeIf { it.isNotBlank() } ?: file.fileName ?: "Job file", style = MaterialTheme.typography.titleMedium)
+                    listOfNotNull(file.contentType, file.fileSizeBytes?.takeIf { it > 0 }?.let { "%.1f KB".format(java.util.Locale.US, it / 1024.0) }).joinToString(" \u00b7 ").takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(formatShopDate(file.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = { scope.launch {
                         try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(vm.downloadLink(file)))) }

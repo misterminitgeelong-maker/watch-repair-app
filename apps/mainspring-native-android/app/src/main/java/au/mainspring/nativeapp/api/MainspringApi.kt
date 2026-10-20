@@ -172,6 +172,7 @@ interface MainspringApi {
         @Query("customer_id") customerId: String? = null,
         @Query("status") status: String? = null,
         @Query("assigned_user_id") assignedUserId: String? = null,
+        @Query("cost_outlier") costOutlier: Boolean? = null,
     ): List<RepairJobRead>
 
     @GET("v1/repair-jobs/{jobId}")

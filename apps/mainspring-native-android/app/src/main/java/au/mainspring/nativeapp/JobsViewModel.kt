@@ -34,14 +34,23 @@ data class JobsUiState(
     val savedViews: List<SavedJobView> = emptyList(),
     /** Completed tab (web "Completed") instead of Active. */
     val showCompleted: Boolean = false,
+    /** Server filter: only jobs with an outlier cost (web "Cost outliers only"). */
+    val costOutliersOnly: Boolean = false,
+    /** Only jobs whose collection date has passed (web "Past collection date only"). */
+    val pastCollectionOnly: Boolean = false,
+    /** Direction for the field sorts (Job #, Status, Priority). */
+    val sortDescending: Boolean = true,
+    val exporting: Boolean = false,
+    val exportMessage: String? = null,
 ) {
     /** Jobs after the client-side Active/Completed split, age filter and sort. */
     val visibleJobs: List<RepairJobRead> get() = sortJobs(
-        jobs.filter { isWatchCompleted(it.status) == showCompleted && (minDaysInShop == null || daysInShop(it.createdAt) >= minDaysInShop) }, sort)
+        jobs.filter { isWatchCompleted(it.status) == showCompleted && (minDaysInShop == null || daysInShop(it.createdAt) >= minDaysInShop) &&
+            (!pastCollectionOnly || isPastCollection(it.collectionDate)) }, sort, sortDescending)
     val activeCount: Int get() = jobs.count { !isWatchCompleted(it.status) }
     val completedCount: Int get() = jobs.count { isWatchCompleted(it.status) }
     /** Number of non-default Filters-sheet choices, for the "Filters" button badge. */
-    val activeFilterCount: Int get() = listOf(statusFilter != null, sort != JobSort.NEWEST, minDaysInShop != null, technicianId != null).count { it }
+    val activeFilterCount: Int get() = listOf(statusFilter != null, sort != JobSort.NEWEST, minDaysInShop != null, technicianId != null, costOutliersOnly, pastCollectionOnly).count { it }
 }
 
 /** Statuses that belong on the Completed tab; everything else is Active. */
@@ -50,19 +59,40 @@ fun isWatchCompleted(status: String): Boolean = status in WATCH_COMPLETED_STATUS
 
 enum class JobSort(val label: String) {
     NEWEST("Newest"), OLDEST("Oldest"), DUE("Due date"), CUSTOMER("Customer"),
+    JOB_NUMBER("Job #"), STATUS("Status"), PRIORITY("Priority");
+
+    /** Sort field sent to the server (`sort_by`), which orders the loaded page. */
+    val apiField: String get() = when (this) { JOB_NUMBER -> "job_number"; STATUS -> "status"; PRIORITY -> "priority"; else -> "created_at" }
+    /** Whether the Ascending / Descending choice applies. */
+    val hasDirection: Boolean get() = this == JOB_NUMBER || this == STATUS || this == PRIORITY
 }
+
+private val PRIORITY_RANK = listOf("urgent", "high", "normal", "low")
+
+/** True when [collectionDate] (date or timestamp) is before [today]; no date is never past (web `collection_date < today`). */
+internal fun isPastCollection(collectionDate: String?, today: java.time.LocalDate = java.time.LocalDate.now()): Boolean {
+    val d = collectionDate?.takeIf { it.length >= 10 }?.let { runCatching { java.time.LocalDate.parse(it.take(10)) }.getOrNull() } ?: return false
+    return d.isBefore(today)
+}
+
+/** `sort_dir` for the server: Oldest and ascending field sorts are ascending. */
+internal fun sortDirParam(sort: JobSort, descending: Boolean): String = if (sort == JobSort.OLDEST || (sort.hasDirection && !descending)) "asc" else "desc"
 
 internal fun daysInShop(createdAt: String?, now: java.time.Instant = java.time.Instant.now()): Int {
     val created = try { java.time.OffsetDateTime.parse(createdAt).toInstant() } catch (_: Exception) { return 0 }
     return java.time.Duration.between(created, now).toDays().toInt().coerceAtLeast(0)
 }
 
-internal fun sortJobs(jobs: List<RepairJobRead>, sort: JobSort): List<RepairJobRead> = when(sort) {
+internal fun sortJobs(jobs: List<RepairJobRead>, sort: JobSort, descending: Boolean = true): List<RepairJobRead> = when(sort) {
     JobSort.NEWEST -> jobs.sortedByDescending { it.createdAt }
     JobSort.OLDEST -> jobs.sortedBy { it.createdAt }
     // Jobs without a collection date go last.
     JobSort.DUE -> jobs.sortedWith(compareBy<RepairJobRead> { it.collectionDate == null }.thenBy { it.collectionDate.orEmpty() }.thenBy { it.jobNumber })
     JobSort.CUSTOMER -> jobs.sortedWith(compareBy<RepairJobRead> { it.customerName.isNullOrBlank() }.thenBy { it.customerName.orEmpty().lowercase() }.thenBy { it.jobNumber })
+    JobSort.JOB_NUMBER -> jobs.sortedWith(compareBy<RepairJobRead> { it.jobNumber.length }.thenBy { it.jobNumber }).let { if (descending) it.reversed() else it }
+    JobSort.STATUS -> jobs.sortedWith(compareBy<RepairJobRead> { it.status }.thenBy { it.jobNumber }).let { if (descending) it.reversed() else it }
+    // Descending puts the most urgent first.
+    JobSort.PRIORITY -> jobs.sortedWith(compareBy<RepairJobRead> { PRIORITY_RANK.indexOf(it.priority).let { i -> if (i < 0) 99 else i } }.thenBy { it.jobNumber }).let { if (descending) it else it.reversed() }
 }
 
 class JobsViewModel : ViewModel() {
@@ -77,12 +107,12 @@ class JobsViewModel : ViewModel() {
         loadUsers()
     }
 
-    fun currentView() = _state.value.let { SavedJobView("", it.statusFilter, it.sort.name, it.minDaysInShop, it.technicianId, it.board, showCompleted = it.showCompleted, query = it.query.ifBlank { null }) }
+    fun currentView() = _state.value.let { SavedJobView("", it.statusFilter, it.sort.name, it.minDaysInShop, it.technicianId, it.board, showCompleted = it.showCompleted, query = it.query.ifBlank { null }, costOutliers = it.costOutliersOnly, pastCollection = it.pastCollectionOnly) }
     fun saveView(view: SavedJobView) { _state.update { it.copy(savedViews = appSavedViews.save("watch", view)) } }
     fun deleteView(name: String) { _state.update { it.copy(savedViews = appSavedViews.delete("watch", name)) } }
     fun applyView(v: SavedJobView) {
         _state.update { it.copy(statusFilter = v.statusFilter, sort = JobSort.values().firstOrNull { s -> s.name == v.sort } ?: JobSort.NEWEST,
-            minDaysInShop = v.minDaysInShop, technicianId = v.technicianId, board = v.board, showCompleted = v.showCompleted, query = v.query.orEmpty()) }
+            minDaysInShop = v.minDaysInShop, technicianId = v.technicianId, board = v.board, showCompleted = v.showCompleted, query = v.query.orEmpty(), costOutliersOnly = v.costOutliers, pastCollectionOnly = v.pastCollection) }
         refresh()
     }
 
@@ -101,7 +131,8 @@ class JobsViewModel : ViewModel() {
         request = viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
             try {
-                val list = api.listRepairJobs(q = _state.value.query.trim().ifBlank { null }, status = _state.value.statusFilter, assignedUserId = _state.value.technicianId)
+                val list = _state.value.let { st -> api.listRepairJobs(sortBy = st.sort.apiField, sortDir = sortDirParam(st.sort, st.sortDescending),
+                    q = st.query.trim().ifBlank { null }, status = st.statusFilter, assignedUserId = st.technicianId, costOutlier = if (st.costOutliersOnly) true else null) }
                 _state.update { it.copy(loading = false, jobs = list, error = null, canLoadMore = list.size == 100) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -120,7 +151,9 @@ class JobsViewModel : ViewModel() {
         request = viewModelScope.launch {
             try {
                 val page = api.listRepairJobs(offset = snapshot.jobs.size,
-                    q = snapshot.query.trim().ifBlank { null }, status = snapshot.statusFilter, assignedUserId = snapshot.technicianId)
+                    sortBy = snapshot.sort.apiField, sortDir = sortDirParam(snapshot.sort, snapshot.sortDescending),
+                    q = snapshot.query.trim().ifBlank { null }, status = snapshot.statusFilter, assignedUserId = snapshot.technicianId,
+                    costOutlier = if (snapshot.costOutliersOnly) true else null)
                 _state.update { it.copy(jobs = (it.jobs + page).distinctBy { job -> job.id }, loading = false, canLoadMore = page.size == 100) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) { _state.update { it.copy(loading = false, error = "Could not load more repairs. Try again.") } }
@@ -170,7 +203,19 @@ class JobsViewModel : ViewModel() {
     fun undoMove(t: au.mainspring.nativeapp.ui.screens.BoardMoveToast) { _state.update { it.copy(moveToast = null) }; moveJob(t.id, t.from, null, false) }
     fun filterStatus(value: String?) { _state.update { it.copy(statusFilter = value, showCompleted = value?.let(::isWatchCompleted) ?: it.showCompleted) }; refresh() }
     fun setShowCompleted(value: Boolean) { _state.update { it.copy(showCompleted = value) } }
-    fun setSort(value: JobSort) { _state.update { it.copy(sort = value) } }
+    fun setSort(value: JobSort) { _state.update { it.copy(sort = value) }; refresh() }
+    fun setSortDescending(value: Boolean) { _state.update { it.copy(sortDescending = value) }; refresh() }
+    fun setCostOutliersOnly(value: Boolean) { _state.update { it.copy(costOutliersOnly = value) }; refresh() }
+    fun setPastCollectionOnly(value: Boolean) { _state.update { it.copy(pastCollectionOnly = value) } }
+
+    /** Full job CSV from the server (`repair-jobs/export.csv`), not just the loaded rows. Returns the bytes for the file saver. */
+    suspend fun downloadCsv(): ByteArray {
+        _state.update { it.copy(exporting = true, exportMessage = null) }
+        try {
+            return au.mainspring.nativeapp.api.ApiClient.service(au.mainspring.nativeapp.api.JobAdminApi::class.java).exportRepairJobsCsv().use { it.bytes() }
+        } finally { _state.update { it.copy(exporting = false) } }
+    }
+    fun setExportMessage(message: String?) { _state.update { it.copy(exportMessage = message) } }
     fun filterMinDays(value: Int?) { _state.update { it.copy(minDaysInShop = value) } }
     fun filterTechnician(userId: String?) { _state.update { it.copy(technicianId = userId) }; refresh() }
 }

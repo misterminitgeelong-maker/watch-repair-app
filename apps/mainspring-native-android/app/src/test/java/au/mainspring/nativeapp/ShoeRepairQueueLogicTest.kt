@@ -23,11 +23,11 @@ class ShoeRepairQueueLogicTest {
         assertNull(nextShoeQueueStatus("awaiting_parts"))
     }
 
-    @Test fun queueKeepsLaneJobsOrderedByDueDateThenNumber() {
+    @Test fun queueKeepsLaneJobsOrderedByUrgencyThenAge() {
         val ids = shoeQueueEligibleJobs(listOf(
             job("S-3", "working_on"), job("S-2", "go_ahead", "2026-10-12"), job("S-1", "awaiting_quote", "2026-10-10"),
             job("S-0", "completed"), job("S-4", "collected"), job("S-5", "no_go"), job("S-6", "quote_sent"),
-        )).map { it.id }
-        assertEquals(listOf("S-1", "S-2", "S-0", "S-3"), ids)
+        ), java.time.LocalDate.of(2026, 10, 20)).map { it.id }
+        assertEquals(listOf("S-1", "S-2", "S-3", "S-0"), ids)
     }
 }

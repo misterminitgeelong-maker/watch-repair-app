@@ -89,6 +89,7 @@ data class SavedJobView(
     val showCompleted: Boolean = false,
     val query: String? = null,
     val costOutliers: Boolean = false,
+    val pastCollection: Boolean = false,
 )
 
 /** Minimal string storage so the store is JVM-testable. */
