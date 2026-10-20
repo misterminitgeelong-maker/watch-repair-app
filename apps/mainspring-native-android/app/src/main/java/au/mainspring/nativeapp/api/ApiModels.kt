@@ -550,6 +550,8 @@ data class ToolReadiness(val label: String, val tips: String?, @SerializedName("
 data class ProspectBusiness(val name: String, val address: String, val phone: String?, val website: String?, val category: String,
     @SerializedName("place_id") val placeId: String, val rating: Double?, @SerializedName("review_count") val reviews: Int?)
 data class ProspectResults(val results: List<ProspectBusiness>, val total: Int, val source: String)
+data class ProspectContact(@SerializedName("place_id") val placeId: String = "", val phone: String? = null, val website: String? = null, val attributions: List<String> = emptyList())
+data class ProspectCollectorStatus(val total: Int = 0)
 data class ProspectCategory(val key: String, val label: String)
 data class ProspectCategories(val categories: List<ProspectCategory>)
 data class ProspectLead(val id: String, val name: String, val address: String?, val phone: String?, val website: String?, val status: String,

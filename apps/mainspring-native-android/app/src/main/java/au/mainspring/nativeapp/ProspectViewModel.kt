@@ -8,7 +8,8 @@ import kotlinx.coroutines.launch
 
 data class ProspectState(val leads: List<ProspectLead> = emptyList(), val categories: List<ProspectCategory> = emptyList(), val results: List<ProspectBusiness> = emptyList(),
  val source: String? = null, val loading: Boolean = true, val busy: Boolean = false, val error: String? = null,
- val uncertainLead: String = "", val historyChecked: Boolean = false)
+ val uncertainLead: String = "", val historyChecked: Boolean = false,
+ val directoryTotal: Int? = null, val contactNote: String? = null, val lookingUp: String? = null)
 class ProspectViewModel: ViewModel() {
     private val api = au.mainspring.nativeapp.api.ApiClient.api
     private val drafts = au.mainspring.nativeapp.TokenStore.bindDrafts()
@@ -17,7 +18,26 @@ class ProspectViewModel: ViewModel() {
  fun refresh() { if(mutable.value.busy) return; mutable.update { it.copy(loading = true, error = null) }
   viewModelScope.launch { try { val leads = api.prospectLeads(); val categories = api.prospectCategories().categories
    mutable.update { it.copy(loading = false, leads = leads, categories = categories, historyChecked = true) }
+   runCatching { api.prospectCollectorStatus().total }.getOrNull()?.let { total -> mutable.update { it.copy(directoryTotal = total) } }
   } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(loading = false, error = "Could not load prospects. ${e.userMessage()}") } } }
+ }
+ /** Removes a prospect from the board (web "Remove prospect"). Idempotent: a 404 means it is already gone. */
+ fun remove(id: String, onDone: () -> Unit = {}) {
+  if(mutable.value.busy || mutable.value.loading) return
+  runAction { try { api.deleteProspect(id).close() } catch(e: retrofit2.HttpException) { if(e.code() != 404) throw e }
+   drafts.saveMessageDraft("prospect-edit/$id", "")
+   mutable.update { it.copy(leads = it.leads.filter { row -> row.id != id }) }; onDone() }
+ }
+ /** Explicit one-business Google lookup (web "Find contact details"); fills phone and website into the search result. */
+ fun lookupContact(placeId: String) {
+  if(mutable.value.lookingUp != null) return
+  mutable.update { it.copy(lookingUp = placeId, contactNote = null, error = null) }
+  viewModelScope.launch { try {
+   val c = api.prospectContactDetails(placeId)
+   mutable.update { st -> st.copy(lookingUp = null,
+    results = st.results.map { r -> if(r.placeId == placeId) r.copy(phone = c.phone ?: r.phone, website = c.website ?: r.website) else r },
+    contactNote = if(c.phone == null && c.website == null) "Google has no phone or website for this business." else c.attributions.joinToString(" "))}
+  } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(lookingUp = null, error = "Could not look up contact details. ${e.userMessage()}") } } }
  }
  fun search(category: String, region: String, suburbs: String, live: Boolean) {
   if(mutable.value.busy || mutable.value.loading) return

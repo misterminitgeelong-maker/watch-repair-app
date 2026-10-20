@@ -52,6 +52,9 @@ interface MainspringApi {
     @POST("v1/prospect-leads") suspend fun saveProspect(@Body body: ProspectSave): ProspectLead
     @retrofit2.http.PATCH("v1/prospect-leads/{id}") suspend fun updateProspect(@Path("id") id: String, @Body body: com.google.gson.JsonObject): ProspectLead
     @POST("v1/prospect-leads/{id}/advance") suspend fun advanceProspect(@Path("id") id: String, @Body body: com.google.gson.JsonObject): ProspectLead
+    @retrofit2.http.DELETE("v1/prospect-leads/{id}") suspend fun deleteProspect(@Path("id") id: String): okhttp3.ResponseBody
+    @GET("v1/prospects/contact-details") suspend fun prospectContactDetails(@Query("place_id") placeId: String): ProspectContact
+    @GET("v1/prospects/collector-status") suspend fun prospectCollectorStatus(): ProspectCollectorStatus
     @GET("v1/prospects/categories") suspend fun prospectCategories(): ProspectCategories
     @GET("v1/prospects/search") suspend fun prospectSearch(@Query("category") category: String, @Query("state") state: String, @Query("suburbs") suburbs: String? = null, @Query("live") live: Boolean = false): ProspectResults
     @GET("v1/toolkit/catalog") suspend fun toolkitCatalog(): ToolkitCatalog
