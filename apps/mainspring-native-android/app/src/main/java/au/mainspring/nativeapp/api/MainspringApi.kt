@@ -86,6 +86,8 @@ interface MainspringApi {
     @POST("v1/auto-key-jobs") suspend fun createMobileJob(@Body body: MobileJobCreate): AutoKeyJobRead
     @GET("v1/shoe-catalogue/items") suspend fun shoeCatalogue(): List<ShoeCatalogueItem>
     @POST("v1/shoe-repair-jobs/shoes") suspend fun createShoe(@Body body: ShoeCreate): ShoeRead
+    @GET("v1/shoe-repair-jobs/shoes") suspend fun listShoes(@Query("customer_id") customerId: String? = null): List<ShoeRead>
+    @retrofit2.http.PATCH("v1/shoe-repair-jobs/shoes/{id}") suspend fun updateShoe(@Path("id") id: String, @Body fields: com.google.gson.JsonObject): ShoeRead
     @POST("v1/shoe-repair-jobs") suspend fun createShoeJob(@Body body: ShoeJobCreate): ShoeRepairJobRead
     @POST("v1/shoe-repair-jobs/{id}/shoes") suspend fun linkShoe(@Path("id") id: String, @Body body: ShoeLink): ShoeRepairJobRead
     @POST("v1/shoe-repair-jobs/{id}/items") suspend fun appendShoeItems(@Path("id") id: String, @Body body: ShoeItemsAppend): ShoeRepairJobRead

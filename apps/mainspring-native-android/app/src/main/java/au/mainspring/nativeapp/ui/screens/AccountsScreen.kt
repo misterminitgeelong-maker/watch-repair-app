@@ -61,6 +61,10 @@ private fun limit(n: Int) = if(n <= 0 || n >= 1_000_000) "Unlimited" else n.toSt
                             b.xeroConnected?.let { DetailRow("Xero", if(it) "Connected" else "Not connected") }
                         }
                         state.billingError?.let { ErrorBanner(it) }
+                        if(TokenStore.canManageTeam()) {
+                            if(state.billing?.xeroConnected == false) FinishOnWebRow("Connect Xero", "Xero sign-in happens on the web app.", "accounts", "finish-xero")
+                            if(state.billing?.stripeConfigured == true) FinishOnWebRow("Stripe payouts", "Set up or check mobile-service payouts on the web app.", "accounts", "finish-stripe-payouts")
+                        }
                         MonoLabel("Change plans and billing from the web app.")
                     }
                 }

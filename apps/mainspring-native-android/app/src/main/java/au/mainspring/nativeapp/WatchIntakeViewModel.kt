@@ -140,6 +140,7 @@ class WatchIntakeViewModel(private val saved: SavedStateHandle) : ViewModel() {
                     override suspend fun job(body: RepairJobCreate): String {
                         val job = api.postRepairJob(body)
                         trackingWarning(job.trackingSmsSkippedReason)?.let { setField("warning.${job.id}", it) }
+                        setField("jobNumber.${job.id}", job.jobNumber)
                         return job.id
                     }
                 }, ::setField)

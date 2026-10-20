@@ -46,6 +46,8 @@ data class ShoeJobDetailUiState(
     val accountsLoading: Boolean = false,
     val accountBusy: Boolean = false,
     val catalogue: List<ShoeCatalogueItem> = emptyList(),
+    val customerShoes: List<au.mainspring.nativeapp.api.ShoeRead> = emptyList(),
+    val customerShoesLoading: Boolean = false,
     val smsLog: List<au.mainspring.nativeapp.api.SmsLogRead> = emptyList(),
     val resendBusy: Boolean = false,
     val resendInfo: String? = null,
@@ -219,6 +221,23 @@ class ShoeJobDetailViewModel(
             val shoe = api.createShoe(ShoeCreate(customerId, type.trim().ifBlank { null }, brand.trim().ifBlank { null }, colour.trim().ifBlank { null }, notes.trim().ifBlank { null }))
             api.linkShoe(jobId, ShoeLink(shoe.id))
         }
+    }
+
+    /** Loads the customer's other shoes on file for "existing pair" in the Add pair dialog. */
+    fun loadCustomerShoes() {
+        val customerId = _state.value.job?.shoe?.customerId ?: return
+        if(_state.value.customerShoesLoading) return
+        _state.update { it.copy(customerShoesLoading = true) }
+        viewModelScope.launch {
+            try { val all = api.listShoes(customerId); _state.update { it.copy(customerShoesLoading = false, customerShoes = all) } }
+            catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(customerShoesLoading = false, error = e.userMessage()) } }
+        }
+    }
+    fun addExistingPair(shoeId: String) { edit { api.linkShoe(jobId, ShoeLink(shoeId)) } }
+    /** PATCH the shoe record (type, brand, colour, notes), then reload the job so every pair card reflects it. */
+    fun editShoe(shoeId: String, type: String, brand: String, colour: String, notes: String) {
+        edit { api.updateShoe(shoeId, shoeUpdateBody(type, brand, colour, notes)); api.getShoeRepairJob(jobId) }
     }
 
     private val admin get() = ApiClient.service(au.mainspring.nativeapp.api.JobAdminApi::class.java)

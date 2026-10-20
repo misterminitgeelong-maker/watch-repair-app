@@ -42,7 +42,7 @@ fun printAfterIntakeBody(jobCount: Int, kind: IntakeTicketKind): String {
  * uses Android PrintManager. [onDone] is called on "Not now" and after printing is finished or abandoned.
  */
 @Composable
-fun PrintAfterIntakeDialog(kind: IntakeTicketKind, jobIds: List<String>, apiBaseUrl: String, onDone: () -> Unit) {
+fun PrintAfterIntakeDialog(kind: IntakeTicketKind, jobIds: List<String>, apiBaseUrl: String, ticketLabels: List<String> = emptyList(), onDone: () -> Unit) {
     val context = LocalContext.current
     var mode by remember { mutableStateOf(PrintAfterIntakeMode.ASK) }
     var bundles by remember { mutableStateOf<List<JobPrintBundle>>(emptyList()) }
@@ -84,6 +84,7 @@ fun PrintAfterIntakeDialog(kind: IntakeTicketKind, jobIds: List<String>, apiBase
                 mode == PrintAfterIntakeMode.ERROR -> Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                 else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(printAfterIntakeBody(jobIds.size, kind), style = MaterialTheme.typography.bodyMedium)
+                    if (ticketLabels.size > 1) ticketLabels.forEach { Text(it, style = MaterialTheme.typography.titleSmall) }
                     TextButton(onClick = { request = PrintAfterIntakeMode.LOADING_TICKETS }, modifier = Modifier.heightIn(min = 48.dp).padding(0.dp)) { Text("Print A4 ticket instead") }
                 }
             }

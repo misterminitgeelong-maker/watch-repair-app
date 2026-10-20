@@ -63,6 +63,7 @@ fun ShoeJobDetailScreen(
     var statusCustomerNote by remember { mutableStateOf("") }
     var pickServices by remember { mutableStateOf(false) }
     var addPair by remember { mutableStateOf(false) }
+    var editShoeId by remember { mutableStateOf<String?>(null) }
     var removeItem by remember { mutableStateOf<String?>(null) }
     var removePairId by remember { mutableStateOf<String?>(null) }
     var attachmentOpenError by remember { mutableStateOf<String?>(null) }
@@ -210,14 +211,14 @@ fun ShoeJobDetailScreen(
                 WebCard(padding = 0.dp) {
                     val pairs = 1 + j.extraShoes.orEmpty().size
                     WebCardTitle("Shoes", icon = "shoe", count = if (pairs == 1) "1 pair" else "$pairs pairs", modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp)) {
-                        if (j.shoe?.customerId != null) TextButton(onClick = { addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) {
+                        if (j.shoe?.customerId != null) TextButton(onClick = { vm.loadCustomerShoes(); addPair = true }, enabled = canEdit, modifier = Modifier.heightIn(min = 48.dp)) {
                             GlyphIcon("plus", size = 14.dp, color = LocalContentColor.current); Spacer(Modifier.width(4.dp)); Text("Add pair")
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        ShoePairCard(1, j.shoe, null, canEdit)
-                        j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit) }
+                        ShoePairCard(1, j.shoe, null, canEdit, { editShoeId = j.shoe?.id })
+                        j.extraShoes.orEmpty().forEachIndexed { i, e -> ShoePairCard(i + 2, e.shoe, { removePairId = e.id }, canEdit, { editShoeId = e.shoe?.id }) }
                     }
                 }
                 FlatPanel {
@@ -282,7 +283,9 @@ fun ShoeJobDetailScreen(
     if (accountPicker) AccountPickerDialog(state.accounts, state.accountsLoading, j?.shoe?.customerId, j?.customerAccountId,
         { id -> accountPicker = false; vm.assignAccount(id) }, { accountPicker = false })
     if(pickServices) ShoeServicePickerDialog(state.catalogue, currency, state.editBusy, { pickServices = false }) { vm.addServices(it); pickServices = false }
-    if(addPair) AddPairDialog(state.editBusy, { addPair = false }) { type, brand, colour, notes -> vm.addPair(type, brand, colour, notes) }
+    if(addPair) AddPairDialog(state.editBusy, au.mainspring.nativeapp.availableCustomerShoes(state.customerShoes, j), state.customerShoesLoading, { addPair = false }, { vm.addExistingPair(it) }) { type, brand, colour, notes -> vm.addPair(type, brand, colour, notes) }
+    editShoeId?.let { id -> val target = (listOfNotNull(j?.shoe) + j?.extraShoes.orEmpty().mapNotNull { it.shoe }).firstOrNull { it.id == id }
+        if(target != null) EditShoeDialog(target, state.editBusy, { editShoeId = null }) { type, brand, colour, notes -> vm.editShoe(id, type, brand, colour, notes) } }
     removeItem?.let { id -> AlertDialog(onDismissRequest = { removeItem = null }, title = { Text("Remove service?") },
         text = { Text("This removes ${j?.items?.firstOrNull { it.id == id }?.name ?: "the service"} from the job and its quote.") },
         confirmButton = { TextButton(onClick = { removeItem = null; vm.removeService(id) }) { Text("Remove") } },

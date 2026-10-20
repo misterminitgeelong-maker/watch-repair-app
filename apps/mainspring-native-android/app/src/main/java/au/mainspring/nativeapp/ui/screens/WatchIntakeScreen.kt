@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,7 +45,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
     var reconcileDialog by remember { mutableStateOf(false) }
     var printPromptDone by rememberSaveable { mutableStateOf(false) }
     if (apiBaseUrl.isNotBlank() && !printPromptDone && state.complete && state.uploadFailures.isEmpty() && state.savedJobIds.isNotEmpty())
-        au.mainspring.nativeapp.ui.PrintAfterIntakeDialog(au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH, state.savedJobIds, apiBaseUrl) { printPromptDone = true }
+        au.mainspring.nativeapp.ui.PrintAfterIntakeDialog(au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH, state.savedJobIds, apiBaseUrl, ticketLabels = state.savedJobIds.mapIndexed { i, id -> au.mainspring.nativeapp.ui.intakeTicketLabel(i, vm.field("jobNumber.$id")) }) { printPromptDone = true }
     val newCustomer = vm.field("customerMode") == "new"
     val locked = state.busy || state.savedJobIds.isNotEmpty() || vm.field("uncertainWrite").isNotBlank() || vm.field("hasAcknowledgement") == "true"
     fun close() { if (!state.busy) closeDialog = true }
@@ -103,7 +104,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
                     Button(onClick = {
                         if (state.complete && state.uploadFailures.isEmpty()) vm.finish()
                         onOpenJob(id)
-                    }, enabled = !state.busy) { Text("Open Watch ${index + 1} job") }
+                    }, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp).testTag("open-watch-$index")) { Text("Open " + au.mainspring.nativeapp.ui.intakeTicketLabel(index, vm.field("jobNumber.$id")) + " job") }
                 }
             }
             val placeholders = mapOf("name" to "Jane Smith", "phone" to "0412 345 678", "email" to "jane@example.com", "address" to "Unit 5/36 Grange Rd, Toorak 3142", "customerNotes" to "VIP, allergic to…",
@@ -153,7 +154,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
                         }
                     }
                     if (vm.field("$prefix.id").isBlank()) {
-                        field("$prefix.brand", "Brand"); field("$prefix.model", "Model"); field("$prefix.serial", "Serial Number")
+                        au.mainspring.nativeapp.ui.BrandSuggestField("Brand", vm.field("$prefix.brand"), { vm.setField("$prefix.brand", it) }, !locked, placeholders["$prefix.brand"]); field("$prefix.model", "Model"); field("$prefix.serial", "Serial Number")
                         field("$prefix.movement", "Movement"); field("$prefix.condition", "Condition on Intake", true)
                     }
                     au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("quickJob") == "true", { vm.setField("quickJob", it.toString()) }, enabled = !locked) {

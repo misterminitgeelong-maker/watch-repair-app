@@ -49,6 +49,7 @@ import au.mainspring.nativeapp.ui.*
                         h.lastSmsFailedAt?.let { DetailRow("Last SMS failure", it.take(16).replace('T', ' ')) }
                         DetailRow("Card payments (Stripe)", if(h.stripeConfigured) "Configured" else "Not configured")
                         h.stripeConnectReady?.let { DetailRow("Payouts", if(it) "Ready" else "Finish setup on the web") }
+                        if(h.stripeConnectReady == false && au.mainspring.nativeapp.TokenStore.canManageTeam()) FinishOnWebRow("Stripe payouts", "Finish payout setup on the web app.", "accounts", "finish-stripe-payouts")
                         DetailRow("Email (SendGrid)", if(h.sendgridConfigured) "Configured" else "Not configured")
                         DetailRow("Photo storage", h.attachmentBackend.ifBlank { "Unknown" })
                     }
