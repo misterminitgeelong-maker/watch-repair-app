@@ -64,27 +64,31 @@ fun intakeTicketCopies(t: IntakeTicket): List<IntakeTicketCopy> {
     return listOf(workshop, customer)
 }
 
-fun printIntakeTicket(context: Context, ticket: IntakeTicket) {
+fun printIntakeTicket(context: Context, ticket: IntakeTicket) = printIntakeTickets(context, listOf(ticket))
+
+/** One print job with two pages (workshop, customer) per ticket, so a multi-watch intake prints in one go. */
+fun printIntakeTickets(context: Context, tickets: List<IntakeTicket>) {
+    require(tickets.isNotEmpty()) { "Nothing to print." }
     val manager = context.getSystemService(Context.PRINT_SERVICE) as? PrintManager ?: error("Printing is unavailable on this device.")
-    manager.print("Ticket ${ticket.jobNumber}", IntakeTicketAdapter(ticket), PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build())
+    manager.print(if (tickets.size == 1) "Ticket ${tickets[0].jobNumber}" else "Tickets ${tickets.joinToString(", ") { it.jobNumber }}", IntakeTicketAdapter(tickets), PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build())
 }
 
-private class IntakeTicketAdapter(private val ticket: IntakeTicket) : PrintDocumentAdapter() {
-    private val copies = intakeTicketCopies(ticket)
-    private val qr by lazy { QrCode.encode(ticket.statusUrl) }
+private class IntakeTicketAdapter(private val tickets: List<IntakeTicket>) : PrintDocumentAdapter() {
+    private val sheets = tickets.flatMap { t -> intakeTicketCopies(t).map { it to t.statusUrl } }
+
 
     override fun onLayout(oldAttributes: PrintAttributes?, newAttributes: PrintAttributes, cancellationSignal: CancellationSignal, callback: LayoutResultCallback, extras: Bundle?) {
         if (cancellationSignal.isCanceled) { callback.onLayoutCancelled(); return }
-        callback.onLayoutFinished(PrintDocumentInfo.Builder("intake-ticket-${ticket.jobNumber}.pdf").setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT).setPageCount(copies.size).build(), oldAttributes != newAttributes)
+        callback.onLayoutFinished(PrintDocumentInfo.Builder("intake-ticket-${tickets[0].jobNumber}.pdf").setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT).setPageCount(sheets.size).build(), oldAttributes != newAttributes)
     }
 
     override fun onWrite(pages: Array<out PageRange>, destination: ParcelFileDescriptor, cancellationSignal: CancellationSignal, callback: WriteResultCallback) {
         val pdf = PdfDocument()
         try {
-            copies.forEachIndexed { i, copy ->
+            sheets.forEachIndexed { i, (copy, url) ->
                 if (cancellationSignal.isCanceled) { callback.onWriteCancelled(); return }
                 val page = pdf.startPage(PdfDocument.PageInfo.Builder(595, 842, i + 1).create())
-                drawIntakeCopy(page.canvas, copy, qr)
+                drawIntakeCopy(page.canvas, copy, QrCode.encode(url))
                 pdf.finishPage(page)
             }
             FileOutputStream(destination.fileDescriptor).use { pdf.writeTo(it) }

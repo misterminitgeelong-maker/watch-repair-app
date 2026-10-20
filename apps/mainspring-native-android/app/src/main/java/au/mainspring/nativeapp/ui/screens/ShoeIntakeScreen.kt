@@ -26,7 +26,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIntakeViewModel = viewModel(), preselectedCustomerId: String? = null, onSwitchService: ((String) -> Unit)? = null, services: List<Pair<String, String>> = emptyList()) {
+fun ShoeIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (String) -> Unit, vm: ShoeIntakeViewModel = viewModel(), preselectedCustomerId: String? = null, onSwitchService: ((String) -> Unit)? = null, services: List<Pair<String, String>> = emptyList()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val step = vm.field("step").toIntOrNull()?.coerceIn(0,3) ?: 0
@@ -35,6 +35,9 @@ fun ShoeIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: ShoeIn
     var cameraUri by rememberSaveable { mutableStateOf("") }
     var leave by remember { mutableStateOf(false) }; var discard by remember { mutableStateOf(false) }
     var reconcile by remember { mutableStateOf(false) }; var photoError by remember { mutableStateOf<String?>(null) }
+    var printPromptDone by rememberSaveable { mutableStateOf(false) }
+    if (apiBaseUrl.isNotBlank() && !printPromptDone && state.complete && state.photoFailures.isEmpty() && vm.field("jobId").isNotBlank())
+        au.mainspring.nativeapp.ui.PrintAfterIntakeDialog(au.mainspring.nativeapp.ui.IntakeTicketKind.SHOE, listOf(vm.field("jobId")), apiBaseUrl) { printPromptDone = true }
     val locked = state.busy || vm.field("jobId").isNotBlank() || vm.field("uncertain").isNotBlank() || vm.field("hasAcknowledgement") == "true"
     BackHandler { if(!state.busy) leave = true }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
