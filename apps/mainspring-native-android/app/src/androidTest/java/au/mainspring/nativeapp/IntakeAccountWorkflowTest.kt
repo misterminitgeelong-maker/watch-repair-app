@@ -22,7 +22,7 @@ class IntakeAccountWorkflowTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val body = when(request.path.orEmpty().substringBefore('?')) {
                     "/v1/customer-accounts" -> """[{"id":"account-1","name":"Avery Fleet","is_active":true,"customer_ids":["customer-1"]}]"""
-                    "/v1/auto-key-jobs" -> { creates++; mobileBody = request.body.readUtf8(); if(rejectJob) return MockResponse().setResponseCode(400).setBody("""{"detail":"Plan limit reached"}"""); """{"id":"job-1"}""" }
+                    "/v1/auto-key-jobs" -> if(request.method != "POST") "[]" else { creates++; mobileBody = request.body.readUtf8(); if(rejectJob) return MockResponse().setResponseCode(400).setBody("""{"detail":"Plan limit reached"}"""); """{"id":"job-1"}""" }
                     "/v1/customers" -> if(request.method == "POST") """{"id":"saved-customer","full_name":"Avery"}""" else "[]"
                     "/v1/watch-catalogue/repairs-config" -> """{"combos":[],"currency":"AUD"}"""
                     else -> "[]"

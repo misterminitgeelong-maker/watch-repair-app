@@ -44,7 +44,7 @@ Line numbers marked "~" are approximate. Statuses: MATCH / PARTIAL / MISSING / N
 | Invoice edit amounts | MISSING | Native cannot edit invoice line amounts after create. |
 | Invoice send channel (Text+Email / Text / Email) | MISSING | Native sends with default. |
 | Xero status + retry | MISSING | See above. |
-| New job (NewAutoKeyJobModal) | PARTIAL | MobileIntakeScreen/ViewModel. Missing: address autocomplete, last-vehicle suggestion, key spec DB, extra services, blade and chip fields, commission source, suggested quote, cost/pricing catalogue, salesperson. |
+| New job (NewAutoKeyJobModal) | PARTIAL | MobileIntakeScreen/ViewModel. Closed on native: server suggested quote (with offline estimate), device-geocoder address suggestions (no Places widget), last-vehicle banner, key spec DB matches, extra services, blade and chip, commission source, salesperson. Still missing: PricingSelector catalogue pick (pricing_ref_id), manual cost field. |
 | Create quote | PARTIAL | QuoteComposer exists; the "+ New Quote" entry on Quotes list is a dead-end message. (autoKey/CreateQuoteModal.tsx is unused on web.) |
 | Mobile Today run sheet (MobileTodayWorkspace) | PARTIAL/MISSING | Web: per-row Call, Route, Start trip, Arrived, Complete, needs-action queues (MobileTodayWorkspace.tsx:56-58,120,150). Native renders TodayHubScreen; TodayScreen.kt:30 is never called (dead). |
 | Dispatch / day planner | PARTIAL | DispatchScreen: no date picker, no Unscheduled list, no inline card actions. |
