@@ -14,7 +14,7 @@ class MobileJobsParityFlowTest {
     private var xeroStatus = "failed"
     private var down = false
 
-    private fun job(id: String) = """{"id":"$id","job_number":"MS-$id","title":"Lockout","status":"booking_confirmed","priority":"normal","customer_name":"Avery","customer_phone":"0400000000","job_address":"1 High St","key_quantity":1,"programming_status":"pending","updated_at":"v1","created_at":"2026-10-08T00:00:00Z"}"""
+    private fun job(id: String) = """{"id":"$id","job_number":"MS-$id","title":"Lockout","status":"booking_confirmed","priority":"normal","customer_name":"Avery","customer_phone":"0400000000","job_address":"1 High St","tenant_id":"t","status_token":"tok","commission_lead_source":"other","deposit_cents":0,"cost_cents":0,"key_quantity":1,"programming_status":"pending","updated_at":"v1","created_at":"2026-10-08T00:00:00Z"}"""
     private fun invoice() = """{"id":"inv","invoice_number":"INV-1","status":"unpaid","auto_key_quote_id":"q","total_cents":1000,"currency":"AUD","xero_sync_status":"$xeroStatus","xero_sync_error":"token expired"}"""
 
     @Before fun setup() {

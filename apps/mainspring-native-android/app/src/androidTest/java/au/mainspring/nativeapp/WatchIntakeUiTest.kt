@@ -74,7 +74,7 @@ class WatchIntakeUiTest {
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
         compose.waitUntil(15_000) { vm.state.value.complete || (!vm.state.value.busy && vm.state.value.error != null) }
         Assert.assertNull(vm.state.value.error)
-        compose.onNodeWithText("Open Watch 1 job").assertExists()
+        compose.onNodeWithText("Open Watch 1", substring = true).assertExists()  // now also shows the ticket number
         Assert.assertEquals(1, jobs.get())
         screenshot("quick-job-complete.png")
     }

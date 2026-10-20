@@ -144,7 +144,8 @@ class RepairQueueTest {
     @Test fun tappingCardOpensJob() {
         val opened = mutableListOf<String>()
         launch(opened)
-        compose.onNodeWithTag("queue-card").performClick()
+        // The card now holds buttons and note chips, so tap its title corner rather than its centre.
+        compose.onNodeWithTag("queue-card").performTouchInput { click(androidx.compose.ui.geometry.Offset(24f, 24f)) }
         compose.waitUntil(10_000) { opened.isNotEmpty() }
         Assert.assertEquals(listOf("1"), opened)
     }
