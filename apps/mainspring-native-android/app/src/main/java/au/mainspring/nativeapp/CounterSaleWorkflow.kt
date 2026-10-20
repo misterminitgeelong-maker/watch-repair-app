@@ -2,7 +2,8 @@ package au.mainspring.nativeapp
 import au.mainspring.nativeapp.api.*
 
 data class CounterSaleRequest(val customerId: String, val name: String, val phone: String, val email: String,
- val accountId: String?, val mode: String, val lines: List<MobileQuoteLine>, val gst: Boolean, val inclusive: Boolean, val title: String)
+ val accountId: String?, val mode: String, val lines: List<MobileQuoteLine>, val gst: Boolean, val inclusive: Boolean, val title: String,
+ /** Existing job to attach the sale to (web POS "Link to Job"); null creates a new job. */ val linkJobId: String? = null)
 interface CounterSaleGateway {
  suspend fun customer(body: CustomerCreate): String
  suspend fun job(body: MobileJobCreate): String
@@ -27,7 +28,7 @@ suspend fun createCounterSale(request: CounterSaleRequest, checkpoints: MutableM
   catch(e: retrofit2.HttpException) { if(e.code() in 400..499) saved("uncertain", ""); throw e }
  }
  val customer = request.customerId.ifBlank { write("savedCustomerId") { gateway.customer(CustomerCreate(request.name.trim(), request.phone.trim().ifBlank { null }, request.email.trim().ifBlank { null })) } }
- val job = write("jobId") { gateway.job(MobileJobCreate(customerId = customer, title = request.title, description = request.lines.joinToString("\n") { it.description }, priority = "normal", status = "awaiting_quote",
+ val job = checkpoints["jobId"]?.takeIf { it.isNotBlank() } ?: request.linkJobId?.takeIf { it.isNotBlank() }?.let { saved("jobId", it) } ?: write("jobId") { gateway.job(MobileJobCreate(customerId = customer, title = request.title, description = request.lines.joinToString("\n") { it.description }, priority = "normal", status = "awaiting_quote",
   scheduledAt = null, address = null, jobType = null, make = null, model = null, year = null, plate = null, vin = null, keyType = null, keyQuantity = 1,
   techNotes = null, deposit = 0, customerAccountId = request.accountId)) }
  val quote = write("quoteId") { gateway.quote(job, MobileQuoteCreate(request.lines, request.gst, request.inclusive)) }
