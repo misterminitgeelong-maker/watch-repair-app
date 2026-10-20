@@ -7,6 +7,7 @@ import kotlinx.coroutines.CancellationException
 
 data class MobileFinanceState(val quotes: List<MobileQuote> = emptyList(), val invoices: List<MobileInvoice> = emptyList(),
  val loading: Boolean = false, val busy: Boolean = false, val info: String? = null, val error: String? = null,
+ val showXero: Boolean = false, val xeroRetryId: String? = null,
  val unknownQuote: Boolean = false, val paymentReviewId: String? = null, val historyChecked: Boolean = false, val lastCreatedQuoteId: String? = null)
 class MobileFinanceViewModel(private val jobId: String): ViewModel() {
     private val api = au.mainspring.nativeapp.api.ApiClient.api
@@ -21,7 +22,8 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
   mutable.update { it.copy(loading = true, error = null,historyChecked=false) }
   viewModelScope.launch { try {
    val quotes = api.mobileQuotes(jobId); val invoices = api.mobileInvoices(jobId)
-   mutable.update { it.copy(loading = false, quotes = quotes, invoices = invoices, historyChecked = true) }
+   val xero = try { ApiClient.service(AccountsApi::class.java).billingLimits().xeroConfigured == true } catch(e: CancellationException) { throw e } catch(_: Exception) { mutable.value.showXero }
+   mutable.update { it.copy(loading = false, quotes = quotes, invoices = invoices, historyChecked = true, showXero = xero) }
   } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(loading = false, error = "Could not refresh documents. ${e.userMessage()}") } } }
  }
  fun checkedQuotes() { if(!mutable.value.historyChecked) return; drafts.setPendingOperation(operation, false); mutable.update { it.copy(unknownQuote = false) } }
@@ -59,6 +61,20 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
  fun sendInvoice(id: String) = runAction {
   val response = api.sendMobileInvoice(id)
   mutable.update { it.copy(info = "Invoice delivery: email ${if(response.emailSent) "sent" else "not sent"}, SMS ${if(response.smsSent) "sent" else "not sent"}.") }
+ }
+ /** Manager+ only; re-runs a failed Xero sync for one mobile invoice and swaps in the refreshed row. */
+ fun retryXero(id: String) {
+  val snapshot = mutable.value
+  if(snapshot.xeroRetryId != null || snapshot.busy || !TokenStore.canManageInvoices() || !canRetryXero(snapshot.invoices.firstOrNull { it.id == id }?.xeroSyncStatus)) return
+  mutable.update { it.copy(xeroRetryId = id, error = null, info = null) }
+  viewModelScope.launch {
+   try {
+    val invoice = api.retryMobileInvoiceXero(id)
+    mutable.update { it.copy(invoices = it.invoices.map { row -> if(row.id == id) invoice else row }, info = "Xero sync retried.") }
+   } catch(e: CancellationException) { throw e }
+   catch(e: Exception) { mutable.update { it.copy(error = "Xero sync retry failed. ${e.userMessage()}") } }
+   finally { mutable.update { it.copy(xeroRetryId = null) } }
+  }
  }
  fun checkedPayment() {
   if(mutable.value.loading || mutable.value.busy || !mutable.value.historyChecked) return
@@ -107,3 +123,13 @@ internal fun sendFailureText(reason: String?): String = when(reason) {
     "sms_not_configured" -> "SMS is not set up for this shop."
     else -> reason.replace('_', ' ') + "."
 }
+
+/** Web wording for a mobile invoice's Xero sync state (AutoKeyJobDetailPage). */
+internal fun xeroStatusLabel(status: String?, error: String?): String = "Xero: " + when(status) {
+    "synced" -> "synced"
+    "failed" -> "failed" + (error?.takeIf { it.isNotBlank() }?.let { " \u2014 " + it.take(80) } ?: "")
+    "pending" -> "pending"
+    "skipped" -> "not configured"
+    else -> "\u2014"
+}
+internal fun canRetryXero(status: String?): Boolean = status == "failed"

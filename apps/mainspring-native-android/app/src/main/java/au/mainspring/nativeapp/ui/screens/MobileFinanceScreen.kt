@@ -85,6 +85,8 @@ import au.mainspring.nativeapp.ui.formatCents
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(invoice.number,style=MaterialTheme.typography.titleSmall);StatusPill(invoice.status)}
     Text(formatCents(invoice.total,invoice.currency),style=MaterialTheme.typography.titleLarge)
     invoice.paymentMethod?.let { Text("Payment: ${au.mainspring.nativeapp.ui.statusLabel(it)}") }
+    if(state.showXero) Text(xeroStatusLabel(invoice.xeroSyncStatus,invoice.xeroSyncError),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.testTag("xero-status-${invoice.id}"))
+    if(state.showXero && canRetryXero(invoice.xeroSyncStatus) && TokenStore.canManageInvoices()) OutlinedButton(onClick = { vm.retryXero(invoice.id) },enabled = !state.loading && !state.busy && state.xeroRetryId==null,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp).testTag("xero-retry-${invoice.id}")) { Text(if(state.xeroRetryId==invoice.id) "Retrying Xero\u2026" else "Retry Xero sync") }
     OutlinedButton(onClick = { try {
      printInvoiceSummary(context,InvoiceSummary(invoice.number,invoice.status,
       details = listOfNotNull(invoice.customerName?.let { "Customer: $it" },invoice.jobNumber?.let { "Job: $it" },invoice.createdAt?.let { "Created ${au.mainspring.nativeapp.ui.formatShopDate(it)}" },invoice.paymentMethod?.let { "Payment method: ${au.mainspring.nativeapp.ui.statusLabel(it)}" }),

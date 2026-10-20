@@ -18,7 +18,10 @@ data class AutoKeyJobDetailUiState(val loading: Boolean = false, val error: Stri
     val activity: List<JobActivityEvent> = emptyList(), val activityLoading: Boolean = false, val activityError: String? = null, val activityLoaded: Boolean = false,
     val adminBusy: Boolean = false, val adminError: String? = null, val duplicated: AutoKeyJobRead? = null, val deleted: Boolean = false,
     val keySearchLoading: Boolean = false, val keyMatches: List<KeySpecMatch> = emptyList(), val keySearched: Boolean = false, val keySearchError: String? = null,
-    val keyApplyBusy: Boolean = false, val keyApplied: Boolean = false)
+    val keyApplyBusy: Boolean = false, val keyApplied: Boolean = false,
+    val notesBusy: Boolean = false, val notesSaved: Boolean = false, val notesError: String? = null, val notesInfo: String? = null)
+
+const val MOBILE_NOTES_MAX = 4000
 
 class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUrl: String) : ViewModel() {
     private val api = ApiClient.api
@@ -96,6 +99,32 @@ class AutoKeyJobDetailViewModel(private val jobId: String, private val apiBaseUr
             finally { mutable.update { it.copy(activityLoading = false) } }
         }
     }
+    /** Replace the technician notes. Online it is a versioned PATCH; with no network it is queued (stale writes are refused by the server on replay). */
+    fun saveTechNotes(text: String) {
+        val snapshot = mutable.value
+        val current = snapshot.job ?: return
+        if(snapshot.notesBusy || snapshot.loading || snapshot.statusBusy || !TokenStore.canWorkJobs()) return
+        val trimmed = text.trim().take(MOBILE_NOTES_MAX)
+        if(trimmed == current.techNotes.orEmpty().trim()) { mutable.update { it.copy(notesSaved = true) }; return }
+        val body = com.google.gson.JsonObject().also { it.addProperty("tech_notes", trimmed) }
+        mutable.update { it.copy(notesBusy = true, notesSaved = false, notesError = null, notesInfo = null) }
+        viewModelScope.launch {
+            try {
+                if(snapshot.offlineSnapshot) throw java.io.IOException("offline snapshot")
+                val job = api.updateMobileJob(jobId, body, current.updatedAt)
+                snapshots.saveJob(job)
+                mutable.update { it.copy(job = job, notesSaved = true, notesInfo = "Notes saved.") }
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) {
+                if(OfflineSync.queueMobileNote(e, jobId, trimmed, "Mobile job", current.updatedAt)) {
+                    val local = current.copy(techNotes = trimmed.ifBlank { null })
+                    snapshots.saveJob(local)
+                    mutable.update { it.copy(job = local, notesSaved = true, notesInfo = OfflineSync.SAVED_OFFLINE_MESSAGE) }
+                } else mutable.update { it.copy(notesError = if(e is HttpException && e.code() == 409) "This job changed. Refresh it, then edit the notes again." else "Could not save the notes. ${e.userMessage()}") }
+            } finally { mutable.update { it.copy(notesBusy = false) } }
+        }
+    }
+    fun dismissNotesMessage() { mutable.update { it.copy(notesError = null, notesInfo = null, notesSaved = false) } }
     fun dismissAdminMessage() { mutable.update { it.copy(adminError = null, duplicated = null) } }
     /** Duplicating is not idempotent, so an unconfirmed failure asks the operator to check the job list before retrying. */
     fun duplicate() {

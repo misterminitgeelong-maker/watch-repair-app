@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -43,6 +44,7 @@ fun DispatchScreen(
     onOpenPlanner: () -> Unit,
     onOpenPool: () -> Unit,
     onOpenBookingRequests: (() -> Unit)? = null,
+    onOpenRunSheet: (() -> Unit)? = null,
     model: TodayViewModel = viewModel(),
     extras: au.mainspring.nativeapp.DispatchExtrasViewModel = viewModel(),
 ) {
@@ -66,6 +68,9 @@ fun DispatchScreen(
             }
         }
         if(onOpenBookingRequests != null) item { PendingBookingsBanner(onOpenBookingRequests, Modifier.padding(horizontal = 20.dp)) }
+        if(onOpenRunSheet != null) item {
+            SecondaryAction(onOpenRunSheet, Modifier.padding(horizontal = 20.dp).fillMaxWidth().heightIn(min = 48.dp).then(Modifier.testTag("open-run-sheet"))) { Text("Open today's run sheet") }
+        }
         item {
             SegmentedPills(listOf("today" to "Today", "week" to "This week", "pool" to "Pool"), "today",
                 { key -> when(key) { "week" -> onOpenPlanner(); "pool" -> onOpenPool(); else -> Unit } }, Modifier.padding(horizontal = 20.dp))

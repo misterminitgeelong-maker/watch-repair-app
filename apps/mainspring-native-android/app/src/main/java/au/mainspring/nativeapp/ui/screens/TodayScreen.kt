@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,8 +30,12 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun TodayScreen(onOpenJob: (String) -> Unit, onDirectory: () -> Unit, onNewJob: () -> Unit,
-    model: TodayViewModel = viewModel(), onEnRoute: ((String) -> Unit)? = null) {
+    model: TodayViewModel = viewModel(), onEnRoute: ((String) -> Unit)? = null, runSheet: Boolean = false) {
     val state by model.state.collectAsStateWithLifecycle()
+    val run by model.runSheet.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var confirmComplete by remember { mutableStateOf<AutoKeyJobRead?>(null) }
+    var contactError by remember { mutableStateOf<String?>(null) }
     val zone = ZoneId.of(TokenStore.calendarTimezone())
     var now by remember { mutableStateOf(Instant.now()) }
     RefreshOnResume(model::refresh)
@@ -62,8 +68,35 @@ import java.util.Locale
                 if(state.loading) item {LinearProgressIndicator(Modifier.fillMaxWidth())}
                 state.error?.let {item {ErrorBanner(it,onRetry=model::refresh)}}
                 if(state.truncated) item {Text("Showing the first 1,000 jobs. Use Search to narrow this queue.",style=MaterialTheme.typography.bodySmall)}
-                val next=nextFieldJob(state.jobs)
-                if(next!=null) {
+                if(runSheet) {
+                    run.info?.let {item {Text(it,Modifier.testTag("run-sheet-info"),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.primary)}}
+                    (run.error ?: contactError)?.let {item {ErrorBanner(it)}}
+                    if(state.tab=="active") item {
+                        Column(Modifier.fillMaxWidth().testTag("needs-action"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                            SectionLabel("Needs action · ${attentionTotal(run.counts)}")
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                NEEDS_ACTION_QUEUES.forEach {(key,label)->
+                                    val count=run.counts[key] ?: 0
+                                    OutlinedButton(onDirectory,modifier=Modifier.weight(1f).heightIn(min=48.dp).testTag("needs-action-$key"),contentPadding=PaddingValues(horizontal=4.dp)) {
+                                        Text("$label $count",style=MaterialTheme.typography.labelMedium,maxLines=1,color=if(count>0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                val sheet=if(runSheet && state.tab=="active") runSheetOrder((run.field+state.jobs).distinctBy {it.id}) else state.jobs
+                val next=if(runSheet) null else nextFieldJob(state.jobs)
+                if(runSheet && sheet.isNotEmpty()) {
+                    items(sheet,key={"run-${it.id}"}) {job->
+                        TodayJobRow(job,zone,{onOpenJob(job.id)},late=job.id in run.lateIds) {
+                            RunSheetActions(job,busy=run.movingId!=null,moving=run.movingId==job.id,online=!state.offlineSnapshot,
+                                onCall={contactError=launchContact(context,android.content.Intent(android.content.Intent.ACTION_DIAL,android.net.Uri.parse("tel:"+dialDigits(job.customerPhone))))},
+                                onRoute={directionsUri(job.jobAddress)?.let {contactError=launchContact(context,android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(it)))}},
+                                onAdvance={target->if(needsCompletionConfirm(target)) confirmComplete=job else model.advance(job.id,target)},onOpen={onOpenJob(job.id)})
+                        }
+                    }
+                } else if(next!=null) {
                     item {
                         val canEnRoute=onEnRoute!=null && !state.loading && !state.offlineSnapshot && TokenStore.canWorkJobs() && next.status in setOf("booked","booking_confirmed")
                         TodayJobRow(next,zone,onClick={onOpenJob(next.id)},nextLabel=if(state.tab in listOf("active","booked")) "Next up" else "First in queue") {
@@ -91,11 +124,30 @@ import java.util.Locale
             }
         }
     }
+    confirmComplete?.let {job->
+        AlertDialog(onDismissRequest={confirmComplete=null},title={Text("Complete job #${job.jobNumber}?")},
+            text={Text("This marks the work complete. If the job has an approved quote, Mainspring may create the invoice and notify the customer through your shop settings. Payment is recorded separately.")},
+            confirmButton={Button({confirmComplete=null;model.advance(job.id,"work_completed")},modifier=Modifier.heightIn(min=48.dp).testTag("run-complete-confirm")) {Text("Complete job")}},
+            dismissButton={TextButton({confirmComplete=null},modifier=Modifier.heightIn(min=48.dp)) {Text("Cancel")}})
+    }
 }
 
 private fun jobTime(job: AutoKeyJobRead,zone: ZoneId)=bookingInstant(job.scheduledAt)?.atZone(zone)?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: "—"
 private fun jobSubtitle(job: AutoKeyJobRead)=listOf(listOfNotNull(job.vehicleMake,job.vehicleModel,job.vehicleYear?.toString()).joinToString(" "),job.customerName.orEmpty()).filter {it.isNotBlank()}.joinToString(" · ")
-@Composable private fun TodayJobRow(job: AutoKeyJobRead,zone: ZoneId,onClick: ()->Unit,nextLabel: String?=null,actions: (@Composable ()->Unit)?=null) {
+/** Call, Route and the one-tap next step for a run-sheet row. Every target is 48dp and labelled for TalkBack. */
+@Composable private fun RunSheetActions(job: AutoKeyJobRead,busy: Boolean,moving: Boolean,online: Boolean,onCall: ()->Unit,onRoute: ()->Unit,onAdvance: (String)->Unit,onOpen: ()->Unit) {
+    val next=nextMobileStatus(job.status)
+    val phone=dialDigits(job.customerPhone)
+    val address=directionsUri(job.jobAddress)
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+        OutlinedButton(onCall,enabled=phone.isNotEmpty(),modifier=Modifier.weight(1f).heightIn(min=48.dp).testTag("run-call-${job.id}").semantics {contentDescription=if(phone.isEmpty()) "No phone number" else "Call customer"},contentPadding=PaddingValues(horizontal=4.dp)) {Text(if(phone.isEmpty()) "No phone" else "Call",maxLines=1)}
+        OutlinedButton(onRoute,enabled=address!=null,modifier=Modifier.weight(1f).heightIn(min=48.dp).testTag("run-route-${job.id}").semantics {contentDescription=if(address==null) "No address" else "Open route in maps"},contentPadding=PaddingValues(horizontal=4.dp)) {Text(if(address==null) "No address" else "Route",maxLines=1)}
+        if(next!=null) Button({onAdvance(next)},enabled=!busy && online && TokenStore.canWorkJobs(),modifier=Modifier.weight(1.3f).heightIn(min=48.dp).testTag("run-advance-${job.id}"),shape=MaterialTheme.shapes.small,contentPadding=PaddingValues(horizontal=4.dp)) {Text(if(moving) "Saving\u2026" else quickStatusCopy(next),maxLines=1)}
+        else Button(onOpen,modifier=Modifier.weight(1.3f).heightIn(min=48.dp).testTag("run-open-${job.id}"),shape=MaterialTheme.shapes.small,contentPadding=PaddingValues(horizontal=4.dp)) {Text("Open")}
+    }
+}
+
+@Composable private fun TodayJobRow(job: AutoKeyJobRead,zone: ZoneId,onClick: ()->Unit,nextLabel: String?=null,late: Boolean=false,actions: (@Composable ()->Unit)?=null) {
     val timeWidth=if(androidx.compose.ui.platform.LocalDensity.current.fontScale>1.3f) 72.dp else 48.dp
     Surface(Modifier.fillMaxWidth().testTag(if(nextLabel!=null) "today-next-job" else "today-row-${job.id}").clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),color=MaterialTheme.colorScheme.surface) {
         Row(Modifier.padding(vertical=12.dp).height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -111,6 +163,7 @@ private fun jobSubtitle(job: AutoKeyJobRead)=listOf(listOfNotNull(job.vehicleMak
                 job.jobAddress?.takeIf {it.isNotBlank()}?.let {Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis)}
                 Row(horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
                     StatusPill(job.status)
+                    if(late) StatusPill("late")
                     if(job.priority=="urgent") StatusPill("urgent")
                 }
                 actions?.let {Spacer(Modifier.height(5.dp));it()}

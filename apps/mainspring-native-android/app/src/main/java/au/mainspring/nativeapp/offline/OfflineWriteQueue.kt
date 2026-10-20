@@ -63,7 +63,9 @@ object OfflineKinds {
     const val MOBILE_STATUS = "mobile_status"
     const val WATCH_NOTE = "watch_note"
     const val SHOE_NOTE = "shoe_note"
-    val ALLOWED = setOf(WATCH_STATUS, SHOE_STATUS, MOBILE_STATUS, WATCH_NOTE, SHOE_NOTE)
+    /** Mobile jobs have no append-note endpoint: a note is an edit of the technician notes field (PATCH, replaces the text). */
+    const val MOBILE_NOTE = "mobile_note"
+    val ALLOWED = setOf(WATCH_STATUS, SHOE_STATUS, MOBILE_STATUS, WATCH_NOTE, SHOE_NOTE, MOBILE_NOTE)
 }
 
 /** 5s, 10s, 20s ... capped at 5 minutes. */
@@ -109,8 +111,11 @@ class OfflineWriteQueue(
         // A second change to the same job builds on the first: it expects the first's result, not what the user saw originally,
         // and the first one's replay will have moved updated_at, so the timestamp precondition no longer applies.
         val earlier = all.pending.lastOrNull { it.jobId == jobId && it.kind == kind && it.targetStatus != null }
+        // Technician notes replace the whole text, so a newer edit supersedes a pending one and keeps the version the user first saw.
+        val supersededNote = if (kind == OfflineKinds.MOBILE_NOTE) all.pending.lastOrNull { it.jobId == jobId && it.kind == kind } else null
         val base = if (earlier != null) earlier.targetStatus else baseStatus
-        val expected = if (earlier != null) null else expectedUpdatedAt
+        val expected = if (earlier != null) null else supersededNote?.expectedUpdatedAt ?: expectedUpdatedAt
+        if (supersededNote != null) all = all.copy(pending = all.pending.filterNot { it.id == supersededNote.id })
         val id = UUID.randomUUID().toString()
         val item = QueuedWrite(id, scope, kind, endpoint, method.uppercase(), body, jobId, summary, clock(),
             idempotencyKey = UUID.randomUUID().toString(), expectedUpdatedAt = expected, baseStatus = base, targetStatus = targetStatus)

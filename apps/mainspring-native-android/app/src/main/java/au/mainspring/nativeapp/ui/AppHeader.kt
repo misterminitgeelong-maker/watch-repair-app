@@ -52,7 +52,7 @@ internal fun tabRoute(key: String) = when(key) { TAB_WATCH -> "watch_jobs"; TAB_
 /** Which tab a route belongs to; routes whose service has no tab (and everything else) belong to More. */
 internal fun tabFor(route: String?, features: Set<String>): String {
     val key = when(route) {
-        "today", "home", "dispatch", "route", "dispatchPool", "new_intake" -> TAB_TODAY
+        "today", "home", "dispatch", "mobileToday", "route", "dispatchPool", "new_intake" -> TAB_TODAY
         "watch_jobs" -> TAB_WATCH
         "auto_jobs" -> TAB_MOBILE
         "shoe_jobs" -> TAB_SHOE

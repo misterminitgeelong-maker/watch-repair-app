@@ -523,7 +523,9 @@ data class MobileInvoice(val id: String, @SerializedName("invoice_number") val n
     val currency: String, @SerializedName("payment_method") val paymentMethod: String? = null,
     @SerializedName("subtotal_cents") val subtotal: Int? = null, @SerializedName("tax_cents") val tax: Int? = null,
     @SerializedName("created_at") val createdAt: String? = null, @SerializedName("customer_name") val customerName: String? = null,
-    @SerializedName("job_number") val jobNumber: String? = null)
+    @SerializedName("job_number") val jobNumber: String? = null,
+    @SerializedName("xero_sync_status") val xeroSyncStatus: String? = null,
+    @SerializedName("xero_sync_error") val xeroSyncError: String? = null)
 data class MobileInvoiceUpdate(val status: String, @SerializedName("payment_method") val paymentMethod: String)
 data class MobileQuoteSend(val quote: MobileQuote, @SerializedName("email_sent") val sent: Boolean,
     @SerializedName("email_skipped_reason") val reason: String?)

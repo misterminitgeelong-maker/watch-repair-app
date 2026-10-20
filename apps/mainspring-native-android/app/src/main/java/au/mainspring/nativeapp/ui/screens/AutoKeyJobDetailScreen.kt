@@ -192,7 +192,7 @@ import au.mainspring.nativeapp.api.*
                                     if(activeJourney.step in 0..2) {
                                         PreparationPanel(j,state.vehicleContext,onVehicle={tab="vehicle"})
                                     }
-                                    MobileInfoPanels(j,state.technicians)
+                                    MobileInfoPanels(j,state.technicians,notesBusy=state.notesBusy,notesSaved=state.notesSaved,notesMessage=state.notesError ?: state.notesInfo,notesIsError=state.notesError!=null,canEdit=TokenStore.canWorkJobs() && !state.loading && !state.statusBusy,onSaveNotes=vm::saveTechNotes,onNotesDismiss=vm::dismissNotesMessage)
                                 }
                                 TextButton({moreActions=!moreActions},colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.onSurfaceVariant)) {Text(if(moreActions) "Hide job actions" else "More job actions")}
                                 if(moreActions) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -284,8 +284,22 @@ import au.mainspring.nativeapp.api.*
 
 private fun contextText(value: com.google.gson.JsonObject,key: String): String? = value.get(key)?.takeIf {it.isJsonPrimitive}?.asString?.takeIf {it.isNotBlank()}
 
-@Composable private fun MobileInfoPanels(job: au.mainspring.nativeapp.api.AutoKeyJobRead,technicians: List<au.mainspring.nativeapp.api.TeamUser>) {
+@Composable private fun MobileInfoPanels(job: au.mainspring.nativeapp.api.AutoKeyJobRead,technicians: List<au.mainspring.nativeapp.api.TeamUser>,
+    notesBusy: Boolean=false,notesSaved: Boolean=false,notesMessage: String?=null,notesIsError: Boolean=false,canEdit: Boolean=false,onSaveNotes: (String)->Unit={},onNotesDismiss: ()->Unit={}) {
     var details by rememberSaveable(job.id) {mutableStateOf(false)}
+    var editingNotes by rememberSaveable(job.id) {mutableStateOf(false)}
+    var notesDraft by rememberSaveable(job.id) {mutableStateOf("")}
+    LaunchedEffect(notesSaved) {if(notesSaved && editingNotes) {editingNotes=false}}
+    if(editingNotes) AlertDialog(onDismissRequest={if(!notesBusy) {editingNotes=false;onNotesDismiss()}},title={Text("Technician notes")},
+        text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            au.mainspring.nativeapp.ui.AtelierTextField(notesDraft,{notesDraft=it.take(MOBILE_NOTES_MAX)},label={Text("Notes for the technician")},modifier=Modifier.fillMaxWidth().testTag("tech-notes-field"),maxLines=8)
+            if(notesIsError) notesMessage?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
+            Text("With no signal this is saved on the phone and sent when you reconnect. If the job changes first, you will be asked to review it.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }},
+        confirmButton={TextButton({onSaveNotes(notesDraft)},enabled=!notesBusy,modifier=Modifier.heightIn(min=48.dp).testTag("tech-notes-save")) {Text(if(notesBusy) "Saving\u2026" else "Save notes")}},
+        dismissButton={TextButton({editingNotes=false;onNotesDismiss()},enabled=!notesBusy,modifier=Modifier.heightIn(min=48.dp)) {Text("Cancel")}})
+    if(!editingNotes && !notesIsError) notesMessage?.let {Text(it,Modifier.testTag("tech-notes-info"),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.primary)}
+    if(canEdit) TextButton({notesDraft=job.techNotes.orEmpty();onNotesDismiss();editingNotes=true},modifier=Modifier.heightIn(min=48.dp).testTag("tech-notes-edit")) {Text(if(job.techNotes.isNullOrBlank()) "Add technician notes" else "Edit technician notes")}
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         au.mainspring.nativeapp.ui.CustomFieldsCard(au.mainspring.nativeapp.CustomFieldJobKind.Mobile, job.id)
         job.description?.takeIf {it.isNotBlank()}?.let {SectionLabel("Requested work");Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.surface) {Text(it,Modifier.padding(horizontal=16.dp,vertical=14.dp),style=MaterialTheme.typography.bodyMedium)}}

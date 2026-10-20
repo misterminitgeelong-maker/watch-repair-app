@@ -90,6 +90,15 @@ object OfflineSync {
         return enqueue(kind, "$base/$jobId/note", Gson().toJson(JobNotePayload(note)), jobId, "$label: add note")
     }
 
+    /** Queue an edit of a mobile job's technician notes. The server refuses it (409) if the job changed since [expectedUpdatedAt], and it then needs review. */
+    fun queueMobileNote(e: Throwable, jobId: String, notes: String, label: String, expectedUpdatedAt: String?): Boolean {
+        if (e !is IOException) return false
+        val body = Gson().toJson(mapOf("tech_notes" to notes))
+        val ok = queue.enqueue(OfflineKinds.MOBILE_NOTE, "v1/auto-key-jobs/$jobId", "PATCH", body, jobId, "$label: update technician notes", expectedUpdatedAt)
+        if (ok) requestReplay()
+        return ok
+    }
+
     private fun enqueue(kind: String, endpoint: String, body: String, jobId: String, summary: String,
                         expectedUpdatedAt: String? = null, baseStatus: String? = null, targetStatus: String? = null): Boolean {
         val ok = queue.enqueue(kind, endpoint, "POST", body, jobId, summary, expectedUpdatedAt, baseStatus, targetStatus)

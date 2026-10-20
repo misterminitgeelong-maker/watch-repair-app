@@ -34,6 +34,7 @@ data class BillingLimits(
     val usage: BillingLimitsUsage = BillingLimitsUsage(),
     @SerializedName("stripe_configured") val stripeConfigured: Boolean = false,
     @SerializedName("stripe_subscription_id") val stripeSubscriptionId: String? = null,
+    @SerializedName("xero_configured") val xeroConfigured: Boolean? = null,
     @SerializedName("xero_connected") val xeroConnected: Boolean? = null,
     @SerializedName("xero_connection_status") val xeroConnectionStatus: String? = null,
 )

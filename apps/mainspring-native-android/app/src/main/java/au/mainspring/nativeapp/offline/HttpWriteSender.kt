@@ -35,7 +35,7 @@ class HttpWriteSender(private val api: () -> OfflineReplayApi) : WriteSender {
         val headers = buildMap {
             put("Idempotency-Key", write.effectiveIdempotencyKey())
             val expected = write.expectedUpdatedAt
-            if (!write.force && write.kind == OfflineKinds.MOBILE_STATUS && !expected.isNullOrBlank()) put("X-Expected-Updated-At", expected)
+            if (!write.force && (write.kind == OfflineKinds.MOBILE_STATUS || write.kind == OfflineKinds.MOBILE_NOTE) && !expected.isNullOrBlank()) put("X-Expected-Updated-At", expected)
         }
         val body = write.body.toRequestBody(json)
         val resp = when (write.method) {

@@ -82,7 +82,7 @@ import au.mainspring.nativeapp.ui.screens.ShoeJobDetailScreen
 import au.mainspring.nativeapp.ui.screens.ShoeJobsScreen
 import kotlinx.coroutines.launch
 
-private val bottomDestinations = setOf("toolsWorkshop", "toolsMobile", "toolsShop", "home", "today", "dispatch", "jobs", "watch_jobs", "people", "customers", "inbox", "leads", "more", "route", "dispatchPool", "counterSale", "reports", "stock", "auto_jobs", "quotes", "invoices", "shoe_jobs", "new_intake")
+private val bottomDestinations = setOf("toolsWorkshop", "toolsMobile", "toolsShop", "home", "today", "dispatch", "mobileToday", "jobs", "watch_jobs", "people", "customers", "inbox", "leads", "more", "route", "dispatchPool", "counterSale", "reports", "stock", "auto_jobs", "quotes", "invoices", "shoe_jobs", "new_intake")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,11 +222,16 @@ fun MainspringAppShell(
                 composable("dispatch") {
                     au.mainspring.nativeapp.ui.screens.DispatchScreen(
                         onOpenBookingRequests = { navController.navigate("bookingRequests") },
+                        onOpenRunSheet = { navController.navigate("mobileToday") },
                         onOpenJob = { navController.navigate("autoKeyJob/$it") },
                         onNew = { navController.navigate("mobile_intake") },
                         onOpenRoute = { navController.navigate("route") },
                         onOpenPlanner = { navController.navigate("auto_jobs") },
                         onOpenPool = { navController.navigate("dispatchPool") })
+                }
+                composable("mobileToday") {
+                    au.mainspring.nativeapp.ui.screens.TodayScreen(onOpenJob = { navController.navigate("autoKeyJob/$it") }, onDirectory = { navController.navigate("auto_jobs") },
+                        onNewJob = { navController.navigate("mobile_intake") }, runSheet = true)
                 }
                 listOf("toolsWorkshop", "toolsMobile", "toolsShop").forEach { key ->
                     composable(key) { au.mainspring.nativeapp.ui.screens.ToolsGridScreen(key, features, { navController.popBackStack() }, { navController.navigate(it) }) }
