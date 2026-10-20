@@ -262,7 +262,7 @@ fun MainspringAppShell(
                         onLogWork = { navController.navigate("watchJob/$it?tab=work") })
                 }
                 composable("watch_intake?customerId={customerId}", arguments = listOf(navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
-                    WatchIntakeScreen(onSwitchService = { key -> navController.navigate(when(key) { "shoe" -> "shoe_intake"; "auto_key" -> "mobile_intake"; else -> "watch_intake" }) { popUpTo("new_intake") { inclusive = false }; launchSingleTop = true } },
+                    WatchIntakeScreen(apiBaseUrl = apiBaseUrl, onSwitchService = { key -> navController.navigate(when(key) { "shoe" -> "shoe_intake"; "auto_key" -> "mobile_intake"; else -> "watch_intake" }) { popUpTo("new_intake") { inclusive = false }; launchSingleTop = true } },
                         services = listOfNotNull(if("watch" in features) "watch" to "Watch" else null, if("shoe" in features) "shoe" to "Shoe" else null, if("auto_key" in features) "auto_key" to "Mobile" else null), preselectedCustomerId = entry.arguments?.getString("customerId"), onBack = { navController.popBackStack() }, onOpenJob = { id ->
                         navController.navigate("watchJob/$id") { popUpTo("watch_intake?customerId={customerId}") { inclusive = true } }
                     })
@@ -404,7 +404,7 @@ fun MainspringAppShell(
                     )
                 }
                 composable("shoe_intake?customerId={customerId}", arguments = listOf(navArgument("customerId") { type = NavType.StringType; nullable = true; defaultValue = null })) { entry ->
-                    ShoeIntakeScreen(onSwitchService = { key -> navController.navigate(when(key) { "shoe" -> "shoe_intake"; "auto_key" -> "mobile_intake"; else -> "watch_intake" }) { popUpTo("new_intake") { inclusive = false }; launchSingleTop = true } },
+                    ShoeIntakeScreen(apiBaseUrl = apiBaseUrl, onSwitchService = { key -> navController.navigate(when(key) { "shoe" -> "shoe_intake"; "auto_key" -> "mobile_intake"; else -> "watch_intake" }) { popUpTo("new_intake") { inclusive = false }; launchSingleTop = true } },
                         services = listOfNotNull(if("watch" in features) "watch" to "Watch" else null, if("shoe" in features) "shoe" to "Shoe" else null, if("auto_key" in features) "auto_key" to "Mobile" else null), preselectedCustomerId = entry.arguments?.getString("customerId"), onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("shoeJob/$it") { popUpTo("shoe_intake?customerId={customerId}") { inclusive = true } } })
                 }
                 composable(

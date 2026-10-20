@@ -28,7 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: WatchIntakeViewModel = viewModel(), preselectedCustomerId: String? = null, onSwitchService: ((String) -> Unit)? = null, services: List<Pair<String, String>> = emptyList()) {
+fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (String) -> Unit, vm: WatchIntakeViewModel = viewModel(), preselectedCustomerId: String? = null, onSwitchService: ((String) -> Unit)? = null, services: List<Pair<String, String>> = emptyList()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
@@ -42,6 +42,9 @@ fun WatchIntakeScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: Watch
     var discardDialog by remember { mutableStateOf(false) }
     var photoError by remember { mutableStateOf<String?>(null) }
     var reconcileDialog by remember { mutableStateOf(false) }
+    var printPromptDone by rememberSaveable { mutableStateOf(false) }
+    if (apiBaseUrl.isNotBlank() && !printPromptDone && state.complete && state.uploadFailures.isEmpty() && state.savedJobIds.isNotEmpty())
+        au.mainspring.nativeapp.ui.PrintAfterIntakeDialog(au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH, state.savedJobIds, apiBaseUrl) { printPromptDone = true }
     val newCustomer = vm.field("customerMode") == "new"
     val locked = state.busy || state.savedJobIds.isNotEmpty() || vm.field("uncertainWrite").isNotBlank() || vm.field("hasAcknowledgement") == "true"
     fun close() { if (!state.busy) closeDialog = true }

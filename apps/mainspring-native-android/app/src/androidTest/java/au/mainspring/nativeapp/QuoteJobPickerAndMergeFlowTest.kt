@@ -60,6 +60,7 @@ class QuoteJobPickerAndMergeFlowTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("quote-job-j1").fetchSemanticsNodes().isEmpty() }
         Assert.assertTrue(paths.any { it.contains("q=bob") })
         compose.onNodeWithTag("quote-job-j2").performClick()
+        compose.waitUntil(10_000) { picked.isNotEmpty() }  // the sheet closes with an animation before it reports the pick
         Assert.assertEquals("j2", picked)
         compose.onNodeWithTag("quote-job-picker").assertDoesNotExist()
     }
@@ -90,9 +91,9 @@ class QuoteJobPickerAndMergeFlowTest {
         compose.onNodeWithTag("merge-pick-c1").assertDoesNotExist()
         compose.onNodeWithTag("merge-search").performTextInput("smyth")
         compose.onNodeWithTag("merge-pick-c2").performClick()
-        compose.onNodeWithTag("merge-keep-card").assertTextContains("Avery Smith", substring = true)
-        compose.onNodeWithTag("merge-duplicate-card").assertTextContains("Avery Smyth", substring = true)
-        compose.onNodeWithTag("merge-duplicate-card").assertTextContains("0412345678", substring = true)
+        compose.onNode(hasTestTag("merge-keep-card") and hasAnyDescendant(hasText("Avery Smith", substring = true))).assertExists()
+        compose.onNode(hasTestTag("merge-duplicate-card") and hasAnyDescendant(hasText("Avery Smyth", substring = true))).assertExists()
+        compose.onNode(hasTestTag("merge-duplicate-card") and hasAnyDescendant(hasText("0412345678", substring = true))).assertExists()
         compose.onNodeWithTag("merge-confirm").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("merge-success").fetchSemanticsNodes().isNotEmpty() }
         val body = bodies.single()
