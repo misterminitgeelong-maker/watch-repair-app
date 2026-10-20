@@ -8,9 +8,9 @@ import retrofit2.http.Query
 /** Mobile services operations cockpit and finance report (read-only). Obtain via ApiClient.service(MobileFinanceApi::class.java). */
 interface MobileFinanceApi {
     @GET("v1/reports/auto-key/cockpit") suspend fun cockpit(@Query("items") items: Int = 5): MobileCockpitResponse
-    @GET("v1/reports/auto-key/finance") suspend fun finance(@Query("period") period: String): MobileFinanceResponse
+    @GET("v1/reports/auto-key/finance") suspend fun finance(@Query("period") period: String, @Query("date_from") dateFrom: String? = null, @Query("date_to") dateTo: String? = null): MobileFinanceResponse
     @retrofit2.http.Streaming @GET("v1/reports/auto-key/finance/export")
-    suspend fun financeExport(@Query("period") period: String, @Query("kind") kind: String): ResponseBody
+    suspend fun financeExport(@Query("period") period: String, @Query("kind") kind: String, @Query("date_from") dateFrom: String? = null, @Query("date_to") dateTo: String? = null): ResponseBody
 }
 
 data class CockpitJob(
