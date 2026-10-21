@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -29,7 +30,7 @@ fun SendBookingRequestScreen(onBack: () -> Unit, onDone: () -> Unit = onBack, vi
     BackHandler { if (!state.busy) onBack() }
     Scaffold(topBar = { BackLargeHeader("Today", "Mobile services", "Send booking request", onBack, backEnabled = !state.busy) }) { padding ->
         Column(
-            Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())

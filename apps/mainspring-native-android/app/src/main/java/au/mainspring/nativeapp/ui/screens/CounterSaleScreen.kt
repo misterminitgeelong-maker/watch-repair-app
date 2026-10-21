@@ -1,4 +1,5 @@
 package au.mainspring.nativeapp.ui.screens
+import androidx.compose.foundation.layout.consumeWindowInsets
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.activity.compose.BackHandler
@@ -25,7 +26,7 @@ import au.mainspring.nativeapp.*
     }
     au.mainspring.nativeapp.ui.LargeHeader(if(au.mainspring.nativeapp.ui.LocalCalibre.current) "POS / Mobile services" else "Mobile services · Sale or quote", "Point of sale", insets = false)
   } }) { padding ->
-  Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(10.dp)) {
+  Column(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.busy || state.customerLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
    (localError ?: state.error)?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
    if(done) {

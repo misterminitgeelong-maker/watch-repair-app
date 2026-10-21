@@ -292,17 +292,18 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label.uppercase(), Modifier.clearAndSetSemantics { }, style = Calibre.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         AtelierTextField(value, onValueChange, Modifier.fillMaxWidth().semantics { contentDescription = label; if(!enabled) disabled() }, enabled,
-            placeholder = placeholder?.let { { Text(it, color = LocalCalibrePalette.current.placeholder) } }, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
+            placeholder = placeholder?.let { { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) } }, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
             singleLine = singleLine, minLines = if(singleLine) 1 else 2,
             colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface, disabledContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline, focusedBorderColor = MaterialTheme.colorScheme.primary))
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline, focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant, unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant, disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)))
     }
 }
 
 /** Bordered, right-aligned wizard action row (web footer: outlined Cancel/Back then the accent Next/Create). */
 @Composable fun WizardActionRow(secondaryLabel: String?, onSecondary: () -> Unit, secondaryEnabled: Boolean, primaryLabel: String, onPrimary: () -> Unit, primaryEnabled: Boolean) {
     Surface(color = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 if(secondaryLabel != null) SecondaryAction(onClick = onSecondary, enabled = secondaryEnabled, modifier = Modifier.heightIn(min = 48.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
@@ -320,7 +321,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         return
     }
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Step ${step + 1} of $steps · $stepTitle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -443,9 +444,15 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
         when(name) {
             "Today", "Dashboard" -> for(cx in listOf(5f, 14f)) for(cy in listOf(5f, 14f)) drawRoundRect(color, p(cx, cy), Size(6f * s, 6f * s), androidx.compose.ui.geometry.CornerRadius(1.6f * s), style = st)
             "More" -> for(cx in listOf(5f, 12f, 19f)) drawCircle(color, 1.5f * s, p(cx, 12f))
-            "Mobile" -> { drawCircle(color, 3.6f * s, p(8f, 15f), style = st); ln(10.6f, 12.4f, 19f, 4f); ln(16f, 7f, 18.5f, 9.5f); ln(13.5f, 9.5f, 15.5f, 11.5f) }
+            // Delivery van: box body, cab with a sloped windscreen, two wheels (same 24-unit grid and stroke as the other tabs).
+            "Mobile" -> { drawRoundRect(color, p(2.5f, 6.5f), Size(12f * s, 9.5f * s), androidx.compose.ui.geometry.CornerRadius(1.5f * s), style = st)
+                val cab = Path(); cab.moveTo(14.5f * s, 10f * s); cab.lineTo(18.5f * s, 10f * s); cab.lineTo(21.5f * s, 13f * s); cab.lineTo(21.5f * s, 16f * s); cab.lineTo(14.5f * s, 16f * s)
+                drawPath(cab, color, style = st); drawCircle(color, 2f * s, p(7f, 17.5f), style = st); drawCircle(color, 2f * s, p(17.5f, 17.5f), style = st) }
             "Shoe" -> { drawCircle(color, 2.6f * s, p(6f, 6f), style = st); drawCircle(color, 2.6f * s, p(6f, 18f), style = st); ln(8f, 7.6f, 20f, 18f); ln(8f, 16.4f, 20f, 6f) }
-            "Jobs" -> { ln(4f, 20f, 14f, 10f); drawCircle(color, 3.4f * s, p(17f, 7f), style = st); ln(15f, 4f, 20f, 9f); ln(5f, 5f, 10f, 10f); ln(10f, 14f, 20f, 20f).also { } }
+            // Wristwatch: round face with hands, strap lugs above and below.
+            "Jobs" -> { drawCircle(color, 5f * s, p(12f, 12f), style = st); ln(12f, 12f, 12f, 9.3f); ln(12f, 12f, 14.2f, 13.2f)
+                ln(9.8f, 7.6f, 10.4f, 3f); ln(14.2f, 7.6f, 13.6f, 3f); ln(10.4f, 3f, 13.6f, 3f)
+                ln(9.8f, 16.4f, 10.4f, 21f); ln(14.2f, 16.4f, 13.6f, 21f); ln(10.4f, 21f, 13.6f, 21f) }
             "People", "Customers" -> { drawCircle(color, 3.4f * s, p(9f, 8f), style = st); drawArc(color, 200f, 140f, false, p(3f, 14f), Size(12f * s, 12f * s), style = st)
                 drawCircle(color, 2.8f * s, p(17f, 9f), style = st); drawArc(color, 200f, 140f, false, p(12.5f, 14.5f), Size(9f * s, 9f * s), style = st) }
             "Inbox" -> { val path = Path(); path.moveTo(3f * s, 13f * s); path.lineTo(6f * s, 5f * s); path.lineTo(18f * s, 5f * s); path.lineTo(21f * s, 13f * s); path.lineTo(21f * s, 19f * s); path.lineTo(3f * s, 19f * s); path.close()
@@ -560,7 +567,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.small,
     colors: TextFieldColors = OutlinedTextFieldDefaults.colors(
         focusedContainerColor = if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface, unfocusedContainerColor = if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface, disabledContainerColor = if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
-        unfocusedBorderColor = if(LocalCalibre.current) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary),
+        unfocusedBorderColor = if(LocalCalibre.current) Color.Transparent else MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary,
+        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant, unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant, disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)),
 ) = OutlinedTextField(value, onValueChange, modifier, enabled, readOnly, textStyle, label, placeholder, leadingIcon, trailingIcon, prefix, suffix, supportingText,
     isError, visualTransformation, keyboardOptions, keyboardActions, singleLine, maxLines, minLines, null, shape, colors)
 

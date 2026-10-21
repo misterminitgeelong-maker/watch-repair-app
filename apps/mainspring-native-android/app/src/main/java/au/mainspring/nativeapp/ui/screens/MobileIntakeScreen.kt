@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import au.mainspring.nativeapp.ui.SelectableCard
 import au.mainspring.nativeapp.ui.ErrorBanner
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
@@ -31,11 +32,11 @@ import androidx.compose.ui.platform.testTag
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("auto_key", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar={if(vm.field("jobId").isBlank() && au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.WizardActionRow("Cancel",{leave=true},!state.busy,"Create job",vm::submit,!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs())
-        else if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Column {if(au.mainspring.nativeapp.ui.LocalCalibre.current) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant);Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        else if(vm.field("jobId").isBlank()) Surface(color=MaterialTheme.colorScheme.surface) {Column {if(au.mainspring.nativeapp.ui.LocalCalibre.current) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant);Row(Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton({leave=true},enabled=!state.busy,modifier=Modifier.weight(1f)) {Text("Cancel")}
             Button(vm::submit,enabled=!state.busy && vm.field("uncertain").isBlank() && TokenStore.canWorkJobs(),modifier=Modifier.weight(1f)) {Text("Create job")}
         } } } }) {padding ->
-        Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             if(!au.mainspring.nativeapp.ui.LocalCalibre.current) Text("Draft saved on this device",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             state.error?.let {ErrorBanner(it)}
             vm.field("trackingWarning").takeIf(String::isNotBlank)?.let {ErrorBanner(it)}

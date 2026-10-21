@@ -1,4 +1,5 @@
 package au.mainspring.nativeapp.ui.screens
+import androidx.compose.foundation.layout.consumeWindowInsets
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
@@ -21,7 +22,7 @@ import au.mainspring.nativeapp.api.MOBILE_PRIORITIES
  var accountOpen by remember { mutableStateOf(false) }
  androidx.activity.compose.BackHandler(state.busy) {}
  Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Edit mobile job") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
-  Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+  Column(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
    state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; if(state.saved) Text("Job changes saved.")
    listOf("title" to "Job title *", "description" to "Requested work", "job_address" to "Job address", "scheduled_at" to "Booking (DD/MM/YYYY HH:mm)",

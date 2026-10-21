@@ -150,11 +150,13 @@ fun ShoeJobsScreen(
                     val columns = if (orphans.isEmpty()) staged else staged + WebKanbanColumn("other", "Other", Color(0xFF596068), Color(0xFFEEF1F4), orphans)
                     val canMove = TokenStore.canWorkJobs() && state.movingId == null
                     val targets = au.mainspring.nativeapp.SHOE_JOB_STATUS_OPTIONS.map { it to statusLabel(it) }
-                    WebKanban(columns) { card, color ->
+                    ZoomableBoard("shoe", columns.size, 168.dp) {
+                        WebKanban(columns) { card, color ->
                         val job = byId[card.id]
                         ShoeBoardCard(card, job?.jobNumber ?: "", job?.let { state.customerName(it) }, color, canMove, targets, onOpenJob, viewModel::moveJob, { id, st, why -> viewModel.moveJob(id, st, why) },
                             onLogWork = if (TokenStore.canWorkJobs()) onLogWork else null)
                     }
+}
                 }
             }
         } else {

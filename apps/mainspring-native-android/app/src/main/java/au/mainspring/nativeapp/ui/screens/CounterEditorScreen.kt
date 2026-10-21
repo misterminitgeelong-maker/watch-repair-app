@@ -1,4 +1,5 @@
 package au.mainspring.nativeapp.ui.screens
+import androidx.compose.foundation.layout.consumeWindowInsets
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
@@ -17,7 +18,7 @@ import au.mainspring.nativeapp.*
 @Composable fun CounterEditorScreen(resource: String, id: String, onBack: () -> Unit) {
  val vm: CounterEditorViewModel = viewModel(key = "$resource/$id", factory = CounterEditorViewModel.factory(resource,id)); val state by vm.state.collectAsStateWithLifecycle()
  Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Edit repair details") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.busy) }) }) { padding ->
-  Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+  Column(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }; if(state.saved) Text("Repair details saved.")
    val labels = listOf("job_number" to "Ticket number", "title" to "Job title *", "description" to "Requested work", "salesperson" to "Salesperson",
     "collection_date" to "Collection date (DD/MM/YYYY)", "deposit_cents" to "Deposit ($)", "pre_quote_cents" to "Pre-quote ($)", "cost_cents" to "Job cost ($)",

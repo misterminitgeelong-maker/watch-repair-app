@@ -98,6 +98,7 @@ private val MOBILE_STAGES=listOf(
         }
         state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it,Modifier.padding(horizontal=16.dp),onRetry={model.refresh()})}
         if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        ZoomableBoard("mobile",stages.size,168.dp) {
         WebKanban(stages) {card,color->
             val job=byId[card.id] ?: return@WebKanban
             val vehicle=listOfNotNull(job.vehicleYear?.toString(),job.vehicleMake,job.vehicleModel).filter {it.isNotBlank()}.joinToString(" ")
@@ -116,6 +117,7 @@ Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCor
             }
 }
         }
+}
         if(state.jobs.size<state.total) SecondaryAction(model::loadMore,Modifier.padding(horizontal=16.dp),enabled=!state.loading) {Text("Load more jobs")}
     }
         BoardMoveToastBar(state.moveToast,{t->model.moveJob(t.id,t.from,au.mainspring.nativeapp.ui.statusLabel(t.from),null,false)},model::clearMoveToast,Modifier.align(Alignment.BottomCenter).padding(bottom=84.dp))

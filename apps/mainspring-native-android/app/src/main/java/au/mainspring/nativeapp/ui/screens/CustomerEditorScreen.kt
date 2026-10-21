@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
@@ -37,7 +38,7 @@ fun CustomerEditorScreen(customerId: String, onBack: () -> Unit, onOpenCustomer:
         if(customerId.isBlank() && state.revision > 0 && state.customer == null) { name = ""; email = ""; phone = ""; address = ""; notes = ""; filled = false }
     }
     Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text(if(customerId.isBlank()) "New customer" else "Edit customer") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack, enabled = !state.saving) }) }) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(state.loading || state.saving) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
             if(customerId.isNotBlank()) OutlinedButton(onClick = { vm.load(discard = true) }, enabled = !state.loading && !state.saving) { Text("Discard edits and load latest customer") }

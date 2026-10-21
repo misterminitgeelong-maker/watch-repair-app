@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
             drawPath(path, color, style = st)
         }
         when(key) {
+            "watch", "watch_jobs" -> { circle(12f, 12f, 5.2f); ln(12f, 12f, 12f, 9.2f); ln(12f, 12f, 14.3f, 13.3f); ln(9.6f, 7.4f, 10.3f, 3f); ln(14.4f, 7.4f, 13.7f, 3f); ln(10.3f, 3f, 13.7f, 3f); ln(9.6f, 16.6f, 10.3f, 21f); ln(14.4f, 16.6f, 13.7f, 21f); ln(10.3f, 21f, 13.7f, 21f) }
             "workshop", "repairQueue", "auto_jobs", "jobs" -> { rect(5f, 4f, 14f, 17f); ln(9f, 9f, 15f, 9f); ln(9f, 13f, 15f, 13f); ln(9f, 17f, 12f, 17f) }
             "customerOrders", "stock", "toolsWorkshop" -> { poly(12f, 3f, 20f, 7.5f, 20f, 16.5f, 12f, 21f, 4f, 16.5f, 4f, 7.5f, close = true); ln(4f, 7.5f, 12f, 12f); ln(20f, 7.5f, 12f, 12f); ln(12f, 12f, 12f, 21f) }
             "catalogue" -> { poly(4f, 5f, 12f, 7f, 12f, 20f, 4f, 18f, close = true); poly(20f, 5f, 12f, 7f, 12f, 20f, 20f, 18f, close = true) }

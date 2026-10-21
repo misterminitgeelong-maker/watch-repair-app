@@ -1,4 +1,5 @@
 package au.mainspring.nativeapp.ui.screens
+import androidx.compose.foundation.layout.consumeWindowInsets
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import androidx.compose.foundation.layout.*
@@ -17,7 +18,7 @@ import au.mainspring.nativeapp.*
 @Composable fun WorkLogsScreen(jobId: String, onBack: () -> Unit, vm: WorkLogsViewModel = viewModel(key = jobId, factory = WorkLogsViewModel.factory(jobId))) {
  val state by vm.state.collectAsStateWithLifecycle()
  Scaffold(topBar = { au.mainspring.nativeapp.ui.AtelierTopAppBar(title = { Text("Work logs") }, navigationIcon = { au.mainspring.nativeapp.ui.BackButton(onClick = onBack) }) }) { padding ->
-  LazyColumn(Modifier.padding(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+  LazyColumn(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
    item {
     if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()); state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
     androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading && !state.busy) { Text("Refresh") }

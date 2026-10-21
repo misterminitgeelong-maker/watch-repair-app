@@ -1,5 +1,6 @@
 package au.mainspring.nativeapp.ui.screens
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import au.mainspring.nativeapp.ui.SecondaryAction as OutlinedButton
 import au.mainspring.nativeapp.ui.PrimaryAction as Button
 import android.content.Intent
@@ -78,7 +79,7 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
                 !state.busy && valid,
                 if(step > 0) ({ vm.setField("step", (step - 1).toString()) }) else null, !state.busy, ::close)
         }) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+        Column(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
                 au.mainspring.nativeapp.ui.WizardStepChips(step, listOf("Customer", "Watches", "Job Details", "Photos"))
