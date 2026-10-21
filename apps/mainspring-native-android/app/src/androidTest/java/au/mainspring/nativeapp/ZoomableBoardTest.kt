@@ -66,4 +66,47 @@ class ZoomableBoardTest {
         board()
         compose.onNodeWithTag("zoom-reset").assertExists()
     }
+
+    private fun pillPercent(): Int {
+        val text = compose.onNodeWithTag("zoom-reset").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("") { it.text }
+        return Regex("(\\d+)%").find(text)!!.groupValues[1].toInt()
+    }
+
+    /** Realistic two-finger spread and pinch with many small moves and a real finger lift, like a thumb and finger on a phone. */
+    private fun pinchBy(startGap: Float, endGap: Float) = compose.onNodeWithTag("zoom-board-test").performTouchInput {
+        pinch(Offset(center.x - startGap / 2, center.y), Offset(center.x - endGap / 2, center.y), Offset(center.x + startGap / 2, center.y), Offset(center.x + endGap / 2, center.y), durationMillis = 600)
+    }
+
+    @Test fun pinchingOutKeepsZoomingDownToFitEveryColumnAndStaysThere() {
+        board()
+        pinchBy(startGap = 400f, endGap = 40f)
+        compose.waitForIdle()
+        val fitPercent = pillPercent()
+        Assert.assertTrue("zoomed out well below 100%, was $fitPercent%", fitPercent in 20..70)
+        compose.waitForIdle(); Thread.sleep(500)
+        Assert.assertEquals("scale must stay after the fingers lift", fitPercent, pillPercent())
+        pinchBy(startGap = 400f, endGap = 40f)   // pinching further does not go past the fit size
+        compose.waitForIdle()
+        Assert.assertEquals(fitPercent, pillPercent())
+    }
+
+    @Test fun pinchingInGrowsToAboutTwoTimesAndStays() {
+        board()
+        pinchBy(startGap = 60f, endGap = 500f)
+        compose.waitForIdle()
+        val zoomed = pillPercent()
+        Assert.assertTrue("zoomed in to between 150% and 200%, was $zoomed%", zoomed in 150..200)
+        Thread.sleep(500)
+        Assert.assertEquals(zoomed, pillPercent())
+    }
+
+    @Test fun successivePinchesAccumulateInsteadOfRestartingFromNormal() {
+        board()
+        pinchBy(startGap = 100f, endGap = 150f)
+        compose.waitForIdle()
+        val first = pillPercent()
+        pinchBy(startGap = 100f, endGap = 150f)
+        compose.waitForIdle()
+        Assert.assertTrue("second pinch continues from the first ($first% then ${pillPercent()}%)", pillPercent() > first)
+    }
 }

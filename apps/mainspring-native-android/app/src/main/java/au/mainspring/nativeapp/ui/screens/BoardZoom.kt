@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -75,15 +76,20 @@ object BoardZoomMemory {
         var stored by remember(boardKey) { mutableFloatStateOf(BoardZoomMemory.get(boardKey) ?: 1f) }
         val scale = BoardZoom.clampTo(stored, fit)
         fun change(next: Float) { stored = next; BoardZoomMemory.set(boardKey, next) }
+        // The gesture block below lives across recompositions, so it must read the CURRENT scale and fit, not the values from when it started:
+        // a captured scale would restart every pinch event from 100% and the board could never zoom past a couple of percent.
+        val liveFit by rememberUpdatedState(fit)
+        val liveChange by rememberUpdatedState(::change)
         Box(Modifier
-            .pointerInput(fit) {
+            .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     do {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         if(event.changes.count { it.pressed } >= 2) {
                             val zoom = event.calculateZoom()
-                            if(zoom != 1f) { change(BoardZoom.apply(scale, zoom, fit)); event.changes.forEach { if(it.pressed) it.consume() } }
+                            // Read the state itself: several touch events can arrive before the next recomposition.
+                            if(zoom != 1f) { liveChange(BoardZoom.apply(BoardZoom.clampTo(stored, liveFit), zoom, liveFit)); event.changes.forEach { if(it.pressed) it.consume() } }
                         }
                     } while(event.changes.any { it.pressed })
                 }
