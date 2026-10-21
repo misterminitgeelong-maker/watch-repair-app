@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from ..config import settings
+from ..portal_links import customer_portal_job_url
 from ..log_redaction import mask_email
 from ..email_client import send_portal_status_email
 from ..models import AutoKeyJob, Customer, PortalSession, RepairJob, Shoe, ShoeRepairJob, Tenant, Watch
@@ -86,7 +87,7 @@ def notify_portal_status_change(
 def notify_repair_job_status(session: Session, job: RepairJob, old_status: str, shop_name: str) -> None:
     watch = session.get(Watch, job.watch_id) if job.watch_id else None
     customer = session.get(Customer, watch.customer_id) if watch else None
-    status_url = f"{settings.public_base_url.rstrip('/')}/status/{job.status_token}"
+    status_url = customer_portal_job_url("watch", job.status_token)
     notify_portal_status_change(
         session,
         tenant_id=job.tenant_id,
@@ -103,7 +104,7 @@ def notify_repair_job_status(session: Session, job: RepairJob, old_status: str, 
 def notify_shoe_job_status(session: Session, job: ShoeRepairJob, old_status: str, shop_name: str) -> None:
     shoe = session.get(Shoe, job.shoe_id)
     customer = session.get(Customer, shoe.customer_id) if shoe else None
-    status_url = f"{settings.public_base_url.rstrip('/')}/shoe-status/{job.status_token}"
+    status_url = customer_portal_job_url("shoe", job.status_token)
     notify_portal_status_change(
         session,
         tenant_id=job.tenant_id,
@@ -119,7 +120,7 @@ def notify_shoe_job_status(session: Session, job: ShoeRepairJob, old_status: str
 
 def notify_auto_key_job_status(session: Session, job: AutoKeyJob, old_status: str, shop_name: str) -> None:
     customer = session.get(Customer, job.customer_id) if job.customer_id else None
-    status_url = f"{settings.public_base_url.rstrip('/')}/customer-portal/job/auto_key/{job.status_token}"
+    status_url = customer_portal_job_url("auto_key", job.status_token)
     notify_portal_status_change(
         session,
         tenant_id=job.tenant_id,

@@ -84,6 +84,7 @@ const MobileServicesTeamPage = lazyPage(() => import('@/pages/MobileServicesTeam
 const SubscriptionRequiredPage = lazyPage(() => import('@/pages/SubscriptionRequiredPage'))
 const CustomerPortalPage = lazyPage(() => import('@/pages/CustomerPortalPage'))
 const CustomerPortalJobDetailPage = lazyPage(() => import('@/pages/CustomerPortalJobDetailPage'))
+const CustomerPortalJobLinkPage = lazyPage(() => import('@/pages/CustomerPortalJobLinkPage'))
 const PublicCustomerPortalPage = lazyPage(() => import('@/pages/PublicCustomerPortalPage'))
 const ShoeApprovePage = lazyPage(() => import('@/pages/ShoeApprovePage'))
 const JobPoolPage = lazyPage(() => import('@/pages/JobPoolPage'))
@@ -217,6 +218,7 @@ export default function App() {
             <Route path="/shoe-status/:token" element={<ShoeStatusPage />} />
             <Route path="/customer-portal" element={<CustomerPortalPage />} />
             <Route path="/customer-portal/s/:token" element={<CustomerPortalPage />} />
+            <Route path="/customer-portal/j/:jobType/:statusToken" element={<CustomerPortalJobLinkPage />} />
             <Route path="/customer-portal/job/:jobType/:statusToken" element={<CustomerPortalJobDetailPage />} />
             <Route path="/portal/:slug" element={<PublicCustomerPortalPage />} />
             <Route path="/shoe-approve/:token" element={<ShoeApprovePage />} />

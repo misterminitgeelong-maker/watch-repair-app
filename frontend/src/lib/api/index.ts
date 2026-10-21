@@ -2766,6 +2766,12 @@ export const requestPortalCode = (phone: string, ticket_number: string) =>
 export const verifyPortalCode = (challenge_id: string, code: string) =>
   axios.post<{ session_token: string; expires_days: number }>(withApiOrigin('/v1/public/portal/verify-code'), { challenge_id, code })
 
+export const openPortalFromJobLink = (job_type: string, status_token: string) =>
+  axios.post<{ session_token: string; job_number: string; expires_days: number }>(
+    withApiOrigin('/v1/public/portal/job-session'),
+    { job_type, status_token },
+  )
+
 export const getPortalSession = (token: string, includeHistory = false) =>
   axios.get<CustomerPortalLookupResponse>(
     withApiOrigin(`/v1/public/portal/session/${token}`),

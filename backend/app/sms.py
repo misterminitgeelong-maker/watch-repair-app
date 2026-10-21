@@ -17,6 +17,7 @@ from sqlmodel import Session, select
 from .sms_controls import check_fair_use, is_suppressed
 from .money import format_cents
 from .config import settings
+from .portal_links import customer_portal_job_url
 from .log_redaction import mask_phone, redact_text
 from .database import engine
 from .datetime_utils import format_in_timezone
@@ -325,7 +326,7 @@ def notify_job_live(
     shop_name: str = "",
 ) -> bool:
     """Send 'your job is live' SMS with link to track status. Returns True if provider accepted the message."""
-    status_url = f"{settings.public_base_url}/status/{status_token}"
+    status_url = customer_portal_job_url("watch", status_token)
     shop = shop_name.strip() or "us"
     body = (
         f"Hi {customer_name}, thanks for bringing your watch in to {shop}. "
@@ -488,7 +489,7 @@ def notify_job_status_changed(
 ) -> None:
     """Send a status-update SMS to the customer on milestone transitions."""
     shop = shop_name.strip() or "us"
-    status_url = f"{settings.public_base_url}/status/{status_token}"
+    status_url = customer_portal_job_url("watch", status_token)
     message_map: dict[str, str] = {
         "awaiting_go_ahead": (
             f"Hi {customer_name}, we've received your watch (job #{job_number}) and it's now in our queue. "
@@ -1291,7 +1292,7 @@ def notify_shoe_job_live(
     job_number: str,
 ) -> bool:
     """Send 'your shoe job is live' SMS with link to track status. Returns True if provider accepted the message."""
-    status_url = f"{settings.public_base_url}/shoe-status/{status_token}"
+    status_url = customer_portal_job_url("shoe", status_token)
     body = (
         f"Hi {customer_name}, your shoe repair job #{job_number} is now live! "
         f"Track it here: {status_url}"
@@ -1374,7 +1375,7 @@ def notify_shoe_job_status_changed(
     if not body:
         return
 
-    body = f"{body} Track live status: {settings.public_base_url}/shoe-status/{status_token}"
+    body = f"{body} Track live status: {customer_portal_job_url('shoe', status_token)}"
 
     sid, sms_status = _logged_send(
         session,

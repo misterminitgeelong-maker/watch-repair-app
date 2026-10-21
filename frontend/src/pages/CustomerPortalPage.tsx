@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight,
   Bell,
@@ -256,6 +256,15 @@ function SessionView({ token }: { token: string }) {
   }, [token, viewMode])
 
   useEffect(() => { load() }, [load])
+
+  // Arriving from a job link (?job=<number>): bring that job into view.
+  const [searchParams] = useSearchParams()
+  const focusJob = searchParams.get('job')
+  const loaded = data !== null
+  useEffect(() => {
+    if (!focusJob || !loaded) return
+    document.getElementById(`job-${focusJob}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focusJob, loaded])
 
   if (error) {
     return (
