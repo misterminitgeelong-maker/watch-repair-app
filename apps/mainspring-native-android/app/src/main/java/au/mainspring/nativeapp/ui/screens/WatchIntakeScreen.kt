@@ -162,15 +162,6 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
                     }
                 }
                 2 -> {
-                    field("serviceQuery", "Select repairs (optional)")
-                    val query = vm.field("serviceQuery")
-                    state.catalogue.filter { it.name.contains(query, true) || it.groupLabel.orEmpty().contains(query, true) }.take(30).forEach { item ->
-                        au.mainspring.nativeapp.ui.SelectableCard(selected = item.key in vm.selectedServices(), onClick = { vm.toggleService(item.key) }, enabled = !locked) {
-                            Text(item.name, style = MaterialTheme.typography.titleMedium)
-                            Text(item.priceCents?.let { formatCents(it, "AUD") } ?: "Quote required", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    OutlinedButton(onClick = { customOpen = true }, enabled = !locked, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add custom service") }
                     field("title", "Job Title *"); field("description", "Instructions / Fault Description", true)
                     val quoteRequired = state.catalogue.any { it.key in vm.selectedServices() && it.pricingType == "quote" }
                     FieldCaption("Initial status")
@@ -196,6 +187,13 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
                         au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId").isBlank(), onClick = { vm.setField("accountId", "") }, enabled = !locked, label = { Text("No account") })
                         accounts.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("accountId") == account.id, onClick = { vm.setField("accountId", account.id) }, enabled = !locked, label = { Text(account.name) }) }
                     }
+                    FieldCaption("Repairs")
+                    val pickedItems = state.catalogue.filter { it.key in vm.selectedServices() }
+                    au.mainspring.nativeapp.ui.RepairMultiSelect(
+                        options = state.catalogue.map { au.mainspring.nativeapp.ui.RepairOption(it.key, it.name, it.priceCents, it.priceCents?.let { c -> formatCents(c, "AUD") } ?: "Quote required", it.groupLabel) },
+                        selectedKeys = vm.selectedServices(), onToggle = { vm.toggleService(it) },
+                        totalCents = if(pickedItems.isEmpty()) null else au.mainspring.nativeapp.repairsTotal(pickedItems, state.combos), enabled = !locked)
+                    OutlinedButton(onClick = { customOpen = true }, enabled = !locked, modifier = Modifier.heightIn(min = 48.dp)) { Text("Add custom service") }
                 }
                 3 -> {
                     Text("Front and back photos per watch. JPEG, PNG or WebP, up to 10 MB each.")

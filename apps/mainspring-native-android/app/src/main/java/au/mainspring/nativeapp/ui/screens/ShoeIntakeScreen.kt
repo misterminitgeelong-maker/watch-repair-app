@@ -106,14 +106,15 @@ fun ShoeIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (St
                         (0 until vm.count()).forEach { i -> au.mainspring.nativeapp.ui.AtelierChip(selected = pair == i, onClick = { pair = i }, label = { Text("Pair ${i + 1}") }) }
                     }
                     field("pair.$pair.type", "Shoe type"); field("pair.$pair.brand", "Brand"); field("pair.$pair.color", "Colour"); field("pair.$pair.condition", "Condition notes")
-                    field("serviceQuery", "Search repair catalogue")
-                    val selected = vm.field("pair.$pair.services").split('|').toSet()
-                    state.catalogue.filter { it.name.contains(vm.field("serviceQuery"), true) || it.key in selected }.take(40).forEach { item ->
-                        au.mainspring.nativeapp.ui.SelectableCard(selected = item.key in selected, onClick = { vm.toggle(pair, item.key) }, enabled = !locked) {
-                            Text(item.name, style = MaterialTheme.typography.titleMedium)
-                            Text(item.priceCents?.let { formatCents(it, "AUD") } ?: "Inspection quote", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        if(item.key in selected) {
+                    val selected = vm.field("pair.$pair.services").split('|').filter(String::isNotBlank).toSet()
+                    val picked = state.catalogue.filter { it.key in selected }
+                    au.mainspring.nativeapp.ui.RepairMultiSelect(
+                        options = state.catalogue.map { au.mainspring.nativeapp.ui.RepairOption(it.key, it.name, it.priceCents, it.priceCents?.let { c -> formatCents(c, "AUD") } ?: "Inspection quote") },
+                        selectedKeys = selected, onToggle = { vm.toggle(pair, it) },
+                        totalCents = if(picked.isEmpty()) null else picked.sumOf { it.priceCents ?: 0 }, enabled = !locked)
+                    picked.forEach { item ->
+                        Text(item.name, style = MaterialTheme.typography.titleSmall)
+                        run {
                             field("pair.$pair.quantity.${item.key}", "Quantity (default 1)")
                             field("pair.$pair.price.${item.key}", "Agreed unit price ($, optional override)")
                             field("pair.$pair.note.${item.key}", "Service notes")
