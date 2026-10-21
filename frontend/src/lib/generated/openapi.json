@@ -8090,6 +8090,46 @@
         }
       }
     },
+    "/v1/public/portal/job-session": {
+      "post": {
+        "tags": [
+          "public-jobs"
+        ],
+        "summary": "Open Portal From Job Link",
+        "description": "Open the customer portal straight from the link texted or emailed about a job.\n\nThe job's status token is already a private link to that job, so it is\naccepted as proof of who is asking. The session is scoped to that one\ncustomer at that one shop (the same scope as a phone + ticket sign-in).",
+        "operationId": "open_portal_from_job_link_v1_public_portal_job_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalJobSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/portal/session/{token}": {
       "get": {
         "tags": [
@@ -34637,6 +34677,27 @@
           "occurred_at"
         ],
         "title": "PointsLedgerRead"
+      },
+      "PortalJobSessionRequest": {
+        "properties": {
+          "job_type": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Job Type"
+          },
+          "status_token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Status Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_type",
+          "status_token"
+        ],
+        "title": "PortalJobSessionRequest"
       },
       "PortalMessageToShopRequest": {
         "properties": {
