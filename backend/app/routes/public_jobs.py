@@ -1509,6 +1509,54 @@ def verify_portal_code(request: Request, payload: PortalVerifyCodeRequest, sessi
     return {"session_token": portal_session.token, "expires_days": _PORTAL_SESSION_TTL_DAYS}
 
 
+class PortalJobSessionRequest(SQLModel):
+    job_type: str = Field(..., max_length=20)
+    status_token: str = Field(..., min_length=8, max_length=128)
+
+
+@router.post("/portal/job-session")
+@limiter.limit(get_public_write_rate_limit)
+def open_portal_from_job_link(request: Request, payload: PortalJobSessionRequest, session: Session = Depends(get_session)):
+    """Open the customer portal straight from the link texted or emailed about a job.
+
+    The job's status token is already a private link to that job, so it is
+    accepted as proof of who is asking. The session is scoped to that one
+    customer at that one shop (the same scope as a phone + ticket sign-in).
+    """
+    job_type = payload.job_type.strip().lower()
+    customer_id: UUID | None = None
+    tenant_id: UUID | None = None
+    job_number = ""
+    if job_type == "watch":
+        job = session.exec(select(RepairJob).where(RepairJob.status_token == payload.status_token)).first()
+        watch = session.get(Watch, job.watch_id) if job else None
+        if job and watch:
+            customer_id, tenant_id, job_number = watch.customer_id, job.tenant_id, job.job_number
+    elif job_type == "shoe":
+        job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.status_token == payload.status_token)).first()
+        shoe = session.get(Shoe, job.shoe_id) if job else None
+        if job and shoe:
+            customer_id, tenant_id, job_number = shoe.customer_id, job.tenant_id, job.job_number
+    elif job_type == "auto_key":
+        job = session.exec(select(AutoKeyJob).where(AutoKeyJob.status_token == payload.status_token)).first()
+        if job and job.customer_id:
+            customer_id, tenant_id, job_number = job.customer_id, job.tenant_id, job.job_number
+    if customer_id is None or tenant_id is None:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    customer = session.get(Customer, customer_id)
+    portal_session = PortalSession(
+        email=((customer.email if customer else "") or "").strip().lower(),
+        customer_id=customer_id,
+        tenant_id=tenant_id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=_PORTAL_SESSION_TTL_DAYS),
+    )
+    session.add(portal_session)
+    session.commit()
+    session.refresh(portal_session)
+    return {"session_token": portal_session.token, "job_number": job_number, "expires_days": _PORTAL_SESSION_TTL_DAYS}
+
+
 @router.get("/portal/session/{token}", response_model=CustomerPortalLookupResponse)
 @limiter.limit(get_public_read_rate_limit)
 def get_portal_session_jobs(

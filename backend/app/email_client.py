@@ -20,6 +20,7 @@ import httpx
 from sqlmodel import Session
 
 from .config import settings
+from .portal_links import customer_portal_job_url
 from .log_redaction import mask_email
 from .database import engine
 from .email_templates import ShopInfo, render_transactional_email
@@ -809,7 +810,7 @@ def send_job_ready_email(
     """Send email when a job is ready for collection (completed / awaiting_collection)."""
     if not (to_email or "").strip():
         return False, None
-    status_url = f"{settings.public_base_url.rstrip('/')}/status/{status_token}"
+    status_url = customer_portal_job_url("watch", status_token)
     subject = f"Your watch is ready for collection – Job #{job_number}"
     body_plain = (
         f"Hi {customer_name},\n\n"
