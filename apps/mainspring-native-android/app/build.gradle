@@ -16,6 +16,16 @@ if (localFile.exists()) {
 }
 def mapsKey = (localProperties.getProperty('maps.api.key') ?: '').trim()
 
+// Release signing: the Play upload key lives OUTSIDE the repo (the same file the Capacitor app uses). Without it the release build is simply unsigned.
+def keystoreProps = new Properties()
+def keystoreFile = file("${System.getProperty('user.home')}/.mainspring-signing/keystore.properties")
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProps.load(it) }
+}
+// Same scheme as the Capacitor weekly release (minutes since the epoch), so every upload is higher than the last one Play has seen.
+def releaseVersionCode = (project.findProperty('versionCode') ?: ((long) (System.currentTimeMillis() / 60000L)).toString()).toInteger()
+def releaseVersionName = (project.findProperty('versionName') ?: new Date().format('yyyy.MM.dd', TimeZone.getTimeZone('UTC'))) as String
+
 def apiBaseUrl = (localProperties.getProperty('api.base.url') ?: 'https://mainspring.au/').trim()
 if (!apiBaseUrl.endsWith('/')) {
     apiBaseUrl += '/'
@@ -31,14 +41,31 @@ android {
         buildConfigField 'boolean', 'MAPS_CONFIGURED', mapsKey.isEmpty() ? 'false' : 'true'
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '0.3.0-native'
+        versionCode releaseVersionCode
+        versionName releaseVersionName
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'String', 'API_BASE_URL', "\"${apiBaseUrl.replace('"', '\\"')}\""
     }
 
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+            // A store build always talks to the live site; a developer's local.properties override (emulator or test server) must never leak into it.
+            buildConfigField 'String', 'API_BASE_URL', "\"https://mainspring.au/\""
+            // Shrinking stays off: the app reads JSON with reflection (Gson) and the debug test suite cannot exercise an R8 build, so it is not safe to turn on blind.
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -57,6 +84,13 @@ android {
     buildFeatures {
         compose true
         buildConfig true
+    }
+}
+
+// The release build replaces the existing Play app (au.mainspring.app, signed with the same upload key); debug and test builds keep their own IDs.
+androidComponents {
+    onVariants(selector().withBuildType('release')) { variant ->
+        variant.applicationId.set('au.mainspring.app')
     }
 }
 
