@@ -102,3 +102,14 @@ Current state (`app/build.gradle`): `applicationId au.mainspring.nativeapp`, `ve
 - [ ] Pre-launch report / Play Console: review accessibility and stability warnings from the automatic pre-launch device run.
 - [ ] Run the connected test suite on an emulator and a physical device (not run in this pass), including at 200% font scale and in system dark mode with Calibre selected.
 - [ ] Crash reporting and release notes: confirm the crash reporting DSN is the production one; prepare "What's new" text.
+
+## 5. Play release build (as built on 24 October 2026)
+
+- The release variant uses `applicationId au.mainspring.app`, so it updates the existing Capacitor Play app. Debug builds stay `au.mainspring.nativeapp.debug` and can be installed next to it.
+- Signed with the existing upload key in `~/.mainspring-signing/` (the same `keystore.properties` the Capacitor app uses). Nothing secret is in the repo. Without that file the release build is unsigned.
+- `versionCode` is minutes since the epoch (same scheme as the Capacitor weekly release); `versionName` is the UTC date. Override with `-PversionCode` and `-PversionName`.
+- A release build always uses `https://mainspring.au/`; `local.properties` overrides apply to debug only.
+- `google-services.json` (git-ignored) must be present when building: it carries clients for `au.mainspring.app`, `au.mainspring.nativeapp` and `au.mainspring.nativeapp.debug`.
+- R8 shrinking is off on purpose (reflection-based JSON, no way to test an R8 build with the debug suite).
+- Maps: `maps.api.key` in `local.properties` is empty, so a release build has `MAPS_CONFIGURED=false` and map screens show a placeholder. Restrict a key to `au.mainspring.app` plus the Play App Signing SHA-1.
+- The Capacitor weekly release workflow (`.github/workflows/android-weekly-release.yml`) uploads the same package name with a higher `versionCode` each run: pause it before native goes live or it will replace the native app.
