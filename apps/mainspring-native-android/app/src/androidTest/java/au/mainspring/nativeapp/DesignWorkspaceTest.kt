@@ -207,6 +207,32 @@ class DesignWorkspaceTest {
         Assert.assertEquals("${day}T11:00+11:00",com.google.gson.JsonParser.parseString(patch).asJsonObject["scheduled_at"].asString)
     }
 
+    @Test fun plannerZoomsOutToTheWholeWeekAndInAgainWithMovingFingersAndStillMoves() {
+        compose.setContent {MainspringTheme {MobileWorkBoardScreen(server.url("/").toString(),{},{},{},{})}}
+        compose.onNodeWithTag("view-select").performClick(); compose.onNodeWithText("Planner").performClick()
+        compose.waitUntil(10_000) {compose.onAllNodesWithTag("planner-move-first").fetchSemanticsNodes().isNotEmpty()}
+        fun pillPercent(): Int {
+            val text=compose.onNodeWithTag("zoom-reset").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("") {it.text}
+            return Regex("(\\d+)%").find(text)!!.groupValues[1].toInt()
+        }
+        fun pinch(startGap: Float,endGap: Float) = compose.onNodeWithTag("zoom-board-planner").performTouchInput {
+            pinch(androidx.compose.ui.geometry.Offset(center.x-startGap/2,center.y),androidx.compose.ui.geometry.Offset(center.x-endGap/2,center.y),
+                androidx.compose.ui.geometry.Offset(center.x+startGap/2,center.y),androidx.compose.ui.geometry.Offset(center.x+endGap/2,center.y),durationMillis=600)
+        }
+        pinch(400f,40f); compose.waitForIdle()
+        val fit=pillPercent()
+        Assert.assertTrue("zoomed out to fit the week (was $fit%)",fit in 20..75)
+        Thread.sleep(400); Assert.assertEquals(fit,pillPercent())
+        compose.onNodeWithTag("zoom-reset").performClick(); compose.waitForIdle()
+        pinch(60f,500f); compose.waitForIdle()
+        val zoomed=pillPercent()
+        Assert.assertTrue("zoomed in to about 2x (was $zoomed%)",zoomed in 150..200)
+        compose.onNodeWithTag("zoom-reset").performClick(); compose.waitForIdle()
+        compose.onNodeWithTag("planner-move-first").performSemanticsAction(SemanticsActions.OnClick) {it()}   // moving still works at normal size
+        val day=LocalDate.now(ZoneId.of("Australia/Sydney"))
+        compose.onNodeWithTag("planner-slot-$day-11-0").assertExists()
+    }
+
     @Test fun fieldJourneyConfirmsTravelArrivalCompletionAndPaymentInOneJob() {
         financeJourney=true
         compose.setContent {MainspringTheme {AutoKeyJobDetailScreen("first",server.url("/").toString(),{},{},{},{})}}

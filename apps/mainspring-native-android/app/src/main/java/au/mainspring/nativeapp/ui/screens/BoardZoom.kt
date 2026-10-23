@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -68,11 +69,12 @@ object BoardZoomMemory {
  * One-finger gestures are never touched, so tap to open, press and hold menus and sideways column scrolling keep working at any zoom.
  * Double-tap on empty board space (or the reset pill) returns to normal size.
  */
-@Composable fun ZoomableBoard(boardKey: String, columnCount: Int, columnWidth: Dp, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+@Composable fun ZoomableBoard(boardKey: String, columnCount: Int, columnWidth: Dp, modifier: Modifier = Modifier, fillHeight: Boolean = false,
+    extraWidth: Dp = 0.dp, content: @Composable () -> Unit) {
     val density = LocalDensity.current
-    BoxWithConstraints(modifier.fillMaxWidth().testTag("zoom-board-$boardKey")) {
+    BoxWithConstraints((if(fillHeight) modifier.fillMaxSize() else modifier.fillMaxWidth()).testTag("zoom-board-$boardKey")) {
         val fontFactor = 1f + (density.fontScale - 1f).coerceAtLeast(0f) * 0.6f
-        val fit = BoardZoom.fitScale(maxWidth.value, BoardZoom.contentWidth(columnCount, columnWidth.value * fontFactor))
+        val fit = BoardZoom.fitScale(maxWidth.value, BoardZoom.contentWidth(columnCount, columnWidth.value * fontFactor) + extraWidth.value)
         var stored by remember(boardKey) { mutableFloatStateOf(BoardZoomMemory.get(boardKey) ?: 1f) }
         val scale = BoardZoom.clampTo(stored, fit)
         fun change(next: Float) { stored = next; BoardZoomMemory.set(boardKey, next) }
@@ -96,7 +98,7 @@ object BoardZoomMemory {
             }
             .pointerInput(Unit) { detectTapGestures(onDoubleTap = { change(1f) }) }
         ) {
-            Box(Modifier.zoomLayout(scale)) { content() }
+            Box(Modifier.zoomLayout(scale, fillHeight)) { content() }
             if(scale != 1f) Surface({ change(1f) }, Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 8.dp).heightIn(min = 40.dp).testTag("zoom-reset")
                 .semantics { contentDescription = "Reset board zoom" }, shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 2.dp) {
@@ -109,8 +111,10 @@ object BoardZoomMemory {
 }
 
 /** Lays the board out at 1/scale of the available width and then draws it scaled, so layout, touch and drawing all agree. */
-private fun Modifier.zoomLayout(scale: Float): Modifier = layout { measurable, constraints ->
-    val inner = if(constraints.hasBoundedWidth && scale != 1f) constraints.copy(maxWidth = (constraints.maxWidth / scale).roundToInt()) else constraints
+private fun Modifier.zoomLayout(scale: Float, scaleHeight: Boolean = false): Modifier = layout { measurable, constraints ->
+    var inner = if(constraints.hasBoundedWidth && scale != 1f) constraints.copy(maxWidth = (constraints.maxWidth / scale).roundToInt()) else constraints
+    // A board that scrolls vertically inside the zoom gets 1/scale of the height too, so zooming out shows more rows rather than empty space.
+    if(scaleHeight && inner.hasBoundedHeight && scale != 1f) inner = inner.copy(maxHeight = (inner.maxHeight / scale).roundToInt())
     val placeable = measurable.measure(inner)
     layout((placeable.width * scale).roundToInt(), (placeable.height * scale).roundToInt()) {
         placeable.placeWithLayer(0, 0) { scaleX = scale; scaleY = scale; transformOrigin = TransformOrigin(0f, 0f) }
