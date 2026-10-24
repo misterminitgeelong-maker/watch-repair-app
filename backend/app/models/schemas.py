@@ -1787,18 +1787,36 @@ class AutoKeyQuoteLineItemCreate(SQLModel):
     quantity: float = Field(default=1, gt=0, le=10_000)
     unit_price_cents: int = Field(ge=0, le=100_000_000)
 
-class AutoKeyQuoteCreate(SQLModel):
+class AutoKeyQuoteOptionCreate(SQLModel):
+    label: str = Field(min_length=1, max_length=120)
     line_items: list[AutoKeyQuoteLineItemCreate]
+
+class AutoKeyQuoteCreate(SQLModel):
+    #: Lines shared by both outcomes when ``options`` is set, otherwise the whole quote.
+    line_items: list[AutoKeyQuoteLineItemCreate] = []
+    #: Exactly two entries (A then B) for a two-outcome quote.
+    options: Optional[list[AutoKeyQuoteOptionCreate]] = None
     gst_enabled: bool = True
     gst_inclusive: bool = False
+
+class AutoKeyQuoteSelectOption(SQLModel):
+    option: Literal["A", "B"]
 
 class AutoKeyQuoteLineItemRead(SQLModel):
     id: UUID
     auto_key_quote_id: UUID
+    option_key: Optional[str] = None
     description: str
     quantity: float
     unit_price_cents: int
     total_price_cents: int
+
+class AutoKeyQuoteOptionRead(SQLModel):
+    key: str
+    label: str
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
 
 class AutoKeyQuoteRead(SQLModel):
     id: UUID
@@ -1817,6 +1835,9 @@ class AutoKeyQuoteRead(SQLModel):
     has_signature: bool = False
     created_at: datetime
     line_items: list[AutoKeyQuoteLineItemRead] = []
+    options: list[AutoKeyQuoteOptionRead] = []
+    selected_option: Optional[str] = None
+    selected_at: Optional[datetime] = None
 
 class AutoKeyInvoiceRead(SQLModel):
     id: UUID

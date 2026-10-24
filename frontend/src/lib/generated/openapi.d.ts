@@ -4230,6 +4230,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auto-key-jobs/quotes/{quote_id}/select-option": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select Auto Key Quote Option
+         * @description Tech records which outcome applies on site; fixes the quote total and what gets invoiced.
+         */
+        post: operations["select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auto-key-jobs/quotes/{quote_id}/send": {
         parameters: {
             query?: never;
@@ -7873,8 +7893,13 @@ export interface components {
         };
         /** AutoKeyQuoteCreate */
         AutoKeyQuoteCreate: {
-            /** Line Items */
+            /**
+             * Line Items
+             * @default []
+             */
             line_items: components["schemas"]["AutoKeyQuoteLineItemCreate"][];
+            /** Options */
+            options?: components["schemas"]["AutoKeyQuoteOptionCreate"][] | null;
             /**
              * Gst Enabled
              * @default true
@@ -7919,6 +7944,8 @@ export interface components {
              * Format: uuid
              */
             auto_key_quote_id: string;
+            /** Option Key */
+            option_key?: string | null;
             /** Description */
             description: string;
             /** Quantity */
@@ -7927,6 +7954,26 @@ export interface components {
             unit_price_cents: number;
             /** Total Price Cents */
             total_price_cents: number;
+        };
+        /** AutoKeyQuoteOptionCreate */
+        AutoKeyQuoteOptionCreate: {
+            /** Label */
+            label: string;
+            /** Line Items */
+            line_items: components["schemas"]["AutoKeyQuoteLineItemCreate"][];
+        };
+        /** AutoKeyQuoteOptionRead */
+        AutoKeyQuoteOptionRead: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Subtotal Cents */
+            subtotal_cents: number;
+            /** Tax Cents */
+            tax_cents: number;
+            /** Total Cents */
+            total_cents: number;
         };
         /** AutoKeyQuoteRead */
         AutoKeyQuoteRead: {
@@ -7980,6 +8027,23 @@ export interface components {
              * @default []
              */
             line_items: components["schemas"]["AutoKeyQuoteLineItemRead"][];
+            /**
+             * Options
+             * @default []
+             */
+            options: components["schemas"]["AutoKeyQuoteOptionRead"][];
+            /** Selected Option */
+            selected_option?: string | null;
+            /** Selected At */
+            selected_at?: string | null;
+        };
+        /** AutoKeyQuoteSelectOption */
+        AutoKeyQuoteSelectOption: {
+            /**
+             * Option
+             * @enum {string}
+             */
+            option: "A" | "B";
         };
         /** AutoKeyQuoteSendResponse */
         AutoKeyQuoteSendResponse: {
@@ -22034,6 +22098,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoKeyQuoteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoKeyQuoteSelectOption"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

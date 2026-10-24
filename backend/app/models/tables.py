@@ -1135,12 +1135,20 @@ class AutoKeyQuote(SQLModel, table=True):
     signature_storage_key: Optional[str] = None
     signed_at: Optional[datetime] = None
     signer_name: Optional[str] = None
+    #: Two-outcome quotes: labels for options "A"/"B" (None on ordinary quotes). Until the tech picks
+    #: ``selected_option`` the quote totals hold the higher option, so reports see the most it can be.
+    option_a_label: Optional[str] = None
+    option_b_label: Optional[str] = None
+    selected_option: Optional[str] = None
+    selected_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AutoKeyQuoteLineItem(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     auto_key_quote_id: UUID = Field(index=True, foreign_key="autokeyquote.id")
+    #: "A" / "B" on two-outcome quotes; None = shared by every outcome.
+    option_key: Optional[str] = None
     description: str
     quantity: float = 1
     unit_price_cents: int
