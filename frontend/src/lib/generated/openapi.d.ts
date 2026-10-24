@@ -2593,6 +2593,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/portal/job-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Portal From Job Link
+         * @description Open the customer portal straight from the link texted or emailed about a job.
+         *
+         *     The job's status token is already a private link to that job, so it is
+         *     accepted as proof of who is asking. The session is scoped to that one
+         *     customer at that one shop (the same scope as a phone + ticket sign-in).
+         */
+        post: operations["open_portal_from_job_link_v1_public_portal_job_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/portal/session/{token}": {
         parameters: {
             query?: never;
@@ -3313,6 +3337,29 @@ export interface paths {
          * @description Clear signup_payment_pending — use for testers/accounts paid outside Stripe.
          */
         post: operations["mark_tenant_paid_v1_platform_admin_tenants__tenant_id__mark_paid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform-admin/tenants/{tenant_id}/keep-own-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Tenant Keep Own Plan
+         * @description Let a Minit-network shop keep a non-Minit plan (e.g. Pro for an early tester).
+         *
+         *     The shop stays in the Minit network; it just isn't forced onto booking_only at
+         *     sign-in, and the plan endpoint accepts any plan for it. The HQ itself can't opt out.
+         */
+        post: operations["set_tenant_keep_own_plan_v1_platform_admin_tenants__tenant_id__keep_own_plan_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11062,6 +11109,13 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
+        /** PlatformTenantKeepOwnPlanRequest */
+        PlatformTenantKeepOwnPlanRequest: {
+            /** Keep Own Plan */
+            keep_own_plan: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
         /** PlatformTenantPlanUpdateRequest */
         PlatformTenantPlanUpdateRequest: {
             /** Plan Code */
@@ -11105,6 +11159,11 @@ export interface components {
              * @default false
              */
             is_minit: boolean;
+            /**
+             * Keep Own Plan
+             * @default false
+             */
+            keep_own_plan: boolean;
             /**
              * Hq Billed
              * @default false
@@ -11190,6 +11249,13 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
+        };
+        /** PortalJobSessionRequest */
+        PortalJobSessionRequest: {
+            /** Job Type */
+            job_type: string;
+            /** Status Token */
+            status_token: string;
         };
         /** PortalMessageToShopRequest */
         PortalMessageToShopRequest: {
@@ -18857,6 +18923,39 @@ export interface operations {
             };
         };
     };
+    open_portal_from_job_link_v1_public_portal_job_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalJobSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_portal_session_jobs_v1_public_portal_session__token__get: {
         parameters: {
             query?: {
@@ -20143,6 +20242,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_tenant_keep_own_plan_v1_platform_admin_tenants__tenant_id__keep_own_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformTenantKeepOwnPlanRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
