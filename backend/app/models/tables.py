@@ -38,6 +38,9 @@ class Tenant(SQLModel, table=True):
     #: Mister Minit network tenant (HQ, retail shops, mobile operators). Set only
     #: by Minit provisioning — never inferred from the slug a user typed.
     is_minit: bool = Field(default=False, index=True)
+    #: Platform-admin exception for a Minit-network shop (e.g. an early-tester franchisee
+    #: on Pro): skip the forced Minit plan and the Minit-only plan restriction.
+    keep_own_plan: bool = False
     is_active: bool = True
     auth_revoked_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

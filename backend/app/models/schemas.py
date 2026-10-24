@@ -1025,6 +1025,8 @@ class PlatformTenantRead(SQLModel):
     has_stripe_subscription: bool = False
     #: Mister Minit network shop — its plan is limited to what HQ runs on.
     is_minit: bool = False
+    #: Minit shop exempted from the Minit-only plan (keeps its own plan, e.g. Pro).
+    keep_own_plan: bool = False
     #: Linked to an HQ network: the HQ is invoiced for this account, so it is not a billable shop.
     hq_billed: bool = False
     hq_name: Optional[str] = None
@@ -1048,6 +1050,10 @@ class PlatformTenantForceLogoutRequest(SQLModel):
 
 class PlatformTenantPlanUpdateRequest(SQLModel):
     plan_code: str
+    reason: Optional[str] = None
+
+class PlatformTenantKeepOwnPlanRequest(SQLModel):
+    keep_own_plan: bool
     reason: Optional[str] = None
 
 class PlatformTenantBillingExemptRequest(SQLModel):

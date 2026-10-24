@@ -10236,6 +10236,65 @@
         }
       }
     },
+    "/v1/platform-admin/tenants/{tenant_id}/keep-own-plan": {
+      "post": {
+        "tags": [
+          "platform-admin"
+        ],
+        "summary": "Set Tenant Keep Own Plan",
+        "description": "Let a Minit-network shop keep a non-Minit plan (e.g. Pro for an early tester).\n\nThe shop stays in the Minit network; it just isn't forced onto booking_only at\nsign-in, and the plan endpoint accepts any plan for it. The HQ itself can't opt out.",
+        "operationId": "set_tenant_keep_own_plan_v1_platform_admin_tenants__tenant_id__keep_own_plan_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformTenantKeepOwnPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/platform-admin/tenants/{tenant_id}/billing-exempt": {
       "post": {
         "tags": [
@@ -34539,6 +34598,30 @@
         "type": "object",
         "title": "PlatformTenantForceLogoutRequest"
       },
+      "PlatformTenantKeepOwnPlanRequest": {
+        "properties": {
+          "keep_own_plan": {
+            "type": "boolean",
+            "title": "Keep Own Plan"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "keep_own_plan"
+        ],
+        "title": "PlatformTenantKeepOwnPlanRequest"
+      },
       "PlatformTenantPlanUpdateRequest": {
         "properties": {
           "plan_code": {
@@ -34626,6 +34709,11 @@
           "is_minit": {
             "type": "boolean",
             "title": "Is Minit",
+            "default": false
+          },
+          "keep_own_plan": {
+            "type": "boolean",
+            "title": "Keep Own Plan",
             "default": false
           },
           "hq_billed": {

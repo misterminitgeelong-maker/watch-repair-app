@@ -25,7 +25,7 @@ from ..dependencies import (
     require_platform_admin,
 )
 from ..hq_access import allowed_plans_for_hq_network_tenant
-from ..minit_branding import allowed_plans_for_minit_tenant, is_minit_tenant
+from ..minit_branding import MINIT_HQ_SLUG, allowed_plans_for_minit_tenant, is_minit_tenant
 from ..models import (
     RefreshSession,
     AutoKeyJob,
@@ -35,6 +35,7 @@ from ..models import (
     ParentAccountSite,
     PlatformEnterShopResponse,
     PlatformTenantBillingExemptRequest,
+    PlatformTenantKeepOwnPlanRequest,
     PlatformTenantForceLogoutRequest,
     PlatformTenantPlanUpdateRequest,
     PlatformTenantStatusUpdateRequest,
@@ -157,6 +158,7 @@ def _tenant_read(session: Session, tenant: Tenant) -> PlatformTenantRead:
         trial_end=tenant.trial_end,
         has_stripe_subscription=bool((tenant.stripe_subscription_id or "").strip()),
         is_minit=is_minit_tenant(tenant),
+        keep_own_plan=tenant.keep_own_plan,
         hq_billed=hq_name is not None,
         hq_name=hq_name,
         user_count=user_count,
@@ -400,6 +402,45 @@ def mark_tenant_paid(
         )
     )
     session.commit()
+    return _tenant_read(session, tenant)
+
+
+@router.post("/tenants/{tenant_id}/keep-own-plan", response_model=PlatformTenantRead)
+def set_tenant_keep_own_plan(
+    tenant_id: UUID,
+    payload: PlatformTenantKeepOwnPlanRequest,
+    auth: AuthContext = Depends(require_platform_admin),
+    session: Session = Depends(unscoped_session),
+):
+    """Let a Minit-network shop keep a non-Minit plan (e.g. Pro for an early tester).
+
+    The shop stays in the Minit network; it just isn't forced onto booking_only at
+    sign-in, and the plan endpoint accepts any plan for it. The HQ itself can't opt out.
+    """
+    tenant = session.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Shop not found.")
+    if not is_minit_tenant(tenant):
+        raise HTTPException(status_code=400, detail="Only Mister Minit network shops need this.")
+    if payload.keep_own_plan and (tenant.slug or "").strip().lower() == MINIT_HQ_SLUG:
+        raise HTTPException(status_code=400, detail="The Minit HQ can't keep its own plan.")
+    admin = session.get(User, auth.user_id)
+    admin_email = admin.email if admin else "platform_admin"
+    tenant.keep_own_plan = payload.keep_own_plan
+    session.add(tenant)
+    session.add(
+        TenantEventLog(
+            tenant_id=tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=admin_email,
+            entity_type="tenant",
+            entity_id=tenant_id,
+            event_type="platform_admin_keep_own_plan",
+            event_summary=f"Platform admin {'enabled' if payload.keep_own_plan else 'disabled'} keep-own-plan. Reason: {(payload.reason or '').strip() or 'n/a'}",
+        )
+    )
+    session.commit()
+    invalidate_auth_cache()
     return _tenant_read(session, tenant)
 
 
