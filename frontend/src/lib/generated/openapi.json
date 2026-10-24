@@ -13327,6 +13327,65 @@
         }
       }
     },
+    "/v1/auto-key-jobs/quotes/{quote_id}/select-option": {
+      "post": {
+        "tags": [
+          "auto-key-jobs"
+        ],
+        "summary": "Select Auto Key Quote Option",
+        "description": "Tech records which outcome applies on site; fixes the quote total and what gets invoiced.",
+        "operationId": "select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Quote Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoKeyQuoteSelectOption"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoKeyQuoteRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auto-key-jobs/quotes/{quote_id}/send": {
       "post": {
         "tags": [
@@ -25162,7 +25221,22 @@
               "$ref": "#/components/schemas/AutoKeyQuoteLineItemCreate"
             },
             "type": "array",
-            "title": "Line Items"
+            "title": "Line Items",
+            "default": []
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AutoKeyQuoteOptionCreate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
           },
           "gst_enabled": {
             "type": "boolean",
@@ -25176,9 +25250,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "line_items"
-        ],
         "title": "AutoKeyQuoteCreate"
       },
       "AutoKeyQuoteDecision": {
@@ -25255,6 +25326,17 @@
             "format": "uuid",
             "title": "Auto Key Quote Id"
           },
+          "option_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Option Key"
+          },
           "description": {
             "type": "string",
             "title": "Description"
@@ -25282,6 +25364,62 @@
           "total_price_cents"
         ],
         "title": "AutoKeyQuoteLineItemRead"
+      },
+      "AutoKeyQuoteOptionCreate": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "line_items": {
+            "items": {
+              "$ref": "#/components/schemas/AutoKeyQuoteLineItemCreate"
+            },
+            "type": "array",
+            "title": "Line Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "line_items"
+        ],
+        "title": "AutoKeyQuoteOptionCreate"
+      },
+      "AutoKeyQuoteOptionRead": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "subtotal_cents": {
+            "type": "integer",
+            "title": "Subtotal Cents"
+          },
+          "tax_cents": {
+            "type": "integer",
+            "title": "Tax Cents"
+          },
+          "total_cents": {
+            "type": "integer",
+            "title": "Total Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "subtotal_cents",
+          "tax_cents",
+          "total_cents"
+        ],
+        "title": "AutoKeyQuoteOptionRead"
       },
       "AutoKeyQuoteRead": {
         "properties": {
@@ -25380,6 +25518,37 @@
             "type": "array",
             "title": "Line Items",
             "default": []
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/AutoKeyQuoteOptionRead"
+            },
+            "type": "array",
+            "title": "Options",
+            "default": []
+          },
+          "selected_option": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Option"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected At"
           }
         },
         "type": "object",
@@ -25397,6 +25566,23 @@
           "created_at"
         ],
         "title": "AutoKeyQuoteRead"
+      },
+      "AutoKeyQuoteSelectOption": {
+        "properties": {
+          "option": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "title": "Option"
+          }
+        },
+        "type": "object",
+        "required": [
+          "option"
+        ],
+        "title": "AutoKeyQuoteSelectOption"
       },
       "AutoKeyQuoteSendResponse": {
         "properties": {

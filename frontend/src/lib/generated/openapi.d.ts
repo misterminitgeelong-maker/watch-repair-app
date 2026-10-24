@@ -2593,6 +2593,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/portal/job-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Portal From Job Link
+         * @description Open the customer portal straight from the link texted or emailed about a job.
+         *
+         *     The job's status token is already a private link to that job, so it is
+         *     accepted as proof of who is asking. The session is scoped to that one
+         *     customer at that one shop (the same scope as a phone + ticket sign-in).
+         */
+        post: operations["open_portal_from_job_link_v1_public_portal_job_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/portal/session/{token}": {
         parameters: {
             query?: never;
@@ -4177,6 +4201,26 @@ export interface paths {
         put?: never;
         /** Create Auto Key Quote */
         post: operations["create_auto_key_quote_v1_auto_key_jobs__job_id__quotes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/quotes/{quote_id}/select-option": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select Auto Key Quote Option
+         * @description Tech records which outcome applies on site; fixes the quote total and what gets invoiced.
+         */
+        post: operations["select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7826,8 +7870,13 @@ export interface components {
         };
         /** AutoKeyQuoteCreate */
         AutoKeyQuoteCreate: {
-            /** Line Items */
+            /**
+             * Line Items
+             * @default []
+             */
             line_items: components["schemas"]["AutoKeyQuoteLineItemCreate"][];
+            /** Options */
+            options?: components["schemas"]["AutoKeyQuoteOptionCreate"][] | null;
             /**
              * Gst Enabled
              * @default true
@@ -7872,6 +7921,8 @@ export interface components {
              * Format: uuid
              */
             auto_key_quote_id: string;
+            /** Option Key */
+            option_key?: string | null;
             /** Description */
             description: string;
             /** Quantity */
@@ -7880,6 +7931,26 @@ export interface components {
             unit_price_cents: number;
             /** Total Price Cents */
             total_price_cents: number;
+        };
+        /** AutoKeyQuoteOptionCreate */
+        AutoKeyQuoteOptionCreate: {
+            /** Label */
+            label: string;
+            /** Line Items */
+            line_items: components["schemas"]["AutoKeyQuoteLineItemCreate"][];
+        };
+        /** AutoKeyQuoteOptionRead */
+        AutoKeyQuoteOptionRead: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Subtotal Cents */
+            subtotal_cents: number;
+            /** Tax Cents */
+            tax_cents: number;
+            /** Total Cents */
+            total_cents: number;
         };
         /** AutoKeyQuoteRead */
         AutoKeyQuoteRead: {
@@ -7933,6 +8004,23 @@ export interface components {
              * @default []
              */
             line_items: components["schemas"]["AutoKeyQuoteLineItemRead"][];
+            /**
+             * Options
+             * @default []
+             */
+            options: components["schemas"]["AutoKeyQuoteOptionRead"][];
+            /** Selected Option */
+            selected_option?: string | null;
+            /** Selected At */
+            selected_at?: string | null;
+        };
+        /** AutoKeyQuoteSelectOption */
+        AutoKeyQuoteSelectOption: {
+            /**
+             * Option
+             * @enum {string}
+             */
+            option: "A" | "B";
         };
         /** AutoKeyQuoteSendResponse */
         AutoKeyQuoteSendResponse: {
@@ -11190,6 +11278,13 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
+        };
+        /** PortalJobSessionRequest */
+        PortalJobSessionRequest: {
+            /** Job Type */
+            job_type: string;
+            /** Status Token */
+            status_token: string;
         };
         /** PortalMessageToShopRequest */
         PortalMessageToShopRequest: {
@@ -18857,6 +18952,39 @@ export interface operations {
             };
         };
     };
+    open_portal_from_job_link_v1_public_portal_job_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalJobSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_portal_session_jobs_v1_public_portal_session__token__get: {
         parameters: {
             query?: {
@@ -21900,6 +22028,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoKeyQuoteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoKeyQuoteSelectOption"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

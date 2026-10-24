@@ -35,6 +35,7 @@ from ..minit_branding import (
     public_shop_branding,
     public_shop_branding_fields,
 )
+from ..auto_key_quote_options import has_options, invoice_line_items, needs_option_choice, option_label, option_totals
 from ..models import (
     Attachment,
     AutoKeyInvoice,
@@ -481,6 +482,8 @@ def get_public_auto_key_booking(request: Request, token: str, session: Session =
             .where(AutoKeyQuoteLineItem.auto_key_quote_id == quote.id)
             .order_by(AutoKeyQuoteLineItem.created_at)
         ).all()
+        # Two-outcome quotes: only shared lines until the tech picks the outcome that applies.
+        items = [i for i in items if i.option_key is None or i.option_key == quote.selected_option]
         line_payload = [
             {
                 "description": i.description,
@@ -752,11 +755,8 @@ def get_public_auto_key_invoice(request: Request, token: str, session: Session =
 
     line_payload: list[dict] = []
     if invoice.auto_key_quote_id:
-        items = session.exec(
-            select(AutoKeyQuoteLineItem)
-            .where(AutoKeyQuoteLineItem.auto_key_quote_id == invoice.auto_key_quote_id)
-            .order_by(AutoKeyQuoteLineItem.created_at)
-        ).all()
+        _inv_quote = session.get(AutoKeyQuote, invoice.auto_key_quote_id)
+        items = invoice_line_items(session, invoice.auto_key_quote_id, _inv_quote.selected_option if _inv_quote else None)
         line_payload = [
             {
                 "description": i.description,
@@ -1730,8 +1730,24 @@ def get_public_auto_key_quote(request: Request, token: str, session: Session = D
         "signed_at": isoformat_z_utc(quote.signed_at) if quote.signed_at else None,
         "signer_name": quote.signer_name,
         "has_signature": bool(quote.signature_storage_key),
+        "selected_option": quote.selected_option,
+        "options": (
+            [
+                {
+                    "key": key,
+                    "label": option_label(quote, key),
+                    "subtotal_cents": sub,
+                    "tax_cents": tax,
+                    "total_cents": total,
+                }
+                for key, (sub, tax, total) in option_totals(quote, list(items)).items()
+            ]
+            if has_options(quote)
+            else []
+        ),
         "line_items": [
             {
+                "option_key": i.option_key,
                 "description": i.description,
                 "quantity": i.quantity,
                 "unit_price_cents": i.unit_price_cents,
@@ -1806,7 +1822,7 @@ def decide_public_auto_key_quote(
             logger.exception("quote_signature_upload_failed quote=%s", quote.id)
 
     # Auto-create invoice when customer approves
-    if decision == "approved":
+    if decision == "approved" and not needs_option_choice(quote):
         existing_invoice = session.exec(
             select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_quote_id == quote.id)
         ).first()

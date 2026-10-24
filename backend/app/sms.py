@@ -745,16 +745,24 @@ def notify_auto_key_quote_sent(
     total_cents: int,
     currency: str,
     quote_approval_token: str,
+    option_totals_cents: list[int] | None = None,
 ) -> None:
     """SMS when a quote is sent — lets the customer know the price and links to the approval portal."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return
     portal_url = f"{settings.public_base_url}/mobile-quote/{quote_approval_token}"
     shop = shop_name.strip() or "us"
-    body = (
-        f"Hi {customer_name}, your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}. "
-        f"Please review and accept here: {portal_url} — Reply to this message if you have any questions."
-    )
+    if option_totals_cents:
+        price = " or ".join(format_cents(c, currency) for c in option_totals_cents)
+        body = (
+            f"Hi {customer_name}, your quote from {shop} for job #{job_number} has two possible prices: {price}. "
+            f"We confirm which applies when we see your vehicle. Review and accept here: {portal_url}"
+        )
+    else:
+        body = (
+            f"Hi {customer_name}, your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}. "
+            f"Please review and accept here: {portal_url} — Reply to this message if you have any questions."
+        )
     if len(body) > 1500:
         body = body[:1490] + "…"
     sid, sms_status = _logged_send(
@@ -765,6 +773,38 @@ def notify_auto_key_quote_sent(
         to_phone=to_phone,
         body=body,
         event="auto_key_quote_sent",
+    )
+
+
+def notify_auto_key_quote_option_selected(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    auto_key_job_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    shop_name: str,
+    job_number: str,
+    option_label: str,
+    total_cents: int,
+    currency: str,
+) -> None:
+    """SMS when the tech confirms which outcome of a two-option quote applies."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
+    shop = shop_name.strip() or "us"
+    body = (
+        f"Hi {customer_name}, for job #{job_number} we found {option_label}, "
+        f"so the price is {format_cents(total_cents, currency)} as quoted. — {shop}"
+    )
+    _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        auto_key_job_id=auto_key_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_quote_option_selected",
     )
 
 

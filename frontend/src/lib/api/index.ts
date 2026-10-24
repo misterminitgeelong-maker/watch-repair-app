@@ -2491,6 +2491,7 @@ export const deleteAutoKeyJob = (id: string) => api.delete(`/auto-key-jobs/${id}
 export interface AutoKeyQuoteLineItem {
   id: string
   auto_key_quote_id: string
+  option_key?: 'A' | 'B' | null
   description: string
   quantity: number
   unit_price_cents: number
@@ -2514,6 +2515,18 @@ export interface AutoKeyQuote {
   has_signature?: boolean
   created_at: string
   line_items?: AutoKeyQuoteLineItem[]
+  /** Two-outcome quotes: totals per option. Empty on ordinary quotes. */
+  options?: AutoKeyQuoteOption[]
+  selected_option?: 'A' | 'B' | null
+  selected_at?: string | null
+}
+
+export interface AutoKeyQuoteOption {
+  key: 'A' | 'B'
+  label: string
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
 }
 
 export async function resolveQuoteSignatureUrl(quoteId: string): Promise<string> {
@@ -2545,15 +2558,23 @@ export interface AutoKeyInvoice {
 }
 
 export interface AutoKeyQuoteCreatePayload {
+  /** Lines shared by both outcomes when `options` is set, otherwise the whole quote. */
   line_items: Array<{
     description: string
     quantity: number
     unit_price_cents: number
   }>
+  /** Exactly two entries (A then B) for a two-outcome quote. */
+  options?: Array<{
+    label: string
+    line_items: Array<{ description: string; quantity: number; unit_price_cents: number }>
+  }>
   gst_enabled: boolean
   gst_inclusive: boolean
 }
 
+export const selectAutoKeyQuoteOption = (quoteId: string, option: 'A' | 'B') =>
+  api.post<AutoKeyQuote>(`/auto-key-jobs/quotes/${quoteId}/select-option`, { option })
 export const listAutoKeyQuotes = (jobId: string) => api.get<AutoKeyQuote[]>(`/auto-key-jobs/${jobId}/quotes`)
 export const createAutoKeyQuote = (jobId: string, payload: AutoKeyQuoteCreatePayload) =>
   api.post<AutoKeyQuote>(`/auto-key-jobs/${jobId}/quotes`, payload)
@@ -4080,7 +4101,9 @@ export interface PublicAutoKeyQuote extends ShopBrandingFields {
   signed_at: string | null
   signer_name: string | null
   has_signature: boolean
-  line_items: { description: string; quantity: number; unit_price_cents: number; total_price_cents: number }[]
+  line_items: { option_key?: 'A' | 'B' | null; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }[]
+  options?: AutoKeyQuoteOption[]
+  selected_option?: 'A' | 'B' | null
 }
 
 export const getPublicAutoKeyQuote = (token: string) =>
