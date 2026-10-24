@@ -1,13 +1,13 @@
 """two-outcome auto key quotes: option labels, selected option, line item option key
 
 Revision ID: 20261024a_auto_key_quote_options
-Revises: 20261019a_lead_routing_integrity
+Revises: 20261024a_tenant_keep_own_plan
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "20261024a_auto_key_quote_options"
-down_revision = "20261019a_lead_routing_integrity"
+down_revision = "20261024a_tenant_keep_own_plan"
 branch_labels = None
 depends_on = None
 
