@@ -87,7 +87,38 @@ def earn_points_for_invoice(
     Award points when an invoice is paid. Returns points awarded (0 if skipped).
     Idempotent — duplicate calls for the same invoice are no-ops.
     """
-    idempotency_key = f"invoice_earn:{invoice.id}"
+    # Resolve customer: Invoice → RepairJob → Watch → customer_id
+    job = session.get(RepairJob, invoice.repair_job_id)
+    if not job:
+        return 0
+    watch = session.get(Watch, job.watch_id)
+    if not watch:
+        return 0
+    return earn_points(
+        session,
+        tenant_id,
+        watch.customer_id,
+        amount_cents=invoice.total_cents,
+        idempotency_key=f"invoice_earn:{invoice.id}",
+        note=f"Invoice {invoice.invoice_number}",
+        source_invoice_id=invoice.id,
+    )
+
+
+def earn_points(
+    session: Session,
+    tenant_id: UUID,
+    customer_id: UUID,
+    *,
+    amount_cents: int,
+    idempotency_key: str,
+    note: str,
+    source_invoice_id: UUID | None = None,
+) -> int:
+    """Award points for a spend (an invoice paid, a counter sale). Returns points awarded.
+
+    Idempotent on ``idempotency_key``: a second call for the same spend is a no-op.
+    """
     existing = session.exec(
         select(PointsLedger)
         .where(PointsLedger.tenant_id == tenant_id)
@@ -96,22 +127,13 @@ def earn_points_for_invoice(
     if existing:
         return 0
 
-    # Resolve customer: Invoice → RepairJob → Watch → customer_id
-    job = session.get(RepairJob, invoice.repair_job_id)
-    if not job:
-        return 0
-    watch = session.get(Watch, job.watch_id)
-    if not watch:
-        return 0
-    customer_id = watch.customer_id
-
     loyalty = get_or_create_loyalty(session, tenant_id, customer_id)
 
     tiers = _get_tiers(session)
     rolling_spend = _rolling_12m_spend(session, loyalty.id)
     current_tier = _resolve_tier(tiers, rolling_spend)
 
-    base_points = invoice.total_cents // 100
+    base_points = amount_cents // 100
     multiplier = current_tier.earn_multiplier_x100
     awarded = (base_points * multiplier) // 100
 
@@ -124,9 +146,9 @@ def earn_points_for_invoice(
             customer_loyalty_id=loyalty.id,
             entry_type="earn",
             points_delta=awarded,
-            source_invoice_id=invoice.id,
-            source_amount_cents=invoice.total_cents,
-            note=f"Invoice {invoice.invoice_number}",
+            source_invoice_id=source_invoice_id,
+            source_amount_cents=amount_cents,
+            note=note,
             idempotency_key=idempotency_key,
         )
     )
@@ -134,7 +156,7 @@ def earn_points_for_invoice(
     loyalty.points_balance += awarded
 
     # Recalc tier after this earn
-    new_rolling = rolling_spend + invoice.total_cents
+    new_rolling = rolling_spend + amount_cents
     new_tier = _resolve_tier(tiers, new_rolling)
     loyalty.tier_id = new_tier.id
 

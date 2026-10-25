@@ -157,18 +157,19 @@ ALL_PLAN_FEATURES = {
     "multi_site",
     "rego_lookup",
     "shop_mobile_booking",
+    "pos",
 }
 
 PLAN_FEATURES: dict[str, set[str]] = {
-    "basic_watch": {"watch", "customer_accounts", "shop_mobile_booking"},
-    "basic_shoe": {"shoe", "customer_accounts"},
-    "basic_auto_key": {"auto_key", "customer_accounts"},
-    "basic_watch_shoe": {"watch", "shoe", "customer_accounts", "shop_mobile_booking"},
-    "basic_watch_auto_key": {"watch", "auto_key", "customer_accounts", "shop_mobile_booking"},
-    "basic_shoe_auto_key": {"shoe", "auto_key", "customer_accounts"},
-    "basic_all_tabs": {"watch", "shoe", "auto_key", "customer_accounts", "shop_mobile_booking"},
-    "booking_only": {"shop_mobile_booking"},
-    "minit_operator": {"auto_key", "customer_accounts"},  # same as basic_auto_key
+    "basic_watch": {"watch", "customer_accounts", "shop_mobile_booking", "pos"},
+    "basic_shoe": {"shoe", "customer_accounts", "pos"},
+    "basic_auto_key": {"auto_key", "customer_accounts", "pos"},
+    "basic_watch_shoe": {"watch", "shoe", "customer_accounts", "shop_mobile_booking", "pos"},
+    "basic_watch_auto_key": {"watch", "auto_key", "customer_accounts", "shop_mobile_booking", "pos"},
+    "basic_shoe_auto_key": {"shoe", "auto_key", "customer_accounts", "pos"},
+    "basic_all_tabs": {"watch", "shoe", "auto_key", "customer_accounts", "shop_mobile_booking", "pos"},
+    "booking_only": {"shop_mobile_booking", "pos"},
+    "minit_operator": {"auto_key", "customer_accounts", "pos"},  # same as basic_auto_key
     "minit_hq": {"shop_mobile_booking", "multi_site"},
     "pro": set(ALL_PLAN_FEATURES),
 }

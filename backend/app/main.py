@@ -83,6 +83,8 @@ from .routes.prospect_leads import router as prospect_leads_router
 from .routes.customer_orders import router as customer_orders_router
 from .routes.sms_webhook import router as sms_webhook_router
 from .routes.shop_settings import router as shop_settings_router
+from .routes.pos import router as pos_router
+from .routes.pos_admin import router as pos_admin_router
 from .routes.global_search import router as global_search_router
 from .routes.tenant_qol import router as tenant_qol_router
 
@@ -607,6 +609,8 @@ app.include_router(loyalty_router)
 app.include_router(customer_orders_router)
 app.include_router(sms_webhook_router)
 app.include_router(shop_settings_router)
+app.include_router(pos_router)
+app.include_router(pos_admin_router)
 
 # ---------- Serve the built React frontend ----------
 _static = Path(settings.static_dir) if settings.static_dir else None
