@@ -92,6 +92,7 @@ def _summary(book: PosPriceBook) -> dict[str, Any]:
         "cash_rounding_cents": book.cash_rounding_cents,
         "is_default": book.is_default,
         "archived": book.archived,
+        "allow_shop_overrides": book.allow_shop_overrides,
         "published_version": book.published_version,
         "draft_updated_at": book.draft_updated_at.isoformat(),
     }
@@ -128,6 +129,7 @@ class BookCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     region: str = Field(default="AU", pattern="^(AU|NZ)$")
     is_default: bool = False
+    allow_shop_overrides: bool = True
     #: Optional starting content, e.g. an imported price list.
     catalogue: Optional[dict] = None
 
@@ -136,6 +138,7 @@ class BookPatch(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     is_default: Optional[bool] = None
     archived: Optional[bool] = None
+    allow_shop_overrides: Optional[bool] = None
     cash_rounding_cents: Optional[int] = Field(default=None, ge=1, le=100)
 
 
@@ -156,6 +159,7 @@ def create_price_book(body: BookCreate, auth: AuthContext = Depends(get_auth_con
         name=body.name.strip(),
         region=body.region,
         is_default=body.is_default,
+        allow_shop_overrides=body.allow_shop_overrides,
         draft_json=_validated_json(body.catalogue or {}),
         **REGION_DEFAULTS[body.region],
     )

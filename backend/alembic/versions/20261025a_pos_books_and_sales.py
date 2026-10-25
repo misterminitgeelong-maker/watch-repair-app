@@ -29,6 +29,7 @@ def upgrade():
         sa.Column("cash_rounding_cents", sa.Integer(), nullable=False),
         sa.Column("is_default", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("archived", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column("allow_shop_overrides", sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column("draft_json", sa.String(), nullable=False),
         sa.Column("draft_updated_at", sa.DateTime(), nullable=False),
         sa.Column("published_version", sa.Integer(), nullable=False, server_default="0"),

@@ -38,6 +38,8 @@ class PosPriceBook(SQLModel, table=True):
     #: The book a shop in this network gets when it has no explicit assignment.
     is_default: bool = False
     archived: bool = False
+    #: Whether shops selling from this book may set their own prices or hide items.
+    allow_shop_overrides: bool = True
     #: Working copy HQ edits; tills never see it until it is published.
     draft_json: str = "{}"
     draft_updated_at: datetime = Field(default_factory=_now)

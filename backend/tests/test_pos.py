@@ -235,6 +235,20 @@ def test_shop_overrides_change_price_and_hide_items_for_that_shop_only():
     assert client.delete("/v1/pos/overrides/flat-key", headers=net["shop"]).status_code == 404
 
 
+def test_hq_can_switch_local_pricing_off_and_on():
+    net = _network()
+    book_id = _publish_default(net)
+    assert client.put("/v1/pos/overrides/polish", headers=net["shop"], json={"price_cents": 1500}).status_code == 200
+    off = client.patch(f"/v1/pos/admin/price-books/{book_id}", headers=net["hq"], json={"allow_shop_overrides": False})
+    assert off.status_code == 200 and off.json()["allow_shop_overrides"] is False
+    blocked = client.put("/v1/pos/overrides/polish", headers=net["shop"], json={"price_cents": 900})
+    assert blocked.status_code == 403
+    cat = client.get("/v1/pos/catalogue", headers=net["shop"]).json()
+    assert cat["allow_shop_overrides"] is False and cat["catalogue"]["items"][1]["price_cents"] == 1200
+    client.patch(f"/v1/pos/admin/price-books/{book_id}", headers=net["hq"], json={"allow_shop_overrides": True})
+    assert client.get("/v1/pos/catalogue", headers=net["shop"]).json()["catalogue"]["items"][1]["price_cents"] == 1500
+
+
 # ── Sales ────────────────────────────────────────────────────────────────────
 
 def test_posting_a_sale_twice_records_it_once_and_earns_points_once():

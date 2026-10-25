@@ -27106,6 +27106,11 @@
             "title": "Is Default",
             "default": false
           },
+          "allow_shop_overrides": {
+            "type": "boolean",
+            "title": "Allow Shop Overrides",
+            "default": true
+          },
           "catalogue": {
             "anyOf": [
               {
@@ -27161,6 +27166,17 @@
               }
             ],
             "title": "Archived"
+          },
+          "allow_shop_overrides": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allow Shop Overrides"
           },
           "cash_rounding_cents": {
             "anyOf": [

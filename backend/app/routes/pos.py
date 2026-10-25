@@ -123,10 +123,7 @@ def _published_version(session: Session, book: PosPriceBook) -> PosPriceBookVers
         ).one()
 
 
-def _published_item_keys(session: Session, tenant: Tenant) -> set[str]:
-    book = resolve_price_book(session, tenant)
-    if book is None:
-        return set()
+def _book_item_keys(session: Session, book: PosPriceBook) -> set[str]:
     return {item.key for item in parse_catalogue(_published_version(session, book).content_json).items}
 
 
@@ -144,7 +141,8 @@ def get_catalogue(
         raise HTTPException(status_code=404, detail="No price book has been published for this shop yet")
     version = _published_version(session, book)
     settings = _settings(session, tenant.id)
-    overrides = json.loads(settings.overrides_json or "{}")
+    # HQ can switch local pricing off; the shop's saved overrides then sit unused until it is switched back on.
+    overrides = json.loads(settings.overrides_json or "{}") if book.allow_shop_overrides else {}
     catalogue = apply_overrides(parse_catalogue(version.content_json), overrides)
     # Tills poll this; the tag changes when HQ publishes or the shop edits an override.
     response.headers["ETag"] = f'"{book.id}:{book.published_version}:{settings.updated_at.timestamp():.0f}"'
@@ -157,6 +155,7 @@ def get_catalogue(
         "currency": book.currency,
         "gst_rate_bp": book.gst_rate_bp,
         "cash_rounding_cents": book.cash_rounding_cents,
+        "allow_shop_overrides": book.allow_shop_overrides,
         "override_count": len(overrides),
         "catalogue": catalogue.model_dump(),
     }
@@ -178,8 +177,11 @@ def put_override(
 ):
     if auth.role not in MANAGER_ROLES:
         raise HTTPException(status_code=403, detail="Only owners and managers can change shop prices")
-    if item_key not in _published_item_keys(session, _tenant(session, auth)):
+    book = resolve_price_book(session, _tenant(session, auth))
+    if book is None or item_key not in _book_item_keys(session, book):
         raise HTTPException(status_code=404, detail="That item is not in this shop's price book")
+    if not book.allow_shop_overrides:
+        raise HTTPException(status_code=403, detail="Head office has switched off local pricing for this shop's price book")
     settings = _settings(session, auth.tenant_id)
     overrides = json.loads(settings.overrides_json or "{}")
     change = body.model_dump(exclude_none=True, exclude_defaults=True)
