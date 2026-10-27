@@ -1103,10 +1103,10 @@ export default function JobDetailPage() {
             )}
 
             <Card>
-              <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>
                 <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>Quotes</h2>
                 <div className="flex items-center gap-3">
-                  <Button onClick={() => setShowCreateQuote(true)}><Plus size={14} />Create &amp; Send Quote</Button>
+                  <Button size="sm" onClick={() => setShowCreateQuote(true)}><Plus size={14} />Create &amp; send</Button>
                   <Link to="/quotes" className="inline-flex min-h-11 items-center text-xs font-medium uppercase tracking-wide transition-colors sm:min-h-0" style={{ color: 'var(--ms-accent)' }}>Manage →</Link>
                 </div>
               </div>
