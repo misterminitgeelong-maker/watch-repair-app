@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import update as sa_update
@@ -19,7 +20,7 @@ from ..parent_network import (
     tenant_is_live,
 )
 from ..database import get_session, unscoped_session
-from ..dispatch_utils import geocode_address
+from ..dispatch_utils import geocode_address, haversine_km
 from ..dependencies import (
     AuthContext,
     PLAN_FEATURES,
@@ -99,13 +100,85 @@ def _operator_option(session: Session, tenant_id: UUID, *, routing_rule: str | N
     )
 
 
+#: A suburb the territory map doesn't know is routed to the nearest live operator
+#: only when one is this close, matching the reach the map itself was built with.
+NEAREST_OPERATOR_MAX_KM = 100.0
+
+_SUBURB_WORD_SWAPS = (("mt", "mount"), ("st", "saint"), ("ft", "fort"), ("pt", "port"))
+_SUBURB_TRAILING_WORDS = ("centre", "center", "central", "dc", "bc")
+
+
+def _suburb_variants(sub_norm: str) -> list[str]:
+    """The suburb as typed plus the spellings a territory map may use for it
+    (Mt/Mount, St/Saint, a trailing "Centre"), most literal first."""
+    variants = [sub_norm]
+
+    def add(v: str) -> None:
+        v = " ".join(v.split())
+        if v and v not in variants:
+            variants.append(v)
+
+    words = sub_norm.replace(".", "").split()
+    for short, long_ in _SUBURB_WORD_SWAPS:
+        add(" ".join(long_ if w == short else w for w in words))
+        add(" ".join(short if w == long_ else w for w in words))
+    if len(words) > 1 and words[-1] in _SUBURB_TRAILING_WORDS:
+        add(" ".join(words[:-1]))
+    return variants
+
+
+def _hq_contact_hint(session: Session, parent_ids: list[UUID]) -> str:
+    """"Call HQ on ..." for the coverage error, from the network's escalation site
+    or owner email. Empty when nothing is on file."""
+    for parent_id in parent_ids:
+        parent = session.get(ParentAccount, parent_id)
+        if not parent:
+            continue
+        hq = session.get(Tenant, parent.mobile_lead_escalation_tenant_id) if parent.mobile_lead_escalation_tenant_id else None
+        bits = [x.strip() for x in ((hq.shop_phone if hq else None), (hq.shop_email if hq else None)) if x and x.strip()]
+        if not bits and parent.owner_email:
+            bits = [parent.owner_email.strip()]
+        if bits:
+            return " Contact HQ on " + " or ".join(bits) + "."
+    return ""
+
+
+def _nearest_bookable_operator(
+    session: Session, parent_ids: list[UUID], lat: float, lng: float
+) -> tuple[UUID, UUID] | None:
+    """Closest live operator with a known base location, within NEAREST_OPERATOR_MAX_KM.
+    Returns (operator tenant id, parent id they share with it)."""
+    best: tuple[float, UUID, UUID] | None = None
+    for parent_id in parent_ids:
+        for op in dispatch_operators_for_parent(session, parent_id):
+            if op.base_lat is None or op.base_lng is None:
+                continue
+            if not _tenant_is_bookable_operator(session, op.id):
+                continue
+            km = haversine_km(lat, lng, op.base_lat, op.base_lng)
+            if km <= NEAREST_OPERATOR_MAX_KM and (best is None or km < best[0]):
+                best = (km, op.id, parent_id)
+    return (best[1], best[2]) if best else None
+
+
+async def _suburb_coordinates(suburb: str, state_code: str) -> tuple[float, float] | None:
+    try:
+        return await geocode_address(f"{suburb.strip()}, {state_code.strip().upper()}, Australia")
+    except Exception:  # noqa: BLE001
+        logger.info("shop_mobile_booking.suburb_geocode_failed suburb=%s", suburb, exc_info=True)
+        return None
+
+
 def _resolve_operator_for_booking(
     session: Session,
     shop_tid: UUID,
     suburb: str,
     state_code: str,
+    *,
+    suburb_coords: tuple[float, float] | None = None,
 ) -> tuple[UUID, UUID, str]:
-    """Pick operator from suburb map, else parent fallback operator."""
+    """Pick operator from the suburb map (trying common spellings), else the nearest
+    live operator to ``suburb_coords`` when the caller could place the suburb."""
     parent_ids = _parent_account_ids_for_tenant(session, shop_tid)
     if not parent_ids:
         raise HTTPException(status_code=403, detail="Tenant is not linked to a parent account")
@@ -118,21 +191,31 @@ def _resolve_operator_for_booking(
     if not sub_norm:
         raise HTTPException(status_code=400, detail="suburb is required")
 
-    route = session.exec(
+    variants = _suburb_variants(sub_norm)
+    routes = session.exec(
         select(MobileSuburbRoute)
         .where(MobileSuburbRoute.parent_account_id.in_(parent_ids))  # type: ignore[attr-defined]
         .where(MobileSuburbRoute.state_code == st)
-        .where(MobileSuburbRoute.suburb_normalized == sub_norm)
-    ).first()
-    if route and _tenant_is_bookable_operator(session, route.target_tenant_id):
-        parent_id = _assert_parent_account_link(session, shop_tid, route.target_tenant_id)
-        return route.target_tenant_id, parent_id, "suburb_route"
+        .where(MobileSuburbRoute.suburb_normalized.in_(variants))  # type: ignore[attr-defined]
+    ).all()
+    for variant in variants:
+        for route in routes:
+            if route.suburb_normalized == variant and _tenant_is_bookable_operator(session, route.target_tenant_id):
+                parent_id = _assert_parent_account_link(session, shop_tid, route.target_tenant_id)
+                return route.target_tenant_id, parent_id, "suburb_route"
+
+    if suburb_coords is not None:
+        nearest = _nearest_bookable_operator(session, parent_ids, *suburb_coords)
+        if nearest:
+            operator_tid, parent_id = nearest
+            return operator_tid, _assert_parent_account_link(session, shop_tid, operator_tid), "nearest_operator"
 
     raise HTTPException(
         status_code=422,
         detail=(
-            "This suburb is outside the mobile operator coverage map (~100km from nearest hub). "
-            "Contact HQ to arrange service manually."
+            "This suburb is outside the mobile operator coverage map (~100km from nearest hub), "
+            "so no mobile operator can be booked for it." + _hq_contact_hint(session, parent_ids)
+            + " Ask HQ to arrange service manually."
         ),
     )
 
@@ -212,6 +295,27 @@ def _notify_shop_booking_outcome(
             outcome,
             exc_info=True,
         )
+
+
+def _notify_customer_booking_accepted(
+    session: Session, row: ShopMobileBookingRequest, *, shop_name: str, job_number: str
+) -> None:
+    """Best-effort confirmation text to the customer; off unless the platform setting is on."""
+    if not settings.shop_booking_customer_confirmation_sms or not (row.phone or "").strip():
+        return
+    op = session.get(Tenant, row.target_operator_tenant_id)
+    try:
+        sms_service.notify_shop_booking_customer_confirmed(
+            session,
+            tenant_id=row.target_operator_tenant_id,
+            to_phone=row.phone.strip(),
+            customer_name=row.customer_name,
+            operator_name=format_tenant_label(op.name if op else "Mister Minit", op.shop_number if op else None),
+            shop_name=shop_name,
+            job_number=job_number,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("shop_mobile_booking.customer_notify_failed booking=%s", row.id, exc_info=True)
 
 
 def _tenant_has_auto_key(session: Session, tenant_id: UUID) -> bool:
@@ -326,8 +430,15 @@ def _schedule_conflict_warning(
     pref = preferred_at
     if pref.tzinfo is None:
         pref = pref.replace(tzinfo=timezone.utc)
-    day_start = pref.replace(hour=0, minute=0, second=0, microsecond=0)
-    day_end = day_start + timedelta(days=1)
+    # The operator's calendar day, not the UTC one: Perth's day starts 8 hours before UTC midnight.
+    operator = session.get(Tenant, operator_tid)
+    try:
+        tz = ZoneInfo((getattr(operator, "timezone", None) or "").strip() or settings.schedule_calendar_timezone)
+    except Exception:  # noqa: BLE001
+        tz = ZoneInfo(settings.schedule_calendar_timezone)
+    local_day = pref.astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    day_start = local_day.astimezone(timezone.utc)
+    day_end = (local_day + timedelta(days=1)).astimezone(timezone.utc)
     count = int(
         session.exec(
             select(func.count())
@@ -343,7 +454,7 @@ def _schedule_conflict_warning(
     noun = "job" if count == 1 else "jobs"
     return (
         f"This operator already has {count} scheduled {noun} on "
-        f"{day_start.strftime('%Y-%m-%d')}. Review the calendar before accepting."
+        f"{local_day.strftime('%Y-%m-%d')}. Review the calendar before accepting."
     )
 
 
@@ -447,15 +558,41 @@ def list_operators(
     return sorted(options, key=lambda o: o.tenant_name.lower())
 
 
+async def _resolve_operator_with_fallback(
+    session: Session, shop_tid: UUID, suburb: str, state_code: str
+) -> tuple[UUID, UUID, str]:
+    """Map lookup first; only when it finds no operator, place the suburb on the map
+    and take the nearest live operator."""
+    try:
+        return _resolve_operator_for_booking(session, shop_tid, suburb, state_code)
+    except HTTPException as exc:
+        if exc.status_code != 422:
+            raise
+        coords = await _suburb_coordinates(suburb, state_code)
+        if coords is None:
+            raise
+        return _resolve_operator_for_booking(session, shop_tid, suburb, state_code, suburb_coords=coords)
+
+
+@router.get("/coverage-contact")
+def coverage_contact(
+    auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
+    session: Session = Depends(unscoped_session),
+) -> dict[str, str | None]:
+    """Who a shop should contact when no operator covers its suburb."""
+    hint = _hq_contact_hint(session, _parent_account_ids_for_tenant(session, auth.tenant_id))
+    return {"hq_contact": hint.replace(" Contact HQ on ", "").rstrip(".") or None}
+
+
 @router.get("/suggest-operator", response_model=ShopMobileOperatorOption | None)
-def suggest_operator(
+async def suggest_operator(
     suburb: str = Query(..., min_length=1),
     state_code: str = Query(..., min_length=2, max_length=8),
     auth: AuthContext = Depends(require_feature("shop_mobile_booking")),
     session: Session = Depends(unscoped_session),
 ):
     try:
-        operator_tid, _parent_id, routing_rule = _resolve_operator_for_booking(
+        operator_tid, _parent_id, routing_rule = await _resolve_operator_with_fallback(
             session, auth.tenant_id, suburb, state_code
         )
     except HTTPException as exc:
@@ -483,7 +620,7 @@ async def create_booking(
             raise HTTPException(status_code=400, detail="Target tenant is not a mobile services operator")
         routing_rule = "manual_override"
     else:
-        operator_tid, parent_id, routing_rule = _resolve_operator_for_booking(
+        operator_tid, parent_id, routing_rule = await _resolve_operator_with_fallback(
             session, auth.tenant_id, suburb, state_code
         )
 
@@ -881,6 +1018,7 @@ def accept_booking(
         raise HTTPException(status_code=409, detail="This booking is no longer pending")
     session.refresh(row)
     _notify_shop_booking_outcome(session, row, outcome="accepted")
+    _notify_customer_booking_accepted(session, row, shop_name=shop_name, job_number=job.job_number)
     session.commit()
     return _to_read(session, row, schedule_conflict_warning=conflict_warning)
 

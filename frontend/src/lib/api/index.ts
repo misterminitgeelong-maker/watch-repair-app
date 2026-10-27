@@ -1153,6 +1153,8 @@ export const suggestShopMobileOperator = (suburb: string, state_code: string) =>
   api.get<ShopMobileOperatorOption | null>('/shop-mobile-bookings/suggest-operator', {
     params: { suburb, state_code },
   })
+export const getShopMobileCoverageContact = () =>
+  api.get<{ hq_contact: string | null }>('/shop-mobile-bookings/coverage-contact')
 export const createShopMobileBooking = (payload: ShopMobileBookingCreate) =>
   api.post<ShopMobileBooking>('/shop-mobile-bookings', payload)
 export const listShopMobileBookings = (status?: ShopMobileBookingStatus) =>

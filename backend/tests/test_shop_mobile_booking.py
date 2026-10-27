@@ -532,3 +532,173 @@ def test_operator_without_accepted_invite_is_not_offered_work():
     assert client.get("/v1/shop-mobile-bookings/operators", headers=shop_h).json() == []
     res = client.post("/v1/shop-mobile-bookings", headers=shop_h, json=_booking_payload())
     assert res.status_code == 422, res.text
+
+
+def _hq_headers(suffix: str) -> dict[str, str]:
+    return _headers(_login(f"hq-{suffix}", f"hq-{suffix}@test.local")["access_token"])
+
+
+def _add_route(suffix: str, op_tid: str, suburb: str, state: str) -> None:
+    res = client.post(
+        "/v1/parent-accounts/me/mobile-lead-routes",
+        headers=_hq_headers(suffix),
+        json={"suburb": suburb, "state_code": state, "target_tenant_id": op_tid},
+    )
+    assert res.status_code == 200, res.text
+
+
+def _suggest(shop_h: dict[str, str], suburb: str, state: str):
+    return client.get(
+        "/v1/shop-mobile-bookings/suggest-operator",
+        headers=shop_h,
+        params={"suburb": suburb, "state_code": state},
+    )
+
+
+def test_abbreviated_suburb_matches_territory_map():
+    suffix = uuid4().hex[:8]
+    shop_h, _op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    _add_route(suffix, op_tid, "Mount Barker", "SA")
+
+    res = _suggest(shop_h, "Mt Barker", "SA")
+    assert res.status_code == 200
+    assert res.json()["tenant_id"] == op_tid
+    assert res.json()["routing_rule"] == "suburb_route"
+
+
+def test_unmapped_suburb_routes_to_nearest_operator_within_range(monkeypatch):
+    from app.routes import shop_mobile_bookings as mod
+
+    suffix = uuid4().hex[:8]
+    shop_h, _op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    with Session(engine) as session:
+        op = session.get(Tenant, UUID(op_tid))
+        op.base_lat, op.base_lng = -32.3222, 115.8285  # Baldivis
+        session.add(op)
+        session.commit()
+
+    async def near(_address):
+        return (-32.1170, 115.8450)  # Cockburn, about 25 km away
+
+    monkeypatch.setattr(mod, "geocode_address", near)
+    suggested = _suggest(shop_h, "Cockburn", "WA")
+    assert suggested.status_code == 200
+    assert suggested.json()["tenant_id"] == op_tid
+    assert suggested.json()["routing_rule"] == "nearest_operator"
+
+    create = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(suburb="Cockburn", state_code="WA", job_address="1 Test St, Cockburn WA"),
+    )
+    assert create.status_code == 201, create.text
+    assert create.json()["operator_routing_rule"] == "nearest_operator"
+
+    async def far(_address):
+        return (-28.7774, 114.6149)  # Geraldton, hundreds of km away
+
+    monkeypatch.setattr(mod, "geocode_address", far)
+    assert _suggest(shop_h, "Geraldton", "WA").json() is None
+    refused = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(suburb="Geraldton", state_code="WA", job_address="1 Test St, Geraldton WA"),
+    )
+    assert refused.status_code == 422
+
+
+def test_nearest_fallback_skips_operator_that_is_not_live(monkeypatch):
+    from app.routes import shop_mobile_bookings as mod
+
+    suffix = uuid4().hex[:8]
+    shop_h, _op_h, _shop_tid, op_tid = _setup_parent_network(suffix, live=False)
+    with Session(engine) as session:
+        op = session.get(Tenant, UUID(op_tid))
+        op.base_lat, op.base_lng = -32.3222, 115.8285
+        session.add(op)
+        session.commit()
+
+    async def near(_address):
+        return (-32.1170, 115.8450)
+
+    monkeypatch.setattr(mod, "geocode_address", near)
+    assert _suggest(shop_h, "Cockburn", "WA").json() is None
+
+
+def test_coverage_error_names_hq_contact():
+    suffix = uuid4().hex[:8]
+    shop_h, _op_h, _shop_tid, _op_tid = _setup_parent_network(suffix)
+    contact = client.get("/v1/shop-mobile-bookings/coverage-contact", headers=shop_h)
+    assert contact.status_code == 200
+    assert contact.json()["hq_contact"] == f"hq-{suffix}@test.local"
+
+    refused = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(suburb="Bunbury", state_code="WA", job_address="1 Victoria St, Bunbury WA"),
+    )
+    assert refused.status_code == 422
+    assert f"hq-{suffix}@test.local" in refused.json()["detail"]
+
+
+def test_schedule_conflict_uses_operators_own_calendar_day():
+    from app.routes.shop_mobile_bookings import _schedule_conflict_warning
+    from app.models import AutoKeyJob, Customer
+
+    suffix = uuid4().hex[:8]
+    _shop_h, _op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    with Session(engine) as session:
+        op = session.get(Tenant, UUID(op_tid))
+        op.timezone = "Australia/Perth"
+        session.add(op)
+        cust = Customer(tenant_id=op.id, full_name="Early Bird")
+        session.add(cust)
+        session.flush()
+        # 7am Perth on 2 Nov is 23:00 UTC on 1 Nov: a different UTC day from the booking below.
+        session.add(
+            AutoKeyJob(
+                tenant_id=op.id,
+                customer_id=cust.id,
+                job_number="AK-00001",
+                title="Early job",
+                scheduled_at=datetime(2026, 11, 1, 23, 0, tzinfo=timezone.utc),
+            )
+        )
+        session.commit()
+
+        # 2 Nov 6pm Perth (10:00 UTC): same Perth day as the job, so it warns.
+        same_day = _schedule_conflict_warning(session, op.id, datetime(2026, 11, 2, 10, 0, tzinfo=timezone.utc))
+        assert same_day and "2026-11-02" in same_day
+        # 1 Nov 6pm Perth: a different Perth day, so no warning.
+        assert _schedule_conflict_warning(session, op.id, datetime(2026, 11, 1, 10, 0, tzinfo=timezone.utc)) is None
+
+
+def test_customer_confirmation_text_is_off_unless_enabled(monkeypatch):
+    from app.config import settings
+
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+
+    def book_and_accept(name: str) -> None:
+        created = client.post(
+            "/v1/shop-mobile-bookings",
+            headers=shop_h,
+            json=_booking_payload(customer_name=name, phone="0412345678", job_address="1 Test St"),
+        )
+        assert created.status_code == 201, created.text
+        assert client.post(f"/v1/shop-mobile-bookings/{created.json()['id']}/accept", headers=op_h).status_code == 200
+
+    def customer_texts() -> list:
+        with Session(engine) as session:
+            return session.exec(
+                select(SmsLog).where(SmsLog.tenant_id == UUID(op_tid)).where(SmsLog.event == "shop_booking_customer_confirmed")
+            ).all()
+
+    book_and_accept("Off Customer")
+    assert customer_texts() == []
+
+    monkeypatch.setattr(settings, "shop_booking_customer_confirmation_sms", True)
+    book_and_accept("On Customer")
+    texts = customer_texts()
+    assert len(texts) == 1
+    assert "On Customer" in texts[0].body
