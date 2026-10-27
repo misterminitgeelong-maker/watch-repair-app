@@ -9197,6 +9197,44 @@
         ]
       }
     },
+    "/v1/shop-mobile-bookings/coverage-contact": {
+      "get": {
+        "tags": [
+          "shop-mobile-bookings"
+        ],
+        "summary": "Coverage Contact",
+        "description": "Who a shop should contact when no operator covers its suburb.",
+        "operationId": "coverage_contact_v1_shop_mobile_bookings_coverage_contact_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "title": "Response Coverage Contact V1 Shop Mobile Bookings Coverage Contact Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/shop-mobile-bookings/suggest-operator": {
       "get": {
         "tags": [

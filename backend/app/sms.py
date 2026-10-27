@@ -1169,6 +1169,36 @@ def notify_shop_mobile_booking_accepted(
     return sid is not None
 
 
+def notify_shop_booking_customer_confirmed(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    operator_name: str,
+    shop_name: str,
+    job_number: str | None,
+) -> bool:
+    """Tell the customer a van has taken the booking their shop made, so the quote text that follows is expected."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return False
+    job_part = f" Reference {job_number}." if job_number else ""
+    body = (
+        f"Hi {customer_name.strip()}, {operator_name.strip()} mobile service has accepted the booking "
+        f"{shop_name.strip()} made for you.{job_part} They will text you a quote shortly. "
+        f"Reply to this message if anything changes."
+    )
+    sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_booking_customer_confirmed",
+    )
+    return sid is not None
+
+
 def notify_shop_mobile_booking_declined(
     session: Session,
     *,

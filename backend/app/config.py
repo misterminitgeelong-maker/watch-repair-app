@@ -94,6 +94,8 @@ class Settings(BaseSettings):
     key_enquiry_frame_ancestors: str = ""
     # IANA timezone: week/dispatch date filters and customer SMS use this for “local” calendar days.
     schedule_calendar_timezone: str = "Australia/Sydney"
+    # Text the customer when a van accepts a booking a shop made for them. Off until Minit agrees the wording.
+    shop_booking_customer_confirmation_sms: bool = False
 
     # CORS — comma-separated origins allowed in production (web app + local dev)
     # Includes Expo web dev ports (8081 Metro, 19006 legacy) for the mobile companion app.
