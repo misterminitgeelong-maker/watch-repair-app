@@ -64,7 +64,18 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Install, check and build web app
+      # The unit tests expect the default relative API URLs, so they run without
+      # VITE_API_BASE_URL (setting it made api.test.ts fail every weekly run).
+      - name: Install and check web app
+        if: steps.changes.outputs.release == 'true'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+
+      - name: Build web app and sync into Android
         if: steps.changes.outputs.release == 'true'
         working-directory: frontend
         env:
@@ -73,10 +84,6 @@ jobs:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
           RAILWAY_GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
-          npm ci
-          npm run lint
-          npm run typecheck
-          npm test
           npm run build
           npx cap sync android
 
