@@ -25,7 +25,7 @@ import JobMessageThread from '@/components/JobMessageThread'
 import { flattenInfinitePages, useOffsetPaginatedQuery } from '@/hooks/useOffsetPaginatedQuery'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import MovementAutocomplete from '@/components/MovementAutocomplete'
-import { formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
+import { cn, formatDate, STATUS_LABELS, JOB_STATUS_ORDER } from '@/lib/utils'
 import { dollarsToCents, computeGstAmounts } from '@/lib/money'
 import { preparePhotoFile } from '@/lib/photoUpload'
 import { WorkflowRail, WATCH_WORKFLOW_STEPS } from '@/components/WorkflowRail'
@@ -468,8 +468,8 @@ function InternalNotesCard({ job }: { job: RepairJob }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['job', job.id] }); setEditing(false) },
   })
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between mb-3">
+    <Card className={!editing && !job.internal_notes ? 'px-4 py-2 sm:p-5' : 'p-4 sm:p-5'}>
+      <div className={cn('flex items-center justify-between', (editing || job.internal_notes) ? 'mb-3' : 'sm:mb-3')}>
         <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Internal Notes</h2>
         {!editing && (
           <button
@@ -492,7 +492,7 @@ function InternalNotesCard({ job }: { job: RepairJob }) {
       ) : job.internal_notes ? (
         <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--ms-text-mid)' }}>{job.internal_notes}</p>
       ) : (
-        <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>
+        <p className="hidden text-sm italic sm:block" style={{ color: 'var(--ms-text-muted)' }}>
           No internal notes.{' '}
           <button onClick={() => { setDraft(''); setEditing(true) }} className="underline" style={{ color: 'var(--ms-accent)' }}>Add one</button>
         </p>
@@ -748,19 +748,23 @@ export default function JobDetailPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
+              size="sm"
               className="text-sm"
+              aria-label="Previous job"
               disabled={!boardNav.prevId}
               onClick={() => boardNav.prevId && navigate(`/jobs/${boardNav.prevId}`)}
             >
-              <ChevronLeft size={14} /> Prev
+              <ChevronLeft size={14} /><span className="hidden sm:inline"> Prev</span>
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               className="text-sm"
+              aria-label="Next job"
               disabled={!boardNav.nextId}
               onClick={() => boardNav.nextId && navigate(`/jobs/${boardNav.nextId}`)}
             >
-              Next <ChevronRight size={14} />
+              <span className="hidden sm:inline">Next </span><ChevronRight size={14} />
             </Button>
           </div>
         )}
@@ -888,7 +892,7 @@ export default function JobDetailPage() {
         {job.status === 'awaiting_quote' && (
           <div
             className="flex flex-col sm:flex-row sm:items-center gap-4"
-            style={{ padding: '14px 24px', backgroundColor: 'var(--ms-accent-light)' }}
+            style={{ padding: '14px 16px', backgroundColor: 'var(--ms-accent-light)' }}
           >
             <div className="flex-1">
               <p className="font-semibold" style={{ color: 'var(--ms-text)' }}>Ready to quote this job?</p>
@@ -896,7 +900,7 @@ export default function JobDetailPage() {
                 Enter the repair description and price — the quote will be created and sent to the customer in one step.
               </p>
             </div>
-            <Button onClick={() => setShowCreateQuote(true)} className="flex-shrink-0">
+            <Button onClick={() => setShowCreateQuote(true)} className="w-full flex-shrink-0 sm:w-auto">
               Create &amp; Send Quote
             </Button>
           </div>
@@ -1104,7 +1108,7 @@ export default function JobDetailPage() {
 
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>
-                <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>Quotes</h2>
+                <h2 className="text-sm font-semibold sm:text-base" style={{ color: 'var(--ms-text)' }}>Quotes</h2>
                 <div className="flex items-center gap-3">
                   <Button size="sm" onClick={() => setShowCreateQuote(true)}><Plus size={14} />Create &amp; send</Button>
                   <Link to="/quotes" className="inline-flex min-h-11 items-center text-xs font-medium uppercase tracking-wide transition-colors sm:min-h-0" style={{ color: 'var(--ms-accent)' }}>Manage →</Link>
@@ -1131,7 +1135,7 @@ export default function JobDetailPage() {
                       </div>
                     ))}
                     {quotes.length === 0 && !quotesQuery.isLoading && (
-                      <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No quotes yet.</p>
+                      <p className="px-4 py-3 text-sm italic sm:px-5 sm:py-5" style={{ color: 'var(--ms-text-muted)' }}>No quotes yet.</p>
                     )}
                     {quotesQuery.hasNextPage && (
                       <div className="px-5 py-3 flex justify-center" style={{ borderTop: '1px solid var(--ms-border)' }}>
@@ -1152,14 +1156,14 @@ export default function JobDetailPage() {
 
             {/* Work Logs inline on Details tab */}
             <Card>
-              <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>
-                <h2 className="font-semibold flex items-center gap-1.5" style={{ color: 'var(--ms-text)' }}><Clock size={14} />Work Logs</h2>
-                <Button onClick={() => setShowLogWork(true)}><Plus size={14} />Log Work</Button>
+              <div className="flex items-center justify-between px-4 py-2.5 sm:px-5 sm:py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+                <h2 className="flex items-center gap-1.5 text-sm font-semibold sm:text-base" style={{ color: 'var(--ms-text)' }}><Clock size={14} />Work Logs</h2>
+                <Button size="sm" onClick={() => setShowLogWork(true)}><Plus size={14} />Log work</Button>
               </div>
               {!workLogs ? (
                 <div className="px-5 py-5"><Spinner /></div>
               ) : workLogs.length === 0 ? (
-                <p className="px-5 py-5 text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No work logged yet.</p>
+                <p className="px-4 py-3 text-sm italic sm:px-5 sm:py-5" style={{ color: 'var(--ms-text-muted)' }}>No work logged yet.</p>
               ) : (
                 <div className="divide-y" style={{ borderColor: 'var(--ms-border)' }}>
                   {workLogs.map(log => (
