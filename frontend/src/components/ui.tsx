@@ -193,6 +193,7 @@ export function MobileActionMenu({
   hiddenFrom?: 'sm' | 'md'
 }) {
   const [open, setOpen] = React.useState(false)
+  const [alignLeft, setAlignLeft] = React.useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -208,7 +209,12 @@ export function MobileActionMenu({
     <div ref={rootRef} className={cn('relative', hiddenFrom === 'md' ? 'md:hidden' : 'sm:hidden')}>
       <button
         type="button"
-        onClick={() => setOpen(value => !value)}
+        onClick={() => {
+          // The menu is 14rem wide; open it rightwards when the button sits too close to the left edge.
+          const rect = rootRef.current?.getBoundingClientRect()
+          setAlignLeft(!!rect && rect.right < 232)
+          setOpen(value => !value)
+        }}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -220,7 +226,7 @@ export function MobileActionMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-[var(--ms-radius)] border p-1"
+          className={cn('absolute top-full z-40 mt-2 w-56 overflow-hidden rounded-[var(--ms-radius)] border p-1', alignLeft ? 'left-0' : 'right-0')}
           style={{ backgroundColor: 'var(--ms-surface)', borderColor: 'var(--ms-border)', boxShadow: 'var(--ms-shadow-overlay)' }}
         >
           {actions.map(action => (
