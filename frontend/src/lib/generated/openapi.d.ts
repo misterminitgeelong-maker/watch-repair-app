@@ -16600,7 +16600,7 @@ export interface operations {
             query?: {
                 /** @description day | week | month | quarter — a calendar-period shortcut for date_from/date_to */
                 period?: string | null;
-                /** @description Civil date YYYY-MM-DD within the period (default: today UTC); used with `period` */
+                /** @description Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period` */
                 reference_date?: string | null;
                 /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
                 date_from?: string | null;
@@ -16640,7 +16640,7 @@ export interface operations {
                 category?: string;
                 /** @description day | week | month | quarter — a calendar-period shortcut for date_from/date_to */
                 period?: string | null;
-                /** @description Civil date YYYY-MM-DD within the period (default: today UTC); used with `period` */
+                /** @description Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period` */
                 reference_date?: string | null;
                 /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
                 date_from?: string | null;
@@ -16879,7 +16879,7 @@ export interface operations {
             query?: {
                 /** @description day | week | month | quarter — a calendar-period shortcut for date_from/date_to */
                 period?: string | null;
-                /** @description Civil date YYYY-MM-DD within the period (default: today UTC); used with `period` */
+                /** @description Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period` */
                 reference_date?: string | null;
                 /** @description Civil date YYYY-MM-DD, inclusive (ignored if `period` is set) */
                 date_from?: string | null;
@@ -16917,7 +16917,7 @@ export interface operations {
             query: {
                 /** @description day | week | month | quarter */
                 period: string;
-                /** @description Civil date YYYY-MM-DD within the period (default: today UTC) */
+                /** @description Civil date YYYY-MM-DD within the period (default: today in the shop's timezone) */
                 reference_date?: string | null;
             };
             header?: never;
