@@ -2486,8 +2486,13 @@ export interface AutoKeyJobStatusUpdateResult extends AutoKeyJob {
   /** Machine code for why no invoice was created (e.g. "already_invoiced"), or null. */
   invoice_skip_reason?: string | null
 }
-export const updateAutoKeyJobStatus = (id: string, status: JobStatus, note?: string) =>
-  api.post<AutoKeyJobStatusUpdateResult>(`/auto-key-jobs/${id}/status`, { status, note })
+export const updateAutoKeyJobStatus = (
+  id: string,
+  status: JobStatus,
+  note?: string,
+  /** With `work_completed`: the customer paid in person, so the invoice is marked paid. */
+  payment_method?: 'eftpos' | 'cash' | 'bank',
+) => api.post<AutoKeyJobStatusUpdateResult>(`/auto-key-jobs/${id}/status`, { status, note, payment_method })
 export const deleteAutoKeyJob = (id: string) => api.delete(`/auto-key-jobs/${id}`)
 
 export interface AutoKeyQuoteLineItem {
