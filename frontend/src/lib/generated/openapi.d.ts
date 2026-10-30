@@ -13130,6 +13130,8 @@ export interface components {
             target_operator_name: string;
             /** Target Operator Shop Number */
             target_operator_shop_number?: string | null;
+            /** Target Operator Phone */
+            target_operator_phone?: string | null;
             /**
              * Created By User Id
              * Format: uuid
@@ -13185,6 +13187,8 @@ export interface components {
             job_status?: string | null;
             /** Job Scheduled At */
             job_scheduled_at?: string | null;
+            /** Invoice Status */
+            invoice_status?: string | null;
             /** Schedule Conflict Warning */
             schedule_conflict_warning?: string | null;
             /** Offer Expires At */
@@ -19760,6 +19764,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string | null;
+                q?: string | null;
                 limit?: number;
                 offset?: number;
             };

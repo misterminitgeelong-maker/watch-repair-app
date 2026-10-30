@@ -1099,6 +1099,7 @@ export interface ShopMobileBooking {
   target_operator_tenant_id: string
   target_operator_name: string
   target_operator_shop_number?: string | null
+  target_operator_phone?: string | null
   created_by_user_id: string
   status: ShopMobileBookingStatus
   customer_name: string
@@ -1122,6 +1123,7 @@ export interface ShopMobileBooking {
   resulting_job_number?: string | null
   job_status?: string | null
   job_scheduled_at?: string | null
+  invoice_status?: string | null
   schedule_conflict_warning?: string | null
   offer_expires_at?: string | null
   pool_intake_job_id?: string | null
@@ -1157,9 +1159,9 @@ export const getShopMobileCoverageContact = () =>
   api.get<{ hq_contact: string | null }>('/shop-mobile-bookings/coverage-contact')
 export const createShopMobileBooking = (payload: ShopMobileBookingCreate) =>
   api.post<ShopMobileBooking>('/shop-mobile-bookings', payload)
-export const listShopMobileBookings = (status?: ShopMobileBookingStatus) =>
+export const listShopMobileBookings = (status?: ShopMobileBookingStatus, q?: string) =>
   api.get<{ items: ShopMobileBooking[]; total: number; limit: number; offset: number }>('/shop-mobile-bookings', {
-    params: status ? { status } : {},
+    params: { ...(status ? { status } : {}), ...(q?.trim() ? { q: q.trim() } : {}) },
   })
 export const getShopMobileBooking = (id: string) =>
   api.get<ShopMobileBooking>(`/shop-mobile-bookings/${id}`)

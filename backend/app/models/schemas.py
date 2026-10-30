@@ -1573,6 +1573,7 @@ class ShopMobileBookingRead(SQLModel):
     target_operator_tenant_id: UUID
     target_operator_name: str
     target_operator_shop_number: Optional[str] = None
+    target_operator_phone: Optional[str] = None
     created_by_user_id: UUID
     status: ShopMobileBookingStatus
     customer_name: str
@@ -1596,6 +1597,8 @@ class ShopMobileBookingRead(SQLModel):
     resulting_job_number: Optional[str] = None
     job_status: Optional[str] = None
     job_scheduled_at: Optional[datetime] = None
+    #: paid / unpaid / void once the job has an invoice. Amounts are not shared with the shop.
+    invoice_status: Optional[str] = None
     schedule_conflict_warning: Optional[str] = None
     #: Deadline for the target operator to accept before this falls into the shared Dispatch Pool.
     offer_expires_at: Optional[datetime] = None
