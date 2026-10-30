@@ -111,7 +111,7 @@ export default function LandingPage() {
           <Brand />
           <nav
             aria-label="Main navigation"
-            className={`msl-links${menuOpen ? ' is-open' : ''}`}
+            className={`msl-links ${menuOpen ? 'is-open' : ''}`}
           >
             <a href="#product" onClick={() => setMenuOpen(false)}>
               The product

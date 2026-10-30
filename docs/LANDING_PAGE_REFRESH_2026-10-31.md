@@ -41,3 +41,7 @@ The user accepted adding Track a repair to the header, tightening the hero descr
 ## Main publication approval
 
 The user approved pushing this landing page to main on 31 October 2026. The branch contains commits ebc8bed1 and 4274291e, with the FAQ removed and the final navigation/mobile polish included. Production build, targeted ESLint and diff checks passed; remote main was still 91442165 immediately before pushing. Local research/QA artifacts are excluded. Live deployment is separate from Git push and must be verified before calling the page live.
+
+## CI correction
+
+GitHub CI run 41142554095 passed both backend jobs, frontend lint and typecheck, but failed the class-extraction source guard on the navigation class template. Inserted the required literal space before interpolation. Full frontend validation after correction: 62 test files / 400 tests passed, lint 0 errors / 19 existing warnings, typecheck and diff checks passed. The initial targeted route/legal checks did not exercise this source guard.
