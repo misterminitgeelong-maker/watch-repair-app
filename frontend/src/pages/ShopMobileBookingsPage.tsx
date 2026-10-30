@@ -9,6 +9,7 @@ import {
   getShopMobileCoverageContact,
   suggestShopMobileOperator,
   type ShopMobileBooking,
+  type ShopMobileBookingStatus,
   type ShopMobileOperatorOption,
   type ShopMobileVisitLocationType,
 } from '@/lib/api'
@@ -35,6 +36,32 @@ const ROUTING_LABEL: Record<string, string> = {
   fallback_operator: 'Fallback operator',
   nearest_operator: 'Nearest operator',
   manual_override: 'Manual override',
+}
+
+const STATUS_FILTERS: { value: '' | ShopMobileBookingStatus; label: string }[] = [
+  { value: '', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'moved_to_pool', label: 'Moved to Dispatch Pool' },
+  { value: 'declined', label: 'Declined' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'expired', label: 'Expired' },
+]
+
+const PAYMENT_LABEL: Record<string, string> = { paid: 'Paid', unpaid: 'Awaiting payment', void: 'Invoice voided' }
+
+function formatWhen(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+}
+
+function formatTimeOnly(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })
 }
 
 function statusVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {
@@ -99,9 +126,17 @@ export default function ShopMobileBookingsPage() {
     [applyRoutingFromAddress],
   )
 
+  const [statusFilter, setStatusFilter] = useState<'' | ShopMobileBookingStatus>('')
+  const [searchText, setSearchText] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearchQuery(searchText.trim()), 300)
+    return () => window.clearTimeout(t)
+  }, [searchText])
+
   const { data: bookings = [], isLoading: listLoading } = useQuery({
-    queryKey: ['shop-mobile-bookings'],
-    queryFn: () => listShopMobileBookings().then(r => r.data.items),
+    queryKey: ['shop-mobile-bookings', statusFilter, searchQuery],
+    queryFn: () => listShopMobileBookings(statusFilter || undefined, searchQuery || undefined).then(r => r.data.items),
   })
 
   useEffect(() => {
@@ -343,11 +378,28 @@ export default function ShopMobileBookingsPage() {
       <Card>
         <div className="px-5 py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>
           <h2 className="font-semibold" style={{ color: 'var(--ms-text)' }}>My booking requests</h2>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <Input
+              label="Search"
+              placeholder="Name, phone, rego, car or address"
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              className="w-72"
+            />
+            <Select
+              label="Status"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as '' | ShopMobileBookingStatus)}
+              className="w-56"
+            >
+              {STATUS_FILTERS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </Select>
+          </div>
         </div>
         {listLoading ? (
           <Spinner />
         ) : bookings.length === 0 ? (
-          <EmptyState message="No booking requests yet." />
+          <EmptyState message={statusFilter || searchQuery ? 'No booking requests match.' : 'No booking requests yet.'} />
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--ms-border)' }}>
             {bookings.map((b: ShopMobileBooking) => (
@@ -356,7 +408,19 @@ export default function ShopMobileBookingsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{b.customer_name}</p>
                     <Badge variant={statusVariant(b.status)}>{STATUS_LABEL[b.status] ?? b.status}</Badge>
+                    {b.status === 'accepted' && b.invoice_status && (
+                      <Badge variant={b.invoice_status === 'paid' ? 'success' : b.invoice_status === 'void' ? 'danger' : 'warning'}>
+                        {PAYMENT_LABEL[b.invoice_status] ?? b.invoice_status}
+                      </Badge>
+                    )}
                   </div>
+                  {[b.vehicle_make, b.vehicle_model, b.registration_plate].some(x => x?.trim()) && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>
+                      {[b.vehicle_make, b.vehicle_model].filter(x => x?.trim()).join(' ')}
+                      {b.registration_plate?.trim() ? ` · ${b.registration_plate.trim()}` : ''}
+                      {b.job_type ? ` · ${b.job_type}` : ''}
+                    </p>
+                  )}
                   <p className="text-xs mt-1" style={{ color: 'var(--ms-text-muted)' }}>
                     Operator: {formatTenantLabel(b.target_operator_name, b.target_operator_shop_number)} · {formatDate(b.created_at)}
                   </p>
@@ -366,6 +430,21 @@ export default function ShopMobileBookingsPage() {
                       {b.operator_routing_rule
                         ? ` · ${ROUTING_LABEL[b.operator_routing_rule] ?? b.operator_routing_rule}`
                         : ''}
+                    </p>
+                  )}
+                  {b.status === 'pending' && b.offer_expires_at && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>
+                      Operator has until {formatTimeOnly(b.offer_expires_at)} to respond, then it goes to the Dispatch Pool
+                    </p>
+                  )}
+                  {b.status === 'accepted' && (b.job_scheduled_at || b.preferred_scheduled_at) && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>
+                      Booked for {formatWhen(b.job_scheduled_at ?? b.preferred_scheduled_at)}
+                    </p>
+                  )}
+                  {(b.status === 'accepted' || b.status === 'pending') && b.target_operator_phone && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--ms-text-mid)' }}>
+                      Operator phone: <a href={`tel:${b.target_operator_phone}`} className="underline">{b.target_operator_phone}</a>
                     </p>
                   )}
                   {b.status === 'accepted' && b.resulting_job_number && (

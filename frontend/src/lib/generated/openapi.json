@@ -9376,6 +9376,23 @@
             }
           },
           {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -40572,6 +40589,17 @@
             ],
             "title": "Target Operator Shop Number"
           },
+          "target_operator_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Operator Phone"
+          },
           "created_by_user_id": {
             "type": "string",
             "format": "uuid",
@@ -40807,6 +40835,17 @@
               }
             ],
             "title": "Job Scheduled At"
+          },
+          "invoice_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Status"
           },
           "schedule_conflict_warning": {
             "anyOf": [

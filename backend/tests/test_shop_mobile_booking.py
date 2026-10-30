@@ -702,3 +702,68 @@ def test_customer_confirmation_text_is_off_unless_enabled(monkeypatch):
     texts = customer_texts()
     assert len(texts) == 1
     assert "On Customer" in texts[0].body
+
+
+def test_shop_list_shows_operator_phone_payment_status_and_searches():
+    from app.models import AutoKeyInvoice
+
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    with Session(engine) as session:
+        tenant = session.get(Tenant, UUID(op_tid))
+        tenant.mobile_dispatch_phone = "+61400111222"
+        session.add(tenant)
+        session.commit()
+
+    first = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(customer_name="Alice Smith", phone="0411 222 333", registration_plate="XYZ987"),
+    )
+    second = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(customer_name="Bob Jones", registration_plate="ABC123"),
+    )
+    assert first.status_code == 201 and second.status_code == 201
+    assert first.json()["target_operator_phone"] == "+61400111222"
+    assert first.json()["invoice_status"] is None
+
+    accepted = client.post(f"/v1/shop-mobile-bookings/{first.json()['id']}/accept", headers=op_h)
+    assert accepted.status_code == 200, accepted.text
+    job_id = UUID(accepted.json()["resulting_auto_key_job_id"])
+
+    def _shop_row(booking_id: str) -> dict:
+        res = client.get("/v1/shop-mobile-bookings", headers=shop_h)
+        return next(r for r in _items(res) if r["id"] == booking_id)
+
+    assert _shop_row(first.json()["id"])["invoice_status"] is None
+
+    with Session(engine) as session:
+        session.add(
+            AutoKeyInvoice(
+                tenant_id=UUID(op_tid),
+                auto_key_job_id=job_id,
+                invoice_number=f"INV-{suffix}",
+                status="unpaid",
+                total_cents=25000,
+            )
+        )
+        session.commit()
+    assert _shop_row(first.json()["id"])["invoice_status"] == "unpaid"
+    assert "total_cents" not in _shop_row(first.json()["id"])
+
+    with Session(engine) as session:
+        invoice = session.exec(select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_job_id == job_id)).one()
+        invoice.status = "paid"
+        session.add(invoice)
+        session.commit()
+    assert _shop_row(first.json()["id"])["invoice_status"] == "paid"
+
+    by_name = client.get("/v1/shop-mobile-bookings", headers=shop_h, params={"q": "alice"})
+    assert [r["id"] for r in _items(by_name)] == [first.json()["id"]]
+    by_rego = client.get("/v1/shop-mobile-bookings", headers=shop_h, params={"q": "abc123"})
+    assert [r["id"] for r in _items(by_rego)] == [second.json()["id"]]
+    by_phone = client.get("/v1/shop-mobile-bookings", headers=shop_h, params={"q": "0411222333"})
+    assert [r["id"] for r in _items(by_phone)] == [first.json()["id"]]
+    assert by_phone.json()["total"] == 1

@@ -33,6 +33,7 @@ from .. import email_client
 from .. import sms as sms_service
 from ..shop_number import format_tenant_label
 from ..models import (
+    AutoKeyInvoice,
     AutoKeyJob,
     Customer,
     CustomerAccountMembership,
@@ -458,6 +459,36 @@ def _schedule_conflict_warning(
     )
 
 
+def _invoice_status_for_job(session: Session, job_id: UUID) -> str | None:
+    """Payment state of the job for the requesting shop: "paid" once any invoice is paid,
+    else "unpaid", "void" when every invoice is void, None before an invoice exists.
+    Amounts are deliberately not exposed to the shop."""
+    statuses = {
+        (st or "").strip().lower()
+        for st in session.exec(select(AutoKeyInvoice.status).where(AutoKeyInvoice.auto_key_job_id == job_id)).all()
+    }
+    if not statuses:
+        return None
+    if "paid" in statuses:
+        return "paid"
+    if "unpaid" in statuses:
+        return "unpaid"
+    return "void"
+
+
+def _booking_matches_search(row: ShopMobileBookingRequest, needle: str) -> bool:
+    haystack = " ".join(
+        x for x in (
+            row.customer_name, row.registration_plate, row.vehicle_make, row.vehicle_model,
+            row.job_address, row.job_suburb, row.email,
+        ) if x
+    ).lower()
+    if needle in haystack:
+        return True
+    digits = _digits_phone(needle)
+    return bool(digits and len(digits) >= 3 and digits in (_digits_phone(row.phone) or ""))
+
+
 def _to_read(
     session: Session,
     row: ShopMobileBookingRequest,
@@ -469,6 +500,7 @@ def _to_read(
     job_number: str | None = None
     job_status: str | None = None
     job_scheduled_at: datetime | None = None
+    invoice_status: str | None = None
     if row.resulting_auto_key_job_id:
         job = session.get(AutoKeyJob, row.resulting_auto_key_job_id)
         if job:
@@ -476,6 +508,7 @@ def _to_read(
             if row.status == "accepted":
                 job_status = job.status
                 job_scheduled_at = job.scheduled_at
+                invoice_status = _invoice_status_for_job(session, job.id)
     return ShopMobileBookingRead(
         id=row.id,
         parent_account_id=row.parent_account_id,
@@ -485,6 +518,7 @@ def _to_read(
         target_operator_tenant_id=row.target_operator_tenant_id,
         target_operator_name=op.name if op else "Unknown operator",
         target_operator_shop_number=op.shop_number if op else None,
+        target_operator_phone=((op.mobile_dispatch_phone or op.shop_phone or "").strip() or None) if op else None,
         created_by_user_id=row.created_by_user_id,
         status=row.status,  # type: ignore[arg-type]
         customer_name=row.customer_name,
@@ -508,6 +542,7 @@ def _to_read(
         resulting_job_number=job_number,
         job_status=job_status,
         job_scheduled_at=job_scheduled_at,
+        invoice_status=invoice_status,
         schedule_conflict_warning=schedule_conflict_warning,
         offer_expires_at=row.offer_expires_at,
         pool_intake_job_id=row.pool_intake_job_id,
@@ -759,6 +794,7 @@ async def create_booking(
 @router.get("", response_model=ShopMobileBookingPageResponse)
 def list_bookings(
     status: str | None = Query(default=None),
+    q_text: str | None = Query(default=None, alias="q", max_length=100),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     auth: AuthContext = Depends(get_auth_context),
@@ -785,6 +821,9 @@ def list_bookings(
             expired_any = True
     if expired_any:
         session.commit()
+    needle = (q_text or "").strip().lower()
+    if needle:
+        rows = [r for r in rows if _booking_matches_search(r, needle)]
     total = len(rows)
     page = rows[offset : offset + limit]
     return ShopMobileBookingPageResponse(
