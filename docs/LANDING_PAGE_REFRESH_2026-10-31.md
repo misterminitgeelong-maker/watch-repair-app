@@ -12,7 +12,7 @@ The user requested a new landing page that feels less AI-designed and draws on F
 - White/navy/blue page; real product screen switcher with keyboard navigation, accessible native enlargement dialog, mobile menu, trade pages, pricing, FAQs and functional privacy/account-deletion/repair-tracking links.
 - Retains signed-in dashboard redirect, existing routes, pricing and trial/card disclosures. No invented testimonials, customer logos, success metrics or fabricated product panels.
 - Screenshots captured on 31 October from the existing public demo: watch job list, mobile job list, invoices and watch repair ticket. Records are demo/sample records. Captures show the actual UI and retain its own colours; no real-shop customer records were used.
-- Preview only. No main merge, live deployment or additional Google Play update was performed.
+- Initially delivered as a local preview. The user subsequently approved pushing the completed landing page to main (see below). No additional Google Play update was performed.
 
 ## Template references and provenance
 
@@ -37,3 +37,7 @@ The user liked the preview and requested removing FAQs. Removed the FAQ content,
 ## Final polish
 
 The user accepted adding Track a repair to the header, tightening the hero description and replacing small-screen desktop previews with genuine phone screenshots. Captured fresh watch-list, mobile-services and invoice phone screens from the public demo. Header tracking stays visible on phones; login remains available in the mobile menu. Browser verified all phone sources load, desktop still uses the wide capture, and 320/390/1440 layouts have no horizontal overflow.
+
+## Main publication approval
+
+The user approved pushing this landing page to main on 31 October 2026. The branch contains commits ebc8bed1 and 4274291e, with the FAQ removed and the final navigation/mobile polish included. Production build, targeted ESLint and diff checks passed; remote main was still 91442165 immediately before pushing. Local research/QA artifacts are excluded. Live deployment is separate from Git push and must be verified before calling the page live.
