@@ -4,7 +4,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  ChevronDown,
   KeyRound,
   Menu,
   Scissors,
@@ -20,6 +19,7 @@ const screens = [
     id: 'watch',
     label: 'Watch repairs',
     image: 'watch-jobs.jpg',
+    phoneImage: 'watch-jobs-phone.jpg',
     alt: 'Actual Mainspring watch repair list with customer, status, priority and quote columns',
     description:
       'Know what’s on the bench, waiting for approval or ready to collect.',
@@ -28,6 +28,7 @@ const screens = [
     id: 'mobile',
     label: 'Mobile services',
     image: 'mobile-jobs.jpg',
+    phoneImage: 'mobile-jobs-phone.jpg',
     alt: 'Actual Mainspring mobile job list with vehicles, technicians and scheduled bookings',
     description:
       'Keep vehicle details, bookings and technicians together for every callout.',
@@ -36,36 +37,10 @@ const screens = [
     id: 'invoices',
     label: 'Invoices',
     image: 'invoices.jpg',
+    phoneImage: 'invoices-phone.jpg',
     alt: 'Actual Mainspring invoice list showing paid and unpaid demo invoices',
     description:
       'See what’s paid, what’s outstanding and which job it belongs to.',
-  },
-]
-const faqs = [
-  {
-    question: 'Is Mainspring right for my business?',
-    answer:
-      'Mainspring is designed for watch repair shops, shoe repair businesses and mobile automotive locksmiths. You can use it for one trade or run all three service lines together.',
-  },
-  {
-    question: 'Can I try it before I subscribe?',
-    answer:
-      'Yes. Explore the interactive demo with sample jobs, or start a 14-day trial with your own shop. A card is required to start the trial; billing begins after the trial ends.',
-  },
-  {
-    question: 'Will it work on my phone or shop tablet?',
-    answer:
-      'Yes. The web app works on a computer, tablet or phone, and Mainspring is also available on Google Play. Your team uses the same shop data across devices.',
-  },
-  {
-    question: 'Can I manage more than one location?',
-    answer:
-      'The Pro plan includes a multi-site parent account. It starts at A$90 per month, with each additional shop location billed at A$25 per month.',
-  },
-  {
-    question: 'Do I need all three trades?',
-    answer:
-      'No. Use the service lines that suit your business. The Shop plan includes watch repairs, shoe repairs and mobile services for A$50 per month at one location.',
   },
 ]
 
@@ -147,11 +122,12 @@ export default function LandingPage() {
             <a href="#pricing" onClick={() => setMenuOpen(false)}>
               Pricing
             </a>
-            <a href="#questions" onClick={() => setMenuOpen(false)}>
-              FAQs
-            </a>
+            <Link className="msl-mobile-login" to="/login">Log in</Link>
           </nav>
           <div className="msl-nav-actions">
+            <Link className="msl-track" to="/customer-portal">
+              Track a repair
+            </Link>
             <Link className="msl-login" to="/login">
               Log in
             </Link>
@@ -182,9 +158,8 @@ export default function LandingPage() {
               <span>in good order.</span>
             </h1>
             <p className="msl-hero-copy">
-              Jobs, quotes, customer updates and invoices.
-              <br className="msl-desktop-break" /> Together in one
-              straightforward workspace for watches, shoes and mobile keys.
+              Manage watch repairs, shoe repairs and mobile locksmith jobs—from
+              intake to invoice.
             </p>
             <div className="msl-hero-actions">
               <Link className="msl-button" to="/signup">
@@ -263,6 +238,8 @@ export default function LandingPage() {
                 <span />
                 <p>mainspring.au</p>
               </div>
+              <picture>
+                <source media="(max-width: 540px)" srcSet={`/marketing/product/${screen.phoneImage}`} />
               <img
                 key={screen.image}
                 className="msl-product-screen"
@@ -272,6 +249,7 @@ export default function LandingPage() {
                 height="809"
                 fetchPriority={screenIndex === 0 ? 'high' : 'auto'}
               />
+              </picture>
             </div>
             <div className="msl-screen-caption">
               <p>{screen.description}</p>
@@ -506,27 +484,6 @@ export default function LandingPage() {
             Prices in Australian dollars. A card is required to start your
             trial. Billing begins after 14 days.
           </p>
-        </section>
-        <section
-          className="msl-faq msl-wrap"
-          id="questions"
-          aria-labelledby="faq-title"
-        >
-          <div>
-            <p className="msl-eyebrow">A few practical questions</p>
-            <h2 id="faq-title">Good to know.</h2>
-          </div>
-          <div className="msl-faq-list">
-            {faqs.map((item) => (
-              <details key={item.question}>
-                <summary>
-                  {item.question}
-                  <ChevronDown size={18} aria-hidden="true" />
-                </summary>
-                <p>{item.answer}</p>
-              </details>
-            ))}
-          </div>
         </section>
         <section className="msl-closing">
           <div className="msl-wrap">

@@ -29,3 +29,11 @@ These are **visual references**, not imported template source. This implementati
 - Preview captures: `artifacts/landing-page-2026-10-31/desktop-hero.jpg`, `desktop.jpg`, `mobile.jpg` in the isolated checkout. Build output log is in the same directory.
 
 Further visual feedback should be applied to this isolated checkout; preserve the central workspace's unrelated work.
+
+## Accepted revision
+
+The user liked the preview and requested removing FAQs. Removed the FAQ content, navigation link, data and unused styles. Pricing now leads directly into the closing call to action.
+
+## Final polish
+
+The user accepted adding Track a repair to the header, tightening the hero description and replacing small-screen desktop previews with genuine phone screenshots. Captured fresh watch-list, mobile-services and invoice phone screens from the public demo. Header tracking stays visible on phones; login remains available in the mobile menu. Browser verified all phone sources load, desktop still uses the wide capture, and 320/390/1440 layouts have no horizontal overflow.

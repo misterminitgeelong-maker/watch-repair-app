@@ -501,50 +501,6 @@
   text-align: center;
   margin-top: -4px !important;
 }
-.msl-faq {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 55px;
-  padding-top: 65px;
-  padding-bottom: 85px;
-  border-top: 1px solid var(--lp-line);
-}
-.msl-faq h2 {
-  margin-top: 15px;
-}
-.msl-faq-list {
-  border-top: 1px solid var(--lp-line);
-}
-.msl-faq details {
-  border-bottom: 1px solid var(--lp-line);
-}
-.msl-faq summary {
-  padding: 22px 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: center;
-  list-style: none;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.msl-faq summary::-webkit-details-marker {
-  display: none;
-}
-.msl-faq summary svg {
-  color: #738197;
-  flex-shrink: 0;
-}
-.msl-faq details[open] summary svg {
-  transform: rotate(180deg);
-}
-.msl-faq details p {
-  padding: 0 35px 23px 0;
-  font-size: 13px;
-  color: var(--lp-muted);
-  line-height: 1.85;
-}
 .msl-closing {
   background: #182f50;
   color: #fff;
@@ -844,12 +800,6 @@
   .msl-pricing-note {
     grid-column: 1/-1;
   }
-  .msl-faq {
-    grid-template-columns: 1fr;
-    gap: 30px;
-    padding-top: 48px;
-    padding-bottom: 60px;
-  }
   .msl-closing h2 {
     font-size: 35px;
   }
@@ -1098,19 +1048,6 @@
     text-align: left;
     line-height: 1.8;
   }
-  .msl-faq {
-    padding-top: 40px;
-    padding-bottom: 48px;
-    gap: 25px;
-  }
-  .msl-faq summary {
-    font-size: 12px;
-    padding: 19px 0;
-  }
-  .msl-faq details p {
-    font-size: 12px;
-    padding-right: 9px;
-  }
   .msl-closing {
     padding: 43px 0;
   }
@@ -1169,3 +1106,20 @@
   font-family: inherit;
   color: inherit;
 }
+
+.msl-track { font-size: 12px; font-weight: 500; white-space: nowrap; }
+.msl-track:hover { color: var(--lp-blue); }
+.msl-screen-frame picture { display: block; }
+@media (max-width: 540px) {
+  .msl-nav { gap: 8px; }
+  .msl-nav-actions { gap: 5px; }
+  .msl-brand > span { font-size: 18px; }
+  .msl-brand img { width: 28px; height: 28px; }
+  .msl-brand { gap: 7px; }
+  .msl-nav-actions .msl-login { display: none; }
+  .msl-track { font-size: 10px; }
+  .msl-product-screen { aspect-ratio: 384 / 730; object-fit: cover; object-position: top; }
+}
+.msl-mobile-login { display: none; }
+.msl-track { padding-block: 12px; }
+@media (max-width: 540px) { .msl-mobile-login { display: block; } }
