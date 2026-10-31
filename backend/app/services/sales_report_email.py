@@ -23,7 +23,7 @@ PeriodKind = Literal["week", "month"]
 _PERIOD_LABELS: dict[PeriodKind, str] = {"week": "Weekly", "month": "Monthly"}
 
 
-def _previous_period_bounds(period: PeriodKind, today: date) -> tuple[datetime, datetime, str, str]:
+def _previous_period_bounds(period: PeriodKind, today: date, tz=timezone.utc) -> tuple[datetime, datetime, str, str]:
     """Bounds for the most recently completed week/month relative to today."""
     from ..report_periods import resolve_period_bounds
 
@@ -31,7 +31,7 @@ def _previous_period_bounds(period: PeriodKind, today: date) -> tuple[datetime, 
         reference = today - timedelta(days=7)
     else:
         reference = today.replace(day=1) - timedelta(days=1)  # any day in the previous month
-    return resolve_period_bounds(period, reference)
+    return resolve_period_bounds(period, reference, tz)
 
 
 def _is_due(last_sent_at: datetime | None, period: PeriodKind, today: date) -> bool:
@@ -53,7 +53,10 @@ def _shop_name(session: Session, cache: dict[UUID, str], tenant_id: UUID) -> str
 def _send_one_report(session: Session, tenant_id: UUID, to_email: str, shop_name: str, period: PeriodKind) -> bool:
     from ..routes.reports import _build_sales_csv_bytes, _compute_category_summary
 
-    start_dt, end_dt, start_ymd, end_ymd = _previous_period_bounds(period, datetime.now(timezone.utc).date())
+    from ..mobile_cockpit import tenant_timezone
+
+    tz = tenant_timezone(session.get(Tenant, tenant_id))
+    start_dt, end_dt, start_ymd, end_ymd = _previous_period_bounds(period, datetime.now(timezone.utc).astimezone(tz).date(), tz)
     category_summary = _compute_category_summary(session, tenant_id, start_dt, end_dt)
     csv_bytes = _build_sales_csv_bytes(session, tenant_id, "all", start_dt, end_dt)
     sent, _err = email_client.send_sales_report_email(

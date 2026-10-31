@@ -33,7 +33,7 @@ from ..mobile_cockpit import (
     naive_utc,
     tenant_timezone,
 )
-from ..report_periods import VALID_PERIODS, parse_reference_date, resolve_period_bounds
+from ..report_periods import VALID_PERIODS, local_day_end_utc, local_day_start_utc, parse_reference_date, resolve_period_bounds
 from ..mobile_commission import DEFAULT_ELIGIBLE_STATUSES, commission_for_period_lines, parse_mobile_commission_rules
 from ..models import AutoKeyInvoice, AutoKeyJob, AutoKeyQuote, Customer, Invoice, JobStatusHistory, Payment, Quote, RepairJob, Shoe, ShoeRepairJob, ShoeRepairJobItem, Tenant, TenantEventLog, TenantEventLogRead, User, Watch, WorkLog
 
@@ -53,22 +53,23 @@ _WATCH_DONE_STATUSES = ("collected", "awaiting_collection", "completed")
 _EXCLUDED_INVOICE_STATUSES = ("void", "refunded")
 
 
-def _shop_calendar_bounds(date_from: str | None, date_to: str | None) -> tuple[datetime | None, datetime | None]:
+def _shop_calendar_bounds(
+    date_from: str | None, date_to: str | None, tz: ZoneInfo | None = None
+) -> tuple[datetime | None, datetime | None]:
     """Convert shop-local civil dates to inclusive UTC report bounds."""
-    try:
-        shop_tz = ZoneInfo(settings.schedule_calendar_timezone)
-    except Exception:
-        shop_tz = timezone.utc
+    shop_tz = tz or tenant_timezone(None)
 
     start_dt: datetime | None = None
     end_dt: datetime | None = None
     if date_from:
-        parsed = datetime.strptime(date_from, "%Y-%m-%d")
-        start_dt = parsed.replace(tzinfo=shop_tz).astimezone(timezone.utc)
+        start_dt = local_day_start_utc(datetime.strptime(date_from, "%Y-%m-%d").date(), shop_tz)
     if date_to:
-        parsed = datetime.strptime(date_to, "%Y-%m-%d")
-        end_dt = parsed.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=shop_tz).astimezone(timezone.utc)
+        end_dt = local_day_end_utc(datetime.strptime(date_to, "%Y-%m-%d").date(), shop_tz)
     return start_dt, end_dt
+
+
+def _tenant_tz(session: Session, tenant_id: UUID) -> ZoneInfo:
+    return tenant_timezone(session.get(Tenant, tenant_id))
 
 
 def _compute_period_summary(
@@ -309,8 +310,12 @@ def _period_report_payload(
 ) -> dict[str, Any]:
     if period not in VALID_PERIODS:
         raise HTTPException(status_code=400, detail=f"period must be one of: {', '.join(sorted(VALID_PERIODS))}")
-    ref = parse_reference_date(reference_date)
-    start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref)  # type: ignore[arg-type]
+    tz = _tenant_tz(session, tenant_id)
+    try:
+        ref = parse_reference_date(reference_date, tz)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="reference_date must be in YYYY-MM-DD format") from None
+    start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref, tz)  # type: ignore[arg-type]
     metrics = _compute_period_summary(session, tenant_id, start_dt, end_dt)
     return {
         "period": period,
@@ -1108,14 +1113,13 @@ def _mobile_sales_rows(
     ]
 
 
-def _parse_ymd_bound(value: str, *, field: str, end_of_day: bool) -> datetime:
+def _parse_ymd_bound(value: str, *, field: str, end_of_day: bool, tz: ZoneInfo | None = None) -> datetime:
     try:
-        parsed = datetime.strptime(value, "%Y-%m-%d")
+        parsed = datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail=f"{field} must be in YYYY-MM-DD format") from None
-    if end_of_day:
-        parsed = parsed.replace(hour=23, minute=59, second=59)
-    return parsed.replace(tzinfo=timezone.utc)
+    shop_tz = tz or tenant_timezone(None)
+    return local_day_end_utc(parsed, shop_tz) if end_of_day else local_day_start_utc(parsed, shop_tz)
 
 
 def _resolve_sales_date_bounds(
@@ -1123,20 +1127,26 @@ def _resolve_sales_date_bounds(
     reference_date: str | None,
     date_from: str | None,
     date_to: str | None,
+    tz: ZoneInfo | None = None,
 ) -> tuple[datetime | None, datetime | None, str]:
     """Shared date-bounds resolution for the sales export and category-summary endpoints.
 
-    Returns (start_dt, end_dt, label_suffix) where bounds are None when unfiltered (all-time).
+    Civil dates are read in the shop's timezone (``tz``). Returns (start_dt, end_dt, label_suffix)
+    where bounds are None when unfiltered (all-time).
     """
+    shop_tz = tz or tenant_timezone(None)
     if period is not None:
         if period not in VALID_PERIODS:
             raise HTTPException(status_code=400, detail=f"period must be one of: {', '.join(sorted(VALID_PERIODS))}")
-        ref = parse_reference_date(reference_date)
-        start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref)  # type: ignore[arg-type]
+        try:
+            ref = parse_reference_date(reference_date, shop_tz)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="reference_date must be in YYYY-MM-DD format") from None
+        start_dt, end_dt, start_ymd, end_ymd = resolve_period_bounds(period, ref, shop_tz)  # type: ignore[arg-type]
         return start_dt, end_dt, f"-{start_ymd}_{end_ymd}"
 
-    start_dt = _parse_ymd_bound(date_from, field="date_from", end_of_day=False) if date_from else None
-    end_dt = _parse_ymd_bound(date_to, field="date_to", end_of_day=True) if date_to else None
+    start_dt = _parse_ymd_bound(date_from, field="date_from", end_of_day=False, tz=shop_tz) if date_from else None
+    end_dt = _parse_ymd_bound(date_to, field="date_to", end_of_day=True, tz=shop_tz) if date_to else None
     suffix = f"-{date_from or 'start'}_{date_to or 'end'}" if (start_dt is not None or end_dt is not None) else ""
     return start_dt, end_dt, suffix
 
@@ -1196,14 +1206,16 @@ def get_category_summary(
         default=None, description="day | week | month | quarter — a calendar-period shortcut for date_from/date_to"
     ),
     reference_date: str | None = Query(
-        default=None, description="Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+        default=None, description="Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`"
     ),
     date_from: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
     date_to: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
     auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
-    start_dt, end_dt, _ = _resolve_sales_date_bounds(period, reference_date, date_from, date_to)
+    start_dt, end_dt, _ = _resolve_sales_date_bounds(
+        period, reference_date, date_from, date_to, _tenant_tz(session, auth.tenant_id)
+    )
     return _compute_category_summary(session, auth.tenant_id, start_dt, end_dt)
 
 
@@ -1239,7 +1251,7 @@ def export_sales_csv(
         default=None, description="day | week | month | quarter — a calendar-period shortcut for date_from/date_to"
     ),
     reference_date: str | None = Query(
-        default=None, description="Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+        default=None, description="Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`"
     ),
     date_from: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
     date_to: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
@@ -1250,7 +1262,9 @@ def export_sales_csv(
     if category not in _SALES_CATEGORIES:
         raise HTTPException(status_code=400, detail=f"category must be one of: {', '.join(sorted(_SALES_CATEGORIES))}")
 
-    start_dt, end_dt, filename_suffix = _resolve_sales_date_bounds(period, reference_date, date_from, date_to)
+    start_dt, end_dt, filename_suffix = _resolve_sales_date_bounds(
+        period, reference_date, date_from, date_to, _tenant_tz(session, auth.tenant_id)
+    )
     csv_bytes = _build_sales_csv_bytes(session, auth.tenant_id, category, start_dt, end_dt)
     filename = f"sales-{category}{filename_suffix}.csv"
     return StreamingResponse(
@@ -1268,12 +1282,13 @@ def get_auto_key_reports(
     session: Session = Depends(get_session),
 ):
     tenant_id = auth.tenant_id
+    tz = _tenant_tz(session, tenant_id)
     period_start: datetime | None = None
     period_end: datetime | None = None
 
     stmt = select(AutoKeyJob).where(AutoKeyJob.tenant_id == tenant_id)
     try:
-        period_start, period_end = _shop_calendar_bounds(date_from, date_to)
+        period_start, period_end = _shop_calendar_bounds(date_from, date_to, tz)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD") from exc
     if period_start:
@@ -1383,8 +1398,8 @@ def get_auto_key_reports(
             )
         ).all()
         previous_period = {
-            "date_from": previous_start.date().isoformat(),
-            "date_to": previous_end.date().isoformat(),
+            "date_from": previous_start.astimezone(tz).date().isoformat(),
+            "date_to": previous_end.astimezone(tz).date().isoformat(),
             "jobs": prev_jobs,
             "invoiced_cents": sum(inv.total_cents for inv in prev_invoices),
             "paid_cents": sum(inv.total_cents for inv in prev_paid),
@@ -1426,9 +1441,7 @@ def get_auto_key_reports(
 
     week_map: dict[str, dict] = {}
     for j in jobs:
-        dt = j.created_at
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+        dt = (j.created_at if j.created_at.tzinfo else j.created_at.replace(tzinfo=timezone.utc)).astimezone(tz)
         week_start = (dt - timedelta(days=dt.weekday())).date().isoformat()
         if week_start not in week_map:
             week_map[week_start] = {"week_start": week_start, "week_label": week_start, "jobs": 0, "revenue_cents": 0}
@@ -1453,7 +1466,7 @@ def get_auto_key_reports(
     avg_cycle_hours = round(sum(cycle_hours) / len(cycle_hours), 1) if cycle_hours else None
 
     # Same-day invoice rate: of completed jobs with an invoice, share invoiced on the
-    # same civil (UTC) day work was completed.
+    # same shop-local day work was completed.
     invoiced_completed = 0
     same_day_invoiced = 0
     for j in completed_jobs:
@@ -1463,7 +1476,7 @@ def get_auto_key_reports(
         invoiced_completed += 1
         done = _as_utc(j.work_completed_at)
         inv_dt = _as_utc(inv.created_at)
-        if done and inv_dt and done.date() == inv_dt.date():
+        if done and inv_dt and done.astimezone(tz).date() == inv_dt.astimezone(tz).date():
             same_day_invoiced += 1
 
     # Lead → quote conversion: share of jobs (leads) that have at least one quote.
@@ -1477,13 +1490,13 @@ def get_auto_key_reports(
         jobs_with_quote = {qid for qid in quoted_rows if qid is not None}
 
     # Schedule adherence: of scheduled jobs now completed, share completed on/before the
-    # civil (UTC) day they were scheduled for.
+    # shop-local day they were scheduled for.
     scheduled_completed = [j for j in completed_jobs if j.scheduled_at is not None]
     on_time = 0
     for j in scheduled_completed:
         done = _as_utc(j.work_completed_at)
         sched = _as_utc(j.scheduled_at)
-        if done and sched and done.date() <= sched.date():
+        if done and sched and done.astimezone(tz).date() <= sched.astimezone(tz).date():
             on_time += 1
 
     kpis = {
@@ -2042,7 +2055,7 @@ def get_auto_key_commission_report(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     referring_shop_tenant_id: UUID | None = Query(default=None),
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
     tenant_id = auth.tenant_id
@@ -2058,7 +2071,7 @@ def get_auto_key_commission_report(
     if referring_shop_tenant_id is not None:
         stmt = stmt.where(AutoKeyJob.referring_shop_tenant_id == referring_shop_tenant_id)
     try:
-        period_start, period_end = _shop_calendar_bounds(date_from, date_to)
+        period_start, period_end = _shop_calendar_bounds(date_from, date_to, _tenant_tz(session, tenant_id))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD") from exc
     if period_start:
@@ -2171,14 +2184,16 @@ def get_gst_summary(
         default=None, description="day | week | month | quarter — a calendar-period shortcut for date_from/date_to"
     ),
     reference_date: str | None = Query(
-        default=None, description="Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+        default=None, description="Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`"
     ),
     date_from: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
     date_to: str | None = Query(default=None, description="Civil date YYYY-MM-DD, inclusive (ignored if `period` is set)"),
     auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
-    start_dt, end_dt, _ = _resolve_sales_date_bounds(period, reference_date, date_from, date_to)
+    start_dt, end_dt, _ = _resolve_sales_date_bounds(
+        period, reference_date, date_from, date_to, _tenant_tz(session, auth.tenant_id)
+    )
     return _compute_gst_summary(session, auth.tenant_id, start_dt, end_dt)
 
 
@@ -2187,7 +2202,7 @@ def get_period_summary(
     period: str = Query(..., description="day | week | month | quarter"),
     reference_date: str | None = Query(
         default=None,
-        description="Civil date YYYY-MM-DD within the period (default: today UTC)",
+        description="Civil date YYYY-MM-DD within the period (default: today in the shop's timezone)",
     ),
     auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),

@@ -4104,10 +4104,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`",
+              "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`",
               "title": "Reference Date"
             },
-            "description": "Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+            "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`"
           },
           {
             "name": "date_from",
@@ -4224,10 +4224,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`",
+              "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`",
               "title": "Reference Date"
             },
-            "description": "Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+            "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`"
           },
           {
             "name": "date_from",
@@ -4767,10 +4767,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`",
+              "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`",
               "title": "Reference Date"
             },
-            "description": "Civil date YYYY-MM-DD within the period (default: today UTC); used with `period`"
+            "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone); used with `period`"
           },
           {
             "name": "date_from",
@@ -4868,10 +4868,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Civil date YYYY-MM-DD within the period (default: today UTC)",
+              "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone)",
               "title": "Reference Date"
             },
-            "description": "Civil date YYYY-MM-DD within the period (default: today UTC)"
+            "description": "Civil date YYYY-MM-DD within the period (default: today in the shop's timezone)"
           }
         ],
         "responses": {
@@ -24816,6 +24816,22 @@
               }
             ],
             "title": "Note"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cash",
+                  "eftpos",
+                  "bank"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
           }
         },
         "type": "object",

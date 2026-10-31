@@ -1,3 +1,4 @@
+import { CompletionPaymentPicker, type CompletionPayment } from './CompletionPaymentPicker'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -62,6 +63,7 @@ function quickStatusCopy(status: JobStatus) {
 function MobileJobCard({ job, data, lateIds }: { job: MobileCockpitJobSummary; data: MobileCockpit; lateIds: Set<string> }) {
   const qc = useQueryClient()
   const [confirmComplete, setConfirmComplete] = useState(false)
+  const [completionPayment, setCompletionPayment] = useState<CompletionPayment>('')
   const [error, setError] = useState('')
   const nextStatus = nextMobileStatus(job.canonical_status)
   const isLate = lateIds.has(job.id)
@@ -69,7 +71,8 @@ function MobileJobCard({ job, data, lateIds }: { job: MobileCockpitJobSummary; d
     ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.job_address)}`
     : null
   const mutation = useMutation({
-    mutationFn: (status: JobStatus) => updateAutoKeyJobStatus(job.id, status),
+    mutationFn: (status: JobStatus) =>
+      updateAutoKeyJobStatus(job.id, status, undefined, status === 'work_completed' && completionPayment ? completionPayment : undefined),
     onSuccess: () => {
       setConfirmComplete(false)
       setError('')
@@ -152,6 +155,7 @@ function MobileJobCard({ job, data, lateIds }: { job: MobileCockpitJobSummary; d
           <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
             This marks the work complete. If the job has an approved quote, Mainspring may create the invoice and send its payment link.
           </p>
+          <CompletionPaymentPicker value={completionPayment} onChange={setCompletionPayment} disabled={mutation.isPending} />
           <div className="mt-4 flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setConfirmComplete(false)} disabled={mutation.isPending}>Cancel</Button>
             <Button className="flex-1" onClick={() => mutation.mutate('work_completed')} disabled={mutation.isPending}>{mutation.isPending ? 'Completing…' : 'Complete job'}</Button>
