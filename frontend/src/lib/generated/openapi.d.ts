@@ -2559,12 +2559,13 @@ export interface paths {
         put?: never;
         /**
          * Verify Portal Access
-         * @description Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.
+         * @description Step 1 of phone sign-in: text a code to the phone number.
          *
-         *     The answer is identical whether or not the pair matched (a challenge id is
-         *     always returned), so this cannot be used to probe which tickets exist. The
-         *     phone number and ticket must belong to the same job, and the portal only
-         *     opens once the texted code is entered at ``/portal/verify-code``.
+         *     The ticket number is optional (when given it must match a job on that
+         *     phone). The answer is identical whether or not anything matched (a
+         *     challenge id is always returned), so this cannot be used to probe which
+         *     phones or tickets exist. The portal only opens once the texted code is
+         *     entered at ``/portal/verify-code``.
          */
         post: operations["verify_portal_access_v1_public_portal_verify_post"];
         delete?: never;
@@ -11887,7 +11888,7 @@ export interface components {
             /** Phone */
             phone: string;
             /** Ticket Number */
-            ticket_number: string;
+            ticket_number?: string | null;
         };
         /** ProfileResponse */
         ProfileResponse: {
