@@ -8016,7 +8016,7 @@
           "public-jobs"
         ],
         "summary": "Verify Portal Access",
-        "description": "Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.\n\nThe answer is identical whether or not the pair matched (a challenge id is\nalways returned), so this cannot be used to probe which tickets exist. The\nphone number and ticket must belong to the same job, and the portal only\nopens once the texted code is entered at ``/portal/verify-code``.",
+        "description": "Step 1 of phone sign-in: text a code to the phone number.\n\nThe ticket number is optional (when given it must match a job on that\nphone). The answer is identical whether or not anything matched (a\nchallenge id is always returned), so this cannot be used to probe which\nphones or tickets exist. The portal only opens once the texted code is\nentered at ``/portal/verify-code``.",
         "operationId": "verify_portal_access_v1_public_portal_verify_post",
         "requestBody": {
           "content": {
@@ -36538,16 +36538,21 @@
             "title": "Phone"
           },
           "ticket_number": {
-            "type": "string",
-            "maxLength": 40,
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Ticket Number"
           }
         },
         "type": "object",
         "required": [
-          "phone",
-          "ticket_number"
+          "phone"
         ],
         "title": "PortalVerifyRequest"
       },

@@ -1361,7 +1361,8 @@ def create_portal_session(request: Request, payload: PortalSessionRequest, sessi
 
 class PortalVerifyRequest(SQLModel):
     phone: str = Field(..., min_length=6, max_length=80)
-    ticket_number: str = Field(..., min_length=1, max_length=40)
+    #: Optional. Phone alone is enough: the texted code is the proof.
+    ticket_number: Optional[str] = Field(default=None, max_length=40)
 
 
 class PortalVerifyCodeRequest(SQLModel):
@@ -1411,15 +1412,38 @@ def _find_customer_by_phone_and_ticket(session: Session, phone: str, ticket: str
     return customer
 
 
+def _find_customer_by_phone(session: Session, phone: str) -> Customer | None:
+    """The customer with this phone who has the most recent repair of any kind.
+
+    A customer record with no jobs is skipped so a stray address-book entry
+    doesn't get the code instead of the person who actually has a repair.
+    """
+    best: tuple[datetime, Customer] | None = None
+    for customer in session.exec(select(Customer).where(Customer.phone_normalized == phone)).all():
+        latest: list[datetime] = []
+        for stmt in (
+            select(func.max(RepairJob.created_at)).join(Watch, RepairJob.watch_id == Watch.id).where(Watch.customer_id == customer.id),
+            select(func.max(ShoeRepairJob.created_at)).join(Shoe, ShoeRepairJob.shoe_id == Shoe.id).where(Shoe.customer_id == customer.id),
+            select(func.max(AutoKeyJob.created_at)).where(AutoKeyJob.customer_id == customer.id),
+        ):
+            value = session.exec(stmt).first()
+            if value is not None:
+                latest.append(value if value.tzinfo else value.replace(tzinfo=timezone.utc))
+        if latest and (best is None or max(latest) > best[0]):
+            best = (max(latest), customer)
+    return best[1] if best else None
+
+
 @router.post("/portal/verify")
 @limiter.limit(auth_limit)
 def verify_portal_access(request: Request, payload: PortalVerifyRequest, session: Session = Depends(get_session)):
-    """Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.
+    """Step 1 of phone sign-in: text a code to the phone number.
 
-    The answer is identical whether or not the pair matched (a challenge id is
-    always returned), so this cannot be used to probe which tickets exist. The
-    phone number and ticket must belong to the same job, and the portal only
-    opens once the texted code is entered at ``/portal/verify-code``.
+    The ticket number is optional (when given it must match a job on that
+    phone). The answer is identical whether or not anything matched (a
+    challenge id is always returned), so this cannot be used to probe which
+    phones or tickets exist. The portal only opens once the texted code is
+    entered at ``/portal/verify-code``.
     """
     if settings.app_env == "production" and not (
         settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number
@@ -1430,10 +1454,13 @@ def verify_portal_access(request: Request, payload: PortalVerifyRequest, session
     ticket = (payload.ticket_number or "").strip().lstrip("#").strip().lower()
     challenge_id = uuid4()
     response = {"challenge_id": str(challenge_id), "expires_minutes": _PORTAL_CODE_TTL_MINUTES}
-    if not phone or not ticket:
+    if not phone:
         return response
 
-    customer = _find_customer_by_phone_and_ticket(session, phone, ticket)
+    if ticket:
+        customer = _find_customer_by_phone_and_ticket(session, phone, ticket)
+    else:
+        customer = _find_customer_by_phone(session, phone)
     if customer is None or not customer.phone:
         return response
 

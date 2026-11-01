@@ -2783,8 +2783,8 @@ export const decideShoeQuote = (token: string, decision: 'approved' | 'declined'
 export const createPortalSession = (email: string) =>
   axios.post<{ session_token: string; portal_url: string; expires_days: number }>(withApiOrigin('/v1/public/portal/create-session'), { email })
 
-export const requestPortalCode = (phone: string, ticket_number: string) =>
-  axios.post<{ challenge_id: string; expires_minutes: number }>(withApiOrigin('/v1/public/portal/verify'), { phone, ticket_number })
+export const requestPortalCode = (phone: string, ticket_number?: string) =>
+  axios.post<{ challenge_id: string; expires_minutes: number }>(withApiOrigin('/v1/public/portal/verify'), { phone, ticket_number: ticket_number || undefined })
 
 export const verifyPortalCode = (challenge_id: string, code: string) =>
   axios.post<{ session_token: string; expires_days: number }>(withApiOrigin('/v1/public/portal/verify-code'), { challenge_id, code })
