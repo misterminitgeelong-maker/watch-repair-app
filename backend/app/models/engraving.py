@@ -55,7 +55,7 @@ class EngravingEvent(SQLModel, table=True):
     __tablename__ = "engravingevent"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     name: str
     event_date: Optional[date] = None
     location: Optional[str] = None
@@ -75,8 +75,8 @@ class EngravingOrder(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("event_id", "order_seq", name="uq_engravingorder_event_seq"),)
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    tenant_id: UUID = Field(index=True, foreign_key="tenant.id")
-    event_id: UUID = Field(index=True, foreign_key="engravingevent.id")
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    event_id: UUID = Field(index=True, foreign_key="engravingevent.id", ondelete="CASCADE")
     order_seq: int
     order_number: str  # e.g. A-024
     status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)

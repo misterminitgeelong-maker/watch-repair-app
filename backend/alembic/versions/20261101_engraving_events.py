@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.create_table(
         "engravingevent",
         sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("tenant_id", sa.Uuid(), sa.ForeignKey("tenant.id"), nullable=False),
+        sa.Column("tenant_id", sa.Uuid(), sa.ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("event_date", sa.Date(), nullable=True),
         sa.Column("location", sa.String(), nullable=True),
@@ -43,8 +43,8 @@ def upgrade() -> None:
     op.create_table(
         "engravingorder",
         sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("tenant_id", sa.Uuid(), sa.ForeignKey("tenant.id"), nullable=False),
-        sa.Column("event_id", sa.Uuid(), sa.ForeignKey("engravingevent.id"), nullable=False),
+        sa.Column("tenant_id", sa.Uuid(), sa.ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("event_id", sa.Uuid(), sa.ForeignKey("engravingevent.id", ondelete="CASCADE"), nullable=False),
         sa.Column("order_seq", sa.Integer(), nullable=False),
         sa.Column("order_number", sa.String(), nullable=False),
         sa.Column("status_token", sa.String(), nullable=False),
