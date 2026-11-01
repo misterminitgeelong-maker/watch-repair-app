@@ -44,7 +44,7 @@ function StatusPill({ order }: { order: EngravingOrder }) {
   const s = STATUS_PILL[order.status]
   const note = order.status === 'ready' && order.ready_sms_status ? ` · ${SMS_NOTE[order.ready_sms_status] ?? order.ready_sms_status}` : ''
   return (
-    <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: s.bg, color: s.fg }}>
+    <span className="inline-block whitespace-nowrap rounded-[var(--ms-radius)] px-2.5 py-1 text-[11px] font-bold" style={{ background: s.bg, color: s.fg }}>
       {s.label}{note}
     </span>
   )
@@ -241,7 +241,7 @@ export default function EngravingQueuePage() {
                   type="button"
                   onClick={() => done.mutate(current.id)}
                   disabled={busy}
-                  className="h-14 rounded-xl text-base font-bold disabled:opacity-60"
+                  className="h-14 rounded-[var(--ms-radius)] text-base font-bold disabled:opacity-60"
                   style={{ background: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
                 >
                   {lastMedal ? 'Done — order ready' : 'Done — next medal'}
@@ -293,7 +293,7 @@ export default function EngravingQueuePage() {
                   type="button"
                   aria-pressed={filter === f}
                   onClick={() => setFilter(f)}
-                  className="h-9 rounded-full px-3.5 text-xs font-semibold"
+                  className="h-9 rounded-[var(--ms-radius)] px-3.5 text-xs font-semibold"
                   style={{
                     background: filter === f ? 'var(--ms-text)' : 'var(--ms-surface)',
                     color: filter === f ? 'var(--ms-bg)' : 'var(--ms-text)',

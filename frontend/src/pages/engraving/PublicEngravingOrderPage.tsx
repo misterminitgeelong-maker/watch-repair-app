@@ -23,7 +23,7 @@ const fieldStyle: React.CSSProperties = {
   height: 48,
   padding: '0 14px',
   fontSize: 16,
-  borderRadius: 10,
+  borderRadius: 'var(--ms-radius)',
   border: '1px solid var(--ms-border-strong, var(--ms-border))',
   background: 'var(--ms-surface)',
   color: 'var(--ms-text)',
@@ -93,13 +93,13 @@ export default function PublicEngravingOrderPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>
-      <header className="px-5 py-4 flex items-center justify-between gap-3" style={{ background: 'var(--ms-sidebar-bg, #0F1B2D)', color: '#fff' }}>
+      <header className="px-5 py-4 flex items-center justify-between gap-3" style={{ background: 'var(--ms-ink, #0A0A0A)', color: '#fff', borderBottom: '2px solid #C99A3B' }}>
         <div className="min-w-0">
-          <p className="text-lg font-bold uppercase tracking-wide leading-tight">Medal engraving</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] leading-tight">Medal engraving</p>
           <p className="text-xs opacity-80 truncate">{[event.shop_name, event.name].filter(Boolean).join(' · ')}</p>
         </div>
         {event.accepting_orders && (
-          <span className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(255,255,255,0.14)' }}>
+          <span className="shrink-0 rounded-[var(--ms-radius)] px-3 py-1.5 text-xs font-semibold" style={{ background: 'rgba(255,255,255,0.14)' }}>
             Wait ~{Math.max(5, event.wait_minutes)} min
           </span>
         )}
@@ -107,19 +107,19 @@ export default function PublicEngravingOrderPage() {
 
       <main className="mx-auto max-w-md px-5 py-6 flex flex-col gap-5">
         <div>
-          <h1 className="text-3xl font-bold uppercase leading-none">Engrave your medal</h1>
+          <h1 className="text-4xl leading-none" style={{ fontFamily: 'var(--ms-font-display)', fontWeight: 400 }}>Engrave your medal</h1>
           <p className="mt-2 text-[15px]" style={{ color: 'var(--ms-text-mid)' }}>
             Fill this in and pay at the stall. We'll let you know when it's ready. {formatCents(event.price_cents)} per medal.
           </p>
         </div>
 
         {!event.accepting_orders && (
-          <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: 'var(--ms-badge-orange-bg)', color: 'var(--ms-badge-orange-text)' }}>
+          <div className="rounded-[var(--ms-radius)] px-4 py-3 text-sm font-medium" style={{ background: 'var(--ms-badge-orange-bg)', color: 'var(--ms-badge-orange-text)' }}>
             {event.status === 'closed' ? 'Engraving has finished for this event.' : 'Orders are paused for a moment. Please try again shortly or ask at the stall.'}
           </div>
         )}
 
-        <section className="flex flex-col items-center gap-3 rounded-2xl p-5" style={{ background: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+        <section className="flex flex-col items-center gap-3 rounded-[var(--ms-radius)] p-5" style={{ background: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
           <MedalPreview name={name} line2={line2} place={place} />
           <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>Live preview, engraved exactly as shown</p>
         </section>
@@ -147,7 +147,7 @@ export default function PublicEngravingOrderPage() {
                     type="button"
                     aria-pressed={active}
                     onClick={() => setPlace(p)}
-                    className="h-11 rounded-lg text-sm font-semibold"
+                    className="h-11 rounded-[var(--ms-radius)] text-sm font-semibold"
                     style={{
                       border: `1px solid ${active ? 'var(--ms-text)' : 'var(--ms-border)'}`,
                       background: active ? 'var(--ms-text)' : 'var(--ms-surface)',
@@ -163,7 +163,7 @@ export default function PublicEngravingOrderPage() {
 
           <div className="flex items-center justify-between gap-3">
             <span id="engr-qty-label" className="text-sm font-semibold">How many medals?</span>
-            <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ border: '1px solid var(--ms-border)', background: 'var(--ms-surface)' }} role="group" aria-labelledby="engr-qty-label">
+            <div className="flex items-center gap-1 rounded-[var(--ms-radius)] p-0.5" style={{ border: '1px solid var(--ms-border)', background: 'var(--ms-surface)' }} role="group" aria-labelledby="engr-qty-label">
               <button type="button" aria-label="One fewer medal" onClick={() => setQty((q) => Math.max(1, q - 1))} className="h-11 w-11 flex items-center justify-center"><Minus size={18} /></button>
               <span className="min-w-7 text-center text-lg font-bold" aria-live="polite">{qty}</span>
               <button type="button" aria-label="One more medal" onClick={() => setQty((q) => Math.min(20, q + 1))} className="h-11 w-11 flex items-center justify-center"><Plus size={18} /></button>
@@ -194,7 +194,7 @@ export default function PublicEngravingOrderPage() {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="h-14 rounded-xl text-base font-bold disabled:opacity-60"
+              className="h-14 rounded-[var(--ms-radius)] text-base font-bold disabled:opacity-60"
               style={{ background: canSubmit ? 'var(--ms-accent)' : 'var(--ms-border)', color: canSubmit ? 'var(--ms-on-accent)' : 'var(--ms-text-mid)' }}
             >
               {submit.isPending ? 'Placing order…' : !checked ? 'Tick the spelling check to order' : `Place order · pay ${total} at the stall`}
