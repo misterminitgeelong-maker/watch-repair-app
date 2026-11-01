@@ -74,8 +74,8 @@ export default function PublicEngravingStatusPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--ms-bg)', color: 'var(--ms-text)' }}>
-      <header className="px-5 py-4" style={{ background: 'var(--ms-sidebar-bg, #0F1B2D)', color: '#fff' }}>
-        <p className="text-lg font-bold uppercase tracking-wide leading-tight">Medal engraving</p>
+      <header className="px-5 py-4" style={{ background: 'var(--ms-ink, #0A0A0A)', color: '#fff', borderBottom: '2px solid #C99A3B' }}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] leading-tight">Medal engraving</p>
         <p className="text-xs opacity-80">{[order.shop_name, order.event_name].filter(Boolean).join(' · ')}</p>
       </header>
 
@@ -87,20 +87,20 @@ export default function PublicEngravingStatusPage() {
           >
             {ready ? <PartyPopper size={28} aria-hidden /> : done ? <Check size={28} aria-hidden /> : <Clock size={28} aria-hidden />}
           </div>
-          <h1 className="text-3xl font-bold uppercase leading-none">{title}</h1>
+          <h1 className="text-4xl leading-none" style={{ fontFamily: 'var(--ms-font-display)', fontWeight: 400 }}>{title}</h1>
           <p className="text-[15px]" style={{ color: 'var(--ms-text-mid)' }}>{sub}</p>
         </div>
 
-        <section aria-label="Your order number" className="rounded-2xl p-5 flex flex-col items-center gap-1" style={{ background: 'var(--ms-sidebar-bg, #0F1B2D)', color: '#fff' }}>
+        <section aria-label="Your order number" className="rounded-[var(--ms-radius)] p-5 flex flex-col items-center gap-1" style={{ background: 'var(--ms-ink, #0A0A0A)', color: '#fff', borderBottom: '2px solid #C99A3B' }}>
           <span className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">Show this at the stall</span>
-          <span className="text-6xl font-bold leading-none tracking-wide">{order.order_number}</span>
+          <span className="text-6xl leading-none tracking-wide" style={{ fontFamily: 'var(--ms-font-display)', fontWeight: 400 }}>{order.order_number}</span>
         </section>
 
         <div className="flex justify-center">
           <MedalPreview name={order.athlete_name} line2={order.line2} place={order.place} size={180} />
         </div>
 
-        <section aria-label="Order details" className="rounded-2xl px-4" style={{ background: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+        <section aria-label="Order details" className="rounded-[var(--ms-radius)] px-4" style={{ background: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
           {rows.map(([label, value], i) => (
             <div key={label} className="flex justify-between gap-3 py-3 text-sm" style={i ? { borderTop: '1px solid var(--ms-border)' } : undefined}>
               <span style={{ color: 'var(--ms-text-mid)' }}>{label}</span>
@@ -110,7 +110,7 @@ export default function PublicEngravingStatusPage() {
         </section>
 
         {!done && (
-          <div className="flex items-start gap-3 rounded-xl px-4 py-3.5 text-sm leading-snug" style={{ background: 'var(--ms-badge-blue-bg, #DCE8FB)', color: 'var(--ms-badge-blue-text, #1E3A8A)' }}>
+          <div className="flex items-start gap-3 rounded-[var(--ms-radius)] px-4 py-3.5 text-sm leading-snug" style={{ background: 'var(--ms-badge-blue-bg, #DCE8FB)', color: 'var(--ms-badge-blue-text, #1E3A8A)' }}>
             <MessageSquare size={20} className="shrink-0" aria-hidden />
             <span>
               {order.phone_masked

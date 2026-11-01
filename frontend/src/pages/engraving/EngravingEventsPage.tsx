@@ -94,13 +94,14 @@ export function EngravingQrModal({ event, onClose }: { event: EngravingEvent; on
     if (!w) return
     const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
     w.document.write(`<!doctype html><html><head><title>${esc(event.name)}</title><style>
-      body{font-family:system-ui,sans-serif;text-align:center;padding:48px;color:#0F1B2D}
-      h1{font-size:56px;margin:0 0 8px;text-transform:uppercase}
+      body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;text-align:center;padding:48px;color:#0A0A0A}
+      .rule{width:120px;height:2px;background:#C99A3B;margin:12px auto 20px}
+      h1{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:64px;margin:0}
       p{font-size:24px;margin:8px 0}
       img{width:440px;height:440px;margin:24px auto;display:block}
       .price{font-size:40px;font-weight:700}
     </style></head><body>
-      <h1>Medal engraving</h1>
+      <h1>Medal engraving</h1><div class="rule"></div>
       <p class="price">${esc(formatCents(event.price_cents))} per medal</p>
       <p>Scan to order. We'll tell you when it's ready.</p>
       <img src="${qr}" alt="QR code to order engraving">
@@ -165,7 +166,7 @@ export default function EngravingEventsPage() {
                   </p>
                 </div>
                 <span
-                  className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
+                  className="shrink-0 rounded-[var(--ms-radius)] px-2.5 py-1 text-[11px] font-bold"
                   style={{
                     background: ev.status === 'open' ? 'var(--ms-badge-green-bg, #DDF3E4)' : 'var(--ms-badge-neutral-bg, #E8E4DA)',
                     color: ev.status === 'open' ? 'var(--ms-badge-green-text, #1F5F3A)' : 'var(--ms-text-mid)',

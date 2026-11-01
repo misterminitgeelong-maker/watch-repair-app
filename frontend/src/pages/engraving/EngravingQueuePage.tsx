@@ -44,7 +44,7 @@ function StatusPill({ order }: { order: EngravingOrder }) {
   const s = STATUS_PILL[order.status]
   const note = order.status === 'ready' && order.ready_sms_status ? ` · ${SMS_NOTE[order.ready_sms_status] ?? order.ready_sms_status}` : ''
   return (
-    <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: s.bg, color: s.fg }}>
+    <span className="inline-block whitespace-nowrap rounded-[var(--ms-radius)] px-2.5 py-1 text-[11px] font-bold" style={{ background: s.bg, color: s.fg }}>
       {s.label}{note}
     </span>
   )
@@ -241,7 +241,7 @@ export default function EngravingQueuePage() {
                   type="button"
                   onClick={() => done.mutate(current.id)}
                   disabled={busy}
-                  className="h-14 rounded-xl text-base font-bold disabled:opacity-60"
+                  className="h-14 rounded-[var(--ms-radius)] text-base font-bold disabled:opacity-60"
                   style={{ background: 'var(--ms-accent)', color: 'var(--ms-on-accent)' }}
                 >
                   {lastMedal ? 'Done — order ready' : 'Done — next medal'}
@@ -293,7 +293,7 @@ export default function EngravingQueuePage() {
                   type="button"
                   aria-pressed={filter === f}
                   onClick={() => setFilter(f)}
-                  className="h-9 rounded-full px-3.5 text-xs font-semibold"
+                  className="h-9 rounded-[var(--ms-radius)] px-3.5 text-xs font-semibold"
                   style={{
                     background: filter === f ? 'var(--ms-text)' : 'var(--ms-surface)',
                     color: filter === f ? 'var(--ms-bg)' : 'var(--ms-text)',
@@ -311,23 +311,21 @@ export default function EngravingQueuePage() {
                 <tr className="text-left text-[11px] uppercase tracking-wider" style={{ color: 'var(--ms-text-mid)' }}>
                   <th className="px-4 py-2 font-semibold">Order</th>
                   <th className="px-3 py-2 font-semibold">Name</th>
-                  <th className="px-3 py-2 font-semibold">Second line</th>
                   <th className="px-3 py-2 font-semibold">Place</th>
                   <th className="px-3 py-2 font-semibold">Qty</th>
                   <th className="px-3 py-2 font-semibold">Paid</th>
                   <th className="px-3 py-2 font-semibold">Status</th>
-                  <th className="px-4 py-2 font-semibold"><span className="sr-only">Actions</span></th>
+                  <th className="px-4 py-2 font-semibold sticky right-0" style={{ background: 'var(--ms-surface)' }}><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {shown.length === 0 && (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center" style={{ color: 'var(--ms-text-mid)' }}>Nothing here yet.</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--ms-text-mid)' }}>Nothing here yet.</td></tr>
                 )}
                 {shown.map((o) => (
                   <tr key={o.id} style={{ borderTop: '1px solid var(--ms-border)' }}>
                     <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{o.order_number}</td>
-                    <td className="px-3 py-2.5 font-semibold">{o.athlete_name}</td>
-                    <td className="px-3 py-2.5">{o.line2 ?? ''}</td>
+                    <td className="px-3 py-2.5"><span className="font-semibold">{o.athlete_name}</span>{o.line2 && <span className="block text-xs" style={{ color: 'var(--ms-text-mid)' }}>{o.line2}</span>}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{o.place === 'None' ? '' : o.place}</td>
                     <td className="px-3 py-2.5">{o.medals_done > 0 && o.medals_done < o.qty ? `${o.medals_done}/${o.qty}` : o.qty}</td>
                     <td className="px-3 py-2.5">
@@ -343,7 +341,7 @@ export default function EngravingQueuePage() {
                       </label>
                     </td>
                     <td className="px-3 py-2.5"><StatusPill order={o} /></td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 sticky right-0" style={{ background: 'var(--ms-surface)', boxShadow: '-8px 0 8px -8px rgba(10,10,10,0.18)' }}>
                       <div className="flex justify-end gap-1.5 whitespace-nowrap">
                         {o.status === 'waiting' && <Button size="sm" variant="secondary" onClick={() => start.mutate(o.id)} disabled={busy}>Start</Button>}
                         {(o.status === 'waiting' || o.status === 'engraving') && (
