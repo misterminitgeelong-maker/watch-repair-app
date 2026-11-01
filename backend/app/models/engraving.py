@@ -18,6 +18,7 @@ __all__ = [
     "ENGRAVING_LINE2_MAX",
     "ENGRAVING_NAME_MAX",
     "ENGRAVING_PLACES",
+    "ENGRAVING_TICKET_MAX",
     "EngravingBatchCreate",
     "EngravingEvent",
     "EngravingEventCreate",
@@ -84,6 +85,7 @@ class EngravingOrder(SQLModel, table=True):
     order_number: str  # e.g. A-024
     status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
     group_id: Optional[UUID] = Field(default=None, index=True)  # medals ordered together share a group
+    ticket_number: Optional[str] = Field(default=None, index=True)  # pre-printed tear-off ticket kept with the tub
     athlete_name: str
     line2: Optional[str] = None
     place: str = "None"
@@ -162,6 +164,7 @@ class EngravingOrderCreate(SQLModel):
 
 
 ENGRAVING_BATCH_MAX = 10
+ENGRAVING_TICKET_MAX = 12
 
 
 class EngravingBatchCreate(SQLModel):
@@ -169,6 +172,7 @@ class EngravingBatchCreate(SQLModel):
     own order with its own number, sharing one mobile number."""
     orders: list[EngravingOrderCreate]
     phone: Optional[str] = None
+    ticket_number: str  # number on the tear-off ticket the parent grabbed; the other half goes in the tub
 
 
 class EngravingOperatorOrderCreate(EngravingOrderCreate):
@@ -194,6 +198,7 @@ class EngravingOrderRead(SQLModel):
     order_seq: int
     status_token: str
     group_id: Optional[UUID] = None
+    ticket_number: Optional[str] = None
     athlete_name: str
     line2: Optional[str]
     place: str
@@ -257,4 +262,5 @@ class PublicEngravingOrder(SQLModel):
     phone_masked: Optional[str]
     created_at: datetime
     ready_at: Optional[datetime]
+    ticket_number: Optional[str] = None
     group_members: list[PublicEngravingGroupMember] = []

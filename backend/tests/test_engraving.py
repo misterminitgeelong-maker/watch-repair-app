@@ -233,11 +233,13 @@ def test_public_batch_order_creates_one_order_per_medal(client, owner):
                 {"athlete_name": "Leo Thompson", "place": "3rd", "qty": 2},
             ],
             "phone": "0412 345 678",
+            "ticket_number": " 17 ",
         },
     )
     assert res.status_code == 200, res.text
     body = res.json()
     assert [o["order_number"] for o in body] == ["A-001", "A-002"]
+    assert all(o["ticket_number"] == "17" for o in body)
     assert body[1]["amount_cents"] == 3000
     assert all(o["phone_masked"] for o in body)
     # Medals ordered together know about each other; a single order has no group.
@@ -256,14 +258,29 @@ def test_public_batch_is_all_or_nothing_and_bounded(client, owner):
     event = _make_event(client, owner)
     token = event["public_token"]
     url = f"/v1/public/engraving/events/{token}/orders/batch"
-    bad = client.post(url, json={"orders": [
+    bad = client.post(url, json={"ticket_number": "5", "orders": [
         {"athlete_name": "Mia Thompson", "qty": 1},
         {"athlete_name": "", "qty": 1},
     ]})
     assert bad.status_code == 422
     assert client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["event"]["stats"]["medals_total"] == 0
-    assert client.post(url, json={"orders": []}).status_code == 422
+    assert client.post(url, json={"ticket_number": "5", "orders": []}).status_code == 422
     too_many = [{"athlete_name": f"Kid {i}", "qty": 1} for i in range(11)]
-    assert client.post(url, json={"orders": too_many}).status_code == 422
+    assert client.post(url, json={"ticket_number": "5", "orders": too_many}).status_code == 422
     client.patch(f"/v1/engraving/events/{event['id']}", json={"status": "paused"}, headers=owner)
-    assert client.post(url, json={"orders": [{"athlete_name": "Mia", "qty": 1}]}).status_code == 409
+    assert client.post(url, json={"ticket_number": "5", "orders": [{"athlete_name": "Mia", "qty": 1}]}).status_code == 409
+
+
+def test_public_batch_requires_unique_ticket(client, owner):
+    event = _make_event(client, owner)
+    url = f"/v1/public/engraving/events/{event['public_token']}/orders/batch"
+    one = {"orders": [{"athlete_name": "Mia", "qty": 1}]}
+    assert client.post(url, json=one).status_code == 422  # ticket missing
+    assert client.post(url, json={**one, "ticket_number": "  "}).status_code == 422
+    first = client.post(url, json={**one, "ticket_number": "ab12"})
+    assert first.status_code == 200 and first.json()[0]["ticket_number"] == "AB12"
+    assert client.post(url, json={**one, "ticket_number": "AB12"}).status_code == 409
+    # Once the tub has been collected the ticket can be used again.
+    order = client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["orders"][0]
+    client.patch(f"/v1/engraving/orders/{order['id']}", json={"status": "collected"}, headers=owner)
+    assert client.post(url, json={**one, "ticket_number": "ab12"}).status_code == 200

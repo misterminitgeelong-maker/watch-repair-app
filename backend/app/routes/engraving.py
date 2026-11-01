@@ -23,6 +23,7 @@ from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
 from ..limiter import limiter
 from ..models import (
     ENGRAVING_BATCH_MAX,
+    ENGRAVING_TICKET_MAX,
     ENGRAVING_LINE2_MAX,
     ENGRAVING_NAME_MAX,
     ENGRAVING_PLACES,
@@ -91,6 +92,15 @@ def _clean_qty(value: int) -> int:
     if value < 1 or value > MAX_QTY:
         raise HTTPException(status_code=422, detail=f"Quantity must be between 1 and {MAX_QTY}")
     return value
+
+
+def _clean_ticket(value: str | None) -> str:
+    ticket = (value or "").strip().upper()
+    if not ticket:
+        raise HTTPException(status_code=422, detail="Enter the number on your ticket")
+    if len(ticket) > ENGRAVING_TICKET_MAX:
+        raise HTTPException(status_code=422, detail="That ticket number looks too long")
+    return ticket
 
 
 def _clean_phone(value: str | None) -> str | None:
@@ -210,6 +220,7 @@ def _create_order(
     paid: bool = False,
     notes: str | None = None,
     group_id: UUID | None = None,
+    ticket_number: str | None = None,
 ) -> EngravingOrder:
     athlete_name = _clean_text(payload.athlete_name, field="Athlete name", max_len=ENGRAVING_NAME_MAX, required=True)
     line2 = _clean_text(payload.line2, field="Second line", max_len=ENGRAVING_LINE2_MAX, required=False)
@@ -243,6 +254,7 @@ def _create_order(
             source=source,
             notes=notes,
             group_id=group_id,
+            ticket_number=ticket_number,
         )
         session.add(locked)
         session.add(order)
@@ -679,6 +691,15 @@ def create_public_order_batch(
         raise HTTPException(status_code=422, detail="Add at least one medal")
     if len(payload.orders) > ENGRAVING_BATCH_MAX:
         raise HTTPException(status_code=422, detail=f"You can order up to {ENGRAVING_BATCH_MAX} different medals at once")
+    ticket = _clean_ticket(payload.ticket_number)
+    in_use = session.exec(
+        select(EngravingOrder)
+        .where(EngravingOrder.event_id == event.id)
+        .where(EngravingOrder.ticket_number == ticket)
+        .where(EngravingOrder.status.in_(["waiting", "engraving", "ready"]))
+    ).first()
+    if in_use:
+        raise HTTPException(status_code=409, detail=f"Ticket {ticket} is already in use. Please check the number on your ticket.")
     items = []
     for item in payload.orders:
         item = EngravingOrderCreate(
@@ -692,7 +713,9 @@ def create_public_order_batch(
         _clean_phone(item.phone)
         items.append(item)
     group_id = uuid4() if len(items) > 1 else None
-    orders = [_create_order(session, event, item, source="online", group_id=group_id) for item in items]
+    orders = [
+        _create_order(session, event, item, source="online", group_id=group_id, ticket_number=ticket) for item in items
+    ]
     return [_public_order(session, order, event) for order in orders]
 
 
@@ -735,6 +758,7 @@ def _public_order(session: Session, order: EngravingOrder, event: EngravingEvent
         queue_position=position,
         wait_minutes=wait,
         phone_masked=_mask_phone(order.phone),
+        ticket_number=order.ticket_number,
         created_at=order.created_at,
         ready_at=order.ready_at,
     )

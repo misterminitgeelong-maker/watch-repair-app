@@ -40,6 +40,8 @@ export interface EngravingOrder {
   order_number: string
   order_seq: number
   status_token: string
+  group_id: string | null
+  ticket_number: string | null
   athlete_name: string
   line2: string | null
   place: EngravingPlace
@@ -119,7 +121,24 @@ export interface PublicEngravingOrder {
   phone_masked: string | null
   created_at: string
   ready_at: string | null
+  ticket_number: string | null
+  group_members: PublicEngravingGroupMember[]
 }
+
+export interface PublicEngravingGroupMember {
+  order_number: string
+  athlete_name: string
+  status_token: string
+  status: EngravingOrderStatus
+}
+
+export interface EngravingBatchPayload {
+  orders: EngravingOrderPayload[]
+  phone?: string | null
+  ticket_number: string
+}
+
+export const ENGRAVING_BATCH_MAX = 10
 
 // ── Operator ────────────────────────────────────────────────────────────────
 
@@ -170,6 +189,9 @@ export const getPublicEngravingEvent = (token: string) =>
 
 export const createPublicEngravingOrder = (token: string, data: EngravingOrderPayload) =>
   axios.post<PublicEngravingOrder>(withApiOrigin(`/v1/public/engraving/events/${token}/orders`), data)
+
+export const createPublicEngravingBatch = (token: string, data: EngravingBatchPayload) =>
+  axios.post<PublicEngravingOrder[]>(withApiOrigin(`/v1/public/engraving/events/${token}/orders/batch`), data)
 
 export const getPublicEngravingOrder = (statusToken: string) =>
   axios.get<PublicEngravingOrder>(withApiOrigin(`/v1/public/engraving/orders/${statusToken}`))

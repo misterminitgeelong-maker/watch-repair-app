@@ -58,3 +58,11 @@ Public: `/v1/public/engraving/events/{token}` (GET, POST `/orders`),
 `/v1/public/engraving/orders/{status_token}`.
 
 SMS event name in `smslog`: `engraving_ready`.
+
+## Bunches of medals and tear-off tickets
+
+A parent bringing several medals orders them all in one go: **Add another medal** on the order form (up to 10 different medals, each with its own name, second line, place and quantity). Each medal still gets its own order number (A-005, A-006…) so the laser queue and CSV are unchanged, but they share one mobile number and one status page that lists the whole bunch.
+
+**Tear-off tickets.** The stall keeps a pile of numbered two-part tickets (use **Ticket sheet** on the queue page to print them, then cut them). The parent takes one, types its number into the form (required), keeps one half and puts the other half in the tub with the medals. The ticket number is shown in the queue, can be searched, and is blocked from reuse while a bunch is still in progress (it frees up once collected or cancelled).
+
+**At collection.** Search the queue by order number, ticket number, name or the last 4 digits of the mobile. **Collect all** marks every ready medal in the bunch collected at once. **Print ticket** (printer icon on an order) prints a slip listing the whole bunch, with unpaid amount and mobile ending, if you want a printed copy for the tub as well.

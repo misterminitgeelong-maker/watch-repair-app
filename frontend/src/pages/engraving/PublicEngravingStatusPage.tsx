@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Check, Clock, MessageSquare, PartyPopper } from 'lucide-react'
 import MedalPreview from '@/components/engraving/MedalPreview'
@@ -68,6 +68,7 @@ export default function PublicEngravingStatusPage() {
     ['Name', order.athlete_name],
     ['Second line', order.line2 || '—'],
     ['Place', engravingPlaceText(order.place) || '—'],
+    ...(order.ticket_number ? ([['Ticket', order.ticket_number]] as [string, string][]) : []),
     ['Medals', String(order.qty)],
     [order.paid ? 'Paid' : 'To pay at the stall', formatCents(order.amount_cents)],
   ]
@@ -108,6 +109,18 @@ export default function PublicEngravingStatusPage() {
             </div>
           ))}
         </section>
+
+        {order.group_members.length > 0 && (
+          <section aria-label="Your other medals" className="rounded-[var(--ms-radius)] px-4 py-3 flex flex-col gap-1" style={{ background: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+            <p className="text-xs font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--ms-text-mid)' }}>Ordered together</p>
+            {order.group_members.map((m) => (
+              <Link key={m.order_number} to={`/engrave/o/${m.status_token}`} className="flex justify-between gap-3 py-2 text-sm" style={{ borderTop: '1px solid var(--ms-border)' }}>
+                <span className="font-semibold">{m.order_number} · {m.athlete_name}</span>
+                <span style={{ color: 'var(--ms-text-mid)' }}>{m.status === 'ready' ? 'Ready' : m.status === 'collected' ? 'Collected' : m.status === 'engraving' ? 'Engraving' : m.status === 'cancelled' ? 'Cancelled' : 'In queue'}</span>
+              </Link>
+            ))}
+          </section>
+        )}
 
         {!done && (
           <div className="flex items-start gap-3 rounded-[var(--ms-radius)] px-4 py-3.5 text-sm leading-snug" style={{ background: 'var(--ms-badge-blue-bg, #DCE8FB)', color: 'var(--ms-badge-blue-text, #1E3A8A)' }}>
