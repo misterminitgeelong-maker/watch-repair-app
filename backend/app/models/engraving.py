@@ -14,9 +14,11 @@ from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 __all__ = [
+    "ENGRAVING_BATCH_MAX",
     "ENGRAVING_LINE2_MAX",
     "ENGRAVING_NAME_MAX",
     "ENGRAVING_PLACES",
+    "EngravingBatchCreate",
     "EngravingEvent",
     "EngravingEventCreate",
     "EngravingEventRead",
@@ -31,6 +33,7 @@ __all__ = [
     "EngravingOrderUpdate",
     "EngravingQueueRead",
     "PublicEngravingEvent",
+    "PublicEngravingGroupMember",
     "PublicEngravingOrder",
 ]
 
@@ -80,6 +83,7 @@ class EngravingOrder(SQLModel, table=True):
     order_seq: int
     order_number: str  # e.g. A-024
     status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    group_id: Optional[UUID] = Field(default=None, index=True)  # medals ordered together share a group
     athlete_name: str
     line2: Optional[str] = None
     place: str = "None"
@@ -157,6 +161,16 @@ class EngravingOrderCreate(SQLModel):
     phone: Optional[str] = None
 
 
+ENGRAVING_BATCH_MAX = 10
+
+
+class EngravingBatchCreate(SQLModel):
+    """Several medals ordered together (a parent bringing a bunch). Each medal becomes its
+    own order with its own number, sharing one mobile number."""
+    orders: list[EngravingOrderCreate]
+    phone: Optional[str] = None
+
+
 class EngravingOperatorOrderCreate(EngravingOrderCreate):
     paid: bool = False
     notes: Optional[str] = None
@@ -179,6 +193,7 @@ class EngravingOrderRead(SQLModel):
     order_number: str
     order_seq: int
     status_token: str
+    group_id: Optional[UUID] = None
     athlete_name: str
     line2: Optional[str]
     place: str
@@ -217,6 +232,13 @@ class PublicEngravingEvent(SQLModel):
     places: list[str] = list(ENGRAVING_PLACES)
 
 
+class PublicEngravingGroupMember(SQLModel):
+    order_number: str
+    athlete_name: str
+    status_token: str
+    status: str
+
+
 class PublicEngravingOrder(SQLModel):
     order_number: str
     status_token: str
@@ -235,3 +257,4 @@ class PublicEngravingOrder(SQLModel):
     phone_masked: Optional[str]
     created_at: datetime
     ready_at: Optional[datetime]
+    group_members: list[PublicEngravingGroupMember] = []

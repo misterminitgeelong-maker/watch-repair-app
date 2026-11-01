@@ -10,7 +10,7 @@ import logging
 import re
 import zipfile
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
@@ -22,9 +22,11 @@ from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
 from ..limiter import limiter
 from ..models import (
+    ENGRAVING_BATCH_MAX,
     ENGRAVING_LINE2_MAX,
     ENGRAVING_NAME_MAX,
     ENGRAVING_PLACES,
+    EngravingBatchCreate,
     EngravingEvent,
     EngravingEventCreate,
     EngravingEventRead,
@@ -37,6 +39,7 @@ from ..models import (
     EngravingOrderUpdate,
     EngravingQueueRead,
     PublicEngravingEvent,
+    PublicEngravingGroupMember,
     PublicEngravingOrder,
     Tenant,
 )
@@ -206,6 +209,7 @@ def _create_order(
     source: str,
     paid: bool = False,
     notes: str | None = None,
+    group_id: UUID | None = None,
 ) -> EngravingOrder:
     athlete_name = _clean_text(payload.athlete_name, field="Athlete name", max_len=ENGRAVING_NAME_MAX, required=True)
     line2 = _clean_text(payload.line2, field="Second line", max_len=ENGRAVING_LINE2_MAX, required=False)
@@ -238,6 +242,7 @@ def _create_order(
             amount_cents=event.price_cents * qty,
             source=source,
             notes=notes,
+            group_id=group_id,
         )
         session.add(locked)
         session.add(order)
@@ -657,6 +662,40 @@ def create_public_order(
     return _public_order(session, order, event)
 
 
+@public_router.post("/events/{token}/orders/batch", response_model=list[PublicEngravingOrder])
+@limiter.limit(get_public_write_rate_limit)
+def create_public_order_batch(
+    request: Request,
+    token: str,
+    payload: EngravingBatchCreate,
+    session: Session = Depends(get_session),
+):
+    """Order several different medals in one go. Every medal is checked before any is
+    created, so a typo in the third one doesn't leave the first two half-ordered."""
+    event = _public_event(session, token)
+    if event.status != "open":
+        raise HTTPException(status_code=409, detail="This stall isn't taking orders right now")
+    if not payload.orders:
+        raise HTTPException(status_code=422, detail="Add at least one medal")
+    if len(payload.orders) > ENGRAVING_BATCH_MAX:
+        raise HTTPException(status_code=422, detail=f"You can order up to {ENGRAVING_BATCH_MAX} different medals at once")
+    items = []
+    for item in payload.orders:
+        item = EngravingOrderCreate(
+            athlete_name=item.athlete_name, line2=item.line2, place=item.place, qty=item.qty, phone=payload.phone
+        )
+        # Validate up front (raises 422 on bad input) without creating anything.
+        _clean_text(item.athlete_name, field="Athlete name", max_len=ENGRAVING_NAME_MAX, required=True)
+        _clean_text(item.line2, field="Second line", max_len=ENGRAVING_LINE2_MAX, required=False)
+        _clean_place(item.place)
+        _clean_qty(item.qty)
+        _clean_phone(item.phone)
+        items.append(item)
+    group_id = uuid4() if len(items) > 1 else None
+    orders = [_create_order(session, event, item, source="online", group_id=group_id) for item in items]
+    return [_public_order(session, order, event) for order in orders]
+
+
 def _public_order(session: Session, order: EngravingOrder, event: EngravingEvent) -> PublicEngravingOrder:
     position: int | None = None
     wait: int | None = None
@@ -665,7 +704,22 @@ def _public_order(session: Session, order: EngravingOrder, event: EngravingEvent
         position = 1 + sum(1 for o in active if o.order_seq < order.order_seq)
         ahead = sum(_remaining(o) for o in active if o.order_seq < order.order_seq)
         wait = (ahead + _remaining(order)) * event.minutes_per_medal
+    members: list[PublicEngravingGroupMember] = []
+    if order.group_id:
+        siblings = session.exec(
+            select(EngravingOrder)
+            .where(EngravingOrder.group_id == order.group_id)
+            .where(EngravingOrder.id != order.id)
+            .order_by(EngravingOrder.order_seq)
+        ).all()
+        members = [
+            PublicEngravingGroupMember(
+                order_number=o.order_number, athlete_name=o.athlete_name, status_token=o.status_token, status=o.status
+            )
+            for o in siblings
+        ]
     return PublicEngravingOrder(
+        group_members=members,
         order_number=order.order_number,
         status_token=order.status_token,
         event_name=event.name,

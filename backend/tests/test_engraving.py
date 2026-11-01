@@ -220,3 +220,50 @@ def test_export_formats_and_limit(client, owner):
     assert client.get(f"{base}?software=bogus", headers=owner).status_code == 422
     other = client.get(f"/v1/engraving/events/{event['id']}/export", headers={"Authorization": "Bearer nope"})
     assert other.status_code in (401, 403)
+
+
+def test_public_batch_order_creates_one_order_per_medal(client, owner):
+    event = _make_event(client, owner)
+    token = event["public_token"]
+    res = client.post(
+        f"/v1/public/engraving/events/{token}/orders/batch",
+        json={
+            "orders": [
+                {"athlete_name": "Mia Thompson", "line2": "U9 100m", "place": "1st", "qty": 1},
+                {"athlete_name": "Leo Thompson", "place": "3rd", "qty": 2},
+            ],
+            "phone": "0412 345 678",
+        },
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert [o["order_number"] for o in body] == ["A-001", "A-002"]
+    assert body[1]["amount_cents"] == 3000
+    assert all(o["phone_masked"] for o in body)
+    # Medals ordered together know about each other; a single order has no group.
+    assert [m["order_number"] for m in body[0]["group_members"]] == ["A-002"]
+    assert [m["order_number"] for m in body[1]["group_members"]] == ["A-001"]
+    single = _public_order(client, token, athlete_name="Solo Kid").json()
+    assert client.get(f"/v1/public/engraving/orders/{single['status_token']}").json()["group_members"] == []
+    queue_orders = client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["orders"]
+    groups = {o["order_number"]: o["group_id"] for o in queue_orders}
+    assert groups["A-001"] == groups["A-002"] and groups["A-001"] is not None and groups["A-003"] is None
+    queue = client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()
+    assert queue["event"]["stats"]["medals_total"] == 4
+
+
+def test_public_batch_is_all_or_nothing_and_bounded(client, owner):
+    event = _make_event(client, owner)
+    token = event["public_token"]
+    url = f"/v1/public/engraving/events/{token}/orders/batch"
+    bad = client.post(url, json={"orders": [
+        {"athlete_name": "Mia Thompson", "qty": 1},
+        {"athlete_name": "", "qty": 1},
+    ]})
+    assert bad.status_code == 422
+    assert client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["event"]["stats"]["medals_total"] == 0
+    assert client.post(url, json={"orders": []}).status_code == 422
+    too_many = [{"athlete_name": f"Kid {i}", "qty": 1} for i in range(11)]
+    assert client.post(url, json={"orders": too_many}).status_code == 422
+    client.patch(f"/v1/engraving/events/{event['id']}", json={"status": "paused"}, headers=owner)
+    assert client.post(url, json={"orders": [{"athlete_name": "Mia", "qty": 1}]}).status_code == 409
