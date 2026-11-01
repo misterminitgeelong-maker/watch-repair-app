@@ -22833,6 +22833,641 @@
           }
         ]
       }
+    },
+    "/v1/engraving/events": {
+      "get": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events_v1_engraving_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EngravingEventRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Events V1 Engraving Events Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Create Event",
+        "operationId": "create_event_v1_engraving_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingEventCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingEventRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/engraving/events/{event_id}": {
+      "patch": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Update Event",
+        "operationId": "update_event_v1_engraving_events__event_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingEventUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingEventRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/events/{event_id}/queue": {
+      "get": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Get Queue",
+        "operationId": "get_queue_v1_engraving_events__event_id__queue_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingQueueRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/events/{event_id}/orders": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Create Walk Up Order",
+        "operationId": "create_walk_up_order_v1_engraving_events__event_id__orders_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingOperatorOrderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/events/{event_id}/export.csv": {
+      "get": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Export Laser Csv",
+        "description": "One row per medal still to engrave, in queue order.\n\nColumns: Name, Line2, Place, Order, Medal. In LightBurn use Variable Text \u2192\nMerge/CSV with Auto Advance (column 0 = Name, 1 = Line2, 2 = Place). In xTool\nStudio's batch processing mode, import the CSV and map Name/Line2/Place to the\ntext variables.",
+        "operationId": "export_laser_csv_v1_engraving_events__event_id__export_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "paid_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Paid Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}": {
+      "patch": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Update Order",
+        "operationId": "update_order_v1_engraving_orders__order_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingOrderUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}/medal-done": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Medal Done",
+        "description": "The operator finished one medal. When the last one is done the order is ready\nand the parent is texted.",
+        "operationId": "medal_done_v1_engraving_orders__order_id__medal_done_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}/start": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Start Order",
+        "description": "Put this order on the laser. Any other order marked engraving goes back to waiting,\nso there is only ever one \"now engraving\".",
+        "operationId": "start_order_v1_engraving_orders__order_id__start_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}/resend-ready": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Resend Ready Text",
+        "operationId": "resend_ready_text_v1_engraving_orders__order_id__resend_ready_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/engraving/events/{token}": {
+      "get": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Get Public Event",
+        "operationId": "get_public_event_v1_public_engraving_events__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEngravingEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/engraving/events/{token}/orders": {
+      "post": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Create Public Order",
+        "operationId": "create_public_order_v1_public_engraving_events__token__orders_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingOrderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEngravingOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/engraving/orders/{status_token}": {
+      "get": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Get Public Order",
+        "operationId": "get_public_order_v1_public_engraving_orders__status_token__get",
+        "parameters": [
+          {
+            "name": "status_token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Status Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEngravingOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -28366,6 +29001,676 @@
           "token"
         ],
         "title": "DeviceRegister"
+      },
+      "EngravingEventCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents",
+            "default": 1500
+          },
+          "minutes_per_medal": {
+            "type": "integer",
+            "title": "Minutes Per Medal",
+            "default": 3
+          },
+          "sms_enabled": {
+            "type": "boolean",
+            "title": "Sms Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "EngravingEventCreate"
+      },
+      "EngravingEventRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents"
+          },
+          "minutes_per_medal": {
+            "type": "integer",
+            "title": "Minutes Per Medal"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sms_enabled": {
+            "type": "boolean",
+            "title": "Sms Enabled"
+          },
+          "public_token": {
+            "type": "string",
+            "title": "Public Token"
+          },
+          "public_url": {
+            "type": "string",
+            "title": "Public Url"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/EngravingEventStats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "event_date",
+          "location",
+          "price_cents",
+          "minutes_per_medal",
+          "status",
+          "sms_enabled",
+          "public_token",
+          "public_url",
+          "created_at",
+          "stats"
+        ],
+        "title": "EngravingEventRead"
+      },
+      "EngravingEventStats": {
+        "properties": {
+          "waiting": {
+            "type": "integer",
+            "title": "Waiting",
+            "default": 0
+          },
+          "engraving": {
+            "type": "integer",
+            "title": "Engraving",
+            "default": 0
+          },
+          "ready": {
+            "type": "integer",
+            "title": "Ready",
+            "default": 0
+          },
+          "collected": {
+            "type": "integer",
+            "title": "Collected",
+            "default": 0
+          },
+          "cancelled": {
+            "type": "integer",
+            "title": "Cancelled",
+            "default": 0
+          },
+          "medals_total": {
+            "type": "integer",
+            "title": "Medals Total",
+            "default": 0
+          },
+          "medals_remaining": {
+            "type": "integer",
+            "title": "Medals Remaining",
+            "default": 0
+          },
+          "paid_cents": {
+            "type": "integer",
+            "title": "Paid Cents",
+            "default": 0
+          },
+          "unpaid_cents": {
+            "type": "integer",
+            "title": "Unpaid Cents",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "EngravingEventStats"
+      },
+      "EngravingEventUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Cents"
+          },
+          "minutes_per_medal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes Per Medal"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "paused",
+                  "closed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "sms_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sms Enabled"
+          }
+        },
+        "type": "object",
+        "title": "EngravingEventUpdate"
+      },
+      "EngravingOperatorOrderCreate": {
+        "properties": {
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place",
+            "default": "None"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty",
+            "default": 1
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "paid": {
+            "type": "boolean",
+            "title": "Paid",
+            "default": false
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "athlete_name"
+        ],
+        "title": "EngravingOperatorOrderCreate"
+      },
+      "EngravingOrderCreate": {
+        "properties": {
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place",
+            "default": "None"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty",
+            "default": 1
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "athlete_name"
+        ],
+        "title": "EngravingOrderCreate"
+      },
+      "EngravingOrderRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "order_number": {
+            "type": "string",
+            "title": "Order Number"
+          },
+          "order_seq": {
+            "type": "integer",
+            "title": "Order Seq"
+          },
+          "status_token": {
+            "type": "string",
+            "title": "Status Token"
+          },
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty"
+          },
+          "medals_done": {
+            "type": "integer",
+            "title": "Medals Done"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "paid": {
+            "type": "boolean",
+            "title": "Paid"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "ready_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready At"
+          },
+          "ready_sms_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready Sms Status"
+          },
+          "collected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "order_number",
+          "order_seq",
+          "status_token",
+          "athlete_name",
+          "line2",
+          "place",
+          "qty",
+          "medals_done",
+          "phone",
+          "status",
+          "paid",
+          "paid_at",
+          "amount_cents",
+          "source",
+          "notes",
+          "ready_at",
+          "ready_sms_status",
+          "collected_at",
+          "created_at"
+        ],
+        "title": "EngravingOrderRead"
+      },
+      "EngravingOrderUpdate": {
+        "properties": {
+          "athlete_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "paid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "engraving",
+                  "ready",
+                  "collected",
+                  "cancelled"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "EngravingOrderUpdate"
+      },
+      "EngravingQueueRead": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/EngravingEventRead"
+          },
+          "orders": {
+            "items": {
+              "$ref": "#/components/schemas/EngravingOrderRead"
+            },
+            "type": "array",
+            "title": "Orders"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "orders"
+        ],
+        "title": "EngravingQueueRead"
       },
       "FollowUpUpdate": {
         "properties": {
@@ -36287,6 +37592,228 @@
         },
         "type": "object",
         "title": "PublicAutoKeyIntakeSubmit"
+      },
+      "PublicEngravingEvent": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents"
+          },
+          "accepting_orders": {
+            "type": "boolean",
+            "title": "Accepting Orders"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "wait_minutes": {
+            "type": "integer",
+            "title": "Wait Minutes"
+          },
+          "medals_ahead": {
+            "type": "integer",
+            "title": "Medals Ahead"
+          },
+          "name_max": {
+            "type": "integer",
+            "title": "Name Max",
+            "default": 24
+          },
+          "line2_max": {
+            "type": "integer",
+            "title": "Line2 Max",
+            "default": 28
+          },
+          "places": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Places",
+            "default": [
+              "1st",
+              "2nd",
+              "3rd",
+              "Participant",
+              "None"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "shop_name",
+          "event_date",
+          "location",
+          "price_cents",
+          "accepting_orders",
+          "status",
+          "wait_minutes",
+          "medals_ahead"
+        ],
+        "title": "PublicEngravingEvent"
+      },
+      "PublicEngravingOrder": {
+        "properties": {
+          "order_number": {
+            "type": "string",
+            "title": "Order Number"
+          },
+          "status_token": {
+            "type": "string",
+            "title": "Status Token"
+          },
+          "event_name": {
+            "type": "string",
+            "title": "Event Name"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty"
+          },
+          "medals_done": {
+            "type": "integer",
+            "title": "Medals Done"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "paid": {
+            "type": "boolean",
+            "title": "Paid"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "queue_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Position"
+          },
+          "wait_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wait Minutes"
+          },
+          "phone_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Masked"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "ready_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_number",
+          "status_token",
+          "event_name",
+          "shop_name",
+          "athlete_name",
+          "line2",
+          "place",
+          "qty",
+          "medals_done",
+          "status",
+          "paid",
+          "amount_cents",
+          "queue_position",
+          "wait_minutes",
+          "phone_masked",
+          "created_at",
+          "ready_at"
+        ],
+        "title": "PublicEngravingOrder"
       },
       "PublicUser": {
         "properties": {

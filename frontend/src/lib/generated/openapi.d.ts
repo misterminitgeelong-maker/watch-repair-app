@@ -7210,6 +7210,227 @@ export interface paths {
         patch: operations["update_shop_identity_v1_settings_shop_identity_patch"];
         trace?: never;
     };
+    "/v1/engraving/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Events */
+        get: operations["list_events_v1_engraving_events_get"];
+        put?: never;
+        /** Create Event */
+        post: operations["create_event_v1_engraving_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Event */
+        patch: operations["update_event_v1_engraving_events__event_id__patch"];
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Queue */
+        get: operations["get_queue_v1_engraving_events__event_id__queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Walk Up Order */
+        post: operations["create_walk_up_order_v1_engraving_events__event_id__orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Laser Csv
+         * @description One row per medal still to engrave, in queue order.
+         *
+         *     Columns: Name, Line2, Place, Order, Medal. In LightBurn use Variable Text →
+         *     Merge/CSV with Auto Advance (column 0 = Name, 1 = Line2, 2 = Place). In xTool
+         *     Studio's batch processing mode, import the CSV and map Name/Line2/Place to the
+         *     text variables.
+         */
+        get: operations["export_laser_csv_v1_engraving_events__event_id__export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Order */
+        patch: operations["update_order_v1_engraving_orders__order_id__patch"];
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}/medal-done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Medal Done
+         * @description The operator finished one medal. When the last one is done the order is ready
+         *     and the parent is texted.
+         */
+        post: operations["medal_done_v1_engraving_orders__order_id__medal_done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Order
+         * @description Put this order on the laser. Any other order marked engraving goes back to waiting,
+         *     so there is only ever one "now engraving".
+         */
+        post: operations["start_order_v1_engraving_orders__order_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}/resend-ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend Ready Text */
+        post: operations["resend_ready_text_v1_engraving_orders__order_id__resend_ready_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/engraving/events/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Event */
+        get: operations["get_public_event_v1_public_engraving_events__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/engraving/events/{token}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Public Order */
+        post: operations["create_public_order_v1_public_engraving_events__token__orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/engraving/orders/{status_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Order */
+        get: operations["get_public_order_v1_public_engraving_orders__status_token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8928,6 +9149,251 @@ export interface components {
              * @default android
              */
             platform: string;
+        };
+        /** EngravingEventCreate */
+        EngravingEventCreate: {
+            /** Name */
+            name: string;
+            /** Event Date */
+            event_date?: string | null;
+            /** Location */
+            location?: string | null;
+            /**
+             * Price Cents
+             * @default 1500
+             */
+            price_cents: number;
+            /**
+             * Minutes Per Medal
+             * @default 3
+             */
+            minutes_per_medal: number;
+            /**
+             * Sms Enabled
+             * @default true
+             */
+            sms_enabled: boolean;
+        };
+        /** EngravingEventRead */
+        EngravingEventRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Event Date */
+            event_date: string | null;
+            /** Location */
+            location: string | null;
+            /** Price Cents */
+            price_cents: number;
+            /** Minutes Per Medal */
+            minutes_per_medal: number;
+            /** Status */
+            status: string;
+            /** Sms Enabled */
+            sms_enabled: boolean;
+            /** Public Token */
+            public_token: string;
+            /** Public Url */
+            public_url: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            stats: components["schemas"]["EngravingEventStats"];
+        };
+        /** EngravingEventStats */
+        EngravingEventStats: {
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
+            /**
+             * Engraving
+             * @default 0
+             */
+            engraving: number;
+            /**
+             * Ready
+             * @default 0
+             */
+            ready: number;
+            /**
+             * Collected
+             * @default 0
+             */
+            collected: number;
+            /**
+             * Cancelled
+             * @default 0
+             */
+            cancelled: number;
+            /**
+             * Medals Total
+             * @default 0
+             */
+            medals_total: number;
+            /**
+             * Medals Remaining
+             * @default 0
+             */
+            medals_remaining: number;
+            /**
+             * Paid Cents
+             * @default 0
+             */
+            paid_cents: number;
+            /**
+             * Unpaid Cents
+             * @default 0
+             */
+            unpaid_cents: number;
+        };
+        /** EngravingEventUpdate */
+        EngravingEventUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Event Date */
+            event_date?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Price Cents */
+            price_cents?: number | null;
+            /** Minutes Per Medal */
+            minutes_per_medal?: number | null;
+            /** Status */
+            status?: ("open" | "paused" | "closed") | null;
+            /** Sms Enabled */
+            sms_enabled?: boolean | null;
+        };
+        /** EngravingOperatorOrderCreate */
+        EngravingOperatorOrderCreate: {
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2?: string | null;
+            /**
+             * Place
+             * @default None
+             */
+            place: string;
+            /**
+             * Qty
+             * @default 1
+             */
+            qty: number;
+            /** Phone */
+            phone?: string | null;
+            /**
+             * Paid
+             * @default false
+             */
+            paid: boolean;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** EngravingOrderCreate */
+        EngravingOrderCreate: {
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2?: string | null;
+            /**
+             * Place
+             * @default None
+             */
+            place: string;
+            /**
+             * Qty
+             * @default 1
+             */
+            qty: number;
+            /** Phone */
+            phone?: string | null;
+        };
+        /** EngravingOrderRead */
+        EngravingOrderRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Order Number */
+            order_number: string;
+            /** Order Seq */
+            order_seq: number;
+            /** Status Token */
+            status_token: string;
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2: string | null;
+            /** Place */
+            place: string;
+            /** Qty */
+            qty: number;
+            /** Medals Done */
+            medals_done: number;
+            /** Phone */
+            phone: string | null;
+            /** Status */
+            status: string;
+            /** Paid */
+            paid: boolean;
+            /** Paid At */
+            paid_at: string | null;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Source */
+            source: string;
+            /** Notes */
+            notes: string | null;
+            /** Ready At */
+            ready_at: string | null;
+            /** Ready Sms Status */
+            ready_sms_status: string | null;
+            /** Collected At */
+            collected_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** EngravingOrderUpdate */
+        EngravingOrderUpdate: {
+            /** Athlete Name */
+            athlete_name?: string | null;
+            /** Line2 */
+            line2?: string | null;
+            /** Place */
+            place?: string | null;
+            /** Qty */
+            qty?: number | null;
+            /** Phone */
+            phone?: string | null;
+            /** Paid */
+            paid?: boolean | null;
+            /** Status */
+            status?: ("waiting" | "engraving" | "ready" | "collected" | "cancelled") | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** EngravingQueueRead */
+        EngravingQueueRead: {
+            event: components["schemas"]["EngravingEventRead"];
+            /** Orders */
+            orders: components["schemas"]["EngravingOrderRead"][];
         };
         /** FollowUpUpdate */
         FollowUpUpdate: {
@@ -11672,6 +12138,88 @@ export interface components {
             key_photo_data?: string | null;
             /** Extra Key Photo Data */
             extra_key_photo_data?: string | null;
+        };
+        /** PublicEngravingEvent */
+        PublicEngravingEvent: {
+            /** Name */
+            name: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Event Date */
+            event_date: string | null;
+            /** Location */
+            location: string | null;
+            /** Price Cents */
+            price_cents: number;
+            /** Accepting Orders */
+            accepting_orders: boolean;
+            /** Status */
+            status: string;
+            /** Wait Minutes */
+            wait_minutes: number;
+            /** Medals Ahead */
+            medals_ahead: number;
+            /**
+             * Name Max
+             * @default 24
+             */
+            name_max: number;
+            /**
+             * Line2 Max
+             * @default 28
+             */
+            line2_max: number;
+            /**
+             * Places
+             * @default [
+             *       "1st",
+             *       "2nd",
+             *       "3rd",
+             *       "Participant",
+             *       "None"
+             *     ]
+             */
+            places: string[];
+        };
+        /** PublicEngravingOrder */
+        PublicEngravingOrder: {
+            /** Order Number */
+            order_number: string;
+            /** Status Token */
+            status_token: string;
+            /** Event Name */
+            event_name: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2: string | null;
+            /** Place */
+            place: string;
+            /** Qty */
+            qty: number;
+            /** Medals Done */
+            medals_done: number;
+            /** Status */
+            status: string;
+            /** Paid */
+            paid: boolean;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Queue Position */
+            queue_position: number | null;
+            /** Wait Minutes */
+            wait_minutes: number | null;
+            /** Phone Masked */
+            phone_masked: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Ready At */
+            ready_at: string | null;
         };
         /** PublicUser */
         PublicUser: {
@@ -27773,6 +28321,418 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShopIdentityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_events_v1_engraving_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingEventRead"][];
+                };
+            };
+        };
+    };
+    create_event_v1_engraving_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingEventRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_event_v1_engraving_events__event_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingEventUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingEventRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_queue_v1_engraving_events__event_id__queue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingQueueRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_walk_up_order_v1_engraving_events__event_id__orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingOperatorOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_laser_csv_v1_engraving_events__event_id__export_csv_get: {
+        parameters: {
+            query?: {
+                paid_only?: boolean;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_order_v1_engraving_orders__order_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingOrderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    medal_done_v1_engraving_orders__order_id__medal_done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_order_v1_engraving_orders__order_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_ready_text_v1_engraving_orders__order_id__resend_ready_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_event_v1_public_engraving_events__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEngravingEvent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_public_order_v1_public_engraving_events__token__orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEngravingOrder"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_order_v1_public_engraving_orders__status_token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                status_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEngravingOrder"];
                 };
             };
             /** @description Validation Error */

@@ -1493,3 +1493,31 @@ def notify_auto_key_schedule_changed(
         body=body,
         event="auto_key_schedule_changed",
     )
+
+
+def notify_engraving_ready(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    athlete_name: str,
+    order_number: str,
+    status_token: str,
+) -> str:
+    """Tell a parent their engraved medal is ready to collect. Returns the send status
+    ("sent" | "dry_run" | "failed")."""
+    status_url = f"{settings.public_base_url}/engrave/o/{status_token}"
+    body = (
+        f"{shop_name}: {athlete_name}'s medal is engraved and ready to collect. "
+        f"Show order {order_number} at the stall. {status_url}"
+    )
+    _sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="engraving_ready",
+    )
+    return sms_status

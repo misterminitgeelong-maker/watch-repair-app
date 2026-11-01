@@ -23,6 +23,7 @@ import {
   Download,
   Radio,
   Kanban,
+  Award,
   ShoppingBag,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
@@ -68,6 +69,7 @@ const navBeforeMobile: NavLinkItem[] = [
   { to: '/shop-mobile-bookings', label: 'Book mobile services', icon: KeyRound, feature: 'shop_mobile_booking' },
   { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Quote activity and website mobile key leads' },
   { to: '/customers', label: 'Customers', icon: Users },
+  { to: '/engraving', label: 'Engraving Events', icon: Award, title: 'QR ordering and queue for on-the-spot medal engraving' },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' },
   { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors, feature: 'shoe' },
   { to: '/customer-orders', label: 'Customer Orders', icon: ShoppingBag, title: 'Track items ordered in for customers' },
