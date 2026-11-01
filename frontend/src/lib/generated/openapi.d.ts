@@ -7290,12 +7290,36 @@ export interface paths {
          * Export Laser Csv
          * @description One row per medal still to engrave, in queue order.
          *
-         *     Columns: Name, Line2, Place, Order, Medal. In LightBurn use Variable Text →
-         *     Merge/CSV with Auto Advance (column 0 = Name, 1 = Line2, 2 = Place). In xTool
-         *     Studio's batch processing mode, import the CSV and map Name/Line2/Place to the
-         *     text variables.
+         *     Columns: Name, Line2, Place, Order, Medal. For other laser programs use
+         *     /export, which can also shape the file for LightBurn, xTool and EZCad2.
          */
         get: operations["export_laser_csv_v1_engraving_events__event_id__export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Laser File
+         * @description Laser file shaped for the chosen program, optionally only the next `limit` medals.
+         *
+         *     - csv: header row plus Name, Line2, Place, Order, Medal.
+         *     - lightburn: the same without the header row (LightBurn counts every line as a row).
+         *     - xtool: header row; empty cells become a single space (xTool skips a row with a blank cell).
+         *     - ezcad2: a zip of names.txt, line2.txt and places.txt, one value per line (EZCad2 reads
+         *       TXT or old-format XLS, not CSV).
+         */
+        get: operations["export_laser_file_v1_engraving_events__event_id__export_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -28492,6 +28516,41 @@ export interface operations {
         parameters: {
             query?: {
                 paid_only?: boolean;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_laser_file_v1_engraving_events__event_id__export_get: {
+        parameters: {
+            query?: {
+                software?: string;
+                paid_only?: boolean;
+                limit?: number | null;
             };
             header?: never;
             path: {

@@ -185,3 +185,38 @@ def test_tenant_isolation(client, owner, bootstrap_and_login):
     _public_order(client, event["public_token"])
     order_id = client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["orders"][0]["id"]
     assert client.post(f"/v1/engraving/orders/{order_id}/medal-done", headers=other).status_code == 404
+
+
+def test_export_formats_and_limit(client, owner):
+    import zipfile
+
+    event = _make_event(client, owner)
+    token = event["public_token"]
+    _public_order(client, token, athlete_name="Mia Thompson", line2="U9 Girls 100m", place="1st", qty=2)
+    _public_order(client, token, athlete_name="Oliver Nguyen", line2=None, place="Participant")
+    base = f"/v1/engraving/events/{event['id']}/export"
+
+    lb = client.get(f"{base}?software=lightburn", headers=owner)
+    assert lb.status_code == 200
+    rows = list(csv.reader(io.StringIO(lb.text)))
+    assert rows[0] == ["Mia Thompson", "U9 Girls 100m", "1st Place", "A-001", "1 of 2"]  # no header row
+    assert len(rows) == 3
+
+    xt = client.get(f"{base}?software=xtool", headers=owner)
+    xt_rows = list(csv.reader(io.StringIO(xt.text)))
+    assert xt_rows[0] == ["Name", "Line2", "Place", "Order", "Medal"]
+    assert xt_rows[3][1] == " "  # blank second line becomes a space so xTool doesn't skip the row
+
+    limited = client.get(f"{base}?software=lightburn&limit=2", headers=owner)
+    assert len(list(csv.reader(io.StringIO(limited.text)))) == 2
+
+    ez = client.get(f"{base}?software=ezcad2", headers=owner)
+    assert ez.headers["content-type"] == "application/zip"
+    zf = zipfile.ZipFile(io.BytesIO(ez.content))
+    assert zf.read("names.txt").decode().split("\r\n")[:3] == ["Mia Thompson", "Mia Thompson", "Oliver Nguyen"]
+    assert zf.read("line2.txt").decode().split("\r\n")[2] == " "
+    assert zf.read("places.txt").decode().split("\r\n")[0] == "1st Place"
+
+    assert client.get(f"{base}?software=bogus", headers=owner).status_code == 422
+    other = client.get(f"/v1/engraving/events/{event['id']}/export", headers={"Authorization": "Bearer nope"})
+    assert other.status_code in (401, 403)

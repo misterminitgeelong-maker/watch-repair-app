@@ -10,7 +10,9 @@ import {
   createWalkUpEngravingOrder,
   engravingMedalDone,
   engravingPlaceText,
-  exportEngravingCsv,
+  exportEngravingFile,
+  LASER_SOFTWARE,
+  type LaserSoftware,
   getEngravingQueue,
   resendEngravingReady,
   startEngravingOrder,
@@ -115,6 +117,15 @@ export default function EngravingQueuePage() {
   const [showQr, setShowQr] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [software, setSoftware] = useState<LaserSoftware>(() => {
+    try {
+      const saved = localStorage.getItem('engraving-laser-software')
+      return LASER_SOFTWARE.some((x) => x.value === saved) ? (saved as LaserSoftware) : 'xtool'
+    } catch {
+      return 'xtool'
+    }
+  })
+  const [exportLimit, setExportLimit] = useState('')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['engraving-queue', eventId],
@@ -160,11 +171,11 @@ export default function EngravingQueuePage() {
     if (!data) return
     setExporting(true)
     try {
-      const res = await exportEngravingCsv(data.event.id)
+      const res = await exportEngravingFile(data.event.id, software, exportLimit ? Number(exportLimit) : undefined)
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${data.event.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'engraving'}-medals.csv`
+      a.download = `${data.event.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'engraving'}-${software}.${LASER_SOFTWARE.find((x) => x.value === software)?.ext ?? 'csv'}`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -200,7 +211,33 @@ export default function EngravingQueuePage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => setShowQr(true)}><QrCode size={14} />QR</Button>
-          <Button variant="secondary" onClick={downloadCsv} disabled={exporting || s.medals_remaining === 0}><Download size={14} />{exporting ? 'Exporting…' : 'Export CSV for laser'}</Button>
+          <label className="sr-only" htmlFor="engr-laser-software">Laser software</label>
+          <select
+            id="engr-laser-software"
+            value={software}
+            onChange={(e) => {
+              const v = e.target.value as LaserSoftware
+              setSoftware(v)
+              try { localStorage.setItem('engraving-laser-software', v) } catch { /* ignore */ }
+            }}
+            className="h-11 px-2 text-sm"
+            style={{ border: '1px solid var(--ms-border-strong, var(--ms-border))', background: 'var(--ms-surface)', color: 'var(--ms-text)', borderRadius: 'var(--ms-radius)' }}
+          >
+            {LASER_SOFTWARE.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+          </select>
+          <label className="sr-only" htmlFor="engr-export-limit">How many medals</label>
+          <select
+            id="engr-export-limit"
+            value={exportLimit}
+            onChange={(e) => setExportLimit(e.target.value)}
+            className="h-11 px-2 text-sm"
+            style={{ border: '1px solid var(--ms-border-strong, var(--ms-border))', background: 'var(--ms-surface)', color: 'var(--ms-text)', borderRadius: 'var(--ms-radius)' }}
+          >
+            <option value="">All medals</option>
+            <option value="10">Next 10</option>
+            <option value="20">Next 20</option>
+          </select>
+          <Button variant="secondary" onClick={downloadCsv} disabled={exporting || s.medals_remaining === 0}><Download size={14} />{exporting ? 'Exporting…' : 'Export for laser'}</Button>
           {event.status === 'open' ? (
             <Button variant="secondary" onClick={() => setEventStatus.mutate('paused')} disabled={setEventStatus.isPending}><Pause size={14} />Pause orders</Button>
           ) : (
