@@ -1,3 +1,4 @@
+import { CompletionPaymentPicker, type CompletionPayment } from './autoKey/CompletionPaymentPicker'
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -219,6 +220,8 @@ export default function AutoKeyJobDetailPage() {
   const [editTax, setEditTax] = useState('')
   const [editTotal, setEditTotal] = useState('')
   const [statusFeedback, setStatusFeedback] = useState('')
+  const [confirmComplete, setConfirmComplete] = useState(false)
+  const [completionPayment, setCompletionPayment] = useState<CompletionPayment>('')
   const toast = useToast()
   const tabFromUrl = searchParams.get('tab')
   const [detailTab, setDetailTab] = useState<'info' | 'vehicle' | 'financial' | 'photos' | 'messages' | 'activity'>(
@@ -366,7 +369,8 @@ export default function AutoKeyJobDetailPage() {
   })
 
   const statusMut = useMutation({
-    mutationFn: (status: JobStatus) => updateAutoKeyJobStatus(id!, status),
+    mutationFn: ({ status, payment }: { status: JobStatus; payment?: CompletionPayment }) =>
+      updateAutoKeyJobStatus(id!, status, undefined, payment || undefined),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auto-key-job', id] })
       invalidateAutoKeyJobCollections(qc)
@@ -376,12 +380,21 @@ export default function AutoKeyJobDetailPage() {
     onError: err => setError(getApiErrorMessage(err, 'Failed to update status.')),
   })
 
-  const handleStatusChange = async (status: JobStatus) => {
+  const handleStatusChange = async (status: JobStatus, payment?: CompletionPayment) => {
+    // Completing a job asks whether the customer already paid (EFTPOS / cash) before changing anything.
+    if (status === 'work_completed' && job?.status !== 'work_completed' && payment === undefined) {
+      setCompletionPayment('')
+      setConfirmComplete(true)
+      return
+    }
     setStatusFeedback('')
-    const res = await statusMut.mutateAsync(status)
+    const res = await statusMut.mutateAsync({ status, payment })
+    setConfirmComplete(false)
     if (status !== 'work_completed') return
 
-    if (res.data.invoice_created) {
+    if (payment) {
+      setStatusFeedback(`Work completed — invoice marked paid (${payment === 'eftpos' ? 'EFTPOS' : payment === 'bank' ? 'bank transfer' : 'cash'}).`)
+    } else if (res.data.invoice_created) {
       setStatusFeedback('Work completed — invoice created and payment link sent to customer.')
     } else if (res.data.invoice_skip_reason === 'already_invoiced') {
       setStatusFeedback('Work completed. No new invoice was created — this job is already invoiced.')
@@ -1496,6 +1509,21 @@ export default function AutoKeyJobDetailPage() {
                 {editInvoiceMut.isPending ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+      {confirmComplete && (
+        <Modal title="Complete job?" onClose={() => !statusMut.isPending && setConfirmComplete(false)}>
+          <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+            This marks the work complete and creates the invoice.
+          </p>
+          <CompletionPaymentPicker value={completionPayment} onChange={setCompletionPayment} disabled={statusMut.isPending} />
+          {error && <p role="alert" className="mt-3 text-sm" style={{ color: 'var(--ms-error)' }}>{error}</p>}
+          <div className="mt-4 flex gap-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setConfirmComplete(false)} disabled={statusMut.isPending}>Cancel</Button>
+            <Button className="flex-1" onClick={() => void handleStatusChange('work_completed', completionPayment)} disabled={statusMut.isPending}>
+              {statusMut.isPending ? 'Completing…' : 'Complete job'}
+            </Button>
           </div>
         </Modal>
       )}

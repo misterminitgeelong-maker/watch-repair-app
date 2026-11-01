@@ -692,6 +692,27 @@ def get_operations_bookings_report(
     if expired_any:
         session.commit()
 
+    # Totals and the per-shop table cover every booking matching the filters, not just the
+    # (limited) rows listed below.
+    count_stmt = (
+        select(
+            ShopMobileBookingRequest.requesting_tenant_id,
+            ShopMobileBookingRequest.status,
+            func.count(),
+        )
+        .where(ShopMobileBookingRequest.parent_account_id == parent.id)
+        .group_by(ShopMobileBookingRequest.requesting_tenant_id, ShopMobileBookingRequest.status)
+    )
+    if start is not None:
+        count_stmt = count_stmt.where(col(ShopMobileBookingRequest.created_at) >= start)
+    if end is not None:
+        count_stmt = count_stmt.where(col(ShopMobileBookingRequest.created_at) <= end)
+    if status:
+        count_stmt = count_stmt.where(ShopMobileBookingRequest.status == status.strip().lower())
+    if shop_tenant_id is not None:
+        count_stmt = count_stmt.where(ShopMobileBookingRequest.requesting_tenant_id == shop_tenant_id)
+    count_rows = session.exec(count_stmt).all()
+
     by_shop: dict[UUID, ParentShopBookingVolume] = {}
     totals = ParentShopBookingVolume(
         tenant_id=parent.id,
@@ -704,26 +725,18 @@ def get_operations_bookings_report(
         expired=0,
     )
 
-    def bump(vol: ParentShopBookingVolume, st: str) -> None:
-        vol.total += 1
-        if st == "pending":
-            vol.pending += 1
-        elif st == "accepted":
-            vol.accepted += 1
-        elif st == "declined":
-            vol.declined += 1
-        elif st == "cancelled":
-            vol.cancelled += 1
-        elif st == "expired":
-            vol.expired += 1
+    def bump(vol: ParentShopBookingVolume, st: str, n: int) -> None:
+        vol.total += n
+        if st in ("pending", "accepted", "declined", "cancelled", "expired"):
+            setattr(vol, st, getattr(vol, st) + n)
 
-    shops = _tenants_by_ids(session, [row.requesting_tenant_id for row in rows])
-    for row in rows:
-        shop = shops.get(row.requesting_tenant_id)
+    shops = _tenants_by_ids(session, [tid for tid, _st, _n in count_rows])
+    for tid, st, n in count_rows:
+        shop = shops.get(tid)
         if not shop:
             continue
-        if row.requesting_tenant_id not in by_shop:
-            by_shop[row.requesting_tenant_id] = ParentShopBookingVolume(
+        if tid not in by_shop:
+            by_shop[tid] = ParentShopBookingVolume(
                 tenant_id=shop.id,
                 tenant_name=shop.name,
                 shop_number=shop.shop_number,
@@ -736,8 +749,8 @@ def get_operations_bookings_report(
                 cancelled=0,
                 expired=0,
             )
-        bump(by_shop[row.requesting_tenant_id], row.status)
-        bump(totals, row.status)
+        bump(by_shop[tid], st, int(n))
+        bump(totals, st, int(n))
 
     return ParentShopBookingsReport(
         from_date=start,

@@ -1,19 +1,36 @@
 """Civil calendar period bounds for reporting exports (Monday-first weeks)."""
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Literal
 
 PeriodType = Literal["day", "week", "month", "quarter"]
 VALID_PERIODS: frozenset[str] = frozenset({"day", "week", "month", "quarter"})
 
 
-def parse_reference_date(value: str | None) -> date:
+def parse_reference_date(value: str | None, tz: tzinfo = timezone.utc) -> date:
+    """The civil date to report on; with no value, today in ``tz`` (the shop's zone)."""
     if not value:
-        return datetime.now(timezone.utc).date()
+        return datetime.now(timezone.utc).astimezone(tz).date()
     return datetime.strptime(value, "%Y-%m-%d").date()
 
 
-def resolve_period_bounds(period: PeriodType, reference: date) -> tuple[datetime, datetime, str, str]:
-    """UTC [start, end] inclusive for the period containing ``reference`` (civil Y-M-D labels)."""
+def local_day_start_utc(day: date, tz: tzinfo = timezone.utc) -> datetime:
+    """The UTC instant a civil ``day`` begins in ``tz``."""
+    return datetime(day.year, day.month, day.day, tzinfo=tz).astimezone(timezone.utc)
+
+
+def local_day_end_utc(day: date, tz: tzinfo = timezone.utc) -> datetime:
+    """The last UTC microsecond of a civil ``day`` in ``tz`` (inclusive upper bound)."""
+    return local_day_start_utc(day + timedelta(days=1), tz) - timedelta(microseconds=1)
+
+
+def resolve_period_bounds(
+    period: PeriodType, reference: date, tz: tzinfo = timezone.utc
+) -> tuple[datetime, datetime, str, str]:
+    """UTC [start, end] inclusive for the period containing ``reference`` (civil Y-M-D labels).
+
+    The civil days are read in ``tz`` (the shop's zone), so a Melbourne "today" runs from
+    Melbourne midnight, not 11am.
+    """
     if period == "day":
         start_ymd = end_ymd = reference.isoformat()
     elif period == "week":
@@ -41,6 +58,6 @@ def resolve_period_bounds(period: PeriodType, reference: date) -> tuple[datetime
     else:
         raise ValueError(f"Unsupported period: {period}")
 
-    start_dt = datetime.strptime(start_ymd, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-    end_dt = datetime.strptime(end_ymd, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    start_dt = local_day_start_utc(date.fromisoformat(start_ymd), tz)
+    end_dt = local_day_end_utc(date.fromisoformat(end_ymd), tz)
     return start_dt, end_dt, start_ymd, end_ymd

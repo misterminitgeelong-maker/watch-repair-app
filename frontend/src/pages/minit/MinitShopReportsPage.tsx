@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatTenantLabel, getParentShopBookingsReport } from '@/lib/api'
+import { formatTenantLabel, getApiErrorMessage, getParentShopBookingsReport } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import { Card, Input, PageHeader, Select, Spinner } from '@/components/ui'
+import { Button, Card, Input, PageHeader, Select, Spinner } from '@/components/ui'
 import { defaultReportFromDate, defaultReportToDate, toIsoEnd, toIsoStart } from './dateRange'
 
 const STATUS_OPTIONS = [
@@ -19,7 +19,7 @@ export default function MinitShopReportsPage() {
   const [toYmd, setToYmd] = useState(defaultReportToDate)
   const [status, setStatus] = useState('')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['minit-shop-bookings-report', fromYmd, toYmd, status],
     queryFn: () =>
       getParentShopBookingsReport({
@@ -49,8 +49,15 @@ export default function MinitShopReportsPage() {
         </div>
       </Card>
 
-      {isLoading || !data ? (
+      {isLoading ? (
         <Spinner />
+      ) : !data ? (
+        <Card className="p-5">
+          <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+            {getApiErrorMessage(error, "Couldn't load the shop reports.")}
+          </p>
+          <Button className="mt-3" variant="secondary" size="sm" onClick={() => void refetch()}>Try again</Button>
+        </Card>
       ) : (
         <>
           <Card className="p-5 mb-6">

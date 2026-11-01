@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { BarChart3, DollarSign, Scale, Wallet, ChevronDown, TrendingUp, Users, Clock, Wrench, Scissors, KeyRound, Download, Receipt, Globe2 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { VswtRegionalReportSection } from '@/components/vswt/VswtRegionalReportSection'
 import {
+  getApiErrorMessage,
   getCategorySummary,
   getExportCustomersCsv,
   getExportInvoicesCsv,
@@ -242,7 +243,7 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<PeriodKey>('6m')
   const periodConfig = PERIODS.find(p => p.key === period)!
 
-  const { data, isLoading } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then(r => r.data) })
+  const { data, isLoading, error: summaryError, refetch: refetchSummary } = useQuery({ queryKey: ['reports-summary'], queryFn: () => getReportsSummary().then(r => r.data) })
   const { data: trends } = useQuery({
     queryKey: ['reports-trends', periodConfig.months],
     queryFn: () => getReportsTrends(periodConfig.months).then(r => r.data),
@@ -311,6 +312,24 @@ export default function ReportsPage() {
   const [exportOpen, setExportOpen] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
 
+  // Close the export menu on an outside click. (An onBlur on the menu closed it as soon as focus
+  // moved between its own controls, so the period/date pickers and Download button lost clicks.)
+  useEffect(() => {
+    if (!exportOpen) return
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false)
+    }
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setExportOpen(false) }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [exportOpen])
+
   const anyExporting =
     exportJobsMut.isPending ||
     exportCustomersMut.isPending ||
@@ -319,8 +338,52 @@ export default function ReportsPage() {
     exportPeriodMut.isPending ||
     exportSalesMut.isPending
 
+  const pageTabsBar = (
+  <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto mb-6" style={{ borderBottom: '1px solid var(--ms-border)' }}>
+    <div className="flex gap-0.5 min-w-max">
+      {PAGE_TABS.map(t => (
+        <button
+          key={t.key}
+          onClick={() => changePageTab(t.key)}
+          className="flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all duration-150 sm:min-h-0"
+          style={{
+            borderBottom: pageTab === t.key ? '2px solid var(--ms-accent)' : '2px solid transparent',
+            color: pageTab === t.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
+            fontWeight: pageTab === t.key ? 700 : 500,
+          }}
+        >
+          <t.icon size={14} />{t.label}
+        </button>
+      ))}
+    </div>
+  </div>
+  )
+
+  // The Regional Report tab has its own data, so a slow or failed shop summary must not block it.
+  if (pageTab === 'regional' && !data) {
+    return (
+      <div>
+        <PageHeader title="Reports" />
+        {pageTabsBar}
+        <VswtRegionalReportSection />
+      </div>
+    )
+  }
   if (isLoading) return <div><PageHeader title="Reports" /><Spinner /></div>
-  if (!data) return <div><PageHeader title="Reports" /><p className="mt-4" style={{ color: 'var(--ms-text-muted)' }}>No report data available.</p></div>
+  if (!data) {
+    return (
+      <div>
+        <PageHeader title="Reports" />
+        {pageTabsBar}
+        <Card className="p-6">
+          <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>
+            {getApiErrorMessage(summaryError, "Couldn't load the reports.")}
+          </p>
+          <Button className="mt-3" variant="secondary" size="sm" onClick={() => refetchSummary()}>Try again</Button>
+        </Card>
+      </div>
+    )
+  }
 
   // Funnel numbers derived from counts + sales_funnel
   const totalJobs = data.counts.jobs
@@ -352,7 +415,6 @@ export default function ReportsPage() {
                 <div
                   className="absolute right-0 mt-1 w-72 rounded-lg shadow-lg z-20 py-2 px-3"
                   style={{ backgroundColor: 'var(--ms-card)', border: '1px solid var(--ms-border)' }}
-                  onBlur={() => setExportOpen(false)}
                 >
                   <p className="text-[10px] uppercase tracking-wide font-medium px-1 mb-2" style={{ color: 'var(--ms-text-muted)' }}>
                     Period report
@@ -447,24 +509,7 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto mb-6" style={{ borderBottom: '1px solid var(--ms-border)' }}>
-        <div className="flex gap-0.5 min-w-max">
-          {PAGE_TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => changePageTab(t.key)}
-              className="flex min-h-11 items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all duration-150 sm:min-h-0"
-              style={{
-                borderBottom: pageTab === t.key ? '2px solid var(--ms-accent)' : '2px solid transparent',
-                color: pageTab === t.key ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
-                fontWeight: pageTab === t.key ? 700 : 500,
-              }}
-            >
-              <t.icon size={14} />{t.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {pageTabsBar}
 
       {pageTab === 'regional' && <VswtRegionalReportSection />}
 

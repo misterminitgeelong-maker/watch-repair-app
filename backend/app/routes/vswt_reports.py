@@ -198,6 +198,18 @@ def _week_rows(session: Session, week: int) -> list[VswtWeeklyShopMetric]:
     )
 
 
+def _rows_by_week(session: Session, weeks: list[int]) -> dict[int, list[VswtWeeklyShopMetric]]:
+    """Every shop's rows for each of ``weeks`` in one query (not one query per week)."""
+    out: dict[int, list[VswtWeeklyShopMetric]] = {w: [] for w in weeks}
+    if not weeks:
+        return out
+    for row in session.exec(
+        select(VswtWeeklyShopMetric).where(VswtWeeklyShopMetric.week_seq.in_(weeks))  # type: ignore[attr-defined]
+    ).all():
+        out[row.week_seq].append(row)
+    return out
+
+
 def _shop_history(session: Session, shop_number: str, weeks: list[int]) -> dict[int, VswtWeeklyShopMetric]:
     """One shop's rows for the given weeks, in a single query.
 
@@ -220,6 +232,15 @@ def _shop_number_for(auth: AuthContext, session: Session) -> Optional[str]:
     if not tenant or not tenant.shop_number:
         return None
     return tenant.shop_number
+
+
+def _require_linked_shop(auth: AuthContext, session: Session) -> str:
+    """Regional data is shared across the Minit network: only a shop linked to a VSWT shop number
+    may delete weeks (a plain Mainspring shop must not wipe the region's history)."""
+    shop_number = _shop_number_for(auth, session)
+    if shop_number is None:
+        raise HTTPException(status_code=403, detail="A linked Minit shop is required for regional data.")
+    return shop_number
 
 
 def _pct_delta(current: Optional[float], baseline: Optional[float]) -> Optional[float]:
@@ -673,9 +694,10 @@ def get_vswt_weeks(
     session: Session = Depends(get_session),
 ):
     weeks = _all_weeks(session)
+    by_week = _rows_by_week(session, weeks)
     out = []
     for w in weeks:
-        rows = _week_rows(session, w)
+        rows = by_week[w]
         source_filenames = sorted({r.source_filename for r in rows if r.source_filename})
         uploaded_at = max((r.uploaded_at for r in rows), default=None)
         out.append(
@@ -761,6 +783,7 @@ def delete_vswt_week(
     auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
+    _require_linked_shop(auth, session)
     session.exec(sa_delete(VswtWeeklyShopMetric).where(VswtWeeklyShopMetric.week_seq == week_seq))
     session.commit()
     return {"deleted_week": week_seq}
@@ -1073,8 +1096,9 @@ def get_vswt_scorecard(
     found_any = False
     target_name = None
     target_area = None
+    rows_by_week = _rows_by_week(session, weeks)
     for w in weeks:
-        week_rows = _week_rows(session, w)
+        week_rows = rows_by_week[w]
         target_row = _find_shop(week_rows, target_shop_number)
         if target_row is not None:
             found_any = True
@@ -1254,7 +1278,7 @@ def get_vswt_shop_report(
     if not weeks:
         return {"available": False, "reason": "no_data"}
 
-    rows_by_week = {w: _week_rows(session, w) for w in weeks}
+    rows_by_week = _rows_by_week(session, weeks)
     latest_week = weeks[-1]
     latest_rows = rows_by_week[latest_week]
     target_latest = _find_shop(latest_rows, target_shop_number)
@@ -1350,8 +1374,9 @@ def _consistency_boards(
     with the same component."""
     rank_lists: dict[str, dict[str, list[int]]] = {}
     shop_meta: dict[str, tuple[Optional[str], Optional[str]]] = {}
+    rows_by_week = _rows_by_week(session, weeks)
     for w in weeks:
-        week_rows = _week_rows(session, w)
+        week_rows = rows_by_week[w]
         for r in week_rows:
             shop_meta[r.shop_number] = (r.shop_name, r.area_name)
         for kpi in kpis:
@@ -1512,8 +1537,9 @@ def get_vswt_trends(
     found_any = False
     target_name = None
     target_area = None
+    rows_by_week = _rows_by_week(session, weeks)
     for w in weeks:
-        week_rows = _week_rows(session, w)
+        week_rows = rows_by_week[w]
         target_row = _find_shop(week_rows, target_shop_number)
         peers = _peer_rows(week_rows)
         if target_row is not None:

@@ -21,7 +21,7 @@ from ..auto_key_quote_options import (
     option_label,
     option_totals,
 )
-from ..auto_key_status import AUTO_KEY_FINAL_STATUSES, mobile_status_label, statuses_in_category
+from ..auto_key_status import AUTO_KEY_FINAL_STATUSES, canonical_auto_key_status, mobile_status_label, statuses_in_category
 from ..mobile_cockpit import FOCUS_BY_KEY, focus_filter, tenant_timezone
 from ..mobile_finance import DATE_FIELDS, list_date_filter
 from ..config import settings
@@ -90,6 +90,26 @@ class AutoKeyJobPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+def _mark_invoice_paid(
+    session: Session, auth: AuthContext, invoice: AutoKeyInvoice, job: Optional[AutoKeyJob], payment_method: Optional[str]
+) -> None:
+    """Record that an invoice was paid in person, and move the job on to Invoice Paid.
+
+    Keeps the original paid date when the invoice is already paid (re-saving must not move cash
+    into today), matching what the Stripe webhook already does for the job status.
+    """
+    if invoice.status != "paid" or invoice.paid_at is None:
+        invoice.paid_at = datetime.now(timezone.utc)
+    invoice.status = "paid"
+    if payment_method:
+        invoice.payment_method = payment_method
+    session.add(invoice)
+    if job and canonical_auto_key_status(job.status) == "work_completed":
+        job.status = "invoice_paid"
+        job.updated_at = datetime.now(timezone.utc)
+        session.add(job)
 
 
 def _log_job_event(
@@ -976,8 +996,11 @@ def update_auto_key_invoice(
         next_status = status.strip().lower()
         if next_status not in {"unpaid", "paid", "void"}:
             raise HTTPException(status_code=400, detail="Invalid invoice status")
-        invoice.status = next_status
-        invoice.paid_at = datetime.now(timezone.utc) if next_status == "paid" else None
+        if next_status == "paid":
+            _mark_invoice_paid(session, auth, invoice, session.get(AutoKeyJob, invoice.auto_key_job_id), None)
+        else:
+            invoice.status = next_status
+            invoice.paid_at = None
     if payment_method is not None:
         invoice.payment_method = payment_method.strip() or None
     if subtotal_cents is not None:
@@ -1152,6 +1175,25 @@ def update_auto_key_job_status(
     session.commit()
     session.refresh(job)
 
+    if moved_to_completed and payload.payment_method:
+        paid_invoice = session.exec(
+            select(AutoKeyInvoice)
+            .where(AutoKeyInvoice.tenant_id == auth.tenant_id)
+            .where(AutoKeyInvoice.auto_key_job_id == job.id)
+            .order_by(AutoKeyInvoice.created_at.desc())
+        ).first()
+        if paid_invoice and paid_invoice.status == "unpaid":
+            _mark_invoice_paid(session, auth, paid_invoice, job, payload.payment_method)
+            _log_job_event(
+                session,
+                auth=auth,
+                job=job,
+                event_type="auto_key_invoice_updated",
+                summary=f"Invoice #{paid_invoice.invoice_number} marked paid via {payload.payment_method} on completion",
+            )
+            session.commit()
+            session.refresh(job)
+
     if moved_to_completed:
         created_invoice = session.exec(
             select(AutoKeyInvoice)
@@ -1198,7 +1240,8 @@ def update_auto_key_job_status(
                     .where(AutoKeyInvoice.auto_key_job_id == job.id)
                     .order_by(AutoKeyInvoice.created_at.desc())
                 ).first()
-                if _invoice and ((_customer.phone or "").strip() or (_customer.email or "").strip()):
+                # Paid in person on the spot: don't text/email a "pay your invoice" link.
+                if _invoice and _invoice.status != "paid" and ((_customer.phone or "").strip() or (_customer.email or "").strip()):
                     _send_mobile_invoice_notifications(
                         session,
                         tenant_id=auth.tenant_id,

@@ -1749,6 +1749,9 @@ class GarageServicingPricingRow(SQLModel):
 class AutoKeyJobStatusUpdate(SQLModel):
     status: JobStatus
     note: Optional[str] = None
+    #: Only used when moving to work_completed: the customer paid in person (cash / EFTPOS / bank
+    #: transfer), so the invoice is marked paid and the job moves on to Invoice Paid.
+    payment_method: Optional[Literal["cash", "eftpos", "bank"]] = None
 
 class AutoKeyJobFieldUpdate(SQLModel):
     customer_account_id: Optional[UUID] = None
