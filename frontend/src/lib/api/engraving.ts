@@ -149,6 +149,17 @@ export const engravingMedalDone = (orderId: string) =>
 export const resendEngravingReady = (orderId: string) =>
   api.post<EngravingOrder>(`/engraving/orders/${orderId}/resend-ready`)
 
+export type LaserSoftware = 'xtool' | 'lightburn' | 'ezcad2' | 'csv'
+export const LASER_SOFTWARE: { value: LaserSoftware; label: string; ext: string }[] = [
+  { value: 'xtool', label: 'xTool', ext: 'csv' },
+  { value: 'lightburn', label: 'LightBurn', ext: 'csv' },
+  { value: 'ezcad2', label: 'EZCad2', ext: 'zip' },
+  { value: 'csv', label: 'Plain CSV', ext: 'csv' },
+]
+
+export const exportEngravingFile = (eventId: string, software: LaserSoftware, limit?: number) =>
+  api.get<Blob>(`/engraving/events/${eventId}/export`, { params: { software, ...(limit ? { limit } : {}) }, responseType: 'blob' })
+
 export const exportEngravingCsv = (eventId: string, paidOnly = false) =>
   api.get<Blob>(`/engraving/events/${eventId}/export.csv`, { params: { paid_only: paidOnly }, responseType: 'blob' })
 

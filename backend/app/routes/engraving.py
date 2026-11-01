@@ -8,6 +8,7 @@ import csv
 import io
 import logging
 import re
+import zipfile
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -380,6 +381,36 @@ def create_walk_up_order(
     return _order_read(order)
 
 
+def _medal_rows(session: Session, event: EngravingEvent, *, paid_only: bool, limit: int | None) -> list[list[str]]:
+    """One row per medal still to engrave, in queue order: Name, Line2, Place, Order, Medal."""
+    rows: list[list[str]] = []
+    for order in _active_orders(session, event.id):
+        if paid_only and not order.paid:
+            continue
+        for n in range(order.medals_done + 1, order.qty + 1):
+            rows.append([
+                order.athlete_name,
+                order.line2 or "",
+                _place_text(order.place),
+                order.order_number,
+                f"{n} of {order.qty}",
+            ])
+    return rows[:limit] if limit else rows
+
+
+def _event_slug(event: EngravingEvent) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", event.name.lower()).strip("-") or "engraving"
+
+
+def _csv_text(rows: list[list[str]], *, header: bool) -> str:
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\r\n")
+    if header:
+        writer.writerow(["Name", "Line2", "Place", "Order", "Medal"])
+    writer.writerows(rows)
+    return buf.getvalue()
+
+
 @router.get("/events/{event_id}/export.csv")
 def export_laser_csv(
     event_id: UUID,
@@ -389,31 +420,55 @@ def export_laser_csv(
 ):
     """One row per medal still to engrave, in queue order.
 
-    Columns: Name, Line2, Place, Order, Medal. In LightBurn use Variable Text →
-    Merge/CSV with Auto Advance (column 0 = Name, 1 = Line2, 2 = Place). In xTool
-    Studio's batch processing mode, import the CSV and map Name/Line2/Place to the
-    text variables.
+    Columns: Name, Line2, Place, Order, Medal. For other laser programs use
+    /export, which can also shape the file for LightBurn, xTool and EZCad2.
     """
     event = _get_event(session, event_id, auth.tenant_id)
-    buf = io.StringIO()
-    writer = csv.writer(buf, lineterminator="\r\n")
-    writer.writerow(["Name", "Line2", "Place", "Order", "Medal"])
-    for order in _active_orders(session, event.id):
-        if paid_only and not order.paid:
-            continue
-        for n in range(order.medals_done + 1, order.qty + 1):
-            writer.writerow([
-                order.athlete_name,
-                order.line2 or "",
-                _place_text(order.place),
-                order.order_number,
-                f"{n} of {order.qty}",
-            ])
-    slug = re.sub(r"[^a-z0-9]+", "-", event.name.lower()).strip("-") or "engraving"
+    rows = _medal_rows(session, event, paid_only=paid_only, limit=None)
     return Response(
-        content=buf.getvalue(),
+        content=_csv_text(rows, header=True),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{slug}-medals.csv"'},
+        headers={"Content-Disposition": f'attachment; filename="{_event_slug(event)}-medals.csv"'},
+    )
+
+
+@router.get("/events/{event_id}/export")
+def export_laser_file(
+    event_id: UUID,
+    software: str = Query(default="csv", pattern="^(csv|lightburn|xtool|ezcad2)$"),
+    paid_only: bool = Query(default=False),
+    limit: int | None = Query(default=None, ge=1, le=500),
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Laser file shaped for the chosen program, optionally only the next `limit` medals.
+
+    - csv: header row plus Name, Line2, Place, Order, Medal.
+    - lightburn: the same without the header row (LightBurn counts every line as a row).
+    - xtool: header row; empty cells become a single space (xTool skips a row with a blank cell).
+    - ezcad2: a zip of names.txt, line2.txt and places.txt, one value per line (EZCad2 reads
+      TXT or old-format XLS, not CSV).
+    """
+    event = _get_event(session, event_id, auth.tenant_id)
+    rows = _medal_rows(session, event, paid_only=paid_only, limit=limit)
+    slug = _event_slug(event)
+    if software == "ezcad2":
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for filename, col in (("names.txt", 0), ("line2.txt", 1), ("places.txt", 2)):
+                zf.writestr(filename, "\r\n".join((r[col] or " ") for r in rows) + ("\r\n" if rows else ""))
+        return Response(
+            content=buf.getvalue(),
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{slug}-ezcad2.zip"'},
+        )
+    if software == "xtool":
+        rows = [[cell if cell != "" else " " for cell in r] for r in rows]
+    text = _csv_text(rows, header=software != "lightburn")
+    return Response(
+        content=text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{slug}-{software}.csv"'},
     )
 
 
