@@ -17906,6 +17906,53 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/operations/shop-messages": {
+      "post": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Send Shop Messages",
+        "description": "HQ sends a short message to the Inbox of each chosen shop. No SMS or email, so\nit costs nothing; the shop sees it as \"Message from {HQ name}\" with the unread badge.",
+        "operationId": "send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendShopMessagesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendShopMessagesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/operations/mobile-weekly-report/send-now": {
       "post": {
         "tags": [
@@ -40361,6 +40408,53 @@
           "body"
         ],
         "title": "SendMessagePayload"
+      },
+      "SendShopMessagesRequest": {
+        "properties": {
+          "tenant_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "minItems": 1,
+            "title": "Tenant Ids"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_ids",
+          "message"
+        ],
+        "title": "SendShopMessagesRequest"
+      },
+      "SendShopMessagesResponse": {
+        "properties": {
+          "sent": {
+            "type": "integer",
+            "title": "Sent"
+          },
+          "skipped": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent"
+        ],
+        "title": "SendShopMessagesResponse"
       },
       "ServicePricingRow": {
         "properties": {

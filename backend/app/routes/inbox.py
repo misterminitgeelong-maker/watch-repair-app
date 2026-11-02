@@ -22,6 +22,8 @@ INBOX_EVENT_TYPES = [
     "portal_booking_received",
     # HQ opened a support session in this shop (see parent_network_admin.enter_linked_shop).
     "hq_enter_shop",
+    # A message HQ sent to this shop (routes/parent_operations.send_shop_messages).
+    "hq_message",
     # A customer's card was charged but the payment couldn't be applied
     # (routes/card_payment_issues.py resolves it and removes the alert).
     "card_payment_needs_attention",

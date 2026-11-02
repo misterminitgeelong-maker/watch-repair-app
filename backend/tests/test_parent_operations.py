@@ -409,3 +409,37 @@ def test_bookings_report_weekly_goal_and_response_times():
     # Without a from_date there is no window, so no goal verdict is invented.
     plain = client.get("/v1/parent-accounts/me/operations/bookings", headers=ctx["hq"]).json()
     assert plain["weeks"] is None and plain["shops_under_goal"] is None
+
+
+def test_hq_can_message_shop_inbox():
+    suffix = uuid4().hex[:8]
+    ctx = _setup_hq_network(suffix)
+    with Session(engine) as session:
+        shop = session.exec(select(Tenant).where(Tenant.slug == ctx["shop_slug"])).one()
+        shop_id = str(shop.id)
+        shop_email = f"shopowner-{suffix}@test.local"
+        if not session.exec(select(User).where(User.tenant_id == shop.id)).first():
+            session.add(User(tenant_id=shop.id, email=shop_email, full_name="Shop Owner", role="owner",
+                             password_hash=hash_password("pass123456"), is_active=True))
+            session.commit()
+        owner_email = session.exec(select(User).where(User.tenant_id == shop.id)).first().email
+    stranger = _bootstrap(f"stranger-{suffix}", f"stranger-{suffix}@test.local", "basic_auto_key")
+
+    res = client.post(
+        "/v1/parent-accounts/me/operations/shop-messages",
+        headers=ctx["hq"],
+        json={"tenant_ids": [shop_id, stranger["tenant_id"]], "message": "  Please send us a booking   this week "},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["sent"] == 1 and body["skipped"] == [stranger["tenant_id"]]
+
+    shop_token = _login(ctx["shop_slug"], owner_email)
+    inbox = client.get("/v1/inbox", headers=_headers(shop_token)).json()
+    msgs = [e for e in inbox if e["event_type"] == "hq_message"]
+    assert len(msgs) == 1 and msgs[0]["event_summary"].endswith("Please send us a booking this week")
+    assert client.get("/v1/inbox/count", headers=_headers(shop_token)).json()["count"] >= 1
+
+    # Another HQ's shops are out of reach, and an empty message is refused.
+    assert client.post("/v1/parent-accounts/me/operations/shop-messages", headers=ctx["hq"],
+                       json={"tenant_ids": [shop_id], "message": ""}).status_code == 422

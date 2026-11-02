@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { formatTenantLabel, getParentShopBookingsReport } from '@/lib/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { formatTenantLabel, getParentShopBookingsReport, sendShopMessages } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import { Card, Input, PageHeader, Select, Spinner } from '@/components/ui'
+import { Button, Card, Input, PageHeader, Select, Spinner, Textarea } from '@/components/ui'
 import { defaultReportFromDate, defaultReportToDate, toIsoEnd, toIsoStart } from './dateRange'
 
 const STATUS_OPTIONS = [
@@ -18,6 +18,19 @@ export default function MinitShopReportsPage() {
   const [fromYmd, setFromYmd] = useState(defaultReportFromDate)
   const [toYmd, setToYmd] = useState(defaultReportToDate)
   const [status, setStatus] = useState('')
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [message, setMessage] = useState('')
+  const [notice, setNotice] = useState('')
+  const qc = useQueryClient()
+  const send = useMutation({
+    mutationFn: (ids: string[]) => sendShopMessages({ tenant_ids: ids, message: message.trim() }).then(r => r.data),
+    onSuccess: res => {
+      setNotice(`Sent to ${res.sent} shop${res.sent === 1 ? '' : 's'}.`)
+      setPicked(new Set())
+      void qc.invalidateQueries({ queryKey: ['minit-shop-bookings-report'] })
+    },
+    onError: () => setNotice('Could not send. Check the message and try again.'),
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['minit-shop-bookings-report', fromYmd, toYmd, status],
@@ -69,6 +82,36 @@ export default function MinitShopReportsPage() {
             )}
           </Card>
 
+          <Card className="p-5 mb-6">
+            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--ms-text)' }}>Message shops</p>
+            <p className="text-sm mb-3" style={{ color: 'var(--ms-text-muted)' }}>
+              Lands in each shop&apos;s Inbox. Tick shops below, or send to every shop under the weekly goal.
+            </p>
+            <Textarea
+              label="Message"
+              value={message}
+              maxLength={500}
+              onChange={e => { setMessage(e.target.value); setNotice('') }}
+              placeholder="e.g. We haven't seen a mobile booking from your shop this week. Send your next key enquiry through Mainspring."
+            />
+            <div className="flex flex-wrap gap-3 mt-3 items-center">
+              <Button
+                disabled={!message.trim() || picked.size === 0 || send.isPending}
+                onClick={() => send.mutate([...picked])}
+              >
+                Send to {picked.size} selected
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!message.trim() || !data.shops_under_goal || send.isPending}
+                onClick={() => send.mutate((data.by_shop ?? []).filter(r => r.under_weekly_goal).map(r => r.tenant_id))}
+              >
+                Send to {data.shops_under_goal ?? 0} shops under goal
+              </Button>
+              {notice && <span className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>{notice}</span>}
+            </div>
+          </Card>
+
           <Card className="mb-6 overflow-hidden">
             <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
               By shop
@@ -82,7 +125,19 @@ export default function MinitShopReportsPage() {
                   className="px-5 py-3 flex justify-between gap-4 text-sm"
                   style={{ borderBottom: '1px solid var(--ms-border)' }}
                 >
-                  <span style={{ color: 'var(--ms-text)' }}>{formatTenantLabel(row.tenant_name, row.shop_number)}</span>
+                  <label className="flex items-center gap-2" style={{ color: 'var(--ms-text)' }}>
+                    <input
+                      type="checkbox"
+                      checked={picked.has(row.tenant_id)}
+                      onChange={e => setPicked(prev => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(row.tenant_id)
+                        else next.delete(row.tenant_id)
+                        return next
+                      })}
+                    />
+                    {formatTenantLabel(row.tenant_name, row.shop_number)}
+                  </label>
                   <span style={{ color: row.under_weekly_goal ? 'var(--ms-danger, #b42318)' : 'var(--ms-text-muted)' }}>
                     {row.total} total ({row.accepted} accepted, {row.pending} pending)
                     {row.per_week != null && ` · ${row.per_week}/week`}

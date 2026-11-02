@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
+from pydantic import BaseModel, Field as PydField
 from sqlmodel import Session, col, func, select
 
 from ..database import get_session, unscoped_session
@@ -66,6 +67,7 @@ from ..models import (
     ShopEmailLeadBucket,
     ShopMobileBookingRead,
     ShopMobileBookingRequest,
+    TenantEventLog,
     SmsLog,
     Tenant,
     User,
@@ -1089,6 +1091,63 @@ def update_mobile_weekly_report_settings(
     session: Session = Depends(unscoped_session),
 ):
     return update_mobile_kpi_email_settings(body, auth=auth, session=session)
+
+
+class SendShopMessagesRequest(BaseModel):
+    tenant_ids: list[UUID] = PydField(min_length=1, max_length=300)
+    message: str = PydField(min_length=1, max_length=500)
+
+
+class SendShopMessagesResponse(BaseModel):
+    sent: int
+    skipped: list[UUID] = PydField(default_factory=list)
+
+
+@router.post("/me/operations/shop-messages", response_model=SendShopMessagesResponse)
+def send_shop_messages(
+    body: SendShopMessagesRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """HQ sends a short message to the Inbox of each chosen shop. No SMS or email, so
+    it costs nothing; the shop sees it as "Message from {HQ name}" with the unread badge."""
+    require_hq(auth, session, 'mobile_services')
+    user, parent = _parent_for_write(session, auth)
+    text = " ".join(body.message.split())
+    if not text:
+        raise HTTPException(status_code=400, detail="Message is empty")
+    retail, _operators = _retail_and_operator_tenants(session, parent.id)
+    allowed = {t.id: t for t in retail if t.is_active}
+    sent = 0
+    skipped: list[UUID] = []
+    for tid in dict.fromkeys(body.tenant_ids):
+        shop = allowed.get(tid)
+        if shop is None:
+            skipped.append(tid)
+            continue
+        session.add(
+            TenantEventLog(
+                tenant_id=shop.id,
+                actor_user_id=user.id,
+                actor_email=user.email,
+                entity_type="hq_message",
+                event_type="hq_message",
+                event_summary=f"Message from {parent.name}: {text}",
+            )
+        )
+        sent += 1
+    if sent:
+        _record_event(
+            session,
+            parent_account_id=parent.id,
+            tenant_id=None,
+            actor_user_id=user.id,
+            actor_email=user.email,
+            event_type="shop_message_sent",
+            event_summary=f"Sent a message to {sent} shop{'s' if sent != 1 else ''}: {text[:120]}",
+        )
+    session.commit()
+    return SendShopMessagesResponse(sent=sent, skipped=skipped)
 
 
 @router.post("/me/operations/mobile-weekly-report/send-now", response_model=ParentMobileWeeklyReportSettingsRead)

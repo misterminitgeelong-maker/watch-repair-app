@@ -873,6 +873,14 @@ export interface ParentTroubleshootingItem {
   created_at?: string | null
 }
 
+export interface SendShopMessagesResult {
+  sent: number
+  skipped: string[]
+}
+
+export const sendShopMessages = (body: { tenant_ids: string[]; message: string }) =>
+  api.post<SendShopMessagesResult>('/parent-accounts/me/operations/shop-messages', body)
+
 export const getParentOperationsOverview = () =>
   api.get<ParentOperationsOverview>('/parent-accounts/me/operations/overview')
 

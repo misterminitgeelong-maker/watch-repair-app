@@ -5679,6 +5679,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/operations/shop-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Shop Messages
+         * @description HQ sends a short message to the Inbox of each chosen shop. No SMS or email, so
+         *     it costs nothing; the shop sees it as "Message from {HQ name}" with the unread badge.
+         */
+        post: operations["send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/operations/mobile-weekly-report/send-now": {
         parameters: {
             query?: never;
@@ -13094,6 +13115,20 @@ export interface components {
         SendMessagePayload: {
             /** Body */
             body: string;
+        };
+        /** SendShopMessagesRequest */
+        SendShopMessagesRequest: {
+            /** Tenant Ids */
+            tenant_ids: string[];
+            /** Message */
+            message: string;
+        };
+        /** SendShopMessagesResponse */
+        SendShopMessagesResponse: {
+            /** Sent */
+            sent: number;
+            /** Skipped */
+            skipped?: string[];
         };
         /** ServicePricingRow */
         ServicePricingRow: {
@@ -25385,6 +25420,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentMobileWeeklyReportSettingsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendShopMessagesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendShopMessagesResponse"];
                 };
             };
             /** @description Validation Error */
