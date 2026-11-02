@@ -806,6 +806,19 @@ export interface ParentShopBookingVolume {
   declined: number
   cancelled: number
   expired: number
+  avg_response_minutes?: number | null
+  per_week?: number | null
+  under_weekly_goal?: boolean
+}
+
+export interface ParentOperatorBookingResponse {
+  tenant_id: string
+  tenant_name: string
+  shop_number?: string | null
+  offered: number
+  responded: number
+  moved_to_pool: number
+  avg_response_minutes?: number | null
 }
 
 export interface ParentShopBookingsReport {
@@ -813,6 +826,10 @@ export interface ParentShopBookingsReport {
   to_date?: string | null
   totals: ParentShopBookingVolume
   by_shop?: ParentShopBookingVolume[]
+  by_operator?: ParentOperatorBookingResponse[]
+  weekly_goal?: number
+  weeks?: number | null
+  shops_under_goal?: number | null
   bookings?: ShopMobileBooking[]
 }
 

@@ -61,6 +61,12 @@ export default function MinitShopReportsPage() {
               {data.totals.accepted} accepted · {data.totals.pending} pending · {data.totals.declined} declined ·{' '}
               {data.totals.expired} expired · {data.totals.cancelled} cancelled
             </p>
+            {data.shops_under_goal != null && (
+              <p className="text-sm mt-2" style={{ color: 'var(--ms-text-muted)' }}>
+                {data.shops_under_goal} shop{data.shops_under_goal === 1 ? '' : 's'} under {data.weekly_goal ?? 1} booking a week
+                {data.totals.avg_response_minutes != null && ` · operators answer in ${data.totals.avg_response_minutes} min on average`}
+              </p>
+            )}
           </Card>
 
           <Card className="mb-6 overflow-hidden">
@@ -77,13 +83,37 @@ export default function MinitShopReportsPage() {
                   style={{ borderBottom: '1px solid var(--ms-border)' }}
                 >
                   <span style={{ color: 'var(--ms-text)' }}>{formatTenantLabel(row.tenant_name, row.shop_number)}</span>
-                  <span style={{ color: 'var(--ms-text-muted)' }}>
+                  <span style={{ color: row.under_weekly_goal ? 'var(--ms-danger, #b42318)' : 'var(--ms-text-muted)' }}>
                     {row.total} total ({row.accepted} accepted, {row.pending} pending)
+                    {row.per_week != null && ` · ${row.per_week}/week`}
+                    {row.under_weekly_goal && ' · under goal'}
                   </span>
                 </div>
               ))
             )}
           </Card>
+
+          {(data.by_operator ?? []).length > 0 && (
+            <Card className="mb-6 overflow-hidden">
+              <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
+                Operator response times
+              </div>
+              {(data.by_operator ?? []).map(op => (
+                <div
+                  key={op.tenant_id}
+                  className="px-5 py-3 flex justify-between gap-4 text-sm"
+                  style={{ borderBottom: '1px solid var(--ms-border)' }}
+                >
+                  <span style={{ color: 'var(--ms-text)' }}>{formatTenantLabel(op.tenant_name, op.shop_number)}</span>
+                  <span style={{ color: 'var(--ms-text-muted)' }}>
+                    {op.offered} offered · {op.responded} answered
+                    {op.avg_response_minutes != null && ` (avg ${op.avg_response_minutes} min)`}
+                    {op.moved_to_pool > 0 && ` · ${op.moved_to_pool} to pool`}
+                  </span>
+                </div>
+              ))}
+            </Card>
+          )}
 
           <Card className="overflow-hidden">
             <div className="px-5 py-3 font-semibold text-sm" style={{ borderBottom: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>

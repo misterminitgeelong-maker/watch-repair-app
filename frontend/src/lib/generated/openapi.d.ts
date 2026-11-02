@@ -11489,6 +11489,26 @@ export interface components {
             /** Attention Items */
             attention_items?: components["schemas"]["ParentTroubleshootingItem"][];
         };
+        /** ParentOperatorBookingResponse */
+        ParentOperatorBookingResponse: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Offered */
+            offered: number;
+            /** Responded */
+            responded: number;
+            /** Moved To Pool */
+            moved_to_pool: number;
+            /** Avg Response Minutes */
+            avg_response_minutes?: number | null;
+        };
         /** ParentProvisionShopRequest */
         ParentProvisionShopRequest: {
             /** Shop Number */
@@ -11574,6 +11594,15 @@ export interface components {
             cancelled: number;
             /** Expired */
             expired: number;
+            /** Avg Response Minutes */
+            avg_response_minutes?: number | null;
+            /** Per Week */
+            per_week?: number | null;
+            /**
+             * Under Weekly Goal
+             * @default false
+             */
+            under_weekly_goal: boolean;
         };
         /** ParentShopBookingsReport */
         ParentShopBookingsReport: {
@@ -11584,6 +11613,17 @@ export interface components {
             totals: components["schemas"]["ParentShopBookingVolume"];
             /** By Shop */
             by_shop?: components["schemas"]["ParentShopBookingVolume"][];
+            /** By Operator */
+            by_operator?: components["schemas"]["ParentOperatorBookingResponse"][];
+            /**
+             * Weekly Goal
+             * @default 1
+             */
+            weekly_goal: number;
+            /** Weeks */
+            weeks?: number | null;
+            /** Shops Under Goal */
+            shops_under_goal?: number | null;
             /** Bookings */
             bookings?: components["schemas"]["ShopMobileBookingRead"][];
         };

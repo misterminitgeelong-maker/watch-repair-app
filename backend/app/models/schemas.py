@@ -680,12 +680,31 @@ class ParentShopBookingVolume(SQLModel):
     declined: int
     cancelled: int
     expired: int
+    # Operator answered (accepted or declined); average minutes from request to answer.
+    avg_response_minutes: Optional[float] = None
+    # Only filled when the report has a from_date: bookings per week over that window,
+    # and whether the shop is below the weekly goal.
+    per_week: Optional[float] = None
+    under_weekly_goal: bool = False
+
+class ParentOperatorBookingResponse(SQLModel):
+    tenant_id: UUID
+    tenant_name: str
+    shop_number: Optional[str] = None
+    offered: int
+    responded: int
+    moved_to_pool: int
+    avg_response_minutes: Optional[float] = None
 
 class ParentShopBookingsReport(SQLModel):
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
     totals: ParentShopBookingVolume
     by_shop: list[ParentShopBookingVolume] = Field(default_factory=list)
+    by_operator: list[ParentOperatorBookingResponse] = Field(default_factory=list)
+    weekly_goal: int = 1
+    weeks: Optional[float] = None
+    shops_under_goal: Optional[int] = None
     bookings: list["ShopMobileBookingRead"] = Field(default_factory=list)
 
 class ParentMobileJobNetworkRead(SQLModel):

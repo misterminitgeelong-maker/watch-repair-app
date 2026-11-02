@@ -367,3 +367,45 @@ def test_invited_mobile_van_sales_still_reach_minit_hq():
     jobs = report.json()["jobs"]
     assert [j["id"] for j in jobs] == [job.json()["id"]]
     assert jobs[0]["paid_cents"] == 18500
+
+
+def test_bookings_report_weekly_goal_and_response_times():
+    from datetime import datetime, timedelta, timezone
+    from uuid import UUID as _UUID
+
+    from app.models import ParentAccount, ShopMobileBookingRequest
+
+    ctx = _setup_hq_network(uuid4().hex[:8])
+    op_id = _UUID(ctx["op_id"])
+    now = datetime.now(timezone.utc)
+    with Session(engine) as session:
+        parent = session.exec(select(ParentAccount).where(ParentAccount.owner_email == HQ_OWNER_EMAIL)).one()
+        shop = session.exec(select(Tenant).where(Tenant.slug == ctx["shop_slug"])).one()
+        uid = session.exec(select(User).where(User.email == HQ_OWNER_EMAIL)).first().id
+        for i, (st, mins) in enumerate((("accepted", 10), ("declined", 20), ("pending", None))):
+            created = now - timedelta(days=1, minutes=i)
+            session.add(ShopMobileBookingRequest(
+                parent_account_id=parent.id, requesting_tenant_id=shop.id, target_operator_tenant_id=op_id,
+                created_by_user_id=uid, status=st, customer_name=f"C{i}", job_address="1 Test St",
+                created_at=created,
+                operator_response_at=created + timedelta(minutes=mins) if mins else None,
+            ))
+        session.commit()
+        shop_id = str(shop.id)
+
+    since = (now - timedelta(days=14)).isoformat()
+    res = client.get("/v1/parent-accounts/me/operations/bookings", params={"from_date": since}, headers=ctx["hq"])
+    assert res.status_code == 200, res.text
+    body = res.json()
+    row = next(s for s in body["by_shop"] if s["tenant_id"] == shop_id)
+    assert row["total"] == 3 and row["accepted"] == 1 and row["declined"] == 1 and row["pending"] == 1
+    assert row["avg_response_minutes"] == 15.0
+    assert row["per_week"] == 1.5 and row["under_weekly_goal"] is False
+    assert body["weeks"] == 2.0 and body["weekly_goal"] == 1
+    op = next(o for o in body["by_operator"] if o["tenant_id"] == ctx["op_id"])
+    assert op["offered"] == 3 and op["responded"] == 2 and op["avg_response_minutes"] == 15.0
+    assert body["shops_under_goal"] == len([s for s in body["by_shop"] if s["under_weekly_goal"]])
+
+    # Without a from_date there is no window, so no goal verdict is invented.
+    plain = client.get("/v1/parent-accounts/me/operations/bookings", headers=ctx["hq"]).json()
+    assert plain["weeks"] is None and plain["shops_under_goal"] is None

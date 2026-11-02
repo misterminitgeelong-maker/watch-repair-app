@@ -35420,6 +35420,62 @@
         ],
         "title": "ParentOperationsOverview"
       },
+      "ParentOperatorBookingResponse": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          },
+          "offered": {
+            "type": "integer",
+            "title": "Offered"
+          },
+          "responded": {
+            "type": "integer",
+            "title": "Responded"
+          },
+          "moved_to_pool": {
+            "type": "integer",
+            "title": "Moved To Pool"
+          },
+          "avg_response_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Response Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "tenant_name",
+          "offered",
+          "responded",
+          "moved_to_pool"
+        ],
+        "title": "ParentOperatorBookingResponse"
+      },
       "ParentProvisionShopRequest": {
         "properties": {
           "shop_number": {
@@ -35702,6 +35758,33 @@
           "expired": {
             "type": "integer",
             "title": "Expired"
+          },
+          "avg_response_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Response Minutes"
+          },
+          "per_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Week"
+          },
+          "under_weekly_goal": {
+            "type": "boolean",
+            "title": "Under Weekly Goal",
+            "default": false
           }
         },
         "type": "object",
@@ -35752,6 +35835,40 @@
             },
             "type": "array",
             "title": "By Shop"
+          },
+          "by_operator": {
+            "items": {
+              "$ref": "#/components/schemas/ParentOperatorBookingResponse"
+            },
+            "type": "array",
+            "title": "By Operator"
+          },
+          "weekly_goal": {
+            "type": "integer",
+            "title": "Weekly Goal",
+            "default": 1
+          },
+          "weeks": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weeks"
+          },
+          "shops_under_goal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shops Under Goal"
           },
           "bookings": {
             "items": {

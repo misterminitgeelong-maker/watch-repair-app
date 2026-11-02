@@ -57,6 +57,7 @@ from ..models import (
     ParentMobileWeeklyReportSettingsUpdateRequest,
     ParentOperationsOverview,
     ParentRegionDashboardStat,
+    ParentOperatorBookingResponse,
     ParentShopBookingVolume,
     Region,
     ParentShopBookingsReport,
@@ -692,58 +693,117 @@ def get_operations_bookings_report(
     if expired_any:
         session.commit()
 
+    # Volumes and response times cover every matching booking, not just the capped
+    # list above, so a busy week can't understate a shop's count.
+    agg_stmt = select(
+        ShopMobileBookingRequest.requesting_tenant_id,
+        ShopMobileBookingRequest.target_operator_tenant_id,
+        ShopMobileBookingRequest.status,
+        ShopMobileBookingRequest.created_at,
+        ShopMobileBookingRequest.operator_response_at,
+    ).where(ShopMobileBookingRequest.parent_account_id == parent.id)
+    if start is not None:
+        agg_stmt = agg_stmt.where(col(ShopMobileBookingRequest.created_at) >= start)
+    if end is not None:
+        agg_stmt = agg_stmt.where(col(ShopMobileBookingRequest.created_at) <= end)
+    if status:
+        agg_stmt = agg_stmt.where(ShopMobileBookingRequest.status == status.strip().lower())
+    if shop_tenant_id is not None:
+        agg_stmt = agg_stmt.where(ShopMobileBookingRequest.requesting_tenant_id == shop_tenant_id)
+    agg_rows = session.exec(agg_stmt).all()
+
+    def _empty(tid: UUID, name: str, number: str | None = None, area=None, region=None) -> ParentShopBookingVolume:
+        return ParentShopBookingVolume(
+            tenant_id=tid, tenant_name=name, shop_number=number, area=area, region=region,
+            total=0, pending=0, accepted=0, declined=0, cancelled=0, expired=0,
+        )
+
     by_shop: dict[UUID, ParentShopBookingVolume] = {}
-    totals = ParentShopBookingVolume(
-        tenant_id=parent.id,
-        tenant_name="Network total",
-        total=0,
-        pending=0,
-        accepted=0,
-        declined=0,
-        cancelled=0,
-        expired=0,
-    )
+    totals = _empty(parent.id, "Network total")
+    resp_minutes: dict[UUID, list[float]] = {}
+    all_minutes: list[float] = []
+    op_stats: dict[UUID, dict[str, object]] = {}
 
     def bump(vol: ParentShopBookingVolume, st: str) -> None:
         vol.total += 1
-        if st == "pending":
-            vol.pending += 1
-        elif st == "accepted":
-            vol.accepted += 1
-        elif st == "declined":
-            vol.declined += 1
-        elif st == "cancelled":
-            vol.cancelled += 1
-        elif st == "expired":
-            vol.expired += 1
+        if st in ("pending", "accepted", "declined", "cancelled", "expired"):
+            setattr(vol, st, getattr(vol, st) + 1)
 
-    shops = _tenants_by_ids(session, [row.requesting_tenant_id for row in rows])
-    for row in rows:
-        shop = shops.get(row.requesting_tenant_id)
+    shop_ids = [r[0] for r in agg_rows]
+    op_ids = [r[1] for r in agg_rows]
+    tenants = _tenants_by_ids(session, shop_ids + op_ids)
+    retail, _operators = _retail_and_operator_tenants(session, parent.id)
+    if shop_tenant_id is None and not status:
+        # Shops with no bookings still belong in the report: they are the ones under goal.
+        for shop in retail:
+            by_shop[shop.id] = _empty(shop.id, shop.name, shop.shop_number, shop.minit_area, shop.minit_region)
+
+    for shop_id, op_id, st, created, responded in agg_rows:
+        shop = tenants.get(shop_id)
         if not shop:
             continue
-        if row.requesting_tenant_id not in by_shop:
-            by_shop[row.requesting_tenant_id] = ParentShopBookingVolume(
-                tenant_id=shop.id,
-                tenant_name=shop.name,
-                shop_number=shop.shop_number,
-                area=shop.minit_area,
-                region=shop.minit_region,
-                total=0,
-                pending=0,
-                accepted=0,
-                declined=0,
-                cancelled=0,
-                expired=0,
+        if shop_id not in by_shop:
+            by_shop[shop_id] = _empty(shop.id, shop.name, shop.shop_number, shop.minit_area, shop.minit_region)
+        bump(by_shop[shop_id], st)
+        bump(totals, st)
+        op = op_stats.setdefault(op_id, {"offered": 0, "responded": 0, "pool": 0, "mins": []})
+        op["offered"] = int(op["offered"]) + 1  # type: ignore[arg-type]
+        if st == "moved_to_pool":
+            op["pool"] = int(op["pool"]) + 1  # type: ignore[arg-type]
+        if responded is not None and created is not None and st in ("accepted", "declined"):
+            c = created if created.tzinfo else created.replace(tzinfo=timezone.utc)
+            r = responded if responded.tzinfo else responded.replace(tzinfo=timezone.utc)
+            m = max((r - c).total_seconds() / 60.0, 0.0)
+            resp_minutes.setdefault(shop_id, []).append(m)
+            all_minutes.append(m)
+            op["responded"] = int(op["responded"]) + 1  # type: ignore[arg-type]
+            op["mins"].append(m)  # type: ignore[union-attr]
+
+    def _avg(vals: list[float]) -> float | None:
+        return round(sum(vals) / len(vals), 1) if vals else None
+
+    for sid, vol in by_shop.items():
+        vol.avg_response_minutes = _avg(resp_minutes.get(sid, []))
+    totals.avg_response_minutes = _avg(all_minutes)
+
+    weekly_goal = 1
+    weeks: float | None = None
+    under: int | None = None
+    if start is not None:
+        window_end = end or datetime.now(timezone.utc)
+        weeks = max((window_end - start).total_seconds() / (7 * 86400), 1 / 7)
+        under = 0
+        for vol in by_shop.values():
+            vol.per_week = round(vol.total / weeks, 2)
+            vol.under_weekly_goal = vol.per_week < weekly_goal
+            under += 1 if vol.under_weekly_goal else 0
+        totals.per_week = round(totals.total / weeks, 2)
+
+    by_operator: list[ParentOperatorBookingResponse] = []
+    for oid, st_ in op_stats.items():
+        op_t = tenants.get(oid)
+        by_operator.append(
+            ParentOperatorBookingResponse(
+                tenant_id=oid,
+                tenant_name=op_t.name if op_t else "Operator",
+                shop_number=op_t.shop_number if op_t else None,
+                offered=int(st_["offered"]),  # type: ignore[arg-type]
+                responded=int(st_["responded"]),  # type: ignore[arg-type]
+                moved_to_pool=int(st_["pool"]),  # type: ignore[arg-type]
+                avg_response_minutes=_avg(st_["mins"]),  # type: ignore[arg-type]
             )
-        bump(by_shop[row.requesting_tenant_id], row.status)
-        bump(totals, row.status)
+        )
+    by_operator.sort(key=lambda o: o.tenant_name.lower())
 
     return ParentShopBookingsReport(
         from_date=start,
         to_date=end,
         totals=totals,
         by_shop=sorted(by_shop.values(), key=lambda s: s.tenant_name.lower()),
+        by_operator=by_operator,
+        weekly_goal=weekly_goal,
+        weeks=round(weeks, 2) if weeks is not None else None,
+        shops_under_goal=under,
         bookings=reads,
     )
 
