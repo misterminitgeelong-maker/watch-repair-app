@@ -7426,6 +7426,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/network-messages/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Contacts
+         * @description Every other active site in the networks this site belongs to.
+         */
+        get: operations["list_contacts_v1_network_messages_contacts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Conversations */
+        get: operations["list_conversations_v1_network_messages_conversations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/conversations/{conv_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Messages
+         * @description Opening a thread marks the other site's messages as read and clears its Inbox alert.
+         */
+        get: operations["list_messages_v1_network_messages_conversations__conv_id__messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/with/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Message
+         * @description Send a message to another site in a shared network, starting the thread if needed.
+         */
+        post: operations["send_message_v1_network_messages_with__tenant_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/engraving/events/{token}": {
         parameters: {
             query?: never;
@@ -8598,6 +8675,45 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ContactRead */
+        ContactRead: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Network Role */
+            network_role: string;
+        };
+        /** ConversationRead */
+        ConversationRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Other Tenant Id
+             * Format: uuid
+             */
+            other_tenant_id: string;
+            /** Other Name */
+            other_name: string;
+            /**
+             * Last Message At
+             * Format: date-time
+             */
+            last_message_at: string;
+            /** Last Body */
+            last_body?: string | null;
+            /**
+             * Unread
+             * @default 0
+             */
+            unread: number;
         };
         /** CreateHqRequest */
         CreateHqRequest: {
@@ -10171,6 +10287,30 @@ export interface components {
             loyalty: components["schemas"]["CustomerLoyaltyRead"];
             /** Recent Ledger */
             recent_ledger: components["schemas"]["PointsLedgerRead"][];
+        };
+        /** MessageRead */
+        MessageRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Sender Tenant Id
+             * Format: uuid
+             */
+            sender_tenant_id: string;
+            /** Mine */
+            mine: boolean;
+            /** Sender Name */
+            sender_name?: string | null;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** MobileCatalogueCategoryRead */
         MobileCatalogueCategoryRead: {
@@ -13110,6 +13250,11 @@ export interface components {
             category?: string | null;
             /** State Code */
             state_code?: string | null;
+        };
+        /** SendBody */
+        SendBody: {
+            /** Body */
+            body: string;
         };
         /** SendMessagePayload */
         SendMessagePayload: {
@@ -28804,6 +28949,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_contacts_v1_network_messages_contacts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactRead"][];
+                };
+            };
+        };
+    };
+    list_conversations_v1_network_messages_conversations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRead"][];
+                };
+            };
+        };
+    };
+    list_messages_v1_network_messages_conversations__conv_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_message_v1_network_messages_with__tenant_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"];
                 };
             };
             /** @description Validation Error */

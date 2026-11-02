@@ -443,3 +443,50 @@ def test_hq_can_message_shop_inbox():
     # Another HQ's shops are out of reach, and an empty message is refused.
     assert client.post("/v1/parent-accounts/me/operations/shop-messages", headers=ctx["hq"],
                        json={"tenant_ids": [shop_id], "message": ""}).status_code == 422
+
+
+def test_network_messages_between_sites():
+    suffix = uuid4().hex[:8]
+    ctx = _setup_hq_network(suffix)
+    op_token = _login(f"op-{suffix}", f"op-{suffix}@test.local")
+    with Session(engine) as session:
+        shop = session.exec(select(Tenant).where(Tenant.slug == ctx["shop_slug"])).one()
+        shop_id = str(shop.id)
+        owner = session.exec(select(User).where(User.tenant_id == shop.id)).first()
+        if not owner:
+            owner = User(tenant_id=shop.id, email=f"so-{suffix}@test.local", full_name="Shop Owner", role="owner",
+                         password_hash=hash_password("pass123456"), is_active=True)
+            session.add(owner)
+            session.commit()
+        shop_email = owner.email
+    shop_h = _headers(_login(ctx["shop_slug"], shop_email))
+    op_h = _headers(op_token)
+
+    contacts = client.get("/v1/network-messages/contacts", headers=shop_h).json()
+    assert ctx["op_id"] in {c["tenant_id"] for c in contacts}
+
+    sent = client.post(f"/v1/network-messages/with/{ctx['op_id']}", headers=shop_h, json={"body": "  Can you cover Joondalup Friday? "})
+    assert sent.status_code == 201, sent.text
+    assert sent.json()["mine"] is True and sent.json()["body"] == "Can you cover Joondalup Friday?"
+
+    convs = client.get("/v1/network-messages/conversations", headers=op_h).json()
+    assert len(convs) == 1 and convs[0]["unread"] == 1 and convs[0]["other_tenant_id"] == shop_id
+    inbox = client.get("/v1/inbox", headers=op_h).json()
+    assert [e["event_type"] for e in inbox].count("network_message") == 1
+
+    thread = client.get(f"/v1/network-messages/conversations/{convs[0]['id']}/messages", headers=op_h).json()
+    assert len(thread) == 1 and thread[0]["mine"] is False
+    assert client.get("/v1/network-messages/conversations", headers=op_h).json()[0]["unread"] == 0
+    assert "network_message" not in [e["event_type"] for e in client.get("/v1/inbox", headers=op_h).json()]
+
+    # Reply lands in the same thread, and the shop gets one alert for it.
+    assert client.post(f"/v1/network-messages/with/{shop_id}", headers=op_h, json={"body": "Yes"}).status_code == 201
+    assert len(client.get("/v1/network-messages/conversations", headers=shop_h).json()) == 1
+    assert len(client.get(f"/v1/network-messages/conversations/{convs[0]['id']}/messages", headers=shop_h).json()) == 2
+
+    # HQ is a participant of its own threads only; it cannot read this one.
+    assert client.get(f"/v1/network-messages/conversations/{convs[0]['id']}/messages", headers=ctx["hq"]).status_code == 404
+
+    # Sites outside the network are out of reach.
+    stranger = _bootstrap(f"stranger-{suffix}", f"stranger-{suffix}@test.local", "basic_auto_key")
+    assert client.post(f"/v1/network-messages/with/{stranger['tenant_id']}", headers=shop_h, json={"body": "hi"}).status_code == 403

@@ -3183,6 +3183,31 @@ export const getInboxCount = (exclude?: string[]) =>
   })
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
+// ── Messages between sites in a network ───────────────────────────────────────
+export interface NetworkContact { tenant_id: string; name: string; network_role: string }
+export interface NetworkConversation {
+  id: string
+  other_tenant_id: string
+  other_name: string
+  last_message_at: string
+  last_body?: string | null
+  unread: number
+}
+export interface NetworkMessage {
+  id: string
+  sender_tenant_id: string
+  mine: boolean
+  sender_name?: string | null
+  body: string
+  created_at: string
+}
+export const getNetworkContacts = () => api.get<NetworkContact[]>('/network-messages/contacts')
+export const getNetworkConversations = () => api.get<NetworkConversation[]>('/network-messages/conversations')
+export const getNetworkMessages = (conversationId: string) =>
+  api.get<NetworkMessage[]>(`/network-messages/conversations/${conversationId}/messages`)
+export const sendNetworkMessage = (tenantId: string, body: string) =>
+  api.post<NetworkMessage>(`/network-messages/with/${tenantId}`, { body })
+
 // ── Card payments that couldn't be applied (inbox "needs attention") ─────────
 export interface CardPaymentIssue {
   id: string

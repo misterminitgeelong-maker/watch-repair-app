@@ -8,7 +8,7 @@ describe('hqNavFor', () => {
     const labels = MINIT_HQ_NAV.map(i => i.label)
     expect(hqNavFor(undefined).map(i => i.label)).toEqual(labels)
     expect(hqNavFor(MINIT_MODULES).map(i => i.label)).toEqual(labels)
-    expect(labels).toEqual(['Dashboard', 'Inbox', 'Shops', 'Lead routing', 'Mobile reports', 'Reports'])
+    expect(labels).toEqual(['Dashboard', 'Inbox', 'Messages', 'Shops', 'Lead routing', 'Mobile reports', 'Reports'])
   })
 
   it('shows a shoe-only HQ just Shops and Shoe repairs', () => {
