@@ -26,7 +26,7 @@ def clean_cell(value: object) -> float | str | None:
     if value is None:
         return None
     if isinstance(value, str):
-        if value in _NULL_CELL_VALUES:
+        if value.strip() in _NULL_CELL_VALUES:
             return None
         return value
     if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))):
