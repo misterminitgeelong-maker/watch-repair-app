@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,7 +24,9 @@ private fun limit(n: Int) = if(n <= 0 || n >= 1_000_000) "Unlimited" else n.toSt
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confirmSignOut by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmXero by remember { mutableStateOf(false) }
     val session = state.session
+    val owner = session?.user?.role == "owner"
     val manager = TokenStore.canManageInvoices()
     Scaffold(topBar = { BackLargeHeader("More", "Account", "Accounts", onBack) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -61,6 +64,17 @@ private fun limit(n: Int) = if(n <= 0 || n >= 1_000_000) "Unlimited" else n.toSt
                             b.xeroConnected?.let { DetailRow("Xero", if(it) "Connected" else "Not connected") }
                         }
                         state.billingError?.let { ErrorBanner(it) }
+                        state.billing?.takeIf { it.stripeConfigured && it.stripeConnectPresent == true }?.let { b ->
+                            DetailRow("Card payments", if(b.stripeConnectCharges == true) "Enabled" else "Not enabled yet")
+                            DetailRow("Payouts", if(b.stripeConnectPayouts == true) "Enabled" else "Not enabled yet")
+                        }
+                        state.info?.let { Text(it, Modifier.testTag("accounts-info"), style = MaterialTheme.typography.bodySmall) }
+                        state.actionError?.let { ErrorBanner(it) }
+                        if(owner && state.billing?.stripeConfigured == true && state.billing?.stripeConnectPresent == true)
+                            SecondaryAction(viewModel::refreshPayouts, Modifier.fillMaxWidth().testTag("refresh-payouts"), enabled = !state.busy) { Text(if(state.busy) "Working…" else "Refresh payout status") }
+                        if(owner && state.billing?.xeroConnected == true)
+                            TextButton({ confirmXero = true }, Modifier.heightIn(min = 48.dp).testTag("disconnect-xero"), enabled = !state.busy,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Disconnect Xero") }
                         if(TokenStore.canManageTeam()) {
                             if(state.billing?.xeroConnected == false) FinishOnWebRow("Connect Xero", "Xero sign-in happens on the web app.", "accounts", "finish-xero")
                             if(state.billing?.stripeConfigured == true) FinishOnWebRow("Stripe payouts", "Set up or check mobile-service payouts on the web app.", "accounts", "finish-stripe-payouts")
@@ -85,6 +99,10 @@ private fun limit(n: Int) = if(n <= 0 || n >= 1_000_000) "Unlimited" else n.toSt
     }
     if(confirmDelete && session != null && session.user.role == "owner")
         AccountDeletionDialog(session.shopName, session.tenantSlug, session.user.email) { confirmDelete = false }
+    if(confirmXero) AlertDialog(onDismissRequest = { confirmXero = false }, title = { Text("Disconnect Xero?") },
+        text = { Text("New invoices will stop syncing to Xero for the whole shop until an owner reconnects it on the web app. Invoices already in Xero stay there.") },
+        confirmButton = { TextButton({ confirmXero = false; viewModel.disconnectXero() }, Modifier.testTag("confirm-disconnect-xero")) { Text("Disconnect") } },
+        dismissButton = { TextButton({ confirmXero = false }) { Text("Cancel") } })
     if(confirmSignOut) AlertDialog(onDismissRequest = { confirmSignOut = false }, title = { Text("Sign out?") },
         text = { Text("Saved drafts remain tied to this shop and account on this device.") },
         confirmButton = { TextButton({ confirmSignOut = false; onSignOut() }) { Text("Sign out") } },
