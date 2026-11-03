@@ -114,3 +114,24 @@ def test_empty_network_and_bad_dates():
     assert client.get(SUMMARY, headers=headers).json()["totals"]["opened"] == 0
     assert client.get(SEARCH, headers=headers).json() == {"jobs": [], "has_more": False}
     assert client.get(SUMMARY, headers=headers, params={"from_date": "nonsense"}).status_code == 400
+
+
+def test_report_groups_by_model_fault_and_warranty():
+    from datetime import date
+
+    admin = _admin()
+    hq, headers = _hq(admin, ["shoe"])
+    shop = _shop(hq["parent_account_id"], "Carlton", [("SHO-00001", "working_on", "Dee", None, 5000, 1), ("SHO-00002", "working_on", "Eve", None, 7000, 1)])
+    with Session(engine) as db:
+        from sqlmodel import select as sel
+        shoes = db.exec(sel(Shoe).where(Shoe.tenant_id == UUID(shop))).all()
+        shoes[0].model_name, shoes[0].purchase_date = "Arizona", date.today() - timedelta(days=30)
+        shoes[1].model_name, shoes[1].purchase_date = "Arizona", date.today() - timedelta(days=365 * 5)
+        db.add_all(shoes); db.commit()
+    res = client.get("/v1/parent-accounts/me/operations/shoe-jobs/report", headers=headers)
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["total_repairs"] == 2
+    assert data["by_model"] == [{"model": "Arizona", "repairs": 2, "billed_cents": 12000}]
+    assert data["by_fault"][0]["fault"] == "g" and data["by_fault"][0]["repairs"] == 2
+    assert data["warranty"] == {"in_warranty": 1, "expired": 1, "unknown": 0}

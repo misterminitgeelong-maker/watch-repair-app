@@ -32,6 +32,8 @@ import { draftScope, photoMetaFromFile, type DraftPhotoMeta } from '@/lib/draftS
 import DraftRestoredNotice from '@/components/DraftRestoredNotice'
 import IntakeSubmitStatus from '@/components/IntakeSubmitStatus'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useShopStockEnabled } from '@/hooks/useShopStock'
+import { shopStockModels, shopSearchPurchases, type PurchaseRecord } from '@/lib/api'
 
 const SHOE_INITIAL_STATUS_OPTIONS = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on'] as const
 
@@ -40,11 +42,16 @@ type IntakeShoe = {
   brand: string
   color: string
   description_notes: string
+  model_name: string
+  size: string
+  purchase_date: string
+  purchase_store: string
+  purchase_ref: string
   services: SelectedShoeService[]
 }
 
 function newIntakeShoe(): IntakeShoe {
-  return { shoe_type: '', brand: '', color: '', description_notes: '', services: [] }
+  return { shoe_type: '', brand: '', color: '', description_notes: '', model_name: '', size: '', purchase_date: '', purchase_store: '', purchase_ref: '', services: [] }
 }
 
 function toItemPayload(services: SelectedShoeService[], pairIndex: number, pairCount: number) {
@@ -114,7 +121,7 @@ function draftHasContent(d: ShoeIntakeDraft): boolean {
   if (d.job.title.trim() || d.job.description.trim()) return true
   if (d.customerMode === 'new' && d.newCustomer.full_name.trim()) return true
   if (d.selectedCustomerId) return true
-  return d.shoes.some(s => s.shoe_type || s.brand.trim() || s.color.trim() || s.description_notes.trim() || s.services.length > 0)
+  return d.shoes.some(s => s.shoe_type || s.brand.trim() || s.color.trim() || s.description_notes.trim() || s.model_name.trim() || s.size.trim() || s.purchase_date || s.purchase_store.trim() || s.purchase_ref.trim() || s.services.length > 0)
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
@@ -128,6 +135,15 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { tenantId, activeSiteTenantId, sessionUserId } = useAuth()
+  const stockOn = useShopStockEnabled()
+  const { data: stockModels = [] } = useQuery({
+    queryKey: ['shop-stock-models'], queryFn: () => shopStockModels().then(r => r.data), enabled: stockOn,
+  })
+  const [purchaseQuery, setPurchaseQuery] = useState('')
+  const [purchaseHits, setPurchaseHits] = useState<PurchaseRecord[] | null>(null)
+  async function lookUpPurchases() {
+    try { setPurchaseHits((await shopSearchPurchases(purchaseQuery.trim())).data) } catch { setPurchaseHits([]) }
+  }
   const { online } = useOnlineStatus()
   const [step, setStep] = useState(preselectedCustomer ? 2 : 1)
 
@@ -372,6 +388,11 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
           brand: intakeShoe.brand || undefined,
           color: intakeShoe.color || undefined,
           description_notes: intakeShoe.description_notes || undefined,
+          model_name: intakeShoe.model_name || undefined,
+          size: intakeShoe.size || undefined,
+          purchase_date: intakeShoe.purchase_date || undefined,
+          purchase_store: intakeShoe.purchase_store || undefined,
+          purchase_ref: intakeShoe.purchase_ref || undefined,
         })
         createdShoeIds.push(data.id)
       }
@@ -588,6 +609,54 @@ export default function NewShoeJobModal({ onClose, preselectedCustomer, onSucces
                 onChange={e => updateShoe(idx, { color: e.target.value })}
                 placeholder="e.g. Tan"
               />
+              <div className="grid grid-cols-2 gap-2">
+                {stockOn && (
+                  <div className="col-span-2 space-y-1">
+                    <div className="flex gap-2 items-end">
+                      <Input label="Find original purchase" value={purchaseQuery} onChange={e => setPurchaseQuery(e.target.value)} placeholder="Name, phone, email or receipt" />
+                      <Button type="button" variant="secondary" disabled={purchaseQuery.trim().length < 2} onClick={lookUpPurchases}>Search</Button>
+                    </div>
+                    {purchaseHits && purchaseHits.length === 0 && <p className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>No matching purchases.</p>}
+                    {purchaseHits?.map(h => (
+                      <button key={h.id} type="button" className="block w-full text-left text-sm rounded border px-2 py-1"
+                        onClick={() => { updateShoe(idx, { model_name: h.model_name ?? '', size: h.size ?? '', purchase_date: h.purchase_date ?? '', purchase_store: h.store ?? '', purchase_ref: h.purchase_ref }); setPurchaseHits(null) }}>
+                        {[h.customer_name, h.model_name, h.size && `size ${h.size}`, h.purchase_date, h.store].filter(Boolean).join(' · ')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <Input
+                  label="Model"
+                  list={stockOn ? 'shoe-models' : undefined}
+                  value={shoe.model_name}
+                  onChange={e => updateShoe(idx, { model_name: e.target.value })}
+                  placeholder="e.g. Arizona"
+                />
+                {stockOn && <datalist id="shoe-models">{stockModels.map(m => <option key={m.id} value={m.name} />)}</datalist>}
+                <Input
+                  label="Size"
+                  value={shoe.size}
+                  onChange={e => updateShoe(idx, { size: e.target.value })}
+                  placeholder="e.g. 41"
+                />
+                <Input
+                  label="Purchase date"
+                  type="date"
+                  value={shoe.purchase_date}
+                  onChange={e => updateShoe(idx, { purchase_date: e.target.value })}
+                />
+                <Input
+                  label="Bought at"
+                  value={shoe.purchase_store}
+                  onChange={e => updateShoe(idx, { purchase_store: e.target.value })}
+                  placeholder="Store"
+                />
+                <Input
+                  label="Receipt / order ref"
+                  value={shoe.purchase_ref}
+                  onChange={e => updateShoe(idx, { purchase_ref: e.target.value })}
+                />
+              </div>
               <Textarea
                 label="Description / Condition Notes"
                 value={shoe.description_notes}

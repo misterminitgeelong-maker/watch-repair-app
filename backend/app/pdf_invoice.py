@@ -171,8 +171,9 @@ def build_quote_pdf(
     total_cents: int,
     currency: str = "AUD",
     note: str | None = None,
+    options: Sequence[dict] | None = None,
 ) -> bytes:
-    """Return PDF bytes for a quote."""
+    """Return PDF bytes for a quote (``options``: two-outcome quote, see ``_build_document_pdf``)."""
     return _build_document_pdf(
         doc_type="QUOTE",
         number_label="Quote #",
@@ -195,6 +196,7 @@ def build_quote_pdf(
         tax_cents=tax_cents,
         total_cents=total_cents,
         currency=currency,
+        options=options,
     )
 
 
@@ -221,8 +223,14 @@ def _build_document_pdf(
     logo_url: str | None = None,
     logo_path: str | None = None,
     brand_color: str | None = None,
+    options: Sequence[dict] | None = None,
 ) -> bytes:
-    """Shared invoice/quote PDF renderer."""
+    """Shared invoice/quote PDF renderer.
+
+    ``options`` (two-outcome quotes): each {key, label, line_items, subtotal_cents, tax_cents,
+    total_cents}. ``line_items`` then holds only the lines shared by both options, and the single
+    totals block is replaced by one block per option.
+    """
     buf = io.BytesIO()
     accent = _resolve_accent(brand_color)
     on_accent = colors.white if _luminance(accent) < 0.6 else _DARK
@@ -332,84 +340,119 @@ def _build_document_pdf(
     story.append(info_tbl)
     story.append(Spacer(1, 9 * mm))
 
-    # ── Line items ──
+    # ── Line items + totals (shared by the single-total and per-option layouts) ──
     w_qty, w_unit, w_amt = 16 * mm, 28 * mm, 30 * mm
     w_desc = page_width - w_qty - w_unit - w_amt
-    rows = [[
-        Paragraph("DESCRIPTION", th),
-        Paragraph("QTY", th_right),
-        Paragraph("UNIT PRICE", th_right),
-        Paragraph("AMOUNT", th_right),
-    ]]
-    for li in line_items:
-        desc = esc((li.get("description") or "Item").strip())
-        qty = li.get("quantity", 1)
-        unit_cents = int(li.get("unit_price_cents") or li.get("total_price_cents", 0) or 0)
-        total_li_cents = int(li.get("total_price_cents") or 0)
-        rows.append([
-            Paragraph(desc, base),
-            Paragraph(esc(str(qty)), right),
-            Paragraph(format_cents(unit_cents, currency), right),
-            Paragraph(format_cents(total_li_cents, currency), right_bold),
-        ])
-    items_tbl = Table(rows, colWidths=[w_desc, w_qty, w_unit, w_amt], repeatRows=1)
-    items_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), accent),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("LINEBELOW", (0, 1), (-1, -1), 0.4, _RULE),
-    ]))
-    story.append(items_tbl)
-    story.append(Spacer(1, 4 * mm))
 
-    # ── Totals (right-aligned block) ──
-    tax_label = "GST" if (is_nz or tax_cents) else "Tax"
-    totals_w = 78 * mm
-    totals_rows = []
-    if subtotal_cents and tax_cents:
-        totals_rows.append([Paragraph("Subtotal", base), Paragraph(format_cents(subtotal_cents, currency), right)])
-        totals_rows.append([Paragraph(tax_label, base), Paragraph(format_cents(tax_cents, currency), right)])
-    totals_tbl = Table(totals_rows or [[Paragraph("", base), Paragraph("", base)]], colWidths=[totals_w - 32 * mm, 32 * mm])
-    totals_tbl.setStyle(TableStyle([
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-    ]))
-    total_label = "TOTAL DUE" if doc_type == "INVOICE" else "TOTAL"
-    cur = (currency or "AUD").upper()
-    total_style_l = ParagraphStyle("tl", parent=base, fontName="Helvetica-Bold", fontSize=9, textColor=on_accent)
-    total_style_r = ParagraphStyle("tr", parent=total_style_l, fontSize=13, leading=16, alignment=TA_RIGHT)
-    total_tbl = Table(
-        [[Paragraph(f"{total_label} ({cur})", total_style_l), Paragraph(format_cents(total_cents, currency), total_style_r)]],
-        colWidths=[totals_w - 40 * mm, 40 * mm],
-    )
-    total_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), accent),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-    ]))
-    block = Table([[totals_tbl], [total_tbl]], colWidths=[totals_w])
-    block.setStyle(TableStyle([
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-    ]))
-    outer = Table([["", block]], colWidths=[page_width - totals_w, totals_w])
-    outer.setStyle(TableStyle([
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.append(KeepTogether(outer))
+    def items_table(items: Sequence[dict]) -> Table:
+        rows = [[
+            Paragraph("DESCRIPTION", th),
+            Paragraph("QTY", th_right),
+            Paragraph("UNIT PRICE", th_right),
+            Paragraph("AMOUNT", th_right),
+        ]]
+        for li in items:
+            desc = esc((li.get("description") or "Item").strip())
+            qty = li.get("quantity", 1)
+            unit_cents = int(li.get("unit_price_cents") or li.get("total_price_cents", 0) or 0)
+            total_li_cents = int(li.get("total_price_cents") or 0)
+            rows.append([
+                Paragraph(desc, base),
+                Paragraph(esc(str(qty)), right),
+                Paragraph(format_cents(unit_cents, currency), right),
+                Paragraph(format_cents(total_li_cents, currency), right_bold),
+            ])
+        tbl = Table(rows, colWidths=[w_desc, w_qty, w_unit, w_amt], repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), accent),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("LINEBELOW", (0, 1), (-1, -1), 0.4, _RULE),
+        ]))
+        return tbl
+
+    def totals_block(sub_cents: int, tax_c: int, total_c: int, total_label: str) -> Table:
+        tax_label = "GST" if (is_nz or tax_c) else "Tax"
+        totals_w = 78 * mm
+        totals_rows = []
+        if sub_cents and tax_c:
+            totals_rows.append([Paragraph("Subtotal", base), Paragraph(format_cents(sub_cents, currency), right)])
+            totals_rows.append([Paragraph(tax_label, base), Paragraph(format_cents(tax_c, currency), right)])
+        totals_tbl = Table(totals_rows or [[Paragraph("", base), Paragraph("", base)]], colWidths=[totals_w - 32 * mm, 32 * mm])
+        totals_tbl.setStyle(TableStyle([
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        cur = (currency or "AUD").upper()
+        total_style_l = ParagraphStyle("tl", parent=base, fontName="Helvetica-Bold", fontSize=9, textColor=on_accent)
+        total_style_r = ParagraphStyle("tr", parent=total_style_l, fontSize=13, leading=16, alignment=TA_RIGHT)
+        total_tbl = Table(
+            [[Paragraph(f"{total_label} ({cur})", total_style_l), Paragraph(format_cents(total_c, currency), total_style_r)]],
+            colWidths=[totals_w - 40 * mm, 40 * mm],
+        )
+        total_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), accent),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        block = Table([[totals_tbl], [total_tbl]], colWidths=[totals_w])
+        block.setStyle(TableStyle([
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        outer = Table([["", block]], colWidths=[page_width - totals_w, totals_w])
+        outer.setStyle(TableStyle([
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        return outer
+
+    if options:
+        option_head = ParagraphStyle("opthead", parent=base, fontName="Helvetica-Bold", fontSize=12, leading=15, textColor=_DARK)
+        story.append(Paragraph(
+            "Two possible prices. We can only confirm which applies once we see your vehicle. "
+            "You only pay for the one that applies.",
+            base,
+        ))
+        story.append(Spacer(1, 5 * mm))
+        if line_items:
+            story.append(Paragraph("INCLUDED IN BOTH OPTIONS", label))
+            story.append(items_table(line_items))
+            story.append(Spacer(1, 5 * mm))
+        for opt in options:
+            heading = [
+                Paragraph(f"OPTION {esc(str(opt.get('key', '')))}", label),
+                Paragraph(esc(opt.get("label") or ""), option_head),
+                Spacer(1, 2 * mm),
+                items_table(opt.get("line_items") or []),
+                Spacer(1, 3 * mm),
+                totals_block(
+                    int(opt.get("subtotal_cents") or 0),
+                    int(opt.get("tax_cents") or 0),
+                    int(opt.get("total_cents") or 0),
+                    f"OPTION {esc(str(opt.get('key', '')))} TOTAL",
+                ),
+            ]
+            story.append(KeepTogether(heading))
+            story.append(Spacer(1, 7 * mm))
+    else:
+        story.append(items_table(line_items))
+        story.append(Spacer(1, 4 * mm))
+        story.append(KeepTogether(totals_block(
+            subtotal_cents, tax_cents, total_cents, "TOTAL DUE" if doc_type == "INVOICE" else "TOTAL",
+        )))
 
     # ── Footer note (payment details for invoices, terms for quotes) ──
     if footer_text and footer_text.strip():

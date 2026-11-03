@@ -115,3 +115,30 @@ def test_options_validation_and_plain_quotes_unchanged():
     assert plain.status_code == 201
     assert plain.json()["options"] == [] and plain.json()["total_cents"] == 11000
     assert client.post(f"/v1/auto-key-jobs/quotes/{plain.json()['id']}/select-option", headers=headers, json={"option": "A"}).status_code == 400
+
+
+def test_two_option_quote_email_and_pdf_render_both_options():
+    from app.email_client import send_mobile_quote_email  # noqa: F401
+    from app.email_templates import ShopInfo, render_transactional_email
+    from app.pdf_invoice import build_quote_pdf
+
+    options = [
+        {"key": "A", "label": "CAS3 module", "line_items": [
+            {"description": "Programme CAS3 key", "quantity": 1, "total_price_cents": 60000}],
+         "subtotal_cents": 69000, "tax_cents": 6900, "total_cents": 75900},
+        {"key": "B", "label": "CAS3++ module", "line_items": [
+            {"description": "Programme CAS3++ key", "quantity": 1, "total_price_cents": 79000}],
+         "subtotal_cents": 88000, "tax_cents": 8800, "total_cents": 96800},
+    ]
+    shared = [{"description": "Call-out", "quantity": 1, "total_price_cents": 9000}]
+    html_out = render_transactional_email(
+        title="Quote", preheader="p", greeting="Hi", intro_html="x", shop=ShopInfo(name="Shop"),
+        line_items=shared, options=options,
+    )
+    for text in ("CAS3 module", "CAS3++ module", "Call-out", "$759.00", "$968.00", "Option A", "Option B"):
+        assert text in html_out
+    pdf = build_quote_pdf(
+        job_number="1", customer_name="A", shop_name="Shop", line_items=shared,
+        subtotal_cents=88000, tax_cents=8800, total_cents=96800, options=options,
+    )
+    assert pdf.startswith(b"%PDF")

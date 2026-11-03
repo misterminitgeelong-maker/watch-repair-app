@@ -5,6 +5,7 @@ import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Users,
+  MessageSquare,
   Wrench,
   Receipt,
   LayoutDashboard,
@@ -25,6 +26,7 @@ import {
   Kanban,
   Award,
   ShoppingBag,
+  Boxes,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { isDemoModeEnabled } from '@/lib/onboarding'
@@ -42,6 +44,7 @@ import MinitHqSidebar from './MinitHqSidebar'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
+import { useShopStockEnabled } from '@/hooks/useShopStock'
 
 type NavLinkItem = {
   to: string
@@ -54,6 +57,8 @@ type NavLinkItem = {
 const bookingOnlyNav: NavLinkItem[] = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile', icon: KeyRound, feature: 'shop_mobile_booking' },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Booking updates and messages from the Support office' },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, title: 'Message other shops, operators and the Support office' },
   { to: '/accounts', label: 'Account', icon: UserCog },
 ]
 
@@ -68,6 +73,7 @@ const navBeforeMobile: NavLinkItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile services', icon: KeyRound, feature: 'shop_mobile_booking' },
   { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Quote activity and website mobile key leads' },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, title: 'Message other shops, operators and the Support office' },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/engraving', label: 'Engraving Events', icon: Award, title: 'QR ordering and queue for on-the-spot medal engraving' },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' },
@@ -102,6 +108,7 @@ interface SidebarProps {
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature, planCode, product, tenantSlug, minitHqUi, platformConsole } = useAuth()
   const demoModeEnabled = isDemoModeEnabled()
+  const hasPartsStock = useShopStockEnabled()
   const hqCtx = {
     product,
     planCode,
@@ -167,7 +174,10 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     ? filterItems(demoNavAfterMobile)
     : isMinitUi
     ? []
-    : filterItems(navAfterMobile).filter((item) => !(autoKeyOnly && item.to === '/stocktakes'))
+    : [
+        ...filterItems(navAfterMobile).filter((item) => !(autoKeyOnly && item.to === '/stocktakes')),
+        ...(hasPartsStock ? [{ to: '/parts-stock', label: 'Parts stock', icon: Boxes } as NavLinkItem] : []),
+      ]
   const showMobile = !isMinitUi && hasFeature('auto_key')
   const insideMobile = pathname.startsWith('/auto-key')
 

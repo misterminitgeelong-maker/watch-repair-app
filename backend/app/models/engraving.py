@@ -14,9 +14,12 @@ from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 __all__ = [
+    "ENGRAVING_BATCH_MAX",
     "ENGRAVING_LINE2_MAX",
     "ENGRAVING_NAME_MAX",
     "ENGRAVING_PLACES",
+    "ENGRAVING_TICKET_MAX",
+    "EngravingBatchCreate",
     "EngravingEvent",
     "EngravingEventCreate",
     "EngravingEventRead",
@@ -31,6 +34,7 @@ __all__ = [
     "EngravingOrderUpdate",
     "EngravingQueueRead",
     "PublicEngravingEvent",
+    "PublicEngravingGroupMember",
     "PublicEngravingOrder",
 ]
 
@@ -64,6 +68,8 @@ class EngravingEvent(SQLModel, table=True):
     minutes_per_medal: int = 3
     status: str = Field(default="open")  # open | paused | closed
     sms_enabled: bool = True
+    # Parents may pay by card from their order page (needs the shop's Stripe Connect set up).
+    online_payments: bool = True
     public_token: str = Field(default_factory=_public_token, index=True, unique=True)
     next_order_seq: int = 1
     created_at: datetime = Field(default_factory=_utcnow)
@@ -80,6 +86,8 @@ class EngravingOrder(SQLModel, table=True):
     order_seq: int
     order_number: str  # e.g. A-024
     status_token: str = Field(default_factory=lambda: uuid4().hex, index=True, unique=True)
+    group_id: Optional[UUID] = Field(default=None, index=True)  # medals ordered together share a group
+    ticket_number: Optional[str] = Field(default=None, index=True)  # pre-printed tear-off ticket kept with the tub
     athlete_name: str
     line2: Optional[str] = None
     place: str = "None"
@@ -89,6 +97,8 @@ class EngravingOrder(SQLModel, table=True):
     status: str = Field(default="waiting", index=True)  # waiting | engraving | ready | collected | cancelled
     paid: bool = False
     paid_at: Optional[datetime] = None
+    payment_method: Optional[str] = None  # stripe | stall (set when marked paid)
+    stripe_checkout_id: Optional[str] = None
     amount_cents: int = 0
     source: str = "online"  # online | walk_up
     notes: Optional[str] = None
@@ -110,6 +120,7 @@ class EngravingEventCreate(SQLModel):
     price_cents: int = 1500
     minutes_per_medal: int = 3
     sms_enabled: bool = True
+    online_payments: bool = True
 
 
 class EngravingEventUpdate(SQLModel):
@@ -120,6 +131,7 @@ class EngravingEventUpdate(SQLModel):
     minutes_per_medal: Optional[int] = None
     status: Optional[EngravingEventStatus] = None
     sms_enabled: Optional[bool] = None
+    online_payments: Optional[bool] = None
 
 
 class EngravingEventStats(SQLModel):
@@ -143,6 +155,8 @@ class EngravingEventRead(SQLModel):
     minutes_per_medal: int
     status: str
     sms_enabled: bool
+    online_payments: bool = True
+    online_payments_ready: bool = False  # card payment would actually work right now
     public_token: str
     public_url: str
     created_at: datetime
@@ -155,6 +169,18 @@ class EngravingOrderCreate(SQLModel):
     place: str = "None"
     qty: int = 1
     phone: Optional[str] = None
+
+
+ENGRAVING_BATCH_MAX = 10
+ENGRAVING_TICKET_MAX = 12
+
+
+class EngravingBatchCreate(SQLModel):
+    """Several medals ordered together (a parent bringing a bunch). Each medal becomes its
+    own order with its own number, sharing one mobile number."""
+    orders: list[EngravingOrderCreate]
+    phone: Optional[str] = None
+    ticket_number: str  # number on the tear-off ticket the parent grabbed; the other half goes in the tub
 
 
 class EngravingOperatorOrderCreate(EngravingOrderCreate):
@@ -179,6 +205,8 @@ class EngravingOrderRead(SQLModel):
     order_number: str
     order_seq: int
     status_token: str
+    group_id: Optional[UUID] = None
+    ticket_number: Optional[str] = None
     athlete_name: str
     line2: Optional[str]
     place: str
@@ -188,6 +216,7 @@ class EngravingOrderRead(SQLModel):
     status: str
     paid: bool
     paid_at: Optional[datetime]
+    payment_method: Optional[str] = None
     amount_cents: int
     source: str
     notes: Optional[str]
@@ -217,6 +246,13 @@ class PublicEngravingEvent(SQLModel):
     places: list[str] = list(ENGRAVING_PLACES)
 
 
+class PublicEngravingGroupMember(SQLModel):
+    order_number: str
+    athlete_name: str
+    status_token: str
+    status: str
+
+
 class PublicEngravingOrder(SQLModel):
     order_number: str
     status_token: str
@@ -230,8 +266,12 @@ class PublicEngravingOrder(SQLModel):
     status: str
     paid: bool
     amount_cents: int
+    can_pay_online: bool = False
+    amount_due_cents: int = 0  # unpaid total for this order plus any ordered with it
     queue_position: Optional[int]
     wait_minutes: Optional[int]
     phone_masked: Optional[str]
     created_at: datetime
     ready_at: Optional[datetime]
+    ticket_number: Optional[str] = None
+    group_members: list[PublicEngravingGroupMember] = []

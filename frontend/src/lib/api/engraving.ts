@@ -28,6 +28,8 @@ export interface EngravingEvent {
   minutes_per_medal: number
   status: EngravingEventStatus
   sms_enabled: boolean
+  online_payments: boolean
+  online_payments_ready: boolean
   public_token: string
   public_url: string
   created_at: string
@@ -40,6 +42,8 @@ export interface EngravingOrder {
   order_number: string
   order_seq: number
   status_token: string
+  group_id: string | null
+  ticket_number: string | null
   athlete_name: string
   line2: string | null
   place: EngravingPlace
@@ -49,6 +53,7 @@ export interface EngravingOrder {
   status: EngravingOrderStatus
   paid: boolean
   paid_at: string | null
+  payment_method: 'stripe' | 'stall' | null
   amount_cents: number
   source: 'online' | 'walk_up'
   notes: string | null
@@ -70,6 +75,7 @@ export interface EngravingEventPayload {
   price_cents?: number
   minutes_per_medal?: number
   sms_enabled?: boolean
+  online_payments?: boolean
 }
 
 export interface EngravingOrderPayload {
@@ -114,12 +120,31 @@ export interface PublicEngravingOrder {
   status: EngravingOrderStatus
   paid: boolean
   amount_cents: number
+  can_pay_online: boolean
+  amount_due_cents: number
   queue_position: number | null
   wait_minutes: number | null
   phone_masked: string | null
   created_at: string
   ready_at: string | null
+  ticket_number: string | null
+  group_members: PublicEngravingGroupMember[]
 }
+
+export interface PublicEngravingGroupMember {
+  order_number: string
+  athlete_name: string
+  status_token: string
+  status: EngravingOrderStatus
+}
+
+export interface EngravingBatchPayload {
+  orders: EngravingOrderPayload[]
+  phone?: string | null
+  ticket_number: string
+}
+
+export const ENGRAVING_BATCH_MAX = 10
 
 // ── Operator ────────────────────────────────────────────────────────────────
 
@@ -171,8 +196,14 @@ export const getPublicEngravingEvent = (token: string) =>
 export const createPublicEngravingOrder = (token: string, data: EngravingOrderPayload) =>
   axios.post<PublicEngravingOrder>(withApiOrigin(`/v1/public/engraving/events/${token}/orders`), data)
 
+export const createPublicEngravingBatch = (token: string, data: EngravingBatchPayload) =>
+  axios.post<PublicEngravingOrder[]>(withApiOrigin(`/v1/public/engraving/events/${token}/orders/batch`), data)
+
 export const getPublicEngravingOrder = (statusToken: string) =>
   axios.get<PublicEngravingOrder>(withApiOrigin(`/v1/public/engraving/orders/${statusToken}`))
+
+export const startPublicEngravingCheckout = (statusToken: string) =>
+  axios.post<{ checkout_url: string }>(withApiOrigin(`/v1/public/engraving/orders/${statusToken}/checkout`))
 
 // ── Display helpers ─────────────────────────────────────────────────────────
 
