@@ -440,3 +440,13 @@ def test_bulk_hub_assignment_previews_then_applies(world):
     world["as"]("qld")
     hubs = {h["code"]: h for h in c.get(world["base"] + "/hubs").json()}
     assert hubs["NT"]["accessible"] and not hubs["QLD"]["accessible"]
+
+
+def test_malaysia_and_singapore_are_not_reported_as_gaps(world):
+    with Session(world["engine"]) as s:
+        t = s.get(Tenant, world["people"]["unknown"][0])
+        t.minit_area = "SINGAPORE"
+        s.add(t)
+        s.commit()
+    c = world["as"]("hq")
+    assert c.get(world["base"] + "/state-gaps").json()["shops"] == []

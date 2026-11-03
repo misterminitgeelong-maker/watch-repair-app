@@ -15,7 +15,7 @@ from ..database import unscoped_session
 from ..dependencies import AuthContext, get_auth_context
 from ..models import NetworkMessage, ParentAccount, Region, Tenant, TenantEventLog, User
 from ..models.network_community import AnnouncementReceipt, NetworkAnnouncement, StateHubMessage, StateHubRead, NetworkMessageAttachment
-from ..messaging_hubs import HUB_NONE, STATES, hub_for, state_code  # noqa: F401  (re-exported)
+from ..messaging_hubs import HUB_NONE, STATES, hub_for, intentionally_excluded, state_code  # noqa: F401  (re-exported)
 from ..parent_network import (
     parent_region_scope, parent_role_for_user, parents_for_user, sites_for_parent, sites_for_tenant,
 )
@@ -544,8 +544,10 @@ def state_gaps(parent_id: UUID, auth: AuthContext = Depends(get_auth_context), s
     ctx = _context(session, auth, parent_id)
     if not ctx[4]:
         raise HTTPException(403, "Only HQ admins can see this list")
+    regions = {r.id: r for r in session.exec(select(Region).where(col(Region.parent_account_id) == parent_id)).all()}
     shops = [{"tenant_id": tenant.id, "name": _label(tenant), "region_value": tenant.minit_region}
-             for site, tenant, code in _audience_sites(session, parent_id, None) if code is None and site.messaging_state != HUB_NONE]
+             for site, tenant, code in _audience_sites(session, parent_id, None)
+             if code is None and not intentionally_excluded(site, tenant, regions.get(site.region_id) if site.region_id else None)]
     shops.sort(key=lambda s: s["name"].lower())
     return {"shops": shops}
 

@@ -33,3 +33,14 @@ def hub_for(site, tenant, region):
         return None if setting == HUB_NONE else setting
     area = state_code(tenant.minit_area) if tenant else None
     return area or state_code(region.code if region else (tenant.minit_region if tenant else None))
+
+
+#: Areas deliberately outside the AU/NZ messaging hubs (so they are not listed as "missing a state").
+EXCLUDED_AREAS = frozenset({"MALAYSIA", "SINGAPORE"})
+
+
+def intentionally_excluded(site, tenant, region):
+    if site is not None and getattr(site, "messaging_state", None) == HUB_NONE:
+        return True
+    area = (tenant.minit_area or "").strip().upper() if tenant else ""
+    return area in EXCLUDED_AREAS or (region is not None and (region.code or "").strip().upper() == "SEA")
