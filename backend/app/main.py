@@ -75,6 +75,7 @@ from .routes.vehicle_lookup import router as vehicle_lookup_router
 from .routes.vehicle_key_specs import router as vehicle_key_specs_router
 from .routes.mobile_services_pricing import router as mobile_services_pricing_router
 from .routes.maps_routing import router as maps_routing_router
+from .routes.places import router as places_router
 from .routes.custom_services import router as custom_services_router
 from .routes.toolkit import router as toolkit_router
 from .routes.loyalty import router as loyalty_router
@@ -602,6 +603,7 @@ app.include_router(vehicle_lookup_router)
 app.include_router(vehicle_key_specs_router)
 app.include_router(mobile_services_pricing_router)
 app.include_router(maps_routing_router)
+app.include_router(places_router)
 app.include_router(custom_services_router)
 app.include_router(toolkit_router)
 app.include_router(loyalty_router)

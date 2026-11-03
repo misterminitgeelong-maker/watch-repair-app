@@ -21796,6 +21796,138 @@
         ]
       }
     },
+    "/v1/places/autocomplete": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Autocomplete Address",
+        "description": "Up to six Australian or New Zealand street-address suggestions for what the user has typed so far.",
+        "operationId": "autocomplete_address_v1_places_autocomplete_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "session",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque token that groups one typing session for Google billing",
+              "title": "Session"
+            },
+            "description": "Opaque token that groups one typing session for Google billing"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressSuggestionList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/places/details": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Resolve Address",
+        "description": "The full formatted address, suburb, state, postcode and position for a picked suggestion.",
+        "operationId": "resolve_address_v1_places_details_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "place_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 300,
+              "title": "Place Id"
+            }
+          },
+          {
+            "name": "session",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedAddress"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/custom-services": {
       "get": {
         "tags": [
@@ -23649,6 +23781,62 @@
           "active_site_tenant_id"
         ],
         "title": "ActiveSiteSwitchResponse"
+      },
+      "AddressSuggestion": {
+        "properties": {
+          "place_id": {
+            "type": "string",
+            "title": "Place Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "primary_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Text"
+          },
+          "secondary_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondary Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "place_id",
+          "description"
+        ],
+        "title": "AddressSuggestion"
+      },
+      "AddressSuggestionList": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/AddressSuggestion"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestions"
+        ],
+        "title": "AddressSuggestionList"
       },
       "ApiKeyCreateRequest": {
         "properties": {
@@ -39854,6 +40042,74 @@
           "event_type"
         ],
         "title": "ResendNotificationRequest"
+      },
+      "ResolvedAddress": {
+        "properties": {
+          "formatted_address": {
+            "type": "string",
+            "title": "Formatted Address"
+          },
+          "suburb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suburb"
+          },
+          "state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Code"
+          },
+          "postcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postcode"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          }
+        },
+        "type": "object",
+        "required": [
+          "formatted_address"
+        ],
+        "title": "ResolvedAddress"
       },
       "RevenueBucket": {
         "properties": {

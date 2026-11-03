@@ -6931,6 +6931,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/places/autocomplete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Autocomplete Address
+         * @description Up to six Australian or New Zealand street-address suggestions for what the user has typed so far.
+         */
+        get: operations["autocomplete_address_v1_places_autocomplete_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/places/details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve Address
+         * @description The full formatted address, suburb, state, postcode and position for a picked suggestion.
+         */
+        get: operations["resolve_address_v1_places_details_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/custom-services": {
         parameters: {
             query?: never;
@@ -7500,6 +7540,22 @@ export interface components {
             active_site_tenant_id: string;
             /** Available Sites */
             available_sites?: components["schemas"]["AuthSessionSiteOption"][];
+        };
+        /** AddressSuggestion */
+        AddressSuggestion: {
+            /** Place Id */
+            place_id: string;
+            /** Description */
+            description: string;
+            /** Primary Text */
+            primary_text?: string | null;
+            /** Secondary Text */
+            secondary_text?: string | null;
+        };
+        /** AddressSuggestionList */
+        AddressSuggestionList: {
+            /** Suggestions */
+            suggestions: components["schemas"]["AddressSuggestion"][];
         };
         /** ApiKeyCreateRequest */
         ApiKeyCreateRequest: {
@@ -12907,6 +12963,21 @@ export interface components {
         ResendNotificationRequest: {
             /** Event Type */
             event_type: string;
+        };
+        /** ResolvedAddress */
+        ResolvedAddress: {
+            /** Formatted Address */
+            formatted_address: string;
+            /** Suburb */
+            suburb?: string | null;
+            /** State Code */
+            state_code?: string | null;
+            /** Postcode */
+            postcode?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
         };
         /** RevenueBucket */
         RevenueBucket: {
@@ -27650,6 +27721,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OptimizeDrivingRouteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    autocomplete_address_v1_places_autocomplete_get: {
+        parameters: {
+            query: {
+                q: string;
+                /** @description Opaque token that groups one typing session for Google billing */
+                session?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressSuggestionList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_address_v1_places_details_get: {
+        parameters: {
+            query: {
+                place_id: string;
+                session?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedAddress"];
                 };
             };
             /** @description Validation Error */
