@@ -75,8 +75,8 @@ def test_invite_keeps_token_links_direct_and_identifies_mainspring(live_email, m
     )
     assert ok and err is None
     payload = posts[0]["json"]
-    assert payload["from"] == {"email": "noreply@mainspring.au", "name": "Mainspring"}
-    assert payload["reply_to"]["email"] == "admin@mainspring.au"
+    assert payload["from"] == {"email": "admin@mainspring.au", "name": "Mainspring"}
+    assert "reply_to" not in payload  # sender is already the monitored mailbox
     assert payload["tracking_settings"]["click_tracking"] == {"enable": False, "enable_text": False}
     assert payload["tracking_settings"]["open_tracking"] == {"enable": False}
     assert "headers" not in payload

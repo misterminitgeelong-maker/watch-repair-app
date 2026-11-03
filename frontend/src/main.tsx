@@ -7,6 +7,7 @@ import { applyTheme, readStoredTheme } from '@/context/ThemeContext'
 import { APP_BUILD_ID, stampBuildMetaTag } from '@/lib/buildInfo'
 import { installDomMutationGuard } from '@/lib/domMutationGuard'
 import { isNativeApp } from '@/lib/native'
+import { initAnalytics } from '@/lib/analytics'
 import { registerForPush } from '@/lib/pushNotifications'
 import { installNativeCameraBridge } from '@/lib/nativeCamera'
 import { installNativeUi } from '@/lib/nativeUi'
@@ -14,6 +15,7 @@ import { installNativeUi } from '@/lib/nativeUi'
 installDomMutationGuard()
 applyTheme(readStoredTheme())
 stampBuildMetaTag()
+initAnalytics(undefined, isNativeApp)
 if (isNativeApp) {
   document.documentElement.classList.add('native-app')
   installNativeCameraBridge()

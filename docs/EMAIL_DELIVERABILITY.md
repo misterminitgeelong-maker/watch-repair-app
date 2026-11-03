@@ -37,3 +37,15 @@ Recurring reports have existing application preferences. This patch does not imp
 4. Obtain the exact warning text, its location (Gmail/Chrome/managed device), warning hostname and failing email authentication results from an affected recipient. Redact live tokens from shared notes. Do not claim the recipient-specific issue is resolved without this evidence.
 5. Monitor SendGrid deferred/blocked/bounce/complaint events and Google Postmaster Tools. Low-volume senders may have no Postmaster data; keep using the shared IP pool.
 6. Request Google review only if Security Issues or a reproducible Safe Browsing false positive establishes a flag. Keep DMARC quarantine because observed legitimate mail passes; use p=none only for an explicitly needed diagnostic monitoring phase.
+
+## Junk-folder checklist (3 November 2026)
+
+Code (this change): default sender is now admin@mainspring.au (a real, replyable mailbox on the authenticated root domain) instead of noreply@; tracking, mailing-list headers and fake unsubscribe headers are already removed. If Railway still has EMAIL_FROM_ADDRESS=noreply@em695.mainspring.au, change it to admin@mainspring.au and set EMAIL_REPLY_TO_ADDRESS=admin@mainspring.au (variable changes redeploy the app).
+
+DNS / vendor steps for the owner (nothing here can be done from code):
+1. SendGrid > Settings > Sender Authentication: confirm the domain mainspring.au shows Verified, and that the link-branding and bounce CNAMEs are present. Delete any stale em695 records only after confirming the live bounce CNAME (em2336).
+2. Root SPF must stay a single TXT record. Only add include:sendgrid.net if mail is sent with a mainspring.au envelope; with the custom Return-Path it is not needed. Never publish two SPF records.
+3. DMARC: keep p=quarantine while reports are clean. Add a rua mailbox you actually read (the current onsecureserver.net address is a registrar default). Once reports show only passing mail, move to p=reject.
+4. Send a test to mail-tester.com and a Gmail account; check Show original for SPF/DKIM/DMARC = PASS and aligned.
+5. For a Minit shop that sends from its own address, that address must not be used as From (SendGrid will reject or fail DMARC); it is used only as Reply-To, which is already the case.
+6. Warm-up: volume is low and new, so the first weeks can land in junk regardless. Ask recipients to mark Not junk and add admin@mainspring.au to contacts, especially Minit shop owners receiving invites.

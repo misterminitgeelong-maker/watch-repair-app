@@ -231,6 +231,14 @@ class Settings(BaseSettings):
 
     # Shop-to-shop live booking requests: assigned operator offer → timeout → shared Dispatch Pool.
     shop_mobile_booking_pool_enabled: bool = True
+    # Minutes each operator has to respond before the booking is re-offered to the next
+    # nearest operator (or, once offers run out, opens to the Dispatch Pool).
+    shop_mobile_booking_offer_timeout_minutes: int = 15
+    # Total operators offered a booking (the first plus re-offers) before the Dispatch Pool.
+    # 1 turns re-offering off. Missed-offer rules are not yet confirmed by Minit.
+    shop_mobile_booking_max_operator_offers: int = 3
+    # An explicit decline re-offers to the next operator instead of ending the request.
+    shop_mobile_booking_reoffer_on_decline: bool = True
     shop_mobile_booking_check_interval_minutes: int = 2
 
     # Dispatch Pool digest alerts: one SMS+email per nearby operator once a job has sat

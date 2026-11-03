@@ -212,7 +212,7 @@ export function minitHqAllowedPath(pathname: string): boolean {
 }
 
 export function minitBookingOnlyAllowedPath(pathname: string): boolean {
-  return /^\/(shop-mobile-bookings|accounts|subscription-required)(\/|$)/.test(pathname)
+  return /^\/(shop-mobile-bookings|inbox|messages|accounts|subscription-required)(\/|$)/.test(pathname)
 }
 
 /** Post-login destination from shop ID (before /auth/session completes). */

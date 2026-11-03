@@ -46,6 +46,7 @@ const CataloguePage = lazyPage(() => import('@/pages/CataloguePage'))
 const ToolkitPage = lazyPage(() => import('@/pages/ToolkitPage'))
 const ReportsPage = lazyPage(() => import('@/pages/ReportsPage'))
 const InboxPage = lazyPage(() => import('@/pages/InboxPage'))
+const MessagesPage = lazyPage(() => import('@/pages/MessagesPage'))
 const LoginPage = lazyPage(() => import('@/pages/LoginPage'))
 const TradeLandingPage = lazyPage(() => import('@/pages/TradeLandingPage'))
 const MobileServicesLandingPage = lazyPage(() => import('@/pages/MobileServicesLandingPage'))
@@ -64,6 +65,7 @@ const PrivacyPolicyPage = lazyPage(() => import('@/pages/LegalPages').then((m) =
 const AccountDeletionPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.AccountDeletionPage })))
 const AccountsPage = lazyPage(() => import('@/pages/AccountsPage'))
 const PlatformAdminUsersPage = lazyPage(() => import('@/pages/PlatformAdminUsersPage'))
+const ShopStockPage = lazyPage(() => import('@/pages/ShopStockPage'))
 const ShoeRepairsPage = lazyPage(() => import('@/pages/ShoeRepairsPage'))
 const ShoeJobDetailPage = lazyPage(() => import('@/pages/ShoeJobDetailPage'))
 const ShoeServicesPage = lazyPage(() => import('@/pages/ShoeServicesPage'))
@@ -99,6 +101,7 @@ const ShopMobileBookingsPage = lazyPage(() => import('@/pages/ShopMobileBookings
 const ShopOwnerInvitePage = lazyPage(() => import('@/pages/ShopOwnerInvitePage'))
 const HqOwnerInvitePage = lazyPage(() => import('@/pages/HqOwnerInvitePage'))
 const MinitOperationsPage = lazyPage(() => import('@/pages/minit/MinitOperationsPage'))
+const HqStockPage = lazyPage(() => import('@/pages/hq/HqStockPage'))
 const HqShoeRepairsPage = lazyPage(() => import('@/pages/hq/HqShoeRepairsPage'))
 const MinitShopsPage = lazyPage(() => import('@/pages/minit/MinitShopsPage'))
 const MinitShopReportsPage = lazyPage(() => import('@/pages/minit/MinitShopReportsPage'))
@@ -171,12 +174,14 @@ function LocationBoundary({ children }: { children: React.ReactNode }) {
     '/quotes',
     '/invoices',
     '/inbox',
+    '/messages',
     '/reports',
     '/stocktakes',
     '/database',
     '/accounts',
     '/auto-key',
     '/shoe-repairs',
+    '/parts-stock',
     '/parent-account',
     '/customer-accounts',
     '/customer-orders',
@@ -254,6 +259,8 @@ export default function App() {
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="invoices/:id/print" element={<PrintInvoicePage />} />
               <Route path="inbox" element={<InboxPage />} />
+              <Route path="messages" element={<MessagesPage />} />
+              <Route path="minit/messages" element={<MinitHqGate><MessagesPage /></MinitHqGate>} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="stocktakes" element={<StocktakesPage />} />
               <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />
@@ -289,6 +296,7 @@ export default function App() {
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
               <Route path="minit/dashboard" element={<MinitHqGate><HqLandingGate><MinitOperationsPage /></HqLandingGate></MinitHqGate>} />
               <Route path="minit/shoe-repairs" element={<MinitHqGate><HqShoeRepairsPage /></MinitHqGate>} />
+              <Route path="minit/stock" element={<MinitHqGate><HqStockPage /></MinitHqGate>} />
               <Route path="minit/operations" element={<Navigate to="/minit/dashboard" replace />} />
               <Route path="minit/inbox" element={<MinitHqGate><MinitInboxPage /></MinitHqGate>} />
               <Route path="minit/shops" element={<MinitHqGate><MinitShopsPage /></MinitHqGate>} />
@@ -305,6 +313,7 @@ export default function App() {
               <Route path="platform-admin" element={<Navigate to="/platform-admin/overview" replace />} />
               <Route path="platform-admin/:tab" element={<RequireRole role="platform_admin"><PlatformAdminUsersPage /></RequireRole>} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />
+              <Route path="parts-stock" element={<FeatureGate feature="shoe"><ShopStockPage /></FeatureGate>} />
               <Route path="shoe-repairs/services" element={<FeatureGate feature="shoe"><ShoeServicesPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id" element={<FeatureGate feature="shoe"><ShoeJobDetailPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id/intake-print" element={<FeatureGate feature="shoe"><PrintShoeIntakeTicketsPage /></FeatureGate>} />

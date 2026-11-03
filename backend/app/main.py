@@ -59,6 +59,7 @@ from .routes.hq_owner_invites import router as hq_owner_invites_router
 from .routes.platform_hqs import router as platform_hqs_router
 from .routes.hq_config import router as hq_config_router
 from .routes.parent_shoe_operations import router as parent_shoe_operations_router
+from .routes.hq_stock import hq_router as hq_stock_router, shop_router as shop_stock_router
 from .routes.parent_operations import router as parent_operations_router
 from .routes.parent_network_admin import router as parent_network_admin_router
 from .routes.parent_regions import router as parent_regions_router
@@ -87,6 +88,7 @@ from .routes.shop_settings import router as shop_settings_router
 from .routes.global_search import router as global_search_router
 from .routes.tenant_qol import router as tenant_qol_router
 from .routes.engraving import router as engraving_router, public_router as engraving_public_router
+from .routes.network_messages import router as network_messages_router
 
 from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_parent_account, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_minit_pilot_if_enabled, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
 
@@ -589,6 +591,8 @@ app.include_router(hq_owner_invites_router)
 app.include_router(platform_hqs_router)
 app.include_router(hq_config_router)
 app.include_router(parent_shoe_operations_router)
+app.include_router(hq_stock_router)
+app.include_router(shop_stock_router)
 app.include_router(parent_operations_router)
 app.include_router(parent_network_admin_router)
 app.include_router(parent_regions_router)
@@ -611,6 +615,7 @@ app.include_router(customer_orders_router)
 app.include_router(sms_webhook_router)
 app.include_router(shop_settings_router)
 app.include_router(engraving_router)
+app.include_router(network_messages_router)
 app.include_router(engraving_public_router)
 
 # ---------- Serve the built React frontend ----------

@@ -35,6 +35,8 @@ function eventStyle(eventType: string): { iconBg: string; iconColor: string } {
     case 'quote_declined': return { iconBg: 'rgba(139,58,58,0.12)', iconColor: '#8B3A3A' }
     case 'invoice_paid': return { iconBg: 'rgba(31,76,109,0.12)', iconColor: '#1F4C6D' }
     case 'customer_sms_reply': return { iconBg: 'rgba(79,130,201,0.12)', iconColor: '#4F82C9' }
+    case 'network_message': return { iconBg: 'rgba(79,130,201,0.12)', iconColor: '#4F82C9' }
+    case 'hq_message': return { iconBg: 'rgba(31,58,95,0.12)', iconColor: '#1F3A5F' }
     case 'hq_enter_shop': return { iconBg: 'rgba(31,58,95,0.12)', iconColor: '#1F3A5F' }
     case 'card_payment_needs_attention': return { iconBg: 'rgba(139,58,58,0.12)', iconColor: '#8B3A3A' }
     default: return { iconBg: 'rgba(180,120,40,0.15)', iconColor: '#B47828' }
@@ -46,6 +48,7 @@ function EventIcon({ eventType }: { eventType: string }) {
   if (eventType === 'quote_declined') return <XCircle size={20} />
   if (eventType === 'invoice_paid') return <DollarSign size={20} />
   if (eventType === 'customer_sms_reply') return <MessageSquare size={20} />
+  if (eventType === 'hq_message' || eventType === 'network_message') return <MessageSquare size={20} />
   if (eventType === 'hq_enter_shop') return <LogIn size={20} />
   if (eventType === 'card_payment_needs_attention') return <CreditCard size={20} />
   return <KeyRound size={20} />
@@ -138,7 +141,9 @@ export default function InboxPage() {
             const { iconBg, iconColor } = eventStyle(ev.event_type)
             const messagesTab = ev.event_type === 'customer_sms_reply' ? '?tab=messages' : ''
             const jobLink =
-              ev.entity_type === 'repair_job' && ev.entity_id
+              ev.event_type === 'network_message' && ev.entity_id
+                ? `/messages?c=${ev.entity_id}`
+                : ev.entity_type === 'repair_job' && ev.entity_id
                 ? `/jobs/${ev.entity_id}${messagesTab}`
                 : ev.entity_type === 'shoe_repair_job' && ev.entity_id
                   ? `/shoe-repairs/${ev.entity_id}${messagesTab}`
@@ -148,7 +153,7 @@ export default function InboxPage() {
                       ? '/invoices'
                       : null
             const linkLabel =
-              ev.event_type === 'customer_sms_reply'
+              ev.event_type === 'customer_sms_reply' || ev.event_type === 'network_message'
                 ? 'Reply'
                 : ev.event_type === 'invoice_paid'
                   ? 'View invoices'
