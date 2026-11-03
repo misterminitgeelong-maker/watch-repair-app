@@ -730,6 +730,11 @@ def _apply_invoice_checkout(session: Session, obj, *, connect_account: str | Non
     came through the Connect endpoint; the invoice must belong to that shop.
     """
     meta = obj.get("metadata") or {}
+    if meta.get("purpose") == "engraving_orders":
+        from .engraving import apply_engraving_checkout
+
+        apply_engraving_checkout(session, obj, connect_account=connect_account)
+        return {"status": "ok"}
     if meta.get("purpose") != "auto_key_invoice":
         return {"status": "ok"}
     inv_raw = meta.get("auto_key_invoice_id")

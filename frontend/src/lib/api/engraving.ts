@@ -28,6 +28,8 @@ export interface EngravingEvent {
   minutes_per_medal: number
   status: EngravingEventStatus
   sms_enabled: boolean
+  online_payments: boolean
+  online_payments_ready: boolean
   public_token: string
   public_url: string
   created_at: string
@@ -51,6 +53,7 @@ export interface EngravingOrder {
   status: EngravingOrderStatus
   paid: boolean
   paid_at: string | null
+  payment_method: 'stripe' | 'stall' | null
   amount_cents: number
   source: 'online' | 'walk_up'
   notes: string | null
@@ -72,6 +75,7 @@ export interface EngravingEventPayload {
   price_cents?: number
   minutes_per_medal?: number
   sms_enabled?: boolean
+  online_payments?: boolean
 }
 
 export interface EngravingOrderPayload {
@@ -116,6 +120,8 @@ export interface PublicEngravingOrder {
   status: EngravingOrderStatus
   paid: boolean
   amount_cents: number
+  can_pay_online: boolean
+  amount_due_cents: number
   queue_position: number | null
   wait_minutes: number | null
   phone_masked: string | null
@@ -195,6 +201,9 @@ export const createPublicEngravingBatch = (token: string, data: EngravingBatchPa
 
 export const getPublicEngravingOrder = (statusToken: string) =>
   axios.get<PublicEngravingOrder>(withApiOrigin(`/v1/public/engraving/orders/${statusToken}`))
+
+export const startPublicEngravingCheckout = (statusToken: string) =>
+  axios.post<{ checkout_url: string }>(withApiOrigin(`/v1/public/engraving/orders/${statusToken}/checkout`))
 
 // ── Display helpers ─────────────────────────────────────────────────────────
 

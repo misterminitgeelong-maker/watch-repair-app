@@ -7477,6 +7477,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/engraving/orders/{status_token}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Public Order Checkout
+         * @description Start Stripe Checkout for this order plus any unpaid medals ordered with it.
+         *
+         *     The card is charged on the shop's own Stripe account (a direct charge, like Mobile Services
+         *     invoices). The order is marked paid when Stripe's Connect webhook reports the payment.
+         */
+        post: operations["create_public_order_checkout_v1_public_engraving_orders__status_token__checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9232,6 +9255,11 @@ export interface components {
              * @default true
              */
             sms_enabled: boolean;
+            /**
+             * Online Payments
+             * @default true
+             */
+            online_payments: boolean;
         };
         /** EngravingEventRead */
         EngravingEventRead: {
@@ -9254,6 +9282,16 @@ export interface components {
             status: string;
             /** Sms Enabled */
             sms_enabled: boolean;
+            /**
+             * Online Payments
+             * @default true
+             */
+            online_payments: boolean;
+            /**
+             * Online Payments Ready
+             * @default false
+             */
+            online_payments_ready: boolean;
             /** Public Token */
             public_token: string;
             /** Public Url */
@@ -9329,6 +9367,8 @@ export interface components {
             status?: ("open" | "paused" | "closed") | null;
             /** Sms Enabled */
             sms_enabled?: boolean | null;
+            /** Online Payments */
+            online_payments?: boolean | null;
         };
         /** EngravingOperatorOrderCreate */
         EngravingOperatorOrderCreate: {
@@ -9415,6 +9455,8 @@ export interface components {
             paid: boolean;
             /** Paid At */
             paid_at: string | null;
+            /** Payment Method */
+            payment_method?: string | null;
             /** Amount Cents */
             amount_cents: number;
             /** Source */
@@ -12281,6 +12323,16 @@ export interface components {
             paid: boolean;
             /** Amount Cents */
             amount_cents: number;
+            /**
+             * Can Pay Online
+             * @default false
+             */
+            can_pay_online: boolean;
+            /**
+             * Amount Due Cents
+             * @default 0
+             */
+            amount_due_cents: number;
             /** Queue Position */
             queue_position: number | null;
             /** Wait Minutes */
@@ -28884,6 +28936,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicEngravingOrder"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_public_order_checkout_v1_public_engraving_orders__status_token__checkout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                status_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

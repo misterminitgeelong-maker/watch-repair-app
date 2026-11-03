@@ -66,3 +66,7 @@ A parent bringing several medals orders them all in one go: **Add another medal*
 **Tear-off tickets.** The stall keeps a pile of numbered two-part tickets (use **Ticket sheet** on the queue page to print them, then cut them). The parent takes one, types its number into the form (required), keeps one half and puts the other half in the tub with the medals. The ticket number is shown in the queue, can be searched, and is blocked from reuse while a bunch is still in progress (it frees up once collected or cancelled).
 
 **At collection.** Search the queue by order number, ticket number, name or the last 4 digits of the mobile. **Collect all** marks every ready medal in the bunch collected at once. **Print ticket** (printer icon on an order) prints a slip listing the whole bunch, with unpaid amount and mobile ending, if you want a printed copy for the tub as well.
+
+## Paying by card
+
+Parents can pay from their order status page ("Pay $X by card"). One payment covers the order and any medals ordered with it. It uses the shop's own Stripe Connect account, the same as Mobile Services invoices, so card fees come out of the shop's Stripe balance. The order flips to Paid when Stripe's Connect webhook reports the payment; the queue then shows "Paid ... by card". Paying at the stall still works and is the fallback. Turn it off per event with the "pay by card online" setting. It only shows when the shop has finished card payment setup and `ENABLE_STRIPE_INVOICE_CHECKOUT` is on.

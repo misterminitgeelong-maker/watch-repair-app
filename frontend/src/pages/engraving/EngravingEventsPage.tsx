@@ -32,6 +32,7 @@ function NewEventModal({ onClose }: { onClose: () => void }) {
   const [price, setPrice] = useState('15.00')
   const [minutes, setMinutes] = useState('3')
   const [sms, setSms] = useState(true)
+  const [card, setCard] = useState(true)
 
   const create = useMutation({
     mutationFn: () =>
@@ -42,6 +43,7 @@ function NewEventModal({ onClose }: { onClose: () => void }) {
         price_cents: Math.round(parseFloat(price || '0') * 100),
         minutes_per_medal: Math.max(1, parseInt(minutes || '3', 10)),
         sms_enabled: sms,
+        online_payments: card,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['engraving-events'] })
@@ -69,6 +71,10 @@ function NewEventModal({ onClose }: { onClose: () => void }) {
         <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
           <input type="checkbox" checked={sms} onChange={(e) => setSms(e.target.checked)} />
           Text parents when their medal is ready
+        </label>
+        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--ms-text)' }}>
+          <input type="checkbox" checked={card} onChange={(e) => setCard(e.target.checked)} />
+          Let parents pay by card online (needs card payments set up in Settings)
         </label>
         {create.isError && <p className="text-sm" role="alert" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(create.error, "Couldn't create the event.")}</p>}
         <div className="flex justify-end gap-2">

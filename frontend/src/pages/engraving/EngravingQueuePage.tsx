@@ -288,7 +288,7 @@ export default function EngravingQueuePage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between rounded-md px-3 py-2 text-xs" style={{ background: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>
-                  <span>{current.paid ? `Paid ${formatCents(current.amount_cents)}` : `Unpaid · ${formatCents(current.amount_cents)}`}</span>
+                  <span>{current.paid ? `Paid ${formatCents(current.amount_cents)}${current.payment_method === 'stripe' ? ' by card' : ''}` : `Unpaid · ${formatCents(current.amount_cents)}`}</span>
                   <span>{current.phone ? `Text to ${current.phone.slice(0, 4)} ••• ${current.phone.slice(-3)}` : 'No mobile'}</span>
                 </div>
                 <button
