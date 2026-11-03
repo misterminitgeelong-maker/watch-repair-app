@@ -1,5 +1,6 @@
 """Shop-initiated mobile operator booking requests (request → accept/decline)."""
 
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -58,7 +59,11 @@ router = APIRouter(prefix="/v1/shop-mobile-bookings", tags=["shop-mobile-booking
 AU_STATES = frozenset({"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"})
 #: Live lead — the customer is waiting. If the assigned operator doesn't respond in time,
 #: the job opens to the shared Dispatch Pool for any nearby operator to claim.
-SHOP_BOOKING_OFFER_TIMEOUT_MINUTES = 15
+SHOP_BOOKING_OFFER_TIMEOUT_MINUTES = 15  # default; override via settings.shop_mobile_booking_offer_timeout_minutes
+
+
+def _offer_timeout_minutes() -> int:
+    return max(1, int(settings.shop_mobile_booking_offer_timeout_minutes))
 
 
 def _normalize_suburb(name: str) -> str:
@@ -297,6 +302,68 @@ def _notify_shop_booking_outcome(
         )
 
 
+def _notify_operator_of_offer(session: Session, row: ShopMobileBookingRequest) -> None:
+    """Best-effort SMS + email telling the target operator a shop booking is waiting."""
+    shop = session.get(Tenant, row.requesting_tenant_id)
+    shop_label = format_tenant_label(shop.name if shop else "Shop", shop.shop_number if shop else None)
+    operator = session.get(Tenant, row.target_operator_tenant_id)
+    accept_url = f"{settings.public_base_url.rstrip('/')}/auto-key?accept_booking={row.id}"
+    dispatch_phone = sms_service.operator_dispatch_phone(operator)
+    if dispatch_phone:
+        try:
+            sms_service.notify_shop_mobile_booking_request(
+                session,
+                tenant_id=row.target_operator_tenant_id,
+                to_phone=dispatch_phone,
+                shop_name=shop_label,
+                customer_name=row.customer_name,
+                customer_phone=row.phone,
+                vehicle_make=row.vehicle_make,
+                vehicle_model=row.vehicle_model,
+                registration_plate=row.registration_plate,
+                visit_location_type=row.visit_location_type,
+                job_address=row.job_address,
+                preferred_scheduled_at=row.preferred_scheduled_at,
+                job_type=row.job_type,
+                notes=row.notes,
+                accept_url=accept_url,
+                timeout_minutes=_offer_timeout_minutes(),
+            )
+            session.commit()
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "shop_mobile_booking.dispatch_sms_failed booking=%s operator=%s",
+                row.id,
+                row.target_operator_tenant_id,
+                exc_info=True,
+            )
+
+    operator_email = sms_service.operator_dispatch_email(session, operator)
+    if operator_email:
+        try:
+            ok, err = email_client.send_shop_mobile_booking_email(
+                to_email=operator_email,
+                shop_name=shop_label,
+                customer_name=row.customer_name,
+                customer_phone=row.phone,
+                job_address=row.job_address,
+                accept_url=accept_url,
+                timeout_minutes=_offer_timeout_minutes(),
+                session=session,
+                tenant_id=row.target_operator_tenant_id,
+            )
+            session.commit()
+            if not ok and err:
+                logger.info("shop_mobile_booking.dispatch_email_failed booking=%s err=%s", row.id, err)
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "shop_mobile_booking.dispatch_email_failed booking=%s operator=%s",
+                row.id,
+                row.target_operator_tenant_id,
+                exc_info=True,
+            )
+
+
 def _notify_customer_booking_accepted(
     session: Session, row: ShopMobileBookingRequest, *, shop_name: str, job_number: str
 ) -> None:
@@ -376,6 +443,126 @@ def _next_intake_job_would_dup(session: Session, row: ShopMobileBookingRequest) 
     return bool(row.pool_intake_job_id) or row.status != "pending"
 
 
+def _offered_operator_ids(row: ShopMobileBookingRequest) -> list[UUID]:
+    ids: list[UUID] = []
+    try:
+        for raw in json.loads(row.offered_operator_ids_json or "[]"):
+            ids.append(UUID(str(raw)))
+    except (ValueError, TypeError):
+        ids = []
+    if row.target_operator_tenant_id not in ids:
+        ids.append(row.target_operator_tenant_id)
+    return ids
+
+
+def _next_reoffer_operator(session: Session, row: ShopMobileBookingRequest) -> UUID | None:
+    """Nearest live operator not yet offered this job, within reach of the job address.
+    Needs job coordinates (geocoded at creation); returns None when there isn't one."""
+    if row.job_lat is None or row.job_lng is None:
+        return None
+    if row.offer_count >= max(1, int(settings.shop_mobile_booking_max_operator_offers)):
+        return None
+    already = set(_offered_operator_ids(row))
+    best: tuple[float, UUID] | None = None
+    for parent_id in _parent_account_ids_for_tenant(session, row.requesting_tenant_id):
+        for op in dispatch_operators_for_parent(session, parent_id):
+            if op.id in already or op.id == row.requesting_tenant_id:
+                continue
+            if op.base_lat is None or op.base_lng is None:
+                continue
+            if not _tenant_is_bookable_operator(session, op.id):
+                continue
+            km = haversine_km(row.job_lat, row.job_lng, op.base_lat, op.base_lng)
+            if km <= NEAREST_OPERATOR_MAX_KM and (best is None or km < best[0]):
+                best = (km, op.id)
+    return best[1] if best else None
+
+
+def _try_reoffer(session: Session, row: ShopMobileBookingRequest, *, reason: str) -> bool:
+    """Hand a still-pending booking to the next nearest operator with a fresh offer window.
+    ``reason`` is "declined" or "timed_out". Returns False when no one is left to offer."""
+    next_tid = _next_reoffer_operator(session, row)
+    if next_tid is None:
+        return False
+    previous_tid = row.target_operator_tenant_id
+    previous = session.get(Tenant, previous_tid)
+    previous_label = format_tenant_label(previous.name if previous else "Operator", previous.shop_number if previous else None)
+    offered = _offered_operator_ids(row)
+    offered.append(next_tid)
+    row.offered_operator_ids_json = json.dumps([str(x) for x in offered])
+    row.offer_count = (row.offer_count or 1) + 1
+    row.target_operator_tenant_id = next_tid
+    row.offer_expires_at = datetime.now(timezone.utc) + timedelta(minutes=_offer_timeout_minutes())
+    row.operator_response_at = None
+    row.operator_response_by_user_id = None
+    row.decline_reason = None
+    verb = "declined" if reason == "declined" else "did not respond to"
+    session.add(row)
+    session.add(
+        TenantEventLog(
+            tenant_id=row.requesting_tenant_id,
+            entity_type="shop_mobile_booking",
+            entity_id=row.id,
+            event_type="shop_booking_reoffered",
+            event_summary=f"{previous_label} {verb} the booking for {row.customer_name}; offered to the next nearest operator",
+        )
+    )
+    session.add(
+        TenantEventLog(
+            tenant_id=next_tid,
+            entity_type="shop_mobile_booking",
+            entity_id=row.id,
+            event_type="shop_booking_pending",
+            event_summary=f"Shop booking for {row.customer_name} re-offered to you (previous operator {verb} it)",
+        )
+    )
+    session.add(
+        ParentAccountEventLog(
+            parent_account_id=row.parent_account_id,
+            tenant_id=next_tid,
+            event_type="shop_booking_reoffered",
+            event_summary=f"Booking for {row.customer_name} re-offered after {previous_label} {verb} it (offer {row.offer_count})",
+        )
+    )
+    session.flush()
+    _notify_operator_of_offer(session, row)
+    return True
+
+
+def _escalate_to_support_office(session: Session, row: ShopMobileBookingRequest) -> None:
+    """The offers ran out and the job opened to the Dispatch Pool: leave a trail for the
+    Support office and text them if the network has an escalation site with a phone."""
+    session.add(
+        ParentAccountEventLog(
+            parent_account_id=row.parent_account_id,
+            tenant_id=row.requesting_tenant_id,
+            event_type="shop_booking_escalated",
+            event_summary=(
+                f"Booking for {row.customer_name} went unanswered after {row.offer_count} operator offer(s) "
+                "and was opened to the Dispatch Pool"
+            ),
+        )
+    )
+    parent = session.get(ParentAccount, row.parent_account_id)
+    hq = session.get(Tenant, parent.mobile_lead_escalation_tenant_id) if parent and parent.mobile_lead_escalation_tenant_id else None
+    phone = sms_service.operator_dispatch_phone(hq) if hq else None
+    if not (hq and phone):
+        return
+    try:
+        shop = session.get(Tenant, row.requesting_tenant_id)
+        sms_service.notify_support_office_booking_unanswered(
+            session,
+            tenant_id=hq.id,
+            to_phone=phone,
+            shop_name=format_tenant_label(shop.name if shop else "A shop", shop.shop_number if shop else None),
+            customer_name=row.customer_name,
+            suburb=row.job_suburb,
+            offers=row.offer_count,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("shop_mobile_booking.escalation_notify_failed booking=%s", row.id, exc_info=True)
+
+
 def _maybe_move_pending_to_pool(session: Session, row: ShopMobileBookingRequest) -> bool:
     """Once the offer window passes with no response, open the job to the shared Dispatch
     Pool (any nearby operator can claim it) rather than leaving it stuck with one operator.
@@ -390,6 +577,9 @@ def _maybe_move_pending_to_pool(session: Session, row: ShopMobileBookingRequest)
         return False
     if _next_intake_job_would_dup(session, row):
         return False
+
+    if _try_reoffer(session, row, reason="timed_out"):
+        return True
 
     if row.job_lat is not None and row.job_lng is not None:
         shop = session.get(Tenant, row.requesting_tenant_id)
@@ -415,6 +605,7 @@ def _maybe_move_pending_to_pool(session: Session, row: ShopMobileBookingRequest)
         row.pool_intake_job_id = intake.id
         session.add(row)
         _notify_shop_booking_outcome(session, row, outcome="moved_to_pool")
+        _escalate_to_support_office(session, row)
     else:
         row.status = "expired"
         session.add(row)
@@ -662,9 +853,10 @@ async def create_booking(
         preferred_scheduled_at=body.preferred_scheduled_at,
         job_type=body.job_type.strip()[:120] if body.job_type else None,
         notes=body.notes.strip()[:4000] if body.notes else None,
-        offer_expires_at=datetime.now(timezone.utc) + timedelta(minutes=SHOP_BOOKING_OFFER_TIMEOUT_MINUTES),
+        offer_expires_at=datetime.now(timezone.utc) + timedelta(minutes=_offer_timeout_minutes()),
         job_lat=job_lat,
         job_lng=job_lng,
+        offered_operator_ids_json=json.dumps([str(operator_tid)]),
     )
     session.add(row)
     session.flush()
@@ -696,62 +888,7 @@ async def create_booking(
     session.commit()
     session.refresh(row)
 
-    operator = session.get(Tenant, operator_tid)
-    accept_url = f"{settings.public_base_url.rstrip('/')}/auto-key?accept_booking={row.id}"
-    dispatch_phone = sms_service.operator_dispatch_phone(operator)
-    if dispatch_phone:
-        try:
-            sms_service.notify_shop_mobile_booking_request(
-                session,
-                tenant_id=operator_tid,
-                to_phone=dispatch_phone,
-                shop_name=shop_label,
-                customer_name=row.customer_name,
-                customer_phone=row.phone,
-                vehicle_make=row.vehicle_make,
-                vehicle_model=row.vehicle_model,
-                registration_plate=row.registration_plate,
-                visit_location_type=row.visit_location_type,
-                job_address=row.job_address,
-                preferred_scheduled_at=row.preferred_scheduled_at,
-                job_type=row.job_type,
-                notes=row.notes,
-                accept_url=accept_url,
-                timeout_minutes=SHOP_BOOKING_OFFER_TIMEOUT_MINUTES,
-            )
-            session.commit()
-        except Exception:  # noqa: BLE001
-            logger.warning(
-                "shop_mobile_booking.dispatch_sms_failed booking=%s operator=%s",
-                row.id,
-                operator_tid,
-                exc_info=True,
-            )
-
-    operator_email = sms_service.operator_dispatch_email(session, operator)
-    if operator_email:
-        try:
-            ok, err = email_client.send_shop_mobile_booking_email(
-                to_email=operator_email,
-                shop_name=shop_label,
-                customer_name=row.customer_name,
-                customer_phone=row.phone,
-                job_address=row.job_address,
-                accept_url=accept_url,
-                timeout_minutes=SHOP_BOOKING_OFFER_TIMEOUT_MINUTES,
-                session=session,
-                tenant_id=operator_tid,
-            )
-            session.commit()
-            if not ok and err:
-                logger.info("shop_mobile_booking.dispatch_email_failed booking=%s err=%s", row.id, err)
-        except Exception:  # noqa: BLE001
-            logger.warning(
-                "shop_mobile_booking.dispatch_email_failed booking=%s operator=%s",
-                row.id,
-                operator_tid,
-                exc_info=True,
-            )
+    _notify_operator_of_offer(session, row)
 
     return _to_read(session, row)
 
@@ -839,6 +976,22 @@ def decline_booking(
         raise HTTPException(status_code=403, detail="Only the target operator can decline")
     if row.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending requests can be declined")
+
+    if settings.shop_mobile_booking_reoffer_on_decline:
+        declined_by = session.get(Tenant, row.target_operator_tenant_id)
+        if _try_reoffer(session, row, reason="declined"):
+            session.add(
+                ParentAccountEventLog(
+                    parent_account_id=row.parent_account_id,
+                    tenant_id=auth.tenant_id,
+                    actor_user_id=auth.user_id,
+                    event_type="shop_booking_declined",
+                    event_summary=f"{declined_by.name if declined_by else 'Operator'} declined the booking for {row.customer_name}",
+                )
+            )
+            session.commit()
+            session.refresh(row)
+            return _to_read(session, row)
 
     now = datetime.now(timezone.utc)
     row.status = "declined"
@@ -1033,10 +1186,10 @@ def process_due_shop_mobile_bookings(session: Session) -> dict[str, int]:
         .where(ShopMobileBookingRequest.offer_expires_at <= now)
     ).all()
 
-    summary = {"checked": len(rows), "moved_to_pool": 0, "expired": 0}
+    summary = {"checked": len(rows), "moved_to_pool": 0, "expired": 0, "reoffered": 0}
     for row in rows:
         if _maybe_move_pending_to_pool(session, row):
-            summary[row.status if row.status in summary else "expired"] += 1
+            summary["reoffered" if row.status == "pending" else (row.status if row.status in summary else "expired")] += 1
     if summary["checked"]:
         session.commit()
     return summary

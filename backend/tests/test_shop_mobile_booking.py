@@ -702,3 +702,108 @@ def test_customer_confirmation_text_is_off_unless_enabled(monkeypatch):
     texts = customer_texts()
     assert len(texts) == 1
     assert "On Customer" in texts[0].body
+
+
+def _second_operator(parent_h_hq_email_suffix: str, lat: float, lng: float):
+    """Add a second live operator under the same HQ and return (headers, tenant_id)."""
+    suffix = parent_h_hq_email_suffix
+    op2_slug, op2_email = f"op2-{suffix}", f"op2-{suffix}@test.local"
+    boot = _bootstrap(op2_slug, op2_email, "basic_auto_key")
+    hq_h = _headers(_login(f"hq-{suffix}", f"hq-{suffix}@test.local")["access_token"])
+    link = link_and_accept(client, "/v1/parent-accounts/me/link-tenant", headers=hq_h,
+                           json={"tenant_slug": op2_slug, "owner_email": op2_email})
+    assert link.status_code == 200, link.text
+    mark_owner_accepted(UUID(boot["tenant_id"]))
+    with Session(engine) as session:
+        t = session.get(Tenant, UUID(boot["tenant_id"]))
+        t.base_lat, t.base_lng = lat, lng
+        session.add(t)
+        session.commit()
+    return _headers(_login(op2_slug, op2_email)["access_token"]), boot["tenant_id"]
+
+
+def _geocode_booking(booking_id: str, op_tid: str, lat=-33.87, lng=151.21):
+    with Session(engine) as session:
+        row = session.get(ShopMobileBookingRequest, UUID(booking_id))
+        row.job_lat, row.job_lng = lat, lng
+        session.add(row)
+        op = session.get(Tenant, UUID(op_tid))
+        op.base_lat, op.base_lng = lat, lng
+        session.add(op)
+        session.commit()
+
+
+def test_decline_reoffers_to_next_nearest_operator():
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    op2_h, op2_tid = _second_operator(suffix, -33.9, 151.2)
+    create = client.post("/v1/shop-mobile-bookings", headers=shop_h, json=_booking_payload())
+    assert create.status_code == 201
+    bid = create.json()["id"]
+    _geocode_booking(bid, op_tid)
+
+    declined = client.post(f"/v1/shop-mobile-bookings/{bid}/decline", headers=op_h, json={"decline_reason": "busy"})
+    assert declined.status_code == 200, declined.text
+    body = declined.json()
+    assert body["status"] == "pending"
+    assert body["target_operator_tenant_id"] == op2_tid
+
+    # The next operator can accept; the first no longer can.
+    assert client.post(f"/v1/shop-mobile-bookings/{bid}/accept", headers=op_h).status_code in (400, 403)
+
+
+def test_decline_with_nobody_left_still_declines():
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    create = client.post("/v1/shop-mobile-bookings", headers=shop_h, json=_booking_payload())
+    bid = create.json()["id"]
+    _geocode_booking(bid, op_tid)
+    declined = client.post(f"/v1/shop-mobile-bookings/{bid}/decline", headers=op_h, json={})
+    assert declined.status_code == 200
+    assert declined.json()["status"] == "declined"
+
+
+def test_timeout_reoffers_then_pool_after_max_offers(monkeypatch):
+    from app.config import settings
+    from app.routes.shop_mobile_bookings import process_due_shop_mobile_bookings
+
+    monkeypatch.setattr(settings, "shop_mobile_booking_max_operator_offers", 2)
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    op2_h, op2_tid = _second_operator(suffix, -33.9, 151.2)
+    bid = client.post("/v1/shop-mobile-bookings", headers=shop_h, json=_booking_payload()).json()["id"]
+    _geocode_booking(bid, op_tid)
+
+    def expire():
+        with Session(engine) as session:
+            row = session.get(ShopMobileBookingRequest, UUID(bid))
+            row.offer_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+            session.add(row)
+            session.commit()
+
+    expire()
+    with Session(engine) as session:
+        summary = process_due_shop_mobile_bookings(session)
+        row = session.get(ShopMobileBookingRequest, UUID(bid))
+        assert summary["reoffered"] >= 1
+        assert row.status == "pending" and str(row.target_operator_tenant_id) == op2_tid
+        assert row.offer_count == 2 and row.offer_expires_at is not None
+
+    expire()
+    with Session(engine) as session:
+        process_due_shop_mobile_bookings(session)
+        row = session.get(ShopMobileBookingRequest, UUID(bid))
+        assert row.status == "moved_to_pool" and row.pool_intake_job_id is not None
+
+
+def test_reoffer_on_decline_can_be_switched_off(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "shop_mobile_booking_reoffer_on_decline", False)
+    suffix = uuid4().hex[:8]
+    shop_h, op_h, _shop_tid, op_tid = _setup_parent_network(suffix)
+    _second_operator(suffix, -33.9, 151.2)
+    bid = client.post("/v1/shop-mobile-bookings", headers=shop_h, json=_booking_payload()).json()["id"]
+    _geocode_booking(bid, op_tid)
+    declined = client.post(f"/v1/shop-mobile-bookings/{bid}/decline", headers=op_h, json={})
+    assert declined.json()["status"] == "declined"
