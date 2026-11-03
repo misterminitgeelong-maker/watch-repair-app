@@ -7,10 +7,12 @@ import {
   Building2,
   KeyRound,
   Inbox,
+  MessageSquare,
   Sparkles,
   Download,
   Route,
   Scissors,
+  Boxes,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
@@ -24,6 +26,7 @@ import { APP_BUILD_ID } from '@/lib/buildInfo'
 export const MINIT_HQ_NAV = [
   { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard, module: 'mobile_services' },
   { to: '/minit/inbox', label: 'Inbox', icon: Inbox, module: 'lead_routing', title: 'Website leads, email enquiries, and Support Office alerts' },
+  { to: '/minit/messages', label: 'Messages', icon: MessageSquare, module: 'mobile_services', title: 'Message shops and operators in your network' },
   { to: '/minit/shops', label: 'Shops', icon: Building2, title: 'Browse the retail network by region' },
   { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, module: 'lead_routing', title: 'Website ingest, dispatch, and territory map' },
   { to: '/minit/mobile-services', label: 'Mobile reports', icon: KeyRound, module: 'kpis', title: 'Live mobile-services KPIs and compiled daily/weekly reports' },
@@ -43,6 +46,11 @@ const HQ_SHOE_NAV: HqNavItem = {
   title: 'Shoe repairs across every shop, with network-wide search',
 }
 
+const HQ_STOCK_NAV: HqNavItem = {
+  to: '/minit/stock', label: 'Stock', icon: Boxes, module: 'stock',
+  title: 'Parts catalogue, stock by location, transfers and sales lookup',
+}
+
 /**
  * The links this HQ should see. Until its settings load (or if they can't), the
  * original six stay, so Minit's menu never flickers or vanishes.
@@ -50,7 +58,11 @@ const HQ_SHOE_NAV: HqNavItem = {
 export function hqNavFor(modules: readonly string[] | undefined): readonly HqNavItem[] {
   if (!modules) return MINIT_HQ_NAV
   const base = (MINIT_HQ_NAV as readonly HqNavItem[]).filter((item) => !item.module || hqHasModule(modules, item.module))
-  return hqHasModule(modules, 'shoe') ? [...base, HQ_SHOE_NAV] : base
+  const extra = [
+    ...(hqHasModule(modules, 'shoe') ? [HQ_SHOE_NAV] : []),
+    ...(hqHasModule(modules, 'stock') ? [HQ_STOCK_NAV] : []),
+  ]
+  return [...base, ...extra]
 }
 
 export interface MinitHqSidebarProps {

@@ -5538,6 +5538,492 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/operations/shoe-jobs/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shoe Jobs Report
+         * @description Repairs grouped by shoe model, by repair type, and warranty versus paid.
+         *
+         *     Warranty is judged from the shoe's purchase date (see ``shoe_warranty``);
+         *     jobs with no purchase date count as "unknown".
+         */
+        get: operations["shoe_jobs_report_v1_parent_accounts_me_operations_shoe_jobs_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hq List Parts */
+        get: operations["hq_list_parts_v1_parent_accounts_me_stock_parts_get"];
+        put?: never;
+        /** Hq Create Part */
+        post: operations["hq_create_part_v1_parent_accounts_me_stock_parts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/parts/{part_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Hq Update Part */
+        patch: operations["hq_update_part_v1_parent_accounts_me_stock_parts__part_id__patch"];
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hq List Models */
+        get: operations["hq_list_models_v1_parent_accounts_me_stock_models_get"];
+        put?: never;
+        /** Hq Create Model */
+        post: operations["hq_create_model_v1_parent_accounts_me_stock_models_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Hq Update Model */
+        patch: operations["hq_update_model_v1_parent_accounts_me_stock_models__model_id__patch"];
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/models/{model_id}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hq Model Parts */
+        get: operations["hq_model_parts_v1_parent_accounts_me_stock_models__model_id__parts_get"];
+        /**
+         * Hq Set Model Parts
+         * @description Replace the whole parts list for a model (sizes left empty apply to every size).
+         */
+        put: operations["hq_set_model_parts_v1_parent_accounts_me_stock_models__model_id__parts_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hq List Locations */
+        get: operations["hq_list_locations_v1_parent_accounts_me_stock_locations_get"];
+        put?: never;
+        /** Hq Create Location */
+        post: operations["hq_create_location_v1_parent_accounts_me_stock_locations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/locations/{location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Hq Update Location */
+        patch: operations["hq_update_location_v1_parent_accounts_me_stock_locations__location_id__patch"];
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hq Levels */
+        get: operations["hq_levels_v1_parent_accounts_me_stock_levels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hq Adjust */
+        post: operations["hq_adjust_v1_parent_accounts_me_stock_adjust_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hq Sync
+         * @description Set stock for a location to the counts in a feed from their inventory system (by SKU).
+         */
+        post: operations["hq_sync_v1_parent_accounts_me_stock_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hq Transfers */
+        get: operations["hq_transfers_v1_parent_accounts_me_stock_transfers_get"];
+        put?: never;
+        /** Hq Create Transfer */
+        post: operations["hq_create_transfer_v1_parent_accounts_me_stock_transfers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/transfers/{transfer_id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hq Receive Transfer */
+        post: operations["hq_receive_transfer_v1_parent_accounts_me_stock_transfers__transfer_id__receive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/purchases/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hq Import Purchases
+         * @description Add or update sales records by receipt/order reference.
+         */
+        post: operations["hq_import_purchases_v1_parent_accounts_me_stock_purchases_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hq Search Purchases */
+        get: operations["hq_search_purchases_v1_parent_accounts_me_stock_purchases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/stock/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hq Stock Summary
+         * @description Low stock, transfers on the way, and parts used in the last 30 days.
+         */
+        get: operations["hq_stock_summary_v1_parent_accounts_me_stock_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shop Models
+         * @description Active models for the intake dropdown.
+         */
+        get: operations["shop_models_v1_stock_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shop Locations
+         * @description This shop's own locations, plus every other location in the network as transfer targets.
+         */
+        get: operations["shop_locations_v1_stock_locations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shop Parts */
+        get: operations["shop_parts_v1_stock_parts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shop Levels */
+        get: operations["shop_levels_v1_stock_levels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Shop Adjust */
+        post: operations["shop_adjust_v1_stock_adjust_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shop Transfers
+         * @description Transfers to or from this shop's locations.
+         */
+        get: operations["shop_transfers_v1_stock_transfers_get"];
+        put?: never;
+        /** Shop Create Transfer */
+        post: operations["shop_create_transfer_v1_stock_transfers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/transfers/{transfer_id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Shop Receive Transfer */
+        post: operations["shop_receive_transfer_v1_stock_transfers__transfer_id__receive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/purchases/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shop Search Purchases */
+        get: operations["shop_search_purchases_v1_stock_purchases_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/jobs/{job_id}/suggested-parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shop Suggested Parts
+         * @description Parts the shoe's model and size normally need, with stock at this shop's locations.
+         */
+        get: operations["shop_suggested_parts_v1_stock_jobs__job_id__suggested_parts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/jobs/{job_id}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shop Job Parts */
+        get: operations["shop_job_parts_v1_stock_jobs__job_id__parts_get"];
+        put?: never;
+        /**
+         * Shop Use Part
+         * @description Record a part used on a repair and take it out of the shop's stock.
+         *
+         *     Stock may go below zero: counts are often behind the workbench, and blocking
+         *     a repair for a miscount would be worse. Low and negative levels show on the
+         *     stock screens so they get corrected.
+         */
+        post: operations["shop_use_part_v1_stock_jobs__job_id__parts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/operations/overview": {
         parameters: {
             query?: never;
@@ -5673,6 +6159,27 @@ export interface paths {
         /** Update Mobile Weekly Report Settings */
         put: operations["update_mobile_weekly_report_settings_v1_parent_accounts_me_operations_mobile_weekly_report_settings_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/operations/shop-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Shop Messages
+         * @description HQ sends a short message to the Inbox of each chosen shop. No SMS or email, so
+         *     it costs nothing; the shop sees it as "Message from {HQ name}" with the unread badge.
+         */
+        post: operations["send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7405,6 +7912,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/network-messages/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Contacts
+         * @description Every other active site in the networks this site belongs to.
+         */
+        get: operations["list_contacts_v1_network_messages_contacts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Conversations */
+        get: operations["list_conversations_v1_network_messages_conversations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/conversations/{conv_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Messages
+         * @description Opening a thread marks the other site's messages as read and clears its Inbox alert.
+         */
+        get: operations["list_messages_v1_network_messages_conversations__conv_id__messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/with/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Message
+         * @description Send a message to another site in a shared network, starting the thread if needed.
+         */
+        post: operations["send_message_v1_network_messages_with__tenant_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/engraving/events/{token}": {
         parameters: {
             query?: never;
@@ -7439,6 +8023,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/engraving/events/{token}/orders/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Public Order Batch
+         * @description Order several different medals in one go. Every medal is checked before any is
+         *     created, so a typo in the third one doesn't leave the first two half-ordered.
+         */
+        post: operations["create_public_order_batch_v1_public_engraving_events__token__orders_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/engraving/orders/{status_token}": {
         parameters: {
             query?: never;
@@ -7450,6 +8055,29 @@ export interface paths {
         get: operations["get_public_order_v1_public_engraving_orders__status_token__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/engraving/orders/{status_token}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Public Order Checkout
+         * @description Start Stripe Checkout for this order plus any unpaid medals ordered with it.
+         *
+         *     The card is charged on the shop's own Stripe account (a direct charge, like Mobile Services
+         *     invoices). The order is marked paid when Stripe's Connect webhook reports the payment.
+         */
+        post: operations["create_public_order_checkout_v1_public_engraving_orders__status_token__checkout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7500,6 +8128,27 @@ export interface components {
             active_site_tenant_id: string;
             /** Available Sites */
             available_sites?: components["schemas"]["AuthSessionSiteOption"][];
+        };
+        /** AdjustIn */
+        AdjustIn: {
+            /**
+             * Location Id
+             * Format: uuid
+             */
+            location_id: string;
+            /** Part Id */
+            part_id?: string | null;
+            /** Sku */
+            sku?: string | null;
+            /** Quantity */
+            quantity: number;
+            /**
+             * Kind
+             * @default receive
+             */
+            kind: string;
+            /** Note */
+            note?: string | null;
         };
         /** ApiKeyCreateRequest */
         ApiKeyCreateRequest: {
@@ -8578,6 +9227,45 @@ export interface components {
              */
             created_at: string;
         };
+        /** ContactRead */
+        ContactRead: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Network Role */
+            network_role: string;
+        };
+        /** ConversationRead */
+        ConversationRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Other Tenant Id
+             * Format: uuid
+             */
+            other_tenant_id: string;
+            /** Other Name */
+            other_name: string;
+            /**
+             * Last Message At
+             * Format: date-time
+             */
+            last_message_at: string;
+            /** Last Body */
+            last_body?: string | null;
+            /**
+             * Unread
+             * @default 0
+             */
+            unread: number;
+        };
         /** CreateHqRequest */
         CreateHqRequest: {
             /** Display Name */
@@ -9175,6 +9863,19 @@ export interface components {
              */
             platform: string;
         };
+        /**
+         * EngravingBatchCreate
+         * @description Several medals ordered together (a parent bringing a bunch). Each medal becomes its
+         *     own order with its own number, sharing one mobile number.
+         */
+        EngravingBatchCreate: {
+            /** Orders */
+            orders: components["schemas"]["EngravingOrderCreate"][];
+            /** Phone */
+            phone?: string | null;
+            /** Ticket Number */
+            ticket_number: string;
+        };
         /** EngravingEventCreate */
         EngravingEventCreate: {
             /** Name */
@@ -9198,6 +9899,11 @@ export interface components {
              * @default true
              */
             sms_enabled: boolean;
+            /**
+             * Online Payments
+             * @default true
+             */
+            online_payments: boolean;
         };
         /** EngravingEventRead */
         EngravingEventRead: {
@@ -9220,6 +9926,16 @@ export interface components {
             status: string;
             /** Sms Enabled */
             sms_enabled: boolean;
+            /**
+             * Online Payments
+             * @default true
+             */
+            online_payments: boolean;
+            /**
+             * Online Payments Ready
+             * @default false
+             */
+            online_payments_ready: boolean;
             /** Public Token */
             public_token: string;
             /** Public Url */
@@ -9295,6 +10011,8 @@ export interface components {
             status?: ("open" | "paused" | "closed") | null;
             /** Sms Enabled */
             sms_enabled?: boolean | null;
+            /** Online Payments */
+            online_payments?: boolean | null;
         };
         /** EngravingOperatorOrderCreate */
         EngravingOperatorOrderCreate: {
@@ -9359,6 +10077,10 @@ export interface components {
             order_seq: number;
             /** Status Token */
             status_token: string;
+            /** Group Id */
+            group_id?: string | null;
+            /** Ticket Number */
+            ticket_number?: string | null;
             /** Athlete Name */
             athlete_name: string;
             /** Line2 */
@@ -9377,6 +10099,8 @@ export interface components {
             paid: boolean;
             /** Paid At */
             paid_at: string | null;
+            /** Payment Method */
+            payment_method?: string | null;
             /** Amount Cents */
             amount_cents: number;
             /** Source */
@@ -9969,6 +10693,20 @@ export interface components {
             /** Note */
             note: string;
         };
+        /** JobPartIn */
+        JobPartIn: {
+            /** Part Id */
+            part_id?: string | null;
+            /** Sku */
+            sku?: string | null;
+            /**
+             * Quantity
+             * @default 1
+             */
+            quantity: number;
+            /** Location Id */
+            location_id?: string | null;
+        };
         /** JobStatusHistoryRead */
         JobStatusHistoryRead: {
             /**
@@ -10103,6 +10841,29 @@ export interface components {
              */
             total: number;
         };
+        /** LocationIn */
+        LocationIn: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default workshop
+             */
+            kind: string;
+            /** Tenant Id */
+            tenant_id?: string | null;
+        };
+        /** LocationPatch */
+        LocationPatch: {
+            /** Name */
+            name?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Tenant Id */
+            tenant_id?: string | null;
+            /** Active */
+            active?: boolean | null;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Tenant Slug */
@@ -10150,6 +10911,30 @@ export interface components {
             loyalty: components["schemas"]["CustomerLoyaltyRead"];
             /** Recent Ledger */
             recent_ledger: components["schemas"]["PointsLedgerRead"][];
+        };
+        /** MessageRead */
+        MessageRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Sender Tenant Id
+             * Format: uuid
+             */
+            sender_tenant_id: string;
+            /** Mine */
+            mine: boolean;
+            /** Sender Name */
+            sender_name?: string | null;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** MobileCatalogueCategoryRead */
         MobileCatalogueCategoryRead: {
@@ -10537,6 +11322,37 @@ export interface components {
         MobileWeeklyTargetUpdate: {
             /** Weekly Target Cents */
             weekly_target_cents?: number | null;
+        };
+        /** ModelIn */
+        ModelIn: {
+            /** Name */
+            name: string;
+            /** Category */
+            category?: string | null;
+        };
+        /** ModelPartIn */
+        ModelPartIn: {
+            /**
+             * Part Id
+             * Format: uuid
+             */
+            part_id: string;
+            /** Size */
+            size?: string | null;
+            /**
+             * Quantity
+             * @default 1
+             */
+            quantity: number;
+        };
+        /** ModelPatch */
+        ModelPatch: {
+            /** Name */
+            name?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** MultiSiteLoginRequest */
         MultiSiteLoginRequest: {
@@ -11489,6 +12305,26 @@ export interface components {
             /** Attention Items */
             attention_items?: components["schemas"]["ParentTroubleshootingItem"][];
         };
+        /** ParentOperatorBookingResponse */
+        ParentOperatorBookingResponse: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Offered */
+            offered: number;
+            /** Responded */
+            responded: number;
+            /** Moved To Pool */
+            moved_to_pool: number;
+            /** Avg Response Minutes */
+            avg_response_minutes?: number | null;
+        };
         /** ParentProvisionShopRequest */
         ParentProvisionShopRequest: {
             /** Shop Number */
@@ -11574,6 +12410,15 @@ export interface components {
             cancelled: number;
             /** Expired */
             expired: number;
+            /** Avg Response Minutes */
+            avg_response_minutes?: number | null;
+            /** Per Week */
+            per_week?: number | null;
+            /**
+             * Under Weekly Goal
+             * @default false
+             */
+            under_weekly_goal: boolean;
         };
         /** ParentShopBookingsReport */
         ParentShopBookingsReport: {
@@ -11584,6 +12429,17 @@ export interface components {
             totals: components["schemas"]["ParentShopBookingVolume"];
             /** By Shop */
             by_shop?: components["schemas"]["ParentShopBookingVolume"][];
+            /** By Operator */
+            by_operator?: components["schemas"]["ParentOperatorBookingResponse"][];
+            /**
+             * Weekly Goal
+             * @default 1
+             */
+            weekly_goal: number;
+            /** Weeks */
+            weeks?: number | null;
+            /** Shops Under Goal */
+            shops_under_goal?: number | null;
             /** Bookings */
             bookings?: components["schemas"]["ShopMobileBookingRead"][];
         };
@@ -11610,6 +12466,38 @@ export interface components {
         ParentTroubleshootingResponse: {
             /** Items */
             items?: components["schemas"]["ParentTroubleshootingItem"][];
+        };
+        /** PartIn */
+        PartIn: {
+            /** Sku */
+            sku: string;
+            /** Name */
+            name: string;
+            /** Part Type */
+            part_type?: string | null;
+            /**
+             * Cost Cents
+             * @default 0
+             */
+            cost_cents: number;
+            /**
+             * Reorder Level
+             * @default 0
+             */
+            reorder_level: number;
+        };
+        /** PartPatch */
+        PartPatch: {
+            /** Name */
+            name?: string | null;
+            /** Part Type */
+            part_type?: string | null;
+            /** Cost Cents */
+            cost_cents?: number | null;
+            /** Reorder Level */
+            reorder_level?: number | null;
+            /** Active */
+            active?: boolean | null;
         };
         /** PaymentCreate */
         PaymentCreate: {
@@ -12206,6 +13094,17 @@ export interface components {
              */
             places: string[];
         };
+        /** PublicEngravingGroupMember */
+        PublicEngravingGroupMember: {
+            /** Order Number */
+            order_number: string;
+            /** Athlete Name */
+            athlete_name: string;
+            /** Status Token */
+            status_token: string;
+            /** Status */
+            status: string;
+        };
         /** PublicEngravingOrder */
         PublicEngravingOrder: {
             /** Order Number */
@@ -12232,6 +13131,16 @@ export interface components {
             paid: boolean;
             /** Amount Cents */
             amount_cents: number;
+            /**
+             * Can Pay Online
+             * @default false
+             */
+            can_pay_online: boolean;
+            /**
+             * Amount Due Cents
+             * @default 0
+             */
+            amount_due_cents: number;
             /** Queue Position */
             queue_position: number | null;
             /** Wait Minutes */
@@ -12245,6 +13154,13 @@ export interface components {
             created_at: string;
             /** Ready At */
             ready_at: string | null;
+            /** Ticket Number */
+            ticket_number?: string | null;
+            /**
+             * Group Members
+             * @default []
+             */
+            group_members: components["schemas"]["PublicEngravingGroupMember"][];
         };
         /** PublicUser */
         PublicUser: {
@@ -12268,6 +13184,30 @@ export interface components {
             is_active: boolean;
             /** Mobile Commission Rules Json */
             mobile_commission_rules_json?: string | null;
+        };
+        /** PurchaseImportIn */
+        PurchaseImportIn: {
+            /** Rows */
+            rows: components["schemas"]["PurchaseRow"][];
+        };
+        /** PurchaseRow */
+        PurchaseRow: {
+            /** Purchase Ref */
+            purchase_ref: string;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Store */
+            store?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Customer Email */
+            customer_email?: string | null;
+            /** Customer Phone */
+            customer_phone?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Size */
+            size?: string | null;
         };
         /** QuoteCreate */
         QuoteCreate: {
@@ -12398,6 +13338,20 @@ export interface components {
             sent_at: string;
             /** Approval Token */
             approval_token: string;
+        };
+        /** ReceiveIn */
+        ReceiveIn: {
+            /** Lines */
+            lines?: components["schemas"]["ReceiveLineIn"][] | null;
+        };
+        /** ReceiveLineIn */
+        ReceiveLineIn: {
+            /** Part Id */
+            part_id?: string | null;
+            /** Sku */
+            sku?: string | null;
+            /** Quantity */
+            quantity: number;
         };
         /** RefreshRequest */
         RefreshRequest: {
@@ -13050,10 +14004,29 @@ export interface components {
             /** State Code */
             state_code?: string | null;
         };
+        /** SendBody */
+        SendBody: {
+            /** Body */
+            body: string;
+        };
         /** SendMessagePayload */
         SendMessagePayload: {
             /** Body */
             body: string;
+        };
+        /** SendShopMessagesRequest */
+        SendShopMessagesRequest: {
+            /** Tenant Ids */
+            tenant_ids: string[];
+            /** Message */
+            message: string;
+        };
+        /** SendShopMessagesResponse */
+        SendShopMessagesResponse: {
+            /** Sent */
+            sent: number;
+            /** Skipped */
+            skipped?: string[];
         };
         /** ServicePricingRow */
         ServicePricingRow: {
@@ -13102,6 +14075,16 @@ export interface components {
             color?: string | null;
             /** Description Notes */
             description_notes?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Purchase Store */
+            purchase_store?: string | null;
+            /** Purchase Ref */
+            purchase_ref?: string | null;
         };
         /** ShoeJobStatusHistoryRead */
         ShoeJobStatusHistoryRead: {
@@ -13161,11 +14144,25 @@ export interface components {
             color?: string | null;
             /** Description Notes */
             description_notes?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Purchase Store */
+            purchase_store?: string | null;
+            /** Purchase Ref */
+            purchase_ref?: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Warranty Status */
+            readonly warranty_status: string;
+            /** Warranty Expires On */
+            readonly warranty_expires_on: string | null;
         };
         /** ShoeRepairJobCreate */
         ShoeRepairJobCreate: {
@@ -13497,6 +14494,16 @@ export interface components {
             color?: string | null;
             /** Description Notes */
             description_notes?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /** Size */
+            size?: string | null;
+            /** Purchase Date */
+            purchase_date?: string | null;
+            /** Purchase Store */
+            purchase_store?: string | null;
+            /** Purchase Ref */
+            purchase_ref?: string | null;
         };
         /** ShopBookingUsageResponse */
         ShopBookingUsageResponse: {
@@ -14311,6 +15318,28 @@ export interface components {
             completed_at?: string | null;
             progress?: components["schemas"]["StocktakeProgressRead"];
         };
+        /** SyncIn */
+        SyncIn: {
+            /**
+             * Location Id
+             * Format: uuid
+             */
+            location_id: string;
+            /** Rows */
+            rows: components["schemas"]["SyncRow"][];
+            /**
+             * Create Missing
+             * @default false
+             */
+            create_missing: boolean;
+        };
+        /** SyncRow */
+        SyncRow: {
+            /** Sku */
+            sku: string;
+            /** Quantity */
+            quantity: number;
+        };
         /** TenantBootstrap */
         TenantBootstrap: {
             /** Tenant Name */
@@ -14438,6 +15467,32 @@ export interface components {
         ToolkitSelectionUpdate: {
             /** Tool Keys */
             tool_keys?: string[];
+        };
+        /** TransferIn */
+        TransferIn: {
+            /**
+             * From Location Id
+             * Format: uuid
+             */
+            from_location_id: string;
+            /**
+             * To Location Id
+             * Format: uuid
+             */
+            to_location_id: string;
+            /** Lines */
+            lines: components["schemas"]["TransferLineIn"][];
+            /** Note */
+            note?: string | null;
+        };
+        /** TransferLineIn */
+        TransferLineIn: {
+            /** Part Id */
+            part_id?: string | null;
+            /** Sku */
+            sku?: string | null;
+            /** Quantity */
+            quantity: number;
         };
         /** UpdateLeadBody */
         UpdateLeadBody: {
@@ -25139,6 +26194,977 @@ export interface operations {
             };
         };
     };
+    shoe_jobs_report_v1_parent_accounts_me_operations_shoe_jobs_report_get: {
+        parameters: {
+            query?: {
+                from_date?: string | null;
+                to_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_list_parts_v1_parent_accounts_me_stock_parts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    hq_create_part_v1_parent_accounts_me_stock_parts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_update_part_v1_parent_accounts_me_stock_parts__part_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                part_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_list_models_v1_parent_accounts_me_stock_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    hq_create_model_v1_parent_accounts_me_stock_models_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_update_model_v1_parent_accounts_me_stock_models__model_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_model_parts_v1_parent_accounts_me_stock_models__model_id__parts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_set_model_parts_v1_parent_accounts_me_stock_models__model_id__parts_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelPartIn"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_list_locations_v1_parent_accounts_me_stock_locations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    hq_create_location_v1_parent_accounts_me_stock_locations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_update_location_v1_parent_accounts_me_stock_locations__location_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_levels_v1_parent_accounts_me_stock_levels_get: {
+        parameters: {
+            query?: {
+                location_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_adjust_v1_parent_accounts_me_stock_adjust_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_sync_v1_parent_accounts_me_stock_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_transfers_v1_parent_accounts_me_stock_transfers_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_create_transfer_v1_parent_accounts_me_stock_transfers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_receive_transfer_v1_parent_accounts_me_stock_transfers__transfer_id__receive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_import_purchases_v1_parent_accounts_me_stock_purchases_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_search_purchases_v1_parent_accounts_me_stock_purchases_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hq_stock_summary_v1_parent_accounts_me_stock_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shop_models_v1_stock_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shop_locations_v1_stock_locations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shop_parts_v1_stock_parts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shop_levels_v1_stock_levels_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shop_adjust_v1_stock_adjust_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_transfers_v1_stock_transfers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shop_create_transfer_v1_stock_transfers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_receive_transfer_v1_stock_transfers__transfer_id__receive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transfer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_search_purchases_v1_stock_purchases_search_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_suggested_parts_v1_stock_jobs__job_id__suggested_parts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_job_parts_v1_stock_jobs__job_id__parts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shop_use_part_v1_stock_jobs__job_id__parts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobPartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_operations_overview_v1_parent_accounts_me_operations_overview_get: {
         parameters: {
             query?: never;
@@ -25345,6 +27371,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ParentMobileWeeklyReportSettingsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendShopMessagesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendShopMessagesResponse"];
                 };
             };
             /** @description Validation Error */
@@ -28709,6 +30768,112 @@ export interface operations {
             };
         };
     };
+    list_contacts_v1_network_messages_contacts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactRead"][];
+                };
+            };
+        };
+    };
+    list_conversations_v1_network_messages_conversations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRead"][];
+                };
+            };
+        };
+    };
+    list_messages_v1_network_messages_conversations__conv_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_message_v1_network_messages_with__tenant_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_public_event_v1_public_engraving_events__token__get: {
         parameters: {
             query?: never;
@@ -28775,6 +30940,41 @@ export interface operations {
             };
         };
     };
+    create_public_order_batch_v1_public_engraving_events__token__orders_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEngravingOrder"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_public_order_v1_public_engraving_orders__status_token__get: {
         parameters: {
             query?: never;
@@ -28793,6 +30993,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicEngravingOrder"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_public_order_checkout_v1_public_engraving_orders__status_token__checkout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                status_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

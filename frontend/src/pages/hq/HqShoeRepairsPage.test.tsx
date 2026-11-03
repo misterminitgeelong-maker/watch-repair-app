@@ -3,9 +3,9 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderAtRoute } from '@/test/renderPage'
 import HqShoeRepairsPage from './HqShoeRepairsPage'
-import { getHqShoeSummary, searchHqShoeJobs } from '@/lib/api'
+import { getHqShoeReport, getHqShoeSummary, searchHqShoeJobs } from '@/lib/api'
 
-vi.mock('@/lib/api', async original => ({ ...await original<typeof import('@/lib/api')>(), getHqShoeSummary: vi.fn(), searchHqShoeJobs: vi.fn() }))
+vi.mock('@/lib/api', async original => ({ ...await original<typeof import('@/lib/api')>(), getHqShoeSummary: vi.fn(), getHqShoeReport: vi.fn(), searchHqShoeJobs: vi.fn() }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -17,12 +17,22 @@ beforeEach(() => {
       { tenant_id: 'b', tenant_name: 'Bondi', tenant_slug: 'b', region: null, opened: 2, active: 1, ready_to_collect: 0, collected: 1, billed_cents: 4000, avg_turnaround_days: null, oldest_active_days: null },
     ],
   } } as unknown as Awaited<ReturnType<typeof getHqShoeSummary>>)
+  vi.mocked(getHqShoeReport).mockResolvedValue({ data: {
+    total_repairs: 5, warranty: { in_warranty: 2, expired: 2, unknown: 1 },
+    by_model: [{ model: 'Arizona', repairs: 4, billed_cents: 16000 }], by_fault: [{ fault: 'resole', repairs: 3, billed_cents: 12000 }],
+  } } as unknown as Awaited<ReturnType<typeof getHqShoeReport>>)
   vi.mocked(searchHqShoeJobs).mockResolvedValue({ data: { has_more: false, jobs: [
     { id: 'j1', job_number: 'SHO-00001', status: 'working_on', title: 'Resole', tenant_id: 'a', tenant_name: 'Chadstone', region: 'VIC', customer_name: 'Anna Walker', shoe: 'Birkenstock sandals', created_at: '2026-10-01T00:00:00Z', age_days: 8 },
   ] } } as unknown as Awaited<ReturnType<typeof searchHqShoeJobs>>)
 })
 
 describe('HQ shoe repairs', () => {
+  it('shows the report by model and warranty', async () => {
+    renderAtRoute(<HqShoeRepairsPage />, { path: '/minit/shoe-repairs', route: '/minit/shoe-repairs' })
+    expect(await screen.findByText('Arizona')).toBeInTheDocument()
+    expect(screen.getByText('Under warranty')).toBeInTheDocument()
+  })
+
   it('shows network totals and a row per shop', async () => {
     renderAtRoute(<HqShoeRepairsPage />, { path: '/minit/shoe-repairs', route: '/minit/shoe-repairs' })
     const shops = await screen.findAllByText('Chadstone', { selector: 'td' })

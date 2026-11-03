@@ -11,7 +11,7 @@ vi.mock('@/lib/api/engraving', async (importOriginal) => {
   return {
     ...actual,
     getPublicEngravingEvent: vi.fn(),
-    createPublicEngravingOrder: vi.fn(),
+    createPublicEngravingBatch: vi.fn(),
   }
 })
 
@@ -37,8 +37,8 @@ function renderPage() {
 describe('PublicEngravingOrderPage', () => {
   beforeEach(() => {
     vi.mocked(engravingApi.getPublicEngravingEvent).mockResolvedValue({ data: event } as never)
-    vi.mocked(engravingApi.createPublicEngravingOrder).mockResolvedValue({
-      data: { status_token: 'tok-1', order_number: 'A-001' },
+    vi.mocked(engravingApi.createPublicEngravingBatch).mockResolvedValue({
+      data: [{ status_token: 'tok-1', order_number: 'A-001' }],
     } as never)
   })
 
@@ -56,6 +56,8 @@ describe('PublicEngravingOrderPage', () => {
     renderPage()
     await userEvent.type(await screen.findByLabelText("Athlete's name"), 'Mia Thompson')
     await userEvent.type(screen.getByLabelText(/Event or second line/), 'U9 Girls 100m')
+    expect(screen.getByRole('button', { name: /Enter your ticket number/ })).toBeDisabled()
+    await userEvent.type(screen.getByLabelText('Ticket number'), '42')
     const submit = screen.getByRole('button', { name: /Tick the spelling check/ })
     expect(submit).toBeDisabled()
 
@@ -63,13 +65,38 @@ describe('PublicEngravingOrderPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /Place order/ }))
 
     await waitFor(() =>
-      expect(engravingApi.createPublicEngravingOrder).toHaveBeenCalledWith('abc123', {
-        athlete_name: 'Mia Thompson',
-        line2: 'U9 Girls 100m',
-        place: '1st',
-        qty: 1,
+      expect(engravingApi.createPublicEngravingBatch).toHaveBeenCalledWith('abc123', {
+        ticket_number: '42',
         phone: null,
+        orders: [{ athlete_name: 'Mia Thompson', line2: 'U9 Girls 100m', place: '1st', qty: 1 }],
       }),
+    )
+  })
+
+  it('orders several different medals in one go', async () => {
+    renderPage()
+    await userEvent.type(await screen.findByLabelText('Ticket number'), '7')
+    await userEvent.type(screen.getByLabelText("Athlete's name"), 'Mia Thompson')
+    await userEvent.click(screen.getByRole('button', { name: /Add another medal/ }))
+    const names = screen.getAllByLabelText("Athlete's name")
+    expect(names).toHaveLength(2)
+    await userEvent.type(names[1], 'Leo Thompson')
+    await userEvent.click(screen.getAllByRole('button', { name: 'One more medal' })[1])
+    expect(screen.getByText('Total $45.00')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: /Place order/ }))
+    await waitFor(() =>
+      expect(engravingApi.createPublicEngravingBatch).toHaveBeenCalledWith(
+        'abc123',
+        expect.objectContaining({
+          ticket_number: '7',
+          orders: [
+            expect.objectContaining({ athlete_name: 'Mia Thompson', qty: 1 }),
+            expect.objectContaining({ athlete_name: 'Leo Thompson', qty: 2 }),
+          ],
+        }),
+      ),
     )
   })
 

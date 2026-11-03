@@ -10,7 +10,7 @@ import logging
 import re
 import zipfile
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
@@ -22,9 +22,12 @@ from ..database import get_session
 from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
 from ..limiter import limiter
 from ..models import (
+    ENGRAVING_BATCH_MAX,
+    ENGRAVING_TICKET_MAX,
     ENGRAVING_LINE2_MAX,
     ENGRAVING_NAME_MAX,
     ENGRAVING_PLACES,
+    EngravingBatchCreate,
     EngravingEvent,
     EngravingEventCreate,
     EngravingEventRead,
@@ -37,6 +40,7 @@ from ..models import (
     EngravingOrderUpdate,
     EngravingQueueRead,
     PublicEngravingEvent,
+    PublicEngravingGroupMember,
     PublicEngravingOrder,
     Tenant,
 )
@@ -88,6 +92,15 @@ def _clean_qty(value: int) -> int:
     if value < 1 or value > MAX_QTY:
         raise HTTPException(status_code=422, detail=f"Quantity must be between 1 and {MAX_QTY}")
     return value
+
+
+def _clean_ticket(value: str | None) -> str:
+    ticket = (value or "").strip().upper()
+    if not ticket:
+        raise HTTPException(status_code=422, detail="Enter the number on your ticket")
+    if len(ticket) > ENGRAVING_TICKET_MAX:
+        raise HTTPException(status_code=422, detail="That ticket number looks too long")
+    return ticket
 
 
 def _clean_phone(value: str | None) -> str | None:
@@ -144,6 +157,23 @@ def _event_stats(session: Session, event_id: UUID) -> EngravingEventStats:
     return stats
 
 
+def _connect_ready(tenant: Tenant | None) -> bool:
+    return bool(
+        tenant
+        and (tenant.stripe_connect_account_id or "").strip()
+        and tenant.stripe_connect_charges_enabled
+    )
+
+
+def _card_payments_ready(session: Session, event: EngravingEvent) -> bool:
+    """True when a parent could actually pay by card for this event right now."""
+    if not (event.online_payments and settings.enable_stripe_invoice_checkout):
+        return False
+    if not (settings.stripe_secret_key or "").strip():
+        return False
+    return _connect_ready(session.get(Tenant, event.tenant_id))
+
+
 def _event_read(session: Session, event: EngravingEvent) -> EngravingEventRead:
     return EngravingEventRead(
         id=event.id,
@@ -154,6 +184,8 @@ def _event_read(session: Session, event: EngravingEvent) -> EngravingEventRead:
         minutes_per_medal=event.minutes_per_medal,
         status=event.status,
         sms_enabled=event.sms_enabled,
+        online_payments=event.online_payments,
+        online_payments_ready=_card_payments_ready(session, event),
         public_token=event.public_token,
         public_url=_public_url(event),
         created_at=event.created_at,
@@ -206,6 +238,8 @@ def _create_order(
     source: str,
     paid: bool = False,
     notes: str | None = None,
+    group_id: UUID | None = None,
+    ticket_number: str | None = None,
 ) -> EngravingOrder:
     athlete_name = _clean_text(payload.athlete_name, field="Athlete name", max_len=ENGRAVING_NAME_MAX, required=True)
     line2 = _clean_text(payload.line2, field="Second line", max_len=ENGRAVING_LINE2_MAX, required=False)
@@ -235,9 +269,12 @@ def _create_order(
             phone=phone,
             paid=paid,
             paid_at=now if paid else None,
+            payment_method="stall" if paid else None,
             amount_cents=event.price_cents * qty,
             source=source,
             notes=notes,
+            group_id=group_id,
+            ticket_number=ticket_number,
         )
         session.add(locked)
         session.add(order)
@@ -313,6 +350,7 @@ def create_event(
         price_cents=payload.price_cents,
         minutes_per_medal=max(1, payload.minutes_per_medal),
         sms_enabled=payload.sms_enabled,
+        online_payments=payload.online_payments,
     )
     session.add(event)
     session.commit()
@@ -339,7 +377,7 @@ def update_event(
     if "minutes_per_medal" in data and data["minutes_per_medal"] is not None:
         data["minutes_per_medal"] = max(1, data["minutes_per_medal"])
     for field, value in data.items():
-        if value is None and field in {"name", "price_cents", "minutes_per_medal", "status", "sms_enabled"}:
+        if value is None and field in {"name", "price_cents", "minutes_per_medal", "status", "sms_enabled", "online_payments"}:
             continue
         setattr(event, field, value)
     event.updated_at = _now()
@@ -503,8 +541,12 @@ def update_order(
     if "notes" in data:
         order.notes = _clean_text(data["notes"], field="Notes", max_len=500, required=False)
     if "paid" in data and data["paid"] is not None:
-        order.paid = data["paid"]
-        order.paid_at = _now() if order.paid else None
+        if data["paid"] != order.paid:
+            order.paid = data["paid"]
+            order.paid_at = _now() if order.paid else None
+            order.payment_method = "stall" if order.paid else None
+            if not order.paid:
+                order.stripe_checkout_id = None
 
     new_status = data.get("status")
     if new_status and new_status != order.status:
@@ -657,6 +699,51 @@ def create_public_order(
     return _public_order(session, order, event)
 
 
+@public_router.post("/events/{token}/orders/batch", response_model=list[PublicEngravingOrder])
+@limiter.limit(get_public_write_rate_limit)
+def create_public_order_batch(
+    request: Request,
+    token: str,
+    payload: EngravingBatchCreate,
+    session: Session = Depends(get_session),
+):
+    """Order several different medals in one go. Every medal is checked before any is
+    created, so a typo in the third one doesn't leave the first two half-ordered."""
+    event = _public_event(session, token)
+    if event.status != "open":
+        raise HTTPException(status_code=409, detail="This stall isn't taking orders right now")
+    if not payload.orders:
+        raise HTTPException(status_code=422, detail="Add at least one medal")
+    if len(payload.orders) > ENGRAVING_BATCH_MAX:
+        raise HTTPException(status_code=422, detail=f"You can order up to {ENGRAVING_BATCH_MAX} different medals at once")
+    ticket = _clean_ticket(payload.ticket_number)
+    in_use = session.exec(
+        select(EngravingOrder)
+        .where(EngravingOrder.event_id == event.id)
+        .where(EngravingOrder.ticket_number == ticket)
+        .where(EngravingOrder.status.in_(["waiting", "engraving", "ready"]))
+    ).first()
+    if in_use:
+        raise HTTPException(status_code=409, detail=f"Ticket {ticket} is already in use. Please check the number on your ticket.")
+    items = []
+    for item in payload.orders:
+        item = EngravingOrderCreate(
+            athlete_name=item.athlete_name, line2=item.line2, place=item.place, qty=item.qty, phone=payload.phone
+        )
+        # Validate up front (raises 422 on bad input) without creating anything.
+        _clean_text(item.athlete_name, field="Athlete name", max_len=ENGRAVING_NAME_MAX, required=True)
+        _clean_text(item.line2, field="Second line", max_len=ENGRAVING_LINE2_MAX, required=False)
+        _clean_place(item.place)
+        _clean_qty(item.qty)
+        _clean_phone(item.phone)
+        items.append(item)
+    group_id = uuid4() if len(items) > 1 else None
+    orders = [
+        _create_order(session, event, item, source="online", group_id=group_id, ticket_number=ticket) for item in items
+    ]
+    return [_public_order(session, order, event) for order in orders]
+
+
 def _public_order(session: Session, order: EngravingOrder, event: EngravingEvent) -> PublicEngravingOrder:
     position: int | None = None
     wait: int | None = None
@@ -665,7 +752,24 @@ def _public_order(session: Session, order: EngravingOrder, event: EngravingEvent
         position = 1 + sum(1 for o in active if o.order_seq < order.order_seq)
         ahead = sum(_remaining(o) for o in active if o.order_seq < order.order_seq)
         wait = (ahead + _remaining(order)) * event.minutes_per_medal
+    members: list[PublicEngravingGroupMember] = []
+    due_orders = [order] if _payable(order) else []
+    if order.group_id:
+        siblings = session.exec(
+            select(EngravingOrder)
+            .where(EngravingOrder.group_id == order.group_id)
+            .where(EngravingOrder.id != order.id)
+            .order_by(EngravingOrder.order_seq)
+        ).all()
+        due_orders += [o for o in siblings if _payable(o)]
+        members = [
+            PublicEngravingGroupMember(
+                order_number=o.order_number, athlete_name=o.athlete_name, status_token=o.status_token, status=o.status
+            )
+            for o in siblings
+        ]
     return PublicEngravingOrder(
+        group_members=members,
         order_number=order.order_number,
         status_token=order.status_token,
         event_name=event.name,
@@ -678,9 +782,12 @@ def _public_order(session: Session, order: EngravingOrder, event: EngravingEvent
         status=order.status,
         paid=order.paid,
         amount_cents=order.amount_cents,
+        can_pay_online=bool(due_orders) and _card_payments_ready(session, event),
+        amount_due_cents=sum(o.amount_cents for o in due_orders),
         queue_position=position,
         wait_minutes=wait,
         phone_masked=_mask_phone(order.phone),
+        ticket_number=order.ticket_number,
         created_at=order.created_at,
         ready_at=order.ready_at,
     )
@@ -696,3 +803,161 @@ def get_public_order(request: Request, status_token: str, session: Session = Dep
     if not event:
         raise HTTPException(status_code=404, detail="Order not found")
     return _public_order(session, order, event)
+
+
+# ---------------------------------------------------------------------------
+# Public: pay by card
+# ---------------------------------------------------------------------------
+
+def _payable(order: EngravingOrder) -> bool:
+    return not order.paid and order.status != "cancelled" and order.amount_cents > 0
+
+
+def _stripe_client():
+    if not (settings.stripe_secret_key or "").strip():
+        return None
+    try:
+        import stripe as stripe_mod
+
+        stripe_mod.api_key = settings.stripe_secret_key.strip()
+        return stripe_mod
+    except ImportError:
+        return None
+
+
+@public_router.post("/orders/{status_token}/checkout")
+@limiter.limit(get_public_write_rate_limit)
+def create_public_order_checkout(request: Request, status_token: str, session: Session = Depends(get_session)):
+    """Start Stripe Checkout for this order plus any unpaid medals ordered with it.
+
+    The card is charged on the shop's own Stripe account (a direct charge, like Mobile Services
+    invoices). The order is marked paid when Stripe's Connect webhook reports the payment."""
+    order = session.exec(select(EngravingOrder).where(EngravingOrder.status_token == status_token)).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    event = session.get(EngravingEvent, order.event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Order not found")
+    tenant = session.get(Tenant, order.tenant_id)
+    if not _card_payments_ready(session, event):
+        raise HTTPException(status_code=503, detail="Card payment isn't available here. Please pay at the stall.")
+    stripe = _stripe_client()
+    if not stripe:
+        raise HTTPException(status_code=503, detail="Card payment isn't available here. Please pay at the stall.")
+
+    orders = [order]
+    if order.group_id:
+        orders += session.exec(
+            select(EngravingOrder).where(EngravingOrder.group_id == order.group_id).where(EngravingOrder.id != order.id)
+        ).all()
+    orders = sorted((o for o in orders if _payable(o)), key=lambda o: o.order_seq)
+    if not orders:
+        raise HTTPException(status_code=409, detail="This order is already paid.")
+    total = sum(o.amount_cents for o in orders)
+    if total < 50:
+        raise HTTPException(status_code=400, detail="That's below the minimum for card payment. Please pay at the stall.")
+
+    base = settings.public_base_url.rstrip("/")
+    shop = (tenant.name if tenant else "Engraving").strip() or "Engraving"
+    line_items = [
+        {
+            "price_data": {
+                "currency": "aud",
+                "unit_amount": o.amount_cents,
+                "product_data": {
+                    "name": f"{shop}: medal {o.order_number}, {o.athlete_name}"[:120]
+                    + (f" x{o.qty}" if o.qty > 1 else "")
+                },
+            },
+            "quantity": 1,
+        }
+        for o in orders
+    ]
+    params: dict = {
+        "mode": "payment",
+        "line_items": line_items,
+        "metadata": {
+            "purpose": "engraving_orders",
+            "tenant_id": str(order.tenant_id),
+            "engraving_order_ids": ",".join(str(o.id) for o in orders),
+        },
+        "success_url": f"{base}/engrave/o/{status_token}?paid=1",
+        "cancel_url": f"{base}/engrave/o/{status_token}?canceled=1",
+        "stripe_account": tenant.stripe_connect_account_id.strip(),
+    }
+    try:
+        checkout = stripe.checkout.Session.create(**params)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Engraving checkout could not start for order %s", order.id)
+        raise HTTPException(status_code=502, detail="Could not start payment. Try again, or pay at the stall.") from exc
+    url = getattr(checkout, "url", None)
+    if not url:
+        raise HTTPException(status_code=502, detail="Could not start payment. Try again, or pay at the stall.")
+    return {"checkout_url": url}
+
+
+def apply_engraving_checkout(session: Session, obj, *, connect_account: str | None) -> None:
+    """Mark engraving orders paid from a completed Checkout session (called by the Stripe webhook).
+
+    Trust rules match invoices: the money must have landed in the shop that owns the orders.
+    A payment that can't be matched to still-unpaid orders for the right amount is logged to the
+    shop's inbox so someone can refund it."""
+    from ..models import TenantEventLog
+
+    meta = obj.get("metadata") or {}
+    raw_ids = [x for x in str(meta.get("engraving_order_ids") or "").split(",") if x.strip()]
+    ids: list[UUID] = []
+    for raw in raw_ids:
+        try:
+            ids.append(UUID(raw.strip()))
+        except ValueError:
+            return
+    if not ids or (obj.get("payment_status") or "") != "paid":
+        return
+    orders = [o for o in (session.get(EngravingOrder, i) for i in ids) if o]
+    if not orders:
+        return
+    tenant_id = orders[0].tenant_id
+    if any(o.tenant_id != tenant_id for o in orders):
+        return
+    if connect_account is not None:
+        owner = session.get(Tenant, tenant_id)
+        if not owner or (owner.stripe_connect_account_id or "").strip() != connect_account:
+            logger.warning("stripe.engraving_checkout_wrong_account orders=%s account=%s", ids, connect_account)
+            return
+    checkout_id = str(obj.get("id") or "")
+    if checkout_id and any(o.stripe_checkout_id == checkout_id for o in orders):
+        return  # redelivered event
+    amount_total = obj.get("amount_total")
+    expected = sum(o.amount_cents for o in orders)
+    problem: str | None = None
+    if any(o.paid for o in orders):
+        problem = "included medals that were already paid"
+    elif amount_total is not None and int(amount_total) != expected:
+        problem = f"was for {expected} cents but {amount_total} cents was charged"
+    if problem:
+        logger.error("stripe.engraving_payment_unmatched orders=%s session=%s problem=%s", ids, checkout_id, problem)
+        numbers = ", ".join(o.order_number for o in orders)
+        session.add(
+            TenantEventLog(
+                tenant_id=tenant_id,
+                entity_type="engraving_order",
+                entity_id=orders[0].id,
+                event_type="engraving_payment_needs_attention",
+                event_summary=(
+                    f"A card payment of ${int(amount_total or 0) / 100:.2f} for engraving orders {numbers} {problem}. "
+                    "Check it in Stripe and refund if needed."
+                ),
+            )
+        )
+        session.commit()
+        return
+    now = _now()
+    for o in orders:
+        o.paid = True
+        o.paid_at = now
+        o.payment_method = "stripe"
+        o.stripe_checkout_id = checkout_id or None
+        o.updated_at = now
+        session.add(o)
+    session.commit()

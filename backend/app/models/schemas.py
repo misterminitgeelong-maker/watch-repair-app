@@ -2,9 +2,10 @@
 from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
-from pydantic import field_serializer
+from pydantic import computed_field, field_serializer
 from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
+from .. import shoe_warranty as _shoe_warranty
 from ..datetime_utils import as_utc_for_json
 
 from .base import *  # noqa: F401,F403
@@ -680,12 +681,31 @@ class ParentShopBookingVolume(SQLModel):
     declined: int
     cancelled: int
     expired: int
+    # Operator answered (accepted or declined); average minutes from request to answer.
+    avg_response_minutes: Optional[float] = None
+    # Only filled when the report has a from_date: bookings per week over that window,
+    # and whether the shop is below the weekly goal.
+    per_week: Optional[float] = None
+    under_weekly_goal: bool = False
+
+class ParentOperatorBookingResponse(SQLModel):
+    tenant_id: UUID
+    tenant_name: str
+    shop_number: Optional[str] = None
+    offered: int
+    responded: int
+    moved_to_pool: int
+    avg_response_minutes: Optional[float] = None
 
 class ParentShopBookingsReport(SQLModel):
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
     totals: ParentShopBookingVolume
     by_shop: list[ParentShopBookingVolume] = Field(default_factory=list)
+    by_operator: list[ParentOperatorBookingResponse] = Field(default_factory=list)
+    weekly_goal: int = 1
+    weeks: Optional[float] = None
+    shops_under_goal: Optional[int] = None
     bookings: list["ShopMobileBookingRead"] = Field(default_factory=list)
 
 class ParentMobileJobNetworkRead(SQLModel):
@@ -1414,6 +1434,11 @@ class ShoeCreate(SQLModel):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = Field(default=None, max_length=120)
+    purchase_ref: Optional[str] = Field(default=None, max_length=120)
 
 class ShoeRead(SQLModel):
     id: UUID
@@ -1423,13 +1448,33 @@ class ShoeRead(SQLModel):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = None
+    size: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = None
+    purchase_ref: Optional[str] = None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def warranty_status(self) -> str:
+        return _shoe_warranty.warranty_status(self.purchase_date)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def warranty_expires_on(self) -> Optional[date]:
+        return _shoe_warranty.warranty_expiry(self.purchase_date)
 
 class ShoeUpdate(SQLModel):
     shoe_type: Optional[str] = None
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = Field(default=None, max_length=120)
+    purchase_ref: Optional[str] = Field(default=None, max_length=120)
 
 class ShoeRepairJobItemCreate(SQLModel):
     catalogue_key: str

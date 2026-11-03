@@ -88,6 +88,37 @@ def _line_items_table(line_items: Sequence[dict], currency: str) -> str:
     )
 
 
+def _options_block(
+    options: Sequence[dict],
+    shared_items: Sequence[dict],
+    currency: str,
+    accent: str,
+) -> str:
+    """Two-outcome quote: lines shared by both options, then one card per option with its own total."""
+    parts: list[str] = []
+    if shared_items:
+        parts.append(
+            f'<p style="margin:16px 0 0;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:{_MUTED};">'
+            "Included in both options</p>"
+            + _line_items_table(shared_items, currency)
+        )
+    for opt in options:
+        tax = int(opt.get("tax_cents") or 0)
+        parts.append(
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            f'style="border-collapse:separate;margin:16px 0 0;border:1px solid {_BORDER};border-radius:10px;">'
+            f'<tr><td style="padding:14px 16px;">'
+            f'<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{accent};">'
+            f'Option {_esc(str(opt.get("key", "")))}</p>'
+            f'<p style="margin:2px 0 4px;font-size:17px;font-weight:700;color:{_TEXT};">{_esc(opt.get("label") or "")}</p>'
+            + _line_items_table(opt.get("line_items") or [], currency)
+            + f'<p style="margin:8px 0 0;font-size:16px;font-weight:700;color:{_TEXT};text-align:right;">'
+            f'Total{" inc. GST" if tax else ""}: {_money(int(opt.get("total_cents") or 0), currency)}</p>'
+            '</td></tr></table>'
+        )
+    return "".join(parts)
+
+
 def _totals_block(
     *,
     subtotal_cents: int | None,
@@ -182,11 +213,20 @@ def render_transactional_email(
     currency: str = "AUD",
     note_html: str | None = None,
     accent: str = _DEFAULT_ACCENT,
+    options: Sequence[dict] | None = None,
 ) -> str:
-    """Return a full responsive HTML email document."""
+    """Return a full responsive HTML email document.
+
+    ``options`` (two-outcome quotes) replaces the single line-items table and total with a card per
+    option; ``line_items`` then holds only the lines shared by both.
+    """
     # A valid tenant brand colour wins over the default/passed accent.
     accent = _resolve_accent(shop, accent)
-    items_html = _line_items_table(line_items or [], currency)
+    items_html = (
+        _options_block(options, line_items or [], currency, accent)
+        if options
+        else _line_items_table(line_items or [], currency)
+    )
     totals_html = (
         _totals_block(
             subtotal_cents=subtotal_cents,
@@ -195,7 +235,7 @@ def render_transactional_email(
             currency=currency,
             accent=accent,
         )
-        if total_cents is not None
+        if total_cents is not None and not options
         else ""
     )
     cta_html = _cta_button(cta_label, cta_url, accent) if cta_label and cta_url else ""

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useIsFetching, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowUpRight, BarChart3, Clock, Download, RefreshCw, Search } from 'lucide-react'
-import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, setPlatformTenantBillingExempt, setPlatformTenantPlan, setPlatformTenantStatus, updatePlatformTenant } from '@/lib/api'
+import { deletePlatformTenant, forcePlatformTenantLogout, getApiErrorMessage, getPlatformReports, listPlatformActivity, listPlatformTenants, listPlatformUsers, markPlatformTenantPaid, setPlatformTenantBillingExempt, setPlatformTenantKeepOwnPlan, setPlatformTenantPlan, setPlatformTenantStatus, updatePlatformTenant } from '@/lib/api'
 import { Card, EmptyState, Modal, Spinner } from '@/components/ui'
 import { useAdminEnterShop } from '@/lib/adminImpersonation'
 import { formatCents } from '@/lib/money'
@@ -314,6 +314,16 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     },
     onError: (err) => setAdminActionError(`Could not update billing status: ${getApiErrorMessage(err)}`),
   })
+  const setKeepOwnPlan = useMutation({
+    mutationFn: ({ tenantId, keep, reason }: { tenantId: string; keep: boolean; reason?: string }) =>
+      setPlatformTenantKeepOwnPlan(tenantId, keep, reason),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['platform-tenants'] })
+      void queryClient.invalidateQueries({ queryKey: ['platform-activity'] })
+      setAdminActionError('')
+    },
+    onError: (err) => setAdminActionError(`Could not update keep-own-plan: ${getApiErrorMessage(err)}`),
+  })
   const editTenant = useMutation({
     mutationFn: ({ tenantId, payload }: { tenantId: string; payload: { name?: string; slug?: string; owner_email?: string; new_password?: string } }) =>
       updatePlatformTenant(tenantId, payload),
@@ -331,8 +341,9 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
   })
   const PLAN_OPTIONS = ['basic_watch', 'basic_shoe', 'basic_auto_key', 'basic_watch_shoe', 'basic_watch_auto_key', 'basic_shoe_auto_key', 'basic_all_tabs', 'pro']
   // Mister Minit shops only keep these; any other plan is switched back on their next sign-in.
-  const planOptionsFor = (t: { slug: string; is_minit?: boolean }) =>
-    !t.is_minit ? PLAN_OPTIONS : isMinitHqTenantSlug(t.slug) ? ['minit_hq'] : ['booking_only', 'basic_auto_key']
+  // A Minit shop flagged keep_own_plan is exempt and can take any plan.
+  const planOptionsFor = (t: { slug: string; is_minit?: boolean; keep_own_plan?: boolean }) =>
+    !t.is_minit || t.keep_own_plan ? PLAN_OPTIONS : isMinitHqTenantSlug(t.slug) ? ['minit_hq'] : ['booking_only', 'basic_auto_key']
   function requireSlugConfirmation(shopName: string, shopSlug: string, actionLabel: string) {
     const typed = window.prompt(`Type shop slug "${shopSlug}" to ${actionLabel} ${shopName}:`, '') ?? ''
     if (typed.trim() !== shopSlug) {
@@ -375,6 +386,17 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
     )
     if (reason === null) return // cancelled
     setBillingExempt.mutate({ tenantId, exempt, reason: reason.trim() || undefined })
+  }
+
+  function handleToggleKeepOwnPlan(tenantId: string, name: string, keep: boolean) {
+    const reason = window.prompt(
+      keep
+        ? `Let ${name} keep its own plan (e.g. Pro) while staying in the Minit network. Reason:`
+        : `Put ${name} back on the Minit-only plan rules? It is switched to booking_only on its next sign-in. Reason (optional):`,
+      '',
+    )
+    if (reason === null) return // cancelled
+    setKeepOwnPlan.mutate({ tenantId, keep, reason: reason.trim() || undefined })
   }
 
   const [statusFilter, setStatusFilter] = useState('all')
@@ -461,6 +483,16 @@ function ShopsTab({ search, setSearch }: { search: string; setSearch: (v: string
                         >
                           Change Plan
                         </button>
+                        {t.is_minit && !isMinitHqTenantSlug(t.slug) && (
+                          <button
+                            onClick={() => handleToggleKeepOwnPlan(t.id, t.name, !t.keep_own_plan)}
+                            disabled={setKeepOwnPlan.isPending}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                            style={{ backgroundColor: 'transparent', border: '1px solid var(--ms-border-strong)', color: 'var(--ms-text-muted)' }}
+                          >
+                            {t.keep_own_plan ? 'Use Minit Plan Rules' : 'Keep Own Plan'}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleToggleBillingExempt(t.id, t.name, t.slug, !t.billing_exempt)}
                           disabled={setBillingExempt.isPending}
