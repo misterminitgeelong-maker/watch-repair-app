@@ -37,11 +37,26 @@ data class BillingLimits(
     @SerializedName("xero_configured") val xeroConfigured: Boolean? = null,
     @SerializedName("xero_connected") val xeroConnected: Boolean? = null,
     @SerializedName("xero_connection_status") val xeroConnectionStatus: String? = null,
+    @SerializedName("stripe_connect_account_present") val stripeConnectPresent: Boolean? = null,
+    @SerializedName("stripe_connect_charges_enabled") val stripeConnectCharges: Boolean? = null,
+    @SerializedName("stripe_connect_payouts_enabled") val stripeConnectPayouts: Boolean? = null,
+    @SerializedName("stripe_connect_details_submitted") val stripeConnectDetails: Boolean? = null,
 )
 
-/** Read-only billing endpoints used by the native Accounts screen. */
+/** `POST billing/connect/refresh`: the capability flags pulled fresh from Stripe. */
+data class StripeConnectStatus(
+    @SerializedName("stripe_connect_charges_enabled") val charges: Boolean = false,
+    @SerializedName("stripe_connect_payouts_enabled") val payouts: Boolean = false,
+    @SerializedName("stripe_connect_details_submitted") val details: Boolean = false,
+)
+/** `POST billing/xero/disconnect`. */
+data class XeroConnectionStatus(val configured: Boolean = false, val connected: Boolean = false, @SerializedName("connection_status") val connectionStatus: String? = null)
+
+/** Billing endpoints used by the native Accounts screen; the two POSTs are owner-only on the server. */
 interface AccountsApi {
     @GET("v1/billing/limits") suspend fun billingLimits(): BillingLimits
+    @POST("v1/billing/connect/refresh") suspend fun refreshStripeConnect(): StripeConnectStatus
+    @POST("v1/billing/xero/disconnect") suspend fun disconnectXero(): XeroConnectionStatus
 }
 
 /** Sign-out calls carry an explicit token because the local session is already gone when they run. */
