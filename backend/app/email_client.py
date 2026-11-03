@@ -241,8 +241,13 @@ def send_mobile_quote_email(
     pdf_bytes: bytes | None = None,
     session: Session | None = None,
     tenant_id: UUID | None = None,
+    options: Sequence[dict] | None = None,
 ) -> tuple[bool, str | None]:
-    """Send email when a Mobile Services (auto key) quote is sent."""
+    """Send email when a Mobile Services (auto key) quote is sent.
+
+    ``options`` (two-outcome quote) is a list of {key, label, line_items, subtotal_cents, tax_cents,
+    total_cents}; ``line_items`` then holds only the lines shared by both options.
+    """
     if not (to_email or "").strip():
         return False, None
     portal_url = f"{settings.public_base_url.rstrip('/')}/mobile-quote/{quote_approval_token}"
@@ -251,20 +256,47 @@ def send_mobile_quote_email(
         items_block = f"\n\nLine items:\n{items_block}\n"
     shop = shop_name.strip() or "us"
     subject = f"Your quote from {shop} – Job #{job_number}"
-    body_plain = (
-        f"Hi {customer_name},\n\n"
-        f"Your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}.{items_block}\n"
-        f"Please review and accept here:\n{portal_url}\n\n"
-        f"Reply to this email if you have any questions.\n\n"
-        f"Thanks,\n{shop_name}"
-    )
+    if options:
+        option_lines = "\n\n".join(
+            f"Option {o['key']} – {o['label']}: {format_cents(int(o['total_cents']), currency)}\n"
+            + _format_line_items(o.get("line_items") or [], currency)
+            for o in options
+        )
+        shared = f"\n\nIncluded in both options:\n{_format_line_items(line_items or [], currency)}" if line_items else ""
+        prices = " or ".join(format_cents(int(o["total_cents"]), currency) for o in options)
+        body_plain = (
+            f"Hi {customer_name},\n\n"
+            f"Your quote from {shop} for job #{job_number} has two possible prices: {prices}. "
+            f"We can only confirm which applies once we see your vehicle, and you only pay for the one that applies."
+            f"{shared}\n\n{option_lines}\n\n"
+            f"Please review and accept here:\n{portal_url}\n\n"
+            f"Reply to this email if you have any questions.\n\n"
+            f"Thanks,\n{shop_name}"
+        )
+    else:
+        body_plain = (
+            f"Hi {customer_name},\n\n"
+            f"Your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}.{items_block}\n"
+            f"Please review and accept here:\n{portal_url}\n\n"
+            f"Reply to this email if you have any questions.\n\n"
+            f"Thanks,\n{shop_name}"
+        )
     body_html = render_transactional_email(
         title=f"Quote · Job #{job_number}",
-        preheader=f"Your quote from {shop} is {format_cents(total_cents, currency)}",
+        preheader=(
+            f"Your quote from {shop}: two possible prices"
+            if options
+            else f"Your quote from {shop} is {format_cents(total_cents, currency)}"
+        ),
         greeting=f"Hi {customer_name},",
         intro_html=(
             f"Here is your quote for <strong>job #{_html.escape(job_number)}</strong>. "
-            "Review the details below and tap the button to approve online."
+            + (
+                "It has <strong>two possible prices</strong>: we can only confirm which applies once we see your "
+                "vehicle, and you only pay for the one that applies. Review both below and approve once online."
+                if options
+                else "Review the details below and tap the button to approve online."
+            )
         ),
         shop=ShopInfo(
             name=shop_name,
@@ -283,6 +315,7 @@ def send_mobile_quote_email(
         total_cents=total_cents,
         currency=currency,
         note_html="Have a question? Just reply to this email and it will reach us directly.",
+        options=options,
     )
     return _send_email(
         to_email=to_email.strip(),

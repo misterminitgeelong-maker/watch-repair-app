@@ -203,12 +203,21 @@ export default function MobileQuotePage() {
   const sharedLines = quote.line_items.filter(i => !i.option_key)
   const vehicle = [quote.vehicle_make, quote.vehicle_model, quote.vehicle_year].filter(Boolean).join(' ')
 
+  const isMinit = !!quote.shop_is_minit
+
   return (
-    <div className="min-h-screen py-6 px-4 sm:py-10 sm:px-5" style={{ backgroundColor: 'var(--ms-bg)' }}>
+    <div
+      data-theme={isMinit ? 'minit' : undefined}
+      className="min-h-screen py-6 px-4 sm:py-10 sm:px-5"
+      style={{ backgroundColor: 'var(--ms-bg)' }}
+    >
       <div className="max-w-lg mx-auto space-y-4 sm:space-y-5">
 
         {/* Header */}
-        <div className="text-center">
+        <div
+          className={isMinit ? 'text-center rounded-md px-4 py-5' : 'text-center'}
+          style={isMinit ? { backgroundColor: 'var(--ms-ink)', borderBottom: '3px solid var(--ms-accent)' } : undefined}
+        >
           <ShopLogo
             minit={quote.shop_is_minit}
             logoUrl={quote.shop_logo_url}
@@ -219,8 +228,8 @@ export default function MobileQuotePage() {
               </div>
             }
           />
-          <h1 className="text-xl font-bold" style={{ color: 'var(--ms-text)' }}>{quote.shop_name}</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--ms-text-muted)' }}>
+          <h1 className="text-xl font-bold" style={{ color: isMinit ? '#fff' : 'var(--ms-text)' }}>{quote.shop_name}</h1>
+          <p className="text-sm mt-1" style={{ color: isMinit ? 'rgba(255,255,255,0.8)' : 'var(--ms-text-muted)' }}>
             Quote for job #{quote.job_number}
             {quote.customer_name ? ` — ${quote.customer_name}` : ''}
           </p>
@@ -275,7 +284,7 @@ export default function MobileQuotePage() {
         {hasOptions && (
           <>
             {!isSettled && (
-              <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ backgroundColor: '#FFF5DD', color: 'var(--ms-text)' }}>
+              <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ backgroundColor: isMinit ? 'var(--ms-accent-light)' : '#FFF5DD', color: 'var(--ms-text)' }}>
                 Two possible prices. We can only confirm which applies once we see your vehicle. You only pay for the one that applies.
               </div>
             )}
@@ -298,7 +307,7 @@ export default function MobileQuotePage() {
               return (
                 <Card key={opt.key} className="p-4" style={{ opacity: dim ? 0.55 : 1, border: chosen ? '2px solid var(--ms-accent)' : undefined }}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ backgroundColor: chosen ? 'var(--ms-accent)' : '#14161c', color: '#fff' }}>
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ backgroundColor: chosen ? 'var(--ms-accent)' : isMinit ? 'var(--ms-ink)' : '#14161c', color: '#fff' }}>
                       Option {opt.key}
                     </span>
                     {chosen && <span className="text-xs font-bold" style={{ color: 'var(--ms-accent)' }}>Applies</span>}
