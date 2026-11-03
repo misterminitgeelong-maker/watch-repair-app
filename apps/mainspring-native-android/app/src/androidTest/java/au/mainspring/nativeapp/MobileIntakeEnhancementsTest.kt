@@ -80,6 +80,27 @@ class MobileIntakeEnhancementsTest {
         vm.pickAddress(vm.state.value.addressSuggestions.first())
         Assert.assertEquals("1 Main St, Sydney NSW 2000", vm.field("address")); Assert.assertTrue(vm.state.value.addressSuggestions.isEmpty())
     }
+    private class ResolvingSuggester(val full: String): AddressSuggester {
+        override suspend fun suggest(query: String) = listOf("14 Burke Rd, Malvern East VIC, Australia")
+        override suspend fun resolve(picked: String): String { kotlinx.coroutines.delay(300); return full }
+    }
+    @Test fun pickingASuggestionUpgradesItToTheFullAddress() {
+        val vm = MobileIntakeViewModel(SavedStateHandle()); vm.addressSuggester = ResolvingSuggester("14 Burke Rd, Malvern East VIC 3145, Australia")
+        vm.set("address", "14 Burke")
+        compose.waitUntil(10_000) { vm.state.value.addressSuggestions.isNotEmpty() }
+        vm.pickAddress(vm.state.value.addressSuggestions.first())
+        Assert.assertEquals("shown straight away", "14 Burke Rd, Malvern East VIC, Australia", vm.field("address"))
+        compose.waitUntil(10_000) { vm.field("address").contains("3145") }
+        Assert.assertEquals("14 Burke Rd, Malvern East VIC 3145, Australia", vm.field("address"))
+        Thread.sleep(800); Assert.assertTrue("the upgrade must not reopen the suggestion list", vm.state.value.addressSuggestions.isEmpty())
+    }
+    @Test fun anEditMadeWhileTheAddressResolvesIsNotOverwritten() {
+        val vm = MobileIntakeViewModel(SavedStateHandle()); vm.addressSuggester = ResolvingSuggester("14 Burke Rd, Malvern East VIC 3145, Australia")
+        vm.set("address", "14 Burke")
+        compose.waitUntil(10_000) { vm.state.value.addressSuggestions.isNotEmpty() }
+        vm.pickAddress(vm.state.value.addressSuggestions.first()); vm.set("address", "Unit 2, 14 Burke Rd")
+        Thread.sleep(900); Assert.assertEquals("Unit 2, 14 Burke Rd", vm.field("address"))
+    }
     @Test fun newFieldsAreSentOnCreate() {
         val vm = MobileIntakeViewModel(SavedStateHandle()); vm.set("customerId", "customer-1"); vm.set("title", "Fleet key"); vm.set("blade", "HU66"); vm.set("chip", "ID46")
         vm.set("salesperson", "Sam"); vm.set("commission", "tech_sourced"); vm.setExtras(listOf(ExtraService("Diagnostic", ""), ExtraService("", "Re-shell")))
