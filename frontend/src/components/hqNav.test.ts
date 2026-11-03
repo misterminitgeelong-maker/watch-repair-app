@@ -11,8 +11,8 @@ describe('hqNavFor', () => {
     expect(labels).toEqual(['Dashboard', 'Inbox', 'Messages', 'Shops', 'Lead routing', 'Mobile reports', 'Reports'])
   })
 
-  it('shows a shoe and stock HQ Shops, Shoe repairs and Stock', () => {
-    expect(hqNavFor(['shoe', 'stock']).map(i => i.label)).toEqual(['Shops', 'Shoe repairs', 'Stock'])
+  it('keeps Messages available alongside shoe and stock HQ pages', () => {
+    expect(hqNavFor(['shoe', 'stock']).map(i => i.label)).toEqual(['Messages', 'Shops', 'Shoe repairs', 'Stock'])
   })
 
   it('adds Shoe repairs after the mobile links when both are on', () => {
