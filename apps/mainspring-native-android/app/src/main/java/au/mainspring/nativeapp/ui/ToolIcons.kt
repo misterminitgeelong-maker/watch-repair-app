@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
             "businessAccounts" -> { rect(5f, 3f, 14f, 18f, 1.5f); ln(9f, 8f, 10f, 8f); ln(14f, 8f, 15f, 8f); ln(9f, 12f, 10f, 12f); ln(14f, 12f, 15f, 12f); ln(10.5f, 21f, 10.5f, 17f); ln(13.5f, 21f, 13.5f, 17f) }
             "team", "toolsShop" -> { circle(12f, 8f, 3.6f); drawArc(color, 195f, 150f, false, p(5f, 13f), Size(14f * s, 14f * s), style = st) }
             "shop", "shopSettings" -> { poly(3f, 9f, 5f, 4f, 19f, 4f, 21f, 9f); poly(3f, 9f, 3f, 11f, 21f, 11f, 21f, 9f); poly(5f, 11f, 5f, 20f, 19f, 20f, 19f, 11f); rect(10f, 14f, 4f, 6f, 0.5f) }
+            "integrations" -> { ln(4f, 8f, 8f, 8f); ln(16f, 8f, 20f, 8f); ln(4f, 16f, 8f, 16f); ln(16f, 16f, 20f, 16f); rect(8f, 5f, 8f, 6f, 1f); rect(8f, 13f, 8f, 6f, 1f) }
             "queuedChanges" -> { drawArc(color, 200f, 250f, false, p(4f, 4f), Size(16f * s, 16f * s), style = st); poly(4f, 3f, 4f, 8f, 9f, 8f); ln(12f, 8f, 12f, 12f); ln(12f, 12f, 15f, 14f) }
             "accounts" -> { circle(12f, 12f, 9f); circle(12f, 10f, 3f); drawArc(color, 205f, 130f, false, p(7f, 13f), Size(10f * s, 10f * s), style = st) }
             "settings" -> { ln(4f, 7f, 20f, 7f); ln(4f, 12f, 20f, 12f); ln(4f, 17f, 20f, 17f); circle(9f, 7f, 2f); circle(15f, 12f, 2f); circle(8f, 17f, 2f) }

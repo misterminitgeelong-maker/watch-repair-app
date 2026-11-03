@@ -361,6 +361,7 @@ fun MainspringAppShell(
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
                 composable("revenueControl") { au.mainspring.nativeapp.ui.screens.RevenueControlScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
                 composable("queuedChanges") { au.mainspring.nativeapp.ui.screens.QueuedChangesScreen { navController.popBackStack() } }
+                composable("integrations") { au.mainspring.nativeapp.ui.screens.IntegrationsScreen(onBack = { navController.popBackStack() }) }
                 composable("shopSettings") { au.mainspring.nativeapp.ui.screens.OwnerSettingsScreen(onBack = { navController.popBackStack() }) }
                 composable("reportExtras") { au.mainspring.nativeapp.ui.screens.ReportExtrasScreen(onBack = { navController.popBackStack() }) }
                 composable("repairQueue") { au.mainspring.nativeapp.ui.screens.RepairQueueScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("watchJob/$it") }, onOpenShoeJob = { navController.navigate("shoeJob/$it") }) }
