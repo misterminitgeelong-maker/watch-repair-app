@@ -27,10 +27,11 @@ def upgrade() -> None:
         "tenant",
         sa.Column("require_id_capture", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
-    op.add_column(
-        "tenanteventlog",
-        sa.Column("support_actor_user_id", sa.Uuid(), sa.ForeignKey("user.id", ondelete="SET NULL"), nullable=True),
-    )
+    with op.batch_alter_table("tenanteventlog") as batch:
+        batch.add_column(sa.Column("support_actor_user_id", sa.Uuid(), nullable=True))
+        batch.create_foreign_key(
+            "fk_tenanteventlog_support_actor_user", "user", ["support_actor_user_id"], ["id"], ondelete="SET NULL"
+        )
     op.create_index("ix_tenanteventlog_support_actor_user_id", "tenanteventlog", ["support_actor_user_id"])
 
     op.create_table(
@@ -75,6 +76,8 @@ def downgrade() -> None:
     op.drop_table("autokeyidaccesslog")
     op.drop_table("autokeyidcapture")
     op.drop_index("ix_tenanteventlog_support_actor_user_id", table_name="tenanteventlog")
-    op.drop_column("tenanteventlog", "support_actor_user_id")
+    with op.batch_alter_table("tenanteventlog") as batch:
+        batch.drop_constraint("fk_tenanteventlog_support_actor_user", type_="foreignkey")
+        batch.drop_column("support_actor_user_id")
     op.drop_column("tenant", "require_id_capture")
     op.drop_column("tenant", "support_access_until")
