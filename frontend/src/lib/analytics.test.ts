@@ -6,28 +6,21 @@ afterEach(() => {
 })
 
 describe('initAnalytics', () => {
-  it('does nothing when no domain is configured', () => {
+  it('does nothing when no token is configured', () => {
     expect(initAnalytics({})).toBe(false)
-    expect(document.querySelector('script[data-plausible]')).toBeNull()
+    expect(document.querySelector('script[data-cf-beacon]')).toBeNull()
   })
 
   it('does nothing in the native app', () => {
-    expect(initAnalytics({ domain: 'mainspring.au' }, true)).toBe(false)
+    expect(initAnalytics({ token: 'abc' }, true)).toBe(false)
   })
 
-  it('injects the Plausible script once', () => {
-    expect(initAnalytics({ domain: 'mainspring.au' })).toBe(true)
-    expect(initAnalytics({ domain: 'mainspring.au' })).toBe(true)
-    const scripts = document.querySelectorAll('script[data-plausible]')
+  it('injects the Cloudflare beacon once', () => {
+    expect(initAnalytics({ token: 'abc' })).toBe(true)
+    expect(initAnalytics({ token: 'abc' })).toBe(true)
+    const scripts = document.querySelectorAll('script[data-cf-beacon]')
     expect(scripts).toHaveLength(1)
-    expect((scripts[0] as HTMLScriptElement).src).toBe('https://plausible.io/js/script.js')
-    expect((scripts[0] as HTMLScriptElement).dataset.domain).toBe('mainspring.au')
-  })
-
-  it('supports a self-hosted origin', () => {
-    initAnalytics({ domain: 'mainspring.au', host: 'https://stats.example.com/' })
-    expect((document.querySelector('script[data-plausible]') as HTMLScriptElement).src).toBe(
-      'https://stats.example.com/js/script.js',
-    )
+    expect((scripts[0] as HTMLScriptElement).src).toBe('https://static.cloudflareinsights.com/beacon.min.js')
+    expect(JSON.parse(scripts[0].getAttribute('data-cf-beacon')!)).toEqual({ token: 'abc' })
   })
 })
