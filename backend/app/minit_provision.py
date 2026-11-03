@@ -47,7 +47,7 @@ _SITE_KIND_TO_ROLE: dict[str, str | None] = {
 }
 
 
-from .regions import apply_nz_defaults_from_placement, is_nz_minit_placement
+from .regions import apply_au_state_timezone, apply_nz_defaults_from_placement, is_nz_minit_placement
 
 
 def _is_operator_plan(plan_code: str) -> bool:
@@ -140,6 +140,7 @@ def sync_tenant_from_minit_shop(tenant: Tenant, shop: MinitShopRow) -> bool:
     tenant.minit_region = shop.region
     tenant.business_address = shop.business_address[:2000] if shop.business_address else None
     apply_nz_defaults_from_placement(tenant)
+    apply_au_state_timezone(tenant)
     return True
 
 
@@ -202,6 +203,7 @@ def sync_tenant_from_mobile_operator(tenant: Tenant, operator: ResolvedMobileOpe
     tenant.mobile_dispatch_phone = operator.dispatch_phone
     _apply_operator_contact(tenant, operator)
     apply_nz_defaults_from_placement(tenant)
+    apply_au_state_timezone(tenant)
     return True
 
 
@@ -360,6 +362,7 @@ def _create_child_tenant(
             shop_email=shop_email[:200] if shop_email else None,
         )
         apply_nz_defaults_from_placement(tenant)
+        apply_au_state_timezone(tenant)
         session.add(tenant)
         if existing_by_slug is not None:
             existing_by_slug[slug] = tenant
@@ -491,7 +494,7 @@ def ensure_minit_pilot_account(
             parent=parent,
             hq_owner=hq_owner,
             shop=op,
-            plan_code="basic_auto_key",
+            plan_code="minit_operator",
             tenant_slug="minit-mobile-3904",
         )
         if op_tenant:
@@ -709,7 +712,7 @@ def import_minit_mobile_operators(
     hq_owner_email: str | None = None,
     hq_owner: User | None = None,
     operators: list[ResolvedMobileOperator],
-    plan_code: str = "basic_auto_key",
+    plan_code: str = "minit_operator",
     apply: bool = False,
     commit: bool = True,
     on_progress: Callable[[int, int, str], None] | None = None,

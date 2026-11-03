@@ -349,6 +349,7 @@ export function CustomerPortalJobCard({
 
   return (
     <article
+      id={`job-${job.job_number}`}
       className={clsx('pt-card pt-job', stage === 'ready' && 'pt-job--ready')}
       style={{ ...portalAccentStyle(shop.brand_color), animationDelay: `${Math.min(index, 8) * 70}ms` }}
     >

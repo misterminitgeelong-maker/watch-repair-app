@@ -1153,6 +1153,8 @@ export const suggestShopMobileOperator = (suburb: string, state_code: string) =>
   api.get<ShopMobileOperatorOption | null>('/shop-mobile-bookings/suggest-operator', {
     params: { suburb, state_code },
   })
+export const getShopMobileCoverageContact = () =>
+  api.get<{ hq_contact: string | null }>('/shop-mobile-bookings/coverage-contact')
 export const createShopMobileBooking = (payload: ShopMobileBookingCreate) =>
   api.post<ShopMobileBooking>('/shop-mobile-bookings', payload)
 export const listShopMobileBookings = (status?: ShopMobileBookingStatus) =>
@@ -2498,6 +2500,7 @@ export const deleteAutoKeyJob = (id: string) => api.delete(`/auto-key-jobs/${id}
 export interface AutoKeyQuoteLineItem {
   id: string
   auto_key_quote_id: string
+  option_key?: 'A' | 'B' | null
   description: string
   quantity: number
   unit_price_cents: number
@@ -2521,6 +2524,18 @@ export interface AutoKeyQuote {
   has_signature?: boolean
   created_at: string
   line_items?: AutoKeyQuoteLineItem[]
+  /** Two-outcome quotes: totals per option. Empty on ordinary quotes. */
+  options?: AutoKeyQuoteOption[]
+  selected_option?: 'A' | 'B' | null
+  selected_at?: string | null
+}
+
+export interface AutoKeyQuoteOption {
+  key: 'A' | 'B'
+  label: string
+  subtotal_cents: number
+  tax_cents: number
+  total_cents: number
 }
 
 export async function resolveQuoteSignatureUrl(quoteId: string): Promise<string> {
@@ -2552,15 +2567,23 @@ export interface AutoKeyInvoice {
 }
 
 export interface AutoKeyQuoteCreatePayload {
+  /** Lines shared by both outcomes when `options` is set, otherwise the whole quote. */
   line_items: Array<{
     description: string
     quantity: number
     unit_price_cents: number
   }>
+  /** Exactly two entries (A then B) for a two-outcome quote. */
+  options?: Array<{
+    label: string
+    line_items: Array<{ description: string; quantity: number; unit_price_cents: number }>
+  }>
   gst_enabled: boolean
   gst_inclusive: boolean
 }
 
+export const selectAutoKeyQuoteOption = (quoteId: string, option: 'A' | 'B') =>
+  api.post<AutoKeyQuote>(`/auto-key-jobs/quotes/${quoteId}/select-option`, { option })
 export const listAutoKeyQuotes = (jobId: string) => api.get<AutoKeyQuote[]>(`/auto-key-jobs/${jobId}/quotes`)
 export const createAutoKeyQuote = (jobId: string, payload: AutoKeyQuoteCreatePayload) =>
   api.post<AutoKeyQuote>(`/auto-key-jobs/${jobId}/quotes`, payload)
@@ -2767,11 +2790,17 @@ export const decideShoeQuote = (token: string, decision: 'approved' | 'declined'
 export const createPortalSession = (email: string) =>
   axios.post<{ session_token: string; portal_url: string; expires_days: number }>(withApiOrigin('/v1/public/portal/create-session'), { email })
 
-export const requestPortalCode = (phone: string, ticket_number: string) =>
-  axios.post<{ challenge_id: string; expires_minutes: number }>(withApiOrigin('/v1/public/portal/verify'), { phone, ticket_number })
+export const requestPortalCode = (phone: string, ticket_number?: string) =>
+  axios.post<{ challenge_id: string; expires_minutes: number }>(withApiOrigin('/v1/public/portal/verify'), { phone, ticket_number: ticket_number || undefined })
 
 export const verifyPortalCode = (challenge_id: string, code: string) =>
   axios.post<{ session_token: string; expires_days: number }>(withApiOrigin('/v1/public/portal/verify-code'), { challenge_id, code })
+
+export const openPortalFromJobLink = (job_type: string, status_token: string) =>
+  axios.post<{ session_token: string; job_number: string; expires_days: number }>(
+    withApiOrigin('/v1/public/portal/job-session'),
+    { job_type, status_token },
+  )
 
 export const getPortalSession = (token: string, includeHistory = false) =>
   axios.get<CustomerPortalLookupResponse>(
@@ -4081,7 +4110,9 @@ export interface PublicAutoKeyQuote extends ShopBrandingFields {
   signed_at: string | null
   signer_name: string | null
   has_signature: boolean
-  line_items: { description: string; quantity: number; unit_price_cents: number; total_price_cents: number }[]
+  line_items: { option_key?: 'A' | 'B' | null; description: string; quantity: number; unit_price_cents: number; total_price_cents: number }[]
+  options?: AutoKeyQuoteOption[]
+  selected_option?: 'A' | 'B' | null
 }
 
 export const getPublicAutoKeyQuote = (token: string) =>
@@ -4163,15 +4194,16 @@ export const adjustLoyaltyPoints = (customerId: string, points_delta: number, no
 
 // ── Intake dispatch (ring-map job pool) ──────────────────────────────────────
 
+/** Pre-claim view: area only. Name, street address, plate and phone are released by claiming. */
 export interface IntakePoolJob {
   id: string
-  customer_name: string
-  job_address: string
+  job_type: string
+  suburb: string | null
+  state: string | null
+  postcode: string | null
   vehicle_make: string | null
   vehicle_model: string | null
   vehicle_year: string | null
-  registration_plate: string | null
-  description: string | null
   ring: number
   created_at: string
 }

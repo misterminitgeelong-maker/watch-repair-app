@@ -32,6 +32,8 @@ interface CartLine {
   quantity: number
   unit_price_cents: number
   discount: PosDiscount
+  /** Two-outcome quotes: which option this line belongs to; undefined = both. */
+  option?: 'A' | 'B'
 }
 
 export function POSView({
@@ -101,6 +103,8 @@ export function POSView({
   const [successJobId, setSuccessJobId] = useState<string | null>(null)
   const [gstEnabled, setGstEnabled] = useState(true)
   const [gstInclusive, setGstInclusive] = useState(true)
+  const [twoOutcome, setTwoOutcome] = useState(false)
+  const [optionLabels, setOptionLabels] = useState({ A: '', B: '' })
 
   const cartCount = cart.reduce((n, l) => n + l.quantity, 0)
   const originalCents = cart.reduce((s, l) => s + l.quantity * l.unit_price_cents, 0)
@@ -108,6 +112,10 @@ export function POSView({
   const discountCents = originalCents - enteredCents
   const hasInvalidDiscount = cart.some(l => !!priceWithDiscount(l.unit_price_cents, l.discount).error)
   const { subtotalCents: subtotal, taxCents: tax, totalCents: total } = computeGstAmounts(enteredCents, gstEnabled, gstInclusive)
+  const twoOutcomeActive = quoteMode && twoOutcome
+  const lineCents = (l: CartLine) => l.quantity * priceWithDiscount(l.unit_price_cents, l.discount).unitPriceCents
+  const optionTotalCents = (key: 'A' | 'B') =>
+    computeGstAmounts(cart.filter(l => !l.option || l.option === key).reduce((n, l) => n + lineCents(l), 0), gstEnabled, gstInclusive).totalCents
 
   const addToCart = (description: string, unit_price_cents: number, quantity = 1) => {
     const price = priceWithDiscount(unit_price_cents, nextDiscount)
@@ -134,7 +142,11 @@ export function POSView({
     mutationFn: async () => {
       setError('')
       if (cart.length === 0) throw new Error('Add at least one item.')
-      const lineItems = cart.map(discountedQuoteLine)
+      const lineItems = cart.filter(l => !twoOutcomeActive || !l.option).map(discountedQuoteLine)
+      if (twoOutcomeActive) {
+        if (!optionLabels.A.trim() || !optionLabels.B.trim()) throw new Error('Give both options a name, e.g. CAS3 and CAS3++.')
+        if (!cart.some(l => l.option === 'A') || !cart.some(l => l.option === 'B')) throw new Error('Each option needs at least one item of its own.')
+      }
       let cid = customerId
       if (customerMode === 'new') {
         if (!newCustomer.full_name.trim()) throw new Error('Customer name is required.')
@@ -150,6 +162,14 @@ export function POSView({
 
       const quotePayload = {
         line_items: lineItems,
+        ...(twoOutcomeActive
+          ? {
+              options: (['A', 'B'] as const).map(key => ({
+                label: optionLabels[key].trim(),
+                line_items: cart.filter(l => l.option === key).map(discountedQuoteLine),
+              })),
+            }
+          : {}),
         gst_enabled: gstEnabled,
         gst_inclusive: gstInclusive,
       }
@@ -459,6 +479,18 @@ export function POSView({
                     ${((price.unitPriceCents * line.quantity) / 100).toFixed(2)}
                   </p>
                 </div>
+                {twoOutcomeActive && (
+                  <Select
+                    className="mt-3"
+                    aria-label={`Applies to for ${line.description}`}
+                    value={line.option ?? ''}
+                    onChange={e => setCart(cart.map(l => l.id === line.id ? { ...l, option: (e.target.value || undefined) as 'A' | 'B' | undefined } : l))}
+                  >
+                    <option value="">Both options</option>
+                    <option value="A">Option A only</option>
+                    <option value="B">Option B only</option>
+                  </Select>
+                )}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Select aria-label={`Discount type for ${line.description}`} value={line.discount.type} onChange={e => setCart(cart.map(l => l.id === line.id ? { ...l, discount: { type: e.target.value as PosDiscountType, value: '' } } : l))}>
                     <option value="none">No discount</option><option value="percent">Percentage (%)</option><option value="amount">Dollars ($) per item</option>
@@ -513,6 +545,20 @@ export function POSView({
           </div>
         )}
         <div className="border-t pt-4" style={{ borderColor: 'var(--ms-border)' }}>
+          {quoteMode && (
+            <div className="mb-3 space-y-2">
+              <label className="flex min-h-11 items-center gap-2 text-sm font-medium sm:min-h-0" style={{ color: 'var(--ms-text)' }}>
+                <input type="checkbox" className="h-5 w-5 sm:h-4 sm:w-4" checked={twoOutcome} onChange={e => setTwoOutcome(e.target.checked)} />
+                Two possible outcomes (price depends on what we find on site)
+              </label>
+              {twoOutcome && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Input aria-label="Option A name" placeholder="Option A, e.g. CAS3" value={optionLabels.A} onChange={e => setOptionLabels({ ...optionLabels, A: e.target.value })} />
+                  <Input aria-label="Option B name" placeholder="Option B, e.g. CAS3++" value={optionLabels.B} onChange={e => setOptionLabels({ ...optionLabels, B: e.target.value })} />
+                </div>
+              )}
+            </div>
+          )}
           <label className="flex min-h-11 items-center gap-2 text-sm sm:min-h-0 sm:mb-2" style={{ color: 'var(--ms-text)' }}>
             <input type="checkbox" className="h-5 w-5 sm:h-4 sm:w-4" checked={gstEnabled} onChange={e => setGstEnabled(e.target.checked)} />
             Apply GST (10%)
@@ -532,7 +578,14 @@ export function POSView({
           {discountCents > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Item discounts</span><span style={{ color: 'var(--ms-text)' }}>−${(discountCents / 100).toFixed(2)}</span></div>}
           <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>Subtotal</span><span style={{ color: 'var(--ms-text)' }}>${(subtotal / 100).toFixed(2)}</span></div>
           {tax > 0 && <div className="flex justify-between text-sm mb-1"><span style={{ color: 'var(--ms-text-muted)' }}>GST</span><span style={{ color: 'var(--ms-text)' }}>${(tax / 100).toFixed(2)}</span></div>}
-          <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
+          {twoOutcomeActive ? (
+            <>
+              <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>{optionLabels.A.trim() || 'Option A'}</span><span>${(optionTotalCents('A') / 100).toFixed(2)}</span></div>
+              <div className="flex justify-between text-lg font-bold" style={{ color: 'var(--ms-accent)' }}><span>{optionLabels.B.trim() || 'Option B'}</span><span>${(optionTotalCents('B') / 100).toFixed(2)}</span></div>
+            </>
+          ) : (
+            <div className="flex justify-between text-lg font-bold mt-2" style={{ color: 'var(--ms-accent)' }}><span>Total</span><span>${(total / 100).toFixed(2)}</span></div>
+          )}
         </div>
         {error && <p role="alert" className="text-sm mt-3" style={{ color: 'var(--ms-error)' }}>{error}</p>}
         {/* Phones use the sticky checkout bar below instead, so the action is

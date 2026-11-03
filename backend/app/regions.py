@@ -37,3 +37,40 @@ def apply_nz_defaults_from_placement(tenant) -> bool:
     tenant.default_currency = REGION_DEFAULTS["NZ"]["currency"]
     tenant.timezone = REGION_DEFAULTS["NZ"]["timezone"]
     return True
+
+
+#: Where each Australian state / territory keeps its clocks. TSS ``minit_region`` carries the state code.
+AU_STATE_TIMEZONES: dict[str, str] = {
+    "VIC": "Australia/Melbourne",
+    "NSW": "Australia/Sydney",
+    "ACT": "Australia/Sydney",
+    "QLD": "Australia/Brisbane",
+    "SA": "Australia/Adelaide",
+    "WA": "Australia/Perth",
+    "NT": "Australia/Darwin",
+    "TAS": "Australia/Hobart",
+}
+
+#: Zones a shop may pick for itself (Australia and New Zealand).
+ALLOWED_SHOP_TIMEZONES: frozenset[str] = frozenset(
+    {*AU_STATE_TIMEZONES.values(), "Pacific/Auckland"}
+)
+
+_DEFAULT_AU_TIMEZONE = REGION_DEFAULTS["AU"]["timezone"]
+
+
+def apply_au_state_timezone(tenant) -> bool:
+    """Put a shop HQ placed in WA, SA, NT, QLD, ... on its own state's clock.
+
+    Customer texts show the booking time in ``tenant.timezone``, which starts out as
+    Melbourne. Only moves a tenant still on that default, so a zone chosen in Settings
+    is never overwritten. Returns True if the tenant changed.
+    """
+    state = (tenant.minit_region or "").strip().upper()
+    zone = AU_STATE_TIMEZONES.get(state)
+    if not zone or (tenant.timezone or _DEFAULT_AU_TIMEZONE) != _DEFAULT_AU_TIMEZONE:
+        return False
+    if zone == _DEFAULT_AU_TIMEZONE:
+        return False
+    tenant.timezone = zone
+    return True

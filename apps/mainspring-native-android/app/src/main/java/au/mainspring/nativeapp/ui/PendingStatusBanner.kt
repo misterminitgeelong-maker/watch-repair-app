@@ -1,0 +1,41 @@
+package au.mainspring.nativeapp.ui
+
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import au.mainspring.nativeapp.offline.OfflineSync
+import au.mainspring.nativeapp.offline.pendingStatusFor
+
+/** Shown on a job screen while a status change made offline is still waiting to sync. Renders nothing otherwise. */
+@Composable fun PendingStatusBanner(jobId: String, modifier: Modifier = Modifier) {
+    val snap by OfflineSync.queue.state.collectAsStateWithLifecycle()
+    val pending = snap.pendingStatusFor(jobId) ?: return
+    Surface(modifier.fillMaxWidth().testTag("pending-status-banner"), color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.medium) {
+        Text(
+            "${OfflineSync.SAVED_OFFLINE_MESSAGE}: status will change to ${pending.replace('_', ' ')}",
+            Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSecondaryContainer, style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+/** Reloads the job once its queued offline changes have synced, so the screen shows the server's new status. */
+@Composable fun SyncedRefreshEffect(jobId: String, onSynced: () -> Unit) {
+    val snap by OfflineSync.queue.state.collectAsStateWithLifecycle()
+    val hasPending = snap.pending.any { it.jobId == jobId }
+    val hadPending = remember(jobId) { mutableStateOf(false) }
+    LaunchedEffect(hasPending) {
+        if (hadPending.value && !hasPending) onSynced()
+        hadPending.value = hasPending
+    }
+}

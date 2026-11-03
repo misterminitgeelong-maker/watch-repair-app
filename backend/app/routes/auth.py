@@ -307,7 +307,11 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
     enabled = sorted(PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES[LOWEST_PLAN_CODE]))
     product = tenant_product(tenant)
     available_sites = _session_available_sites(session, tenant, user)
-    cal_tz = settings.schedule_calendar_timezone
+    cal_tz = (getattr(tenant, "timezone", None) or "").strip() or settings.schedule_calendar_timezone
+    try:
+        ZoneInfo(cal_tz)
+    except Exception:
+        cal_tz = settings.schedule_calendar_timezone
     now_shop = datetime.now(ZoneInfo(cal_tz))
     shop_today = now_shop.strftime("%Y-%m-%d")
     return AuthSessionResponse(
@@ -495,6 +499,17 @@ def _spend_password_check_time(password: str) -> None:
 def get_login_rate_limit():
     return settings.rate_limit_auth_login_test if settings.app_env == "test" else settings.rate_limit_auth_login
 
+NATIVE_CLIENT_HEADER = "X-Mainspring-Client"
+NATIVE_CLIENT_VALUES = {"native-android"}
+
+
+def _is_native_client(request: Request | None) -> bool:
+    """True when the caller identifies as the native app (exact value match)."""
+    if request is None:
+        return False
+    return (request.headers.get(NATIVE_CLIENT_HEADER) or "").strip().lower() in NATIVE_CLIENT_VALUES
+
+
 def _issue_session_tokens(
     session: Session,
     *,
@@ -515,7 +530,12 @@ def _issue_session_tokens(
     jti = uuid4().hex
     now = datetime.now(timezone.utc)
     access, access_exp = create_access_token(tenant_id, user_id, role, sid=str(sid))
-    refresh, refresh_exp = create_refresh_token(tenant_id, user_id, role, sid=str(sid), jti=jti)
+    native_minutes = (
+        settings.jwt_native_refresh_idle_days * 24 * 60 if _is_native_client(request) else None
+    )
+    refresh, refresh_exp = create_refresh_token(
+        tenant_id, user_id, role, sid=str(sid), jti=jti, expires_minutes=native_minutes
+    )
     user_agent = None
     if request is not None:
         user_agent = (request.headers.get("user-agent") or "")[:400] or None
@@ -946,6 +966,15 @@ def _refresh_tokens_impl(request: Request, response: Response, payload: RefreshR
             rs.jti = next_jti
             rs.rotated_at = now
         rs.last_used_at = now
+        if _is_native_client(request):
+            # Sliding window: idle days from now, capped at max days since login.
+            slid = min(
+                now + timedelta(days=settings.jwt_native_refresh_idle_days),
+                _as_utc(rs.created_at) + timedelta(days=settings.jwt_native_refresh_max_days),
+            )
+            if slid > rs_expires:
+                rs_expires = slid
+                rs.expires_at = slid
         session.add(rs)
         session.commit()
 
@@ -1020,16 +1049,32 @@ def _revoke_for_refresh_reuse(session: Session, rs: RefreshSession, request: Req
 
 @router.get("/export-my-data", summary="Export tenant data for portability (GDPR-style)")
 def export_my_data(
-    auth: AuthContext = Depends(get_auth_context),
+    auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
 ):
-    """Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability."""
+    """Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.
+
+    Owner (or platform admin) only: this is a bulk dump of customer contact details.
+    Every export is recorded in the tenant event log.
+    """
     customers = session.exec(select(Customer).where(Customer.tenant_id == auth.tenant_id)).all()
     watches = session.exec(select(Watch).where(Watch.tenant_id == auth.tenant_id)).all()
     jobs = session.exec(select(RepairJob).where(RepairJob.tenant_id == auth.tenant_id)).all()
     from ..models import Quote, Invoice
     quotes = session.exec(select(Quote).where(Quote.tenant_id == auth.tenant_id)).all()
     invoices = session.exec(select(Invoice).where(Invoice.tenant_id == auth.tenant_id)).all()
+    actor = session.get(User, auth.user_id)
+    session.add(
+        TenantEventLog(
+            tenant_id=auth.tenant_id,
+            actor_user_id=auth.user_id,
+            actor_email=actor.email if actor else None,
+            entity_type="tenant",
+            event_type="data_export",
+            event_summary=f"Exported tenant data ({len(customers)} customers, {len(jobs)} repair jobs)",
+        )
+    )
+    session.commit()
     return {
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "customers": [{"id": str(c.id), "full_name": c.full_name, "email": c.email, "phone": c.phone, "created_at": c.created_at.isoformat() if c.created_at else None} for c in customers],

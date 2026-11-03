@@ -271,6 +271,9 @@ export interface paths {
         /**
          * Export tenant data for portability (GDPR-style)
          * @description Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.
+         *
+         *     Owner (or platform admin) only: this is a bulk dump of customer contact details.
+         *     Every export is recorded in the tenant event log.
          */
         get: operations["export_my_data_v1_auth_export_my_data_get"];
         put?: never;
@@ -1910,6 +1913,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sms/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sms Usage
+         * @description Outbound SMS this calendar month (Melbourne) against the soft fair-use limit.
+         *
+         *     Owners see their own shop; a platform admin sees any tenant; an owner of an HQ
+         *     tenant sees the operators linked to its network.
+         */
+        get: operations["get_sms_usage_v1_sms_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/card-payment-issues/{issue_id}": {
         parameters: {
             query?: never;
@@ -2533,12 +2559,13 @@ export interface paths {
         put?: never;
         /**
          * Verify Portal Access
-         * @description Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.
+         * @description Step 1 of phone sign-in: text a code to the phone number.
          *
-         *     The answer is identical whether or not the pair matched (a challenge id is
-         *     always returned), so this cannot be used to probe which tickets exist. The
-         *     phone number and ticket must belong to the same job, and the portal only
-         *     opens once the texted code is entered at ``/portal/verify-code``.
+         *     The ticket number is optional (when given it must match a job on that
+         *     phone). The answer is identical whether or not anything matched (a
+         *     challenge id is always returned), so this cannot be used to probe which
+         *     phones or tickets exist. The portal only opens once the texted code is
+         *     entered at ``/portal/verify-code``.
          */
         post: operations["verify_portal_access_v1_public_portal_verify_post"];
         delete?: never;
@@ -2561,6 +2588,30 @@ export interface paths {
          * @description Step 2: exchange the texted code for a 30-day session scoped to that customer.
          */
         post: operations["verify_portal_code_v1_public_portal_verify_code_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/portal/job-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Portal From Job Link
+         * @description Open the customer portal straight from the link texted or emailed about a job.
+         *
+         *     The job's status token is already a private link to that job, so it is
+         *     accepted as proof of who is asking. The session is scoped to that one
+         *     customer at that one shop (the same scope as a phone + ticket sign-in).
+         */
+        post: operations["open_portal_from_job_link_v1_public_portal_job_session_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2962,6 +3013,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shop-mobile-bookings/coverage-contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Coverage Contact
+         * @description Who a shop should contact when no operator covers its suburb.
+         */
+        get: operations["coverage_contact_v1_shop_mobile_bookings_coverage_contact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shop-mobile-bookings/suggest-operator": {
         parameters: {
             query?: never;
@@ -3077,6 +3148,9 @@ export interface paths {
         /**
          * Submit Public Intake
          * @description Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.
+         *
+         *     Idempotent: a repeat of the same submission (same Idempotency-Key, or same normalised
+         *     payload within 10 minutes) returns the original job and creates nothing new.
          */
         post: operations["submit_public_intake_v1_public_intake_post"];
         delete?: never;
@@ -3284,6 +3358,29 @@ export interface paths {
          * @description Clear signup_payment_pending — use for testers/accounts paid outside Stripe.
          */
         post: operations["mark_tenant_paid_v1_platform_admin_tenants__tenant_id__mark_paid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform-admin/tenants/{tenant_id}/keep-own-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Tenant Keep Own Plan
+         * @description Let a Minit-network shop keep a non-Minit plan (e.g. Pro for an early tester).
+         *
+         *     The shop stays in the Minit network; it just isn't forced onto booking_only at
+         *     sign-in, and the plan endpoint accepts any plan for it. The HQ itself can't opt out.
+         */
+        post: operations["set_tenant_keep_own_plan_v1_platform_admin_tenants__tenant_id__keep_own_plan_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4148,6 +4245,26 @@ export interface paths {
         put?: never;
         /** Create Auto Key Quote */
         post: operations["create_auto_key_quote_v1_auto_key_jobs__job_id__quotes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/quotes/{quote_id}/select-option": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select Auto Key Quote Option
+         * @description Tech records which outcome applies on site; fixes the quote total and what gets invoiced.
+         */
+        post: operations["select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6527,6 +6644,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/hq-billing/monthly-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Monthly Summary */
+        get: operations["monthly_summary_v1_hq_billing_monthly_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hq-billing/monthly-summary.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Monthly Summary Csv */
+        get: operations["monthly_summary_csv_v1_hq_billing_monthly_summary_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billing/limits": {
         parameters: {
             query?: never;
@@ -7523,6 +7674,251 @@ export interface paths {
         patch: operations["update_shop_identity_v1_settings_shop_identity_patch"];
         trace?: never;
     };
+    "/v1/engraving/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Events */
+        get: operations["list_events_v1_engraving_events_get"];
+        put?: never;
+        /** Create Event */
+        post: operations["create_event_v1_engraving_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Event */
+        patch: operations["update_event_v1_engraving_events__event_id__patch"];
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Queue */
+        get: operations["get_queue_v1_engraving_events__event_id__queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Walk Up Order */
+        post: operations["create_walk_up_order_v1_engraving_events__event_id__orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Laser Csv
+         * @description One row per medal still to engrave, in queue order.
+         *
+         *     Columns: Name, Line2, Place, Order, Medal. For other laser programs use
+         *     /export, which can also shape the file for LightBurn, xTool and EZCad2.
+         */
+        get: operations["export_laser_csv_v1_engraving_events__event_id__export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/events/{event_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Laser File
+         * @description Laser file shaped for the chosen program, optionally only the next `limit` medals.
+         *
+         *     - csv: header row plus Name, Line2, Place, Order, Medal.
+         *     - lightburn: the same without the header row (LightBurn counts every line as a row).
+         *     - xtool: header row; empty cells become a single space (xTool skips a row with a blank cell).
+         *     - ezcad2: a zip of names.txt, line2.txt and places.txt, one value per line (EZCad2 reads
+         *       TXT or old-format XLS, not CSV).
+         */
+        get: operations["export_laser_file_v1_engraving_events__event_id__export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Order */
+        patch: operations["update_order_v1_engraving_orders__order_id__patch"];
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}/medal-done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Medal Done
+         * @description The operator finished one medal. When the last one is done the order is ready
+         *     and the parent is texted.
+         */
+        post: operations["medal_done_v1_engraving_orders__order_id__medal_done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Order
+         * @description Put this order on the laser. Any other order marked engraving goes back to waiting,
+         *     so there is only ever one "now engraving".
+         */
+        post: operations["start_order_v1_engraving_orders__order_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/engraving/orders/{order_id}/resend-ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend Ready Text */
+        post: operations["resend_ready_text_v1_engraving_orders__order_id__resend_ready_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/engraving/events/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Event */
+        get: operations["get_public_event_v1_public_engraving_events__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/engraving/events/{token}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Public Order */
+        post: operations["create_public_order_v1_public_engraving_events__token__orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/engraving/orders/{status_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Order */
+        get: operations["get_public_order_v1_public_engraving_orders__status_token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7692,7 +8088,7 @@ export interface components {
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro";
             /** Enabled Features */
             enabled_features: string[];
             /**
@@ -8247,8 +8643,13 @@ export interface components {
         };
         /** AutoKeyQuoteCreate */
         AutoKeyQuoteCreate: {
-            /** Line Items */
+            /**
+             * Line Items
+             * @default []
+             */
             line_items: components["schemas"]["AutoKeyQuoteLineItemCreate"][];
+            /** Options */
+            options?: components["schemas"]["AutoKeyQuoteOptionCreate"][] | null;
             /**
              * Gst Enabled
              * @default true
@@ -8293,6 +8694,8 @@ export interface components {
              * Format: uuid
              */
             auto_key_quote_id: string;
+            /** Option Key */
+            option_key?: string | null;
             /** Description */
             description: string;
             /** Quantity */
@@ -8301,6 +8704,26 @@ export interface components {
             unit_price_cents: number;
             /** Total Price Cents */
             total_price_cents: number;
+        };
+        /** AutoKeyQuoteOptionCreate */
+        AutoKeyQuoteOptionCreate: {
+            /** Label */
+            label: string;
+            /** Line Items */
+            line_items: components["schemas"]["AutoKeyQuoteLineItemCreate"][];
+        };
+        /** AutoKeyQuoteOptionRead */
+        AutoKeyQuoteOptionRead: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Subtotal Cents */
+            subtotal_cents: number;
+            /** Tax Cents */
+            tax_cents: number;
+            /** Total Cents */
+            total_cents: number;
         };
         /** AutoKeyQuoteRead */
         AutoKeyQuoteRead: {
@@ -8354,6 +8777,23 @@ export interface components {
              * @default []
              */
             line_items: components["schemas"]["AutoKeyQuoteLineItemRead"][];
+            /**
+             * Options
+             * @default []
+             */
+            options: components["schemas"]["AutoKeyQuoteOptionRead"][];
+            /** Selected Option */
+            selected_option?: string | null;
+            /** Selected At */
+            selected_at?: string | null;
+        };
+        /** AutoKeyQuoteSelectOption */
+        AutoKeyQuoteSelectOption: {
+            /**
+             * Option
+             * @enum {string}
+             */
+            option: "A" | "B";
         };
         /** AutoKeyQuoteSendResponse */
         AutoKeyQuoteSendResponse: {
@@ -8371,7 +8811,7 @@ export interface components {
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro";
         };
         /** BillingCheckoutRequest */
         BillingCheckoutRequest: {
@@ -9219,6 +9659,251 @@ export interface components {
              */
             platform: string;
         };
+        /** EngravingEventCreate */
+        EngravingEventCreate: {
+            /** Name */
+            name: string;
+            /** Event Date */
+            event_date?: string | null;
+            /** Location */
+            location?: string | null;
+            /**
+             * Price Cents
+             * @default 1500
+             */
+            price_cents: number;
+            /**
+             * Minutes Per Medal
+             * @default 3
+             */
+            minutes_per_medal: number;
+            /**
+             * Sms Enabled
+             * @default true
+             */
+            sms_enabled: boolean;
+        };
+        /** EngravingEventRead */
+        EngravingEventRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Event Date */
+            event_date: string | null;
+            /** Location */
+            location: string | null;
+            /** Price Cents */
+            price_cents: number;
+            /** Minutes Per Medal */
+            minutes_per_medal: number;
+            /** Status */
+            status: string;
+            /** Sms Enabled */
+            sms_enabled: boolean;
+            /** Public Token */
+            public_token: string;
+            /** Public Url */
+            public_url: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            stats: components["schemas"]["EngravingEventStats"];
+        };
+        /** EngravingEventStats */
+        EngravingEventStats: {
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
+            /**
+             * Engraving
+             * @default 0
+             */
+            engraving: number;
+            /**
+             * Ready
+             * @default 0
+             */
+            ready: number;
+            /**
+             * Collected
+             * @default 0
+             */
+            collected: number;
+            /**
+             * Cancelled
+             * @default 0
+             */
+            cancelled: number;
+            /**
+             * Medals Total
+             * @default 0
+             */
+            medals_total: number;
+            /**
+             * Medals Remaining
+             * @default 0
+             */
+            medals_remaining: number;
+            /**
+             * Paid Cents
+             * @default 0
+             */
+            paid_cents: number;
+            /**
+             * Unpaid Cents
+             * @default 0
+             */
+            unpaid_cents: number;
+        };
+        /** EngravingEventUpdate */
+        EngravingEventUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Event Date */
+            event_date?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Price Cents */
+            price_cents?: number | null;
+            /** Minutes Per Medal */
+            minutes_per_medal?: number | null;
+            /** Status */
+            status?: ("open" | "paused" | "closed") | null;
+            /** Sms Enabled */
+            sms_enabled?: boolean | null;
+        };
+        /** EngravingOperatorOrderCreate */
+        EngravingOperatorOrderCreate: {
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2?: string | null;
+            /**
+             * Place
+             * @default None
+             */
+            place: string;
+            /**
+             * Qty
+             * @default 1
+             */
+            qty: number;
+            /** Phone */
+            phone?: string | null;
+            /**
+             * Paid
+             * @default false
+             */
+            paid: boolean;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** EngravingOrderCreate */
+        EngravingOrderCreate: {
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2?: string | null;
+            /**
+             * Place
+             * @default None
+             */
+            place: string;
+            /**
+             * Qty
+             * @default 1
+             */
+            qty: number;
+            /** Phone */
+            phone?: string | null;
+        };
+        /** EngravingOrderRead */
+        EngravingOrderRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Order Number */
+            order_number: string;
+            /** Order Seq */
+            order_seq: number;
+            /** Status Token */
+            status_token: string;
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2: string | null;
+            /** Place */
+            place: string;
+            /** Qty */
+            qty: number;
+            /** Medals Done */
+            medals_done: number;
+            /** Phone */
+            phone: string | null;
+            /** Status */
+            status: string;
+            /** Paid */
+            paid: boolean;
+            /** Paid At */
+            paid_at: string | null;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Source */
+            source: string;
+            /** Notes */
+            notes: string | null;
+            /** Ready At */
+            ready_at: string | null;
+            /** Ready Sms Status */
+            ready_sms_status: string | null;
+            /** Collected At */
+            collected_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** EngravingOrderUpdate */
+        EngravingOrderUpdate: {
+            /** Athlete Name */
+            athlete_name?: string | null;
+            /** Line2 */
+            line2?: string | null;
+            /** Place */
+            place?: string | null;
+            /** Qty */
+            qty?: number | null;
+            /** Phone */
+            phone?: string | null;
+            /** Paid */
+            paid?: boolean | null;
+            /** Status */
+            status?: ("waiting" | "engraving" | "ready" | "collected" | "cancelled") | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** EngravingQueueRead */
+        EngravingQueueRead: {
+            event: components["schemas"]["EngravingEventRead"];
+            /** Orders */
+            orders: components["schemas"]["EngravingOrderRead"][];
+        };
         /** FollowUpUpdate */
         FollowUpUpdate: {
             /** Expected Version */
@@ -9597,6 +10282,8 @@ export interface components {
             registration_plate?: string | null;
             /** Description */
             description?: string | null;
+            /** Ingest Public Id */
+            ingest_public_id?: string | null;
         };
         /** IntegrationHealthRead */
         IntegrationHealthRead: {
@@ -10701,7 +11388,7 @@ export interface components {
             /** Tenant Slug */
             tenant_slug: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro") | null;
             /** Business Address */
             business_address?: string | null;
             /** Shop Number */
@@ -11581,6 +12268,13 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
+        /** PlatformTenantKeepOwnPlanRequest */
+        PlatformTenantKeepOwnPlanRequest: {
+            /** Keep Own Plan */
+            keep_own_plan: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
         /** PlatformTenantPlanUpdateRequest */
         PlatformTenantPlanUpdateRequest: {
             /** Plan Code */
@@ -11624,6 +12318,11 @@ export interface components {
              * @default false
              */
             is_minit: boolean;
+            /**
+             * Keep Own Plan
+             * @default false
+             */
+            keep_own_plan: boolean;
             /**
              * Hq Billed
              * @default false
@@ -11710,6 +12409,13 @@ export interface components {
              */
             occurred_at: string;
         };
+        /** PortalJobSessionRequest */
+        PortalJobSessionRequest: {
+            /** Job Type */
+            job_type: string;
+            /** Status Token */
+            status_token: string;
+        };
         /** PortalMessageToShopRequest */
         PortalMessageToShopRequest: {
             /** Job Type */
@@ -11766,7 +12472,7 @@ export interface components {
             /** Phone */
             phone: string;
             /** Ticket Number */
-            ticket_number: string;
+            ticket_number?: string | null;
         };
         /** ProfileResponse */
         ProfileResponse: {
@@ -12041,6 +12747,88 @@ export interface components {
             key_photo_data?: string | null;
             /** Extra Key Photo Data */
             extra_key_photo_data?: string | null;
+        };
+        /** PublicEngravingEvent */
+        PublicEngravingEvent: {
+            /** Name */
+            name: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Event Date */
+            event_date: string | null;
+            /** Location */
+            location: string | null;
+            /** Price Cents */
+            price_cents: number;
+            /** Accepting Orders */
+            accepting_orders: boolean;
+            /** Status */
+            status: string;
+            /** Wait Minutes */
+            wait_minutes: number;
+            /** Medals Ahead */
+            medals_ahead: number;
+            /**
+             * Name Max
+             * @default 24
+             */
+            name_max: number;
+            /**
+             * Line2 Max
+             * @default 28
+             */
+            line2_max: number;
+            /**
+             * Places
+             * @default [
+             *       "1st",
+             *       "2nd",
+             *       "3rd",
+             *       "Participant",
+             *       "None"
+             *     ]
+             */
+            places: string[];
+        };
+        /** PublicEngravingOrder */
+        PublicEngravingOrder: {
+            /** Order Number */
+            order_number: string;
+            /** Status Token */
+            status_token: string;
+            /** Event Name */
+            event_name: string;
+            /** Shop Name */
+            shop_name: string;
+            /** Athlete Name */
+            athlete_name: string;
+            /** Line2 */
+            line2: string | null;
+            /** Place */
+            place: string;
+            /** Qty */
+            qty: number;
+            /** Medals Done */
+            medals_done: number;
+            /** Status */
+            status: string;
+            /** Paid */
+            paid: boolean;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Queue Position */
+            queue_position: number | null;
+            /** Wait Minutes */
+            wait_minutes: number | null;
+            /** Phone Masked */
+            phone_masked: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Ready At */
+            ready_at: string | null;
         };
         /** PublicUser */
         PublicUser: {
@@ -13478,6 +14266,8 @@ export interface components {
             shop_number?: string | null;
             /** Region */
             region?: ("AU" | "NZ") | null;
+            /** Timezone */
+            timezone?: string | null;
         };
         /** ShopMobileBookingCreate */
         ShopMobileBookingCreate: {
@@ -13790,6 +14580,48 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** SmsUsageRead */
+        SmsUsageRead: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /**
+             * Timezone
+             * @default Australia/Melbourne
+             */
+            timezone: string;
+            /** Sent */
+            sent: number;
+            /** Suppressed */
+            suppressed: number;
+            /** Limit */
+            limit: number;
+            /** Percent Used */
+            percent_used: number | null;
+            /** Remaining */
+            remaining: number | null;
+            /** Warn Threshold Reached */
+            warn_threshold_reached: boolean;
+            /** Limit Reached */
+            limit_reached: boolean;
+            /**
+             * Enforced
+             * @default false
+             */
+            enforced: boolean;
         };
         /** StockImportSummaryResponse */
         StockImportSummaryResponse: {
@@ -14170,7 +15002,7 @@ export interface components {
             /** Owner Password */
             owner_password: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro") | null;
         };
         /** TenantEventLogRead */
         TenantEventLogRead: {
@@ -14208,7 +15040,7 @@ export interface components {
              * Plan Code
              * @enum {string}
              */
-            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro";
+            plan_code: "watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro";
         };
         /** TenantSignupRequest */
         TenantSignupRequest: {
@@ -14223,7 +15055,7 @@ export interface components {
             /** Password */
             password: string;
             /** Plan Code */
-            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "pro") | null;
+            plan_code?: ("watch" | "shoe" | "auto_key" | "enterprise" | "basic_watch" | "basic_shoe" | "basic_auto_key" | "basic_watch_shoe" | "basic_watch_auto_key" | "basic_shoe_auto_key" | "basic_all_tabs" | "booking_only" | "minit_hq" | "minit_operator" | "pro") | null;
         };
         /** TenantSignupResponse */
         TenantSignupResponse: {
@@ -18227,6 +19059,38 @@ export interface operations {
             };
         };
     };
+    get_sms_usage_v1_sms_usage_get: {
+        parameters: {
+            query?: {
+                /** @description Operator to inspect; defaults to your own shop */
+                tenant_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmsUsageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_card_payment_issue_v1_card_payment_issues__issue_id__get: {
         parameters: {
             query?: never;
@@ -19420,6 +20284,39 @@ export interface operations {
             };
         };
     };
+    open_portal_from_job_link_v1_public_portal_job_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalJobSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_portal_session_jobs_v1_public_portal_session__token__get: {
         parameters: {
             query?: {
@@ -19796,6 +20693,7 @@ export interface operations {
             query?: never;
             header?: {
                 "X-Mobile-Lead-Secret"?: string | null;
+                "Idempotency-Key"?: string | null;
             };
             path: {
                 ingest_public_id: string;
@@ -19831,7 +20729,9 @@ export interface operations {
     submit_key_enquiry_v1_public_key_enquiry__ingest_public_id__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 ingest_public_id: string;
             };
@@ -20079,6 +20979,28 @@ export interface operations {
             };
         };
     };
+    coverage_contact_v1_shop_mobile_bookings_coverage_contact_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string | null;
+                    };
+                };
+            };
+        };
+    };
     suggest_operator_v1_shop_mobile_bookings_suggest_operator_get: {
         parameters: {
             query: {
@@ -20308,7 +21230,9 @@ export interface operations {
     submit_public_intake_v1_public_intake_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -20701,6 +21625,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformTenantRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_tenant_keep_own_plan_v1_platform_admin_tenants__tenant_id__keep_own_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformTenantKeepOwnPlanRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -22458,6 +23417,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoKeyQuoteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quote_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoKeyQuoteSelectOption"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26943,6 +27937,75 @@ export interface operations {
             };
         };
     };
+    monthly_summary_v1_hq_billing_monthly_summary_get: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM, default current month */
+                month?: string | null;
+                routing?: boolean;
+                prospecting?: boolean;
+                parent_account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    monthly_summary_csv_v1_hq_billing_monthly_summary_csv_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+                routing?: boolean;
+                prospecting?: boolean;
+                parent_account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_billing_limits_v1_billing_limits_get: {
         parameters: {
             query?: never;
@@ -28926,6 +29989,453 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShopIdentityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_events_v1_engraving_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingEventRead"][];
+                };
+            };
+        };
+    };
+    create_event_v1_engraving_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingEventRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_event_v1_engraving_events__event_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingEventUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingEventRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_queue_v1_engraving_events__event_id__queue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingQueueRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_walk_up_order_v1_engraving_events__event_id__orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingOperatorOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_laser_csv_v1_engraving_events__event_id__export_csv_get: {
+        parameters: {
+            query?: {
+                paid_only?: boolean;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_laser_file_v1_engraving_events__event_id__export_get: {
+        parameters: {
+            query?: {
+                software?: string;
+                paid_only?: boolean;
+                limit?: number | null;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_order_v1_engraving_orders__order_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingOrderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    medal_done_v1_engraving_orders__order_id__medal_done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_order_v1_engraving_orders__order_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_ready_text_v1_engraving_orders__order_id__resend_ready_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_event_v1_public_engraving_events__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEngravingEvent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_public_order_v1_public_engraving_events__token__orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngravingOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEngravingOrder"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_order_v1_public_engraving_orders__status_token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                status_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicEngravingOrder"];
                 };
             };
             /** @description Validation Error */

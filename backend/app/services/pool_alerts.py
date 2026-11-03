@@ -70,8 +70,17 @@ def process_stale_pool_jobs(session: Session) -> dict[str, int]:
     operators = _eligible_operators(session)
     op_by_id = {op.id: op for op in operators}
     jobs_by_operator: dict[UUID, list[IntakeJob]] = {}
+    from ..parent_network import mobile_dispatch_parent_ids_for_tenant, parent_ids_for_tenant
+
+    parents_of = {
+        op.id: set(parent_ids_for_tenant(session, op.id)) | set(mobile_dispatch_parent_ids_for_tenant(session, op.id))
+        for op in operators
+    }
     for job in stale_jobs:
         for op in operators:
+            # Never ping an operator about another HQ's job.
+            if job.parent_account_id is None or job.parent_account_id not in parents_of[op.id]:
+                continue
             ring = operator_ring_for_job(op.base_lat, op.base_lng, job.job_lat, job.job_lng, op.ring_radius_km or 10)
             if ring is not None and ring <= MAX_ALERT_RING:
                 jobs_by_operator.setdefault(op.id, []).append(job)

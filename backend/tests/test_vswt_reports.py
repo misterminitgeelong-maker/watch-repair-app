@@ -1019,3 +1019,27 @@ def test_all_weeks_workbook_requires_linked_shop(vswt_client):
     headers, _tid = _bootstrap(vswt_client, "vswt-workbook-noshop", "owner-wbns@test.com")
     res = vswt_client.get("/v1/reports/vswt/export/workbook", headers=headers)
     assert res.status_code == 403
+
+
+def test_parse_treats_whitespace_and_text_in_numeric_columns_as_blank():
+    raw = _build_workbook(32, [_shop_row(3269, "Chadstone", 50000, jobs_ty=" ", customer_ty="n/a")])
+    row = _parse_vswt_workbook(raw, "f.xlsx")["rows"][0]
+    assert row["jobs_ty"] is None
+    assert row["customer_ty"] is None
+    assert row["sales_ty"] == 50000
+
+
+def test_commit_succeeds_after_whitespace_cell_upload(vswt_client):
+    headers, _ = _bootstrap(vswt_client, "vswt-ws-cell", "ws-cell@test.com")
+    raw = _build_workbook(2731, [_shop_row(3269, "Chadstone", 50000, jobs_ty=" ")])
+    upload = vswt_client.post(
+        "/v1/reports/vswt/upload", headers=headers,
+        files=[("files", ("w.xlsx", raw, "application/octet-stream"))],
+    )
+    assert upload.status_code == 200, upload.text
+    b = upload.json()["batch"][0]
+    commit = vswt_client.post(
+        "/v1/reports/vswt/commit", headers=headers,
+        json={"batch": [{"filename": b["filename"], "week_number": b["week_number"], "rows": b["rows"]}]},
+    )
+    assert commit.status_code == 200, commit.text

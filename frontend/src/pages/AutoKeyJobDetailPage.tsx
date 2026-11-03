@@ -16,6 +16,7 @@ import {
   listAutoKeyQuotes,
   listCustomerAccounts,
   listUsers,
+  selectAutoKeyQuoteOption,
   sendAutoKeyQuote,
   createAutoKeyInvoiceFromQuote,
   sendAutoKeyInvoice,
@@ -455,6 +456,16 @@ export default function AutoKeyJobDetailPage() {
       setStatusFeedback(mobileNotifyFeedback(res.data ?? {}, 'quote'))
     },
     onError: err => setError(getApiErrorMessage(err, 'Failed to send quote.')),
+  })
+
+  const selectOptionMut = useMutation({
+    mutationFn: ({ quoteId, option }: { quoteId: string; option: 'A' | 'B' }) => selectAutoKeyQuoteOption(quoteId, option),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auto-key-quotes', id] })
+      qc.invalidateQueries({ queryKey: ['auto-key-job-activity', id] })
+      setStatusFeedback('Option confirmed. The customer has been texted the final price.')
+    },
+    onError: err => setError(getApiErrorMessage(err, 'Failed to confirm option.')),
   })
 
   const createInvoiceMut = useMutation({
@@ -1244,9 +1255,35 @@ export default function AutoKeyJobDetailPage() {
                   </div>
                   {(q.line_items ?? []).map((li, i) => (
                     <p key={i} className='text-xs' style={{ color: 'var(--ms-text-muted)' }}>
-                      {li.quantity} × {li.description} — {formatCents(li.unit_price_cents)} ea
+                      {li.option_key ? `[Option ${li.option_key}] ` : ''}{li.quantity} × {li.description} — {formatCents(li.unit_price_cents)} ea
                     </p>
                   ))}
+                  {(q.options ?? []).length === 2 && (
+                    <div className='rounded-lg p-3 space-y-2' style={{ backgroundColor: 'var(--ms-bg)', border: '1px solid var(--ms-border)' }}>
+                      <p className='text-xs font-semibold' style={{ color: 'var(--ms-text)' }}>
+                        {q.selected_option ? 'Outcome confirmed' : 'Which option applies? Pick one once you have seen the vehicle.'}
+                      </p>
+                      {q.options!.map(opt => {
+                        const chosen = q.selected_option === opt.key
+                        return (
+                          <div key={opt.key} className='flex items-center justify-between gap-2'>
+                            <span className='text-sm' style={{ color: 'var(--ms-text)', fontWeight: chosen ? 700 : 400 }}>
+                              {opt.label} — {formatCents(opt.total_cents)}{chosen ? ' ✓' : ''}
+                            </span>
+                            {!q.selected_option && q.status !== 'declined' && invoices.length === 0 && (
+                              <Button
+                                className='text-xs py-1 px-3'
+                                onClick={() => selectOptionMut.mutate({ quoteId: q.id, option: opt.key })}
+                                disabled={selectOptionMut.isPending}
+                              >
+                                {selectOptionMut.isPending ? 'Saving…' : 'This one applies'}
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                   {q.status === 'draft' && (
                     <Button
                       className="text-xs py-1 px-3 flex items-center gap-1"

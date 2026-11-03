@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480  # 8 hours for shop use
     jwt_refresh_expire_days: int = 7
+    # Native app sessions (request header X-Mainspring-Client: native-android)
+    # slide: each refresh pushes expiry out by the idle window, but never past
+    # the absolute cap measured from login. Web sessions keep the fixed window.
+    jwt_native_refresh_idle_days: int = 90
+    jwt_native_refresh_max_days: int = 365
     app_env: Literal["development", "test", "staging", "production"] = "development"
     # Break-glass flag only for explicitly intended production SQLite runs.
     allow_sqlite_in_production: bool = False
@@ -89,6 +94,8 @@ class Settings(BaseSettings):
     key_enquiry_frame_ancestors: str = ""
     # IANA timezone: week/dispatch date filters and customer SMS use this for “local” calendar days.
     schedule_calendar_timezone: str = "Australia/Sydney"
+    # Text the customer when a van accepts a booking a shop made for them. Off until Minit agrees the wording.
+    shop_booking_customer_confirmation_sms: bool = False
 
     # CORS — comma-separated origins allowed in production (web app + local dev)
     # Includes Expo web dev ports (8081 Metro, 19006 legacy) for the mobile companion app.
@@ -111,6 +118,14 @@ class Settings(BaseSettings):
     email_from_address: str = ""  # Verified sender in SendGrid, e.g. quotes@yourshop.com
     email_from_name: str = ""  # Display name; defaults to Mainspring
     email_reply_to_address: str = ""  # Monitored mailbox; per-message shop replies take precedence
+
+    # Soft fair-use ceiling on outbound SMS per operator per calendar month
+    # (Australia/Melbourne). Never blocks a send: crossing 80% and 100% records a
+    # TenantEventLog row and a warning. 0 disables metering.
+    sms_monthly_fair_use_limit: int = 300
+    # Inbound replies from a phone known to several shops are attributed to the shop
+    # that last texted it only if that text was this recent; otherwise nothing is acted on.
+    sms_attribution_window_days: int = 30
 
     # Sentry (leave blank to disable)
     sentry_dsn: str = ""

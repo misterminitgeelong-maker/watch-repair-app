@@ -317,3 +317,129 @@ def test_parallel_refresh_rotation_across_processes(client):
     assert len(jtis) == 1
     follow_up = client.post("/v1/auth/refresh", json={"refresh_token": responses[0].json()["refresh_token"]})
     assert follow_up.status_code == 200, follow_up.text
+
+
+# ── Native app: sliding refresh window (header X-Mainspring-Client) ──────────
+
+NATIVE = {"X-Mainspring-Client": "native-android"}
+
+
+def _session_row(refresh_token: str):
+    from sqlmodel import Session, select
+
+    from app.database import engine
+    from app.models import RefreshSession
+    from app.security import decode_refresh_token
+
+    jti = decode_refresh_token(refresh_token).jti
+    with Session(engine) as s:
+        row = s.exec(
+            select(RefreshSession).where(
+                (RefreshSession.jti == jti) | (RefreshSession.previous_jti == jti)
+            )
+        ).one()
+        s.expunge(row)
+        return row
+
+
+def _set_session_times(refresh_token: str, *, created_days_ago=None, expires_in_days=None) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    from sqlmodel import Session, select
+
+    from app.database import engine
+    from app.models import RefreshSession
+    from app.security import decode_refresh_token
+
+    jti = decode_refresh_token(refresh_token).jti
+    now = datetime.now(timezone.utc)
+    with Session(engine) as s:
+        row = s.exec(select(RefreshSession).where(RefreshSession.jti == jti)).one()
+        if created_days_ago is not None:
+            row.created_at = now - timedelta(days=created_days_ago)
+        if expires_in_days is not None:
+            row.expires_at = now + timedelta(days=expires_in_days)
+        s.add(row)
+        s.commit()
+
+
+def _days_left(row) -> float:
+    from datetime import datetime, timezone
+
+    exp = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=timezone.utc)
+    return (exp - datetime.now(timezone.utc)).total_seconds() / 86400
+
+
+def _native_login(client, slug, email, password):
+    res = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": slug, "email": email, "password": password},
+        headers=NATIVE,
+    )
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def test_native_login_gets_idle_window_and_web_keeps_seven_days(client):
+    slug, email, password = _bootstrap_creds(client)
+    native = _native_login(client, slug, email, password)
+    web = _login(client, slug, email, password)
+    assert 89.9 < _days_left(_session_row(native["refresh_token"])) <= 90.01
+    assert native["refresh_expires_in_seconds"] > 89 * 86400
+    assert 6.9 < _days_left(_session_row(web["refresh_token"])) <= 7.01
+    assert web["refresh_expires_in_seconds"] <= 7 * 86400
+
+
+def test_native_refresh_slides_forward_but_web_does_not(client):
+    slug, email, password = _bootstrap_creds(client)
+    native = _native_login(client, slug, email, password)
+    _set_session_times(native["refresh_token"], expires_in_days=10)
+    res = client.post("/v1/auth/refresh", json={"refresh_token": native["refresh_token"]}, headers=NATIVE)
+    assert res.status_code == 200, res.text
+    assert 89.9 < _days_left(_session_row(res.json()["refresh_token"])) <= 90.01
+    assert res.json()["refresh_expires_in_seconds"] > 89 * 86400
+
+    web = _login(client, slug, email, password)
+    _set_session_times(web["refresh_token"], expires_in_days=3)
+    res = client.post("/v1/auth/refresh", json={"refresh_token": web["refresh_token"]})
+    assert res.status_code == 200, res.text
+    assert 2.9 < _days_left(_session_row(res.json()["refresh_token"])) <= 3.01
+
+
+def test_native_refresh_is_capped_at_max_days_since_login(client):
+    slug, email, password = _bootstrap_creds(client)
+    native = _native_login(client, slug, email, password)
+    # 355 days after login: only 10 days of the absolute cap remain.
+    _set_session_times(native["refresh_token"], created_days_ago=355, expires_in_days=5)
+    res = client.post("/v1/auth/refresh", json={"refresh_token": native["refresh_token"]}, headers=NATIVE)
+    assert res.status_code == 200, res.text
+    assert 9.8 < _days_left(_session_row(res.json()["refresh_token"])) <= 10.01
+
+    # Past the cap the session cannot slide further and is refused.
+    _set_session_times(res.json()["refresh_token"], created_days_ago=366, expires_in_days=-1)
+    dead = client.post(
+        "/v1/auth/refresh", json={"refresh_token": res.json()["refresh_token"]}, headers=NATIVE
+    )
+    assert dead.status_code == 401, dead.text
+
+
+def test_native_reuse_revocation_unchanged(client):
+    slug, email, password = _bootstrap_creds(client)
+    stolen = _native_login(client, slug, email, password)["refresh_token"]
+    legit = client.post("/v1/auth/refresh", json={"refresh_token": stolen}, headers=NATIVE).json()
+    _age_rotation(stolen, 120)
+    replay = client.post("/v1/auth/refresh", json={"refresh_token": stolen}, headers=NATIVE)
+    assert replay.status_code == 401, replay.text
+    after = client.post("/v1/auth/refresh", json={"refresh_token": legit["refresh_token"]}, headers=NATIVE)
+    assert after.status_code == 401, after.text
+
+
+def test_unknown_client_header_value_is_treated_as_web(client):
+    slug, email, password = _bootstrap_creds(client)
+    res = client.post(
+        "/v1/auth/login",
+        json={"tenant_slug": slug, "email": email, "password": password},
+        headers={"X-Mainspring-Client": "native"},
+    )
+    assert res.status_code == 200, res.text
+    assert _days_left(_session_row(res.json()["refresh_token"])) < 7.01

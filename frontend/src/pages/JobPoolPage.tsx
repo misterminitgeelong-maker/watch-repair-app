@@ -36,11 +36,10 @@ function JobCard({ job, onClaim }: { job: IntakePoolJob; onClaim: (id: string) =
     <div className="p-4 rounded-lg border space-y-2" style={{ borderColor: 'var(--ms-border)', backgroundColor: 'var(--ms-surface)' }}>
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-0.5 flex-1">
-          <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{job.customer_name}</p>
+          <p className="font-semibold text-sm" style={{ color: 'var(--ms-text)' }}>{job.job_type}</p>
           {(job.vehicle_make || job.vehicle_model) && (
             <p className="text-xs" style={{ color: 'var(--ms-text-mid)' }}>
               {[job.vehicle_make, job.vehicle_model, job.vehicle_year].filter(Boolean).join(' ')}
-              {job.registration_plate && ` · ${job.registration_plate}`}
             </p>
           )}
         </div>
@@ -49,12 +48,8 @@ function JobCard({ job, onClaim }: { job: IntakePoolJob; onClaim: (id: string) =
 
       <div className="flex items-start gap-1.5 text-xs" style={{ color: 'var(--ms-text-mid)' }}>
         <MapPin size={12} className="mt-0.5 shrink-0" />
-        <span>{job.job_address}</span>
+        <span>{[job.suburb, job.state, job.postcode].filter(Boolean).join(' ') || 'Area withheld until accepted'}</span>
       </div>
-
-      {job.description && (
-        <p className="text-xs line-clamp-2" style={{ color: 'var(--ms-text-muted)' }}>{job.description}</p>
-      )}
 
       <div className="flex items-center justify-between pt-1">
         <span className="text-xs" style={{ color: 'var(--ms-text-muted)' }}>Posted {formatDate(job.created_at)}</span>

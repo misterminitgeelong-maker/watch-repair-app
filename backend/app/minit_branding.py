@@ -106,6 +106,8 @@ def target_plan_for_minit_tenant(tenant: Tenant) -> str | None:
     """Return the plan code this Minit tenant should use, or None if no change."""
     if not is_minit_tenant(tenant):
         return None
+    if getattr(tenant, "keep_own_plan", False) and not _is_minit_hq_tenant(tenant):
+        return None
     if _is_minit_hq_tenant(tenant):
         return MINIT_HQ_PLAN if normalize_plan_code(tenant.plan_code) != MINIT_HQ_PLAN else None
     normalized = normalize_plan_code(tenant.plan_code)
@@ -116,12 +118,14 @@ def target_plan_for_minit_tenant(tenant: Tenant) -> str | None:
 
 #: Plans a Minit shop can hold without being switched on its next sign-in.
 #: HQ is kept on minit_hq; ``minit_hq`` on any other shop would hand it HQ's nav.
-MINIT_SITE_PLANS: frozenset[str] = frozenset({MINIT_SHOP_PLAN, "basic_auto_key"})
+MINIT_SITE_PLANS: frozenset[str] = frozenset({MINIT_SHOP_PLAN, "basic_auto_key", "minit_operator"})
 
 
 def allowed_plans_for_minit_tenant(tenant: Tenant) -> frozenset[str] | None:
     """Plans a platform admin may set on this tenant, or None when any plan goes."""
     if not is_minit_tenant(tenant):
+        return None
+    if getattr(tenant, "keep_own_plan", False) and not _is_minit_hq_tenant(tenant):
         return None
     if _is_minit_hq_tenant(tenant):
         return frozenset({MINIT_HQ_PLAN})

@@ -11,10 +11,14 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from .sms_controls import check_fair_use, is_suppressed
 from .money import format_cents
 from .config import settings
+from .portal_links import customer_portal_job_url
+from .log_redaction import mask_phone, redact_text
 from .database import engine
 from .datetime_utils import format_in_timezone
 from .models import JobMessage, SmsLog, Tenant, User
@@ -84,7 +88,7 @@ def _send_sms(to: str, body: str) -> tuple[str | None, str, str | None, int]:
     one of "sent" | "dry_run" | "failed".
     """
     if not (settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number):
-        logger.info("[SMS DRY-RUN] To=%s | %s", to, body)
+        logger.info("[SMS DRY-RUN] To=%s | %s", mask_phone(to), redact_text(body))
         return None, "dry_run", None, 0
 
     max_attempts = inline_retry_attempts()
@@ -97,19 +101,19 @@ def _send_sms(to: str, body: str) -> tuple[str | None, str, str | None, int]:
                 from_=settings.twilio_from_number,
                 to=to,
             )
-            logger.info("[SMS SENT] sid=%s to=%s", message.sid, to)
+            logger.info("[SMS SENT] sid=%s to=%s", message.sid, mask_phone(to))
             return message.sid, "sent", None, attempt
         except Exception as exc:  # noqa: BLE001
             last_error = str(exc)[:400]
             status = http_status_from_exc(exc)
             if status is not None and 400 <= status < 500:
-                logger.error("[SMS ERROR] to=%s error=%s", to, exc)
+                logger.error("[SMS ERROR] to=%s error=%s", mask_phone(to), exc)
                 return None, "failed", last_error, pin_attempts_if_permanent(attempt, permanent=True)
             retryable = is_retryable_http_status(status) or is_timeout_exc(exc) or is_transport_exc(exc)
             if retryable and attempt < max_attempts:
                 time.sleep(backoff_seconds(attempt - 1))
                 continue
-            logger.error("[SMS ERROR] to=%s error=%s", to, exc)
+            logger.error("[SMS ERROR] to=%s error=%s", mask_phone(to), exc)
             return None, "failed", last_error, attempt
     return None, "failed", last_error, max_attempts
 
@@ -165,6 +169,27 @@ def _logged_send(
     """Persist the attempt, then send. Failure mode is a spurious row, not a silent send."""
     now = datetime.now(timezone.utc)
     log_id = existing_log_id
+    if is_suppressed(session, to_phone):
+        # The customer texted STOP to the shared number: do not send, keep an audit row.
+        logger.info("[SMS SUPPRESSED] tenant=%s event=%s", tenant_id, event)
+        if log_id is None:
+            _begin_sms_log(
+                session,
+                tenant_id=tenant_id,
+                repair_job_id=repair_job_id,
+                shoe_repair_job_id=shoe_repair_job_id,
+                auto_key_job_id=auto_key_job_id,
+                to_phone=to_phone,
+                body=body,
+                event=event,
+                provider_sid=None,
+                status="suppressed",
+                attempt_count=0,
+                last_attempt_at=now,
+            )
+        else:
+            _finish_sms_log(session, log_id, status="suppressed", last_attempt_at=now)
+        return None, "suppressed"
     if log_id is None:
         log_id = _begin_sms_log(
             session,
@@ -189,6 +214,8 @@ def _logged_send(
         attempt_count=attempts,
         last_attempt_at=datetime.now(timezone.utc),
     )
+    if status in ("sent", "dry_run"):
+        check_fair_use(session, tenant_id)
     return sid, status
 
 
@@ -252,7 +279,22 @@ def send_custom_job_message(
     body: str,
 ) -> JobMessage:
     """Send a free-text SMS to a customer and persist it as an outbound JobMessage."""
-    sid, sms_status, _, _ = _send_sms(to_phone, body)
+    sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        shoe_repair_job_id=shoe_repair_job_id,
+        auto_key_job_id=auto_key_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="custom_message",
+    )
+    if sms_status == "suppressed":
+        session.commit()  # keep the audit row
+        raise HTTPException(
+            status_code=409,
+            detail="This customer has opted out of text messages (replied STOP), so the message was not sent.",
+        )
     msg = JobMessage(
         tenant_id=tenant_id,
         repair_job_id=repair_job_id,
@@ -284,7 +326,7 @@ def notify_job_live(
     shop_name: str = "",
 ) -> bool:
     """Send 'your job is live' SMS with link to track status. Returns True if provider accepted the message."""
-    status_url = f"{settings.public_base_url}/status/{status_token}"
+    status_url = customer_portal_job_url("watch", status_token)
     shop = shop_name.strip() or "us"
     body = (
         f"Hi {customer_name}, thanks for bringing your watch in to {shop}. "
@@ -447,7 +489,7 @@ def notify_job_status_changed(
 ) -> None:
     """Send a status-update SMS to the customer on milestone transitions."""
     shop = shop_name.strip() or "us"
-    status_url = f"{settings.public_base_url}/status/{status_token}"
+    status_url = customer_portal_job_url("watch", status_token)
     message_map: dict[str, str] = {
         "awaiting_go_ahead": (
             f"Hi {customer_name}, we've received your watch (job #{job_number}) and it's now in our queue. "
@@ -703,16 +745,24 @@ def notify_auto_key_quote_sent(
     total_cents: int,
     currency: str,
     quote_approval_token: str,
+    option_totals_cents: list[int] | None = None,
 ) -> None:
     """SMS when a quote is sent — lets the customer know the price and links to the approval portal."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
         return
     portal_url = f"{settings.public_base_url}/mobile-quote/{quote_approval_token}"
     shop = shop_name.strip() or "us"
-    body = (
-        f"Hi {customer_name}, your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}. "
-        f"Please review and accept here: {portal_url} — Reply to this message if you have any questions."
-    )
+    if option_totals_cents:
+        price = " or ".join(format_cents(c, currency) for c in option_totals_cents)
+        body = (
+            f"Hi {customer_name}, your quote from {shop} for job #{job_number} has two possible prices: {price}. "
+            f"We confirm which applies when we see your vehicle. Review and accept here: {portal_url}"
+        )
+    else:
+        body = (
+            f"Hi {customer_name}, your quote from {shop} for job #{job_number} is {format_cents(total_cents, currency)}. "
+            f"Please review and accept here: {portal_url} — Reply to this message if you have any questions."
+        )
     if len(body) > 1500:
         body = body[:1490] + "…"
     sid, sms_status = _logged_send(
@@ -723,6 +773,38 @@ def notify_auto_key_quote_sent(
         to_phone=to_phone,
         body=body,
         event="auto_key_quote_sent",
+    )
+
+
+def notify_auto_key_quote_option_selected(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    auto_key_job_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    shop_name: str,
+    job_number: str,
+    option_label: str,
+    total_cents: int,
+    currency: str,
+) -> None:
+    """SMS when the tech confirms which outcome of a two-option quote applies."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return
+    shop = shop_name.strip() or "us"
+    body = (
+        f"Hi {customer_name}, for job #{job_number} we found {option_label}, "
+        f"so the price is {format_cents(total_cents, currency)} as quoted. — {shop}"
+    )
+    _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        auto_key_job_id=auto_key_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="auto_key_quote_option_selected",
     )
 
 
@@ -1087,6 +1169,36 @@ def notify_shop_mobile_booking_accepted(
     return sid is not None
 
 
+def notify_shop_booking_customer_confirmed(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    customer_name: str,
+    operator_name: str,
+    shop_name: str,
+    job_number: str | None,
+) -> bool:
+    """Tell the customer a van has taken the booking their shop made, so the quote text that follows is expected."""
+    if not mobile_services_customer_sms_enabled(session, tenant_id):
+        return False
+    job_part = f" Reference {job_number}." if job_number else ""
+    body = (
+        f"Hi {customer_name.strip()}, {operator_name.strip()} mobile service has accepted the booking "
+        f"{shop_name.strip()} made for you.{job_part} They will text you a quote shortly. "
+        f"Reply to this message if anything changes."
+    )
+    sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_booking_customer_confirmed",
+    )
+    return sid is not None
+
+
 def notify_shop_mobile_booking_declined(
     session: Session,
     *,
@@ -1250,7 +1362,7 @@ def notify_shoe_job_live(
     job_number: str,
 ) -> bool:
     """Send 'your shoe job is live' SMS with link to track status. Returns True if provider accepted the message."""
-    status_url = f"{settings.public_base_url}/shoe-status/{status_token}"
+    status_url = customer_portal_job_url("shoe", status_token)
     body = (
         f"Hi {customer_name}, your shoe repair job #{job_number} is now live! "
         f"Track it here: {status_url}"
@@ -1333,7 +1445,7 @@ def notify_shoe_job_status_changed(
     if not body:
         return
 
-    body = f"{body} Track live status: {settings.public_base_url}/shoe-status/{status_token}"
+    body = f"{body} Track live status: {customer_portal_job_url('shoe', status_token)}"
 
     sid, sms_status = _logged_send(
         session,
@@ -1381,3 +1493,31 @@ def notify_auto_key_schedule_changed(
         body=body,
         event="auto_key_schedule_changed",
     )
+
+
+def notify_engraving_ready(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    athlete_name: str,
+    order_number: str,
+    status_token: str,
+) -> str:
+    """Tell a parent their engraved medal is ready to collect. Returns the send status
+    ("sent" | "dry_run" | "failed")."""
+    status_url = f"{settings.public_base_url}/engrave/o/{status_token}"
+    body = (
+        f"{shop_name}: {athlete_name}'s medal is engraved and ready to collect. "
+        f"Show order {order_number} at the stall. {status_url}"
+    )
+    _sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="engraving_ready",
+    )
+    return sms_status

@@ -1026,6 +1026,8 @@ class PlatformTenantRead(SQLModel):
     has_stripe_subscription: bool = False
     #: Mister Minit network shop — its plan is limited to what HQ runs on.
     is_minit: bool = False
+    #: Minit shop exempted from the Minit-only plan (keeps its own plan, e.g. Pro).
+    keep_own_plan: bool = False
     #: Linked to an HQ network: the HQ is invoiced for this account, so it is not a billable shop.
     hq_billed: bool = False
     hq_name: Optional[str] = None
@@ -1049,6 +1051,10 @@ class PlatformTenantForceLogoutRequest(SQLModel):
 
 class PlatformTenantPlanUpdateRequest(SQLModel):
     plan_code: str
+    reason: Optional[str] = None
+
+class PlatformTenantKeepOwnPlanRequest(SQLModel):
+    keep_own_plan: bool
     reason: Optional[str] = None
 
 class PlatformTenantBillingExemptRequest(SQLModel):
@@ -1807,18 +1813,36 @@ class AutoKeyQuoteLineItemCreate(SQLModel):
     quantity: float = Field(default=1, gt=0, le=10_000)
     unit_price_cents: int = Field(ge=0, le=100_000_000)
 
-class AutoKeyQuoteCreate(SQLModel):
+class AutoKeyQuoteOptionCreate(SQLModel):
+    label: str = Field(min_length=1, max_length=120)
     line_items: list[AutoKeyQuoteLineItemCreate]
+
+class AutoKeyQuoteCreate(SQLModel):
+    #: Lines shared by both outcomes when ``options`` is set, otherwise the whole quote.
+    line_items: list[AutoKeyQuoteLineItemCreate] = []
+    #: Exactly two entries (A then B) for a two-outcome quote.
+    options: Optional[list[AutoKeyQuoteOptionCreate]] = None
     gst_enabled: bool = True
     gst_inclusive: bool = False
+
+class AutoKeyQuoteSelectOption(SQLModel):
+    option: Literal["A", "B"]
 
 class AutoKeyQuoteLineItemRead(SQLModel):
     id: UUID
     auto_key_quote_id: UUID
+    option_key: Optional[str] = None
     description: str
     quantity: float
     unit_price_cents: int
     total_price_cents: int
+
+class AutoKeyQuoteOptionRead(SQLModel):
+    key: str
+    label: str
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
 
 class AutoKeyQuoteRead(SQLModel):
     id: UUID
@@ -1837,6 +1861,9 @@ class AutoKeyQuoteRead(SQLModel):
     has_signature: bool = False
     created_at: datetime
     line_items: list[AutoKeyQuoteLineItemRead] = []
+    options: list[AutoKeyQuoteOptionRead] = []
+    selected_option: Optional[str] = None
+    selected_at: Optional[datetime] = None
 
 class AutoKeyInvoiceRead(SQLModel):
     id: UUID

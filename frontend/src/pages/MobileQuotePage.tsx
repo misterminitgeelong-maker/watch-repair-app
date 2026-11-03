@@ -198,6 +198,9 @@ export default function MobileQuotePage() {
   const isApproved = quote.status === 'approved'
   const isDeclined = quote.status === 'declined'
   const isSettled = isApproved || isDeclined
+  const options = quote.options ?? []
+  const hasOptions = options.length === 2
+  const sharedLines = quote.line_items.filter(i => !i.option_key)
   const vehicle = [quote.vehicle_make, quote.vehicle_model, quote.vehicle_year].filter(Boolean).join(' ')
 
   return (
@@ -236,7 +239,11 @@ export default function MobileQuotePage() {
                 {quote.signer_name ? ` by ${quote.signer_name}` : ''}
               </p>
             )}
-            <p className="text-xs ml-8 mt-0.5" style={{ color: '#2A7A40' }}>We'll be in touch to confirm your appointment.</p>
+            <p className="text-xs ml-8 mt-0.5" style={{ color: '#2A7A40' }}>
+              {hasOptions && !quote.selected_option
+                ? "We'll text you which option applies once we've seen your vehicle."
+                : "We'll be in touch to confirm your appointment."}
+            </p>
           </div>
         )}
         {isDeclined && (
@@ -265,7 +272,57 @@ export default function MobileQuotePage() {
           )}
         </Card>
 
+        {hasOptions && (
+          <>
+            {!isSettled && (
+              <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ backgroundColor: '#FFF5DD', color: 'var(--ms-text)' }}>
+                Two possible prices. We can only confirm which applies once we see your vehicle. You only pay for the one that applies.
+              </div>
+            )}
+            {sharedLines.length > 0 && (
+              <Card className="p-4">
+                <h2 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Included in both options</h2>
+                <div className="space-y-2">
+                  {sharedLines.map((item, i) => (
+                    <div key={i} className="flex items-start justify-between gap-4 text-sm">
+                      <span style={{ color: 'var(--ms-text)' }}>{item.description}</span>
+                      <span className="font-medium whitespace-nowrap" style={{ color: 'var(--ms-text)' }}>{formatMoney(item.total_price_cents, quote.currency)}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+            {options.map(opt => {
+              const chosen = quote.selected_option === opt.key
+              const dim = !!quote.selected_option && !chosen
+              return (
+                <Card key={opt.key} className="p-4" style={{ opacity: dim ? 0.55 : 1, border: chosen ? '2px solid var(--ms-accent)' : undefined }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ backgroundColor: chosen ? 'var(--ms-accent)' : '#14161c', color: '#fff' }}>
+                      Option {opt.key}
+                    </span>
+                    {chosen && <span className="text-xs font-bold" style={{ color: 'var(--ms-accent)' }}>Applies</span>}
+                  </div>
+                  <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--ms-text)' }}>{opt.label}</h2>
+                  <div className="space-y-2">
+                    {quote.line_items.filter(i => i.option_key === opt.key).map((item, i) => (
+                      <div key={i} className="flex items-start justify-between gap-4 text-sm">
+                        <span style={{ color: 'var(--ms-text)' }}>{item.description}</span>
+                        <span className="font-medium whitespace-nowrap" style={{ color: 'var(--ms-text)' }}>{formatMoney(item.total_price_cents, quote.currency)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 pt-3 flex justify-between font-bold text-base" style={{ borderTop: '1px solid var(--ms-border)', color: 'var(--ms-text)' }}>
+                    <span>Total{opt.tax_cents > 0 ? ' inc. GST' : ''}</span><span>{formatMoney(opt.total_cents, quote.currency)}</span>
+                  </div>
+                </Card>
+              )
+            })}
+          </>
+        )}
+
         {/* Quote breakdown */}
+        {!hasOptions && (
         <Card className="p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--ms-text-muted)' }}>Quote breakdown</h2>
           <div className="space-y-2">
@@ -297,6 +354,7 @@ export default function MobileQuotePage() {
             </div>
           </div>
         </Card>
+        )}
 
         {/* Actions */}
         {!isSettled && (

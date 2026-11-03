@@ -1,0 +1,5 @@
+## Copy to local.properties (do not commit local.properties).
+## Alternatively set ANDROID_HOME in the environment and omit sdk.dir.
+sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+## Optional: override API origin (must end with /). Emulator default reaches host machine:
+api.base.url=http://10.0.2.2:8000/

@@ -368,11 +368,11 @@ def _line_items_for_invoice(
     account_code = _default_account_code(tenant)
     tax_type = _default_tax_type(tenant, invoice.tax_cents, invoice.currency)
     if invoice.auto_key_quote_id:
-        rows = session.exec(
-            select(AutoKeyQuoteLineItem)
-            .where(AutoKeyQuoteLineItem.auto_key_quote_id == invoice.auto_key_quote_id)
-            .order_by(AutoKeyQuoteLineItem.created_at)
-        ).all()
+        from .auto_key_quote_options import invoice_line_items
+        from .models import AutoKeyQuote
+
+        _quote = session.get(AutoKeyQuote, invoice.auto_key_quote_id)
+        rows = invoice_line_items(session, invoice.auto_key_quote_id, _quote.selected_option if _quote else None)
         if rows:
             return [
                 {

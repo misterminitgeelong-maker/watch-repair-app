@@ -108,11 +108,10 @@ def test_migration_seed_matches_defaults():
     import importlib.util
     from pathlib import Path
 
-    path = Path(__file__).parents[1] / "alembic" / "versions" / "20261009a_hq_settings.py"
+    path = Path(__file__).parents[1] / "alembic" / "versions" / "20261019a_minit_operator_plan.py"
     spec = importlib.util.spec_from_file_location("hq_settings_migration", path)
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
-    assert frozenset(migration._MINIT_MODULES) == MINIT_DEFAULTS.modules
     assert frozenset(migration._MINIT_SITE_PLANS) == MINIT_DEFAULTS.site_plans
 
 

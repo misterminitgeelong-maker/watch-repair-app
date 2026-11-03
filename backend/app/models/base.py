@@ -73,6 +73,7 @@ PlanCode = Literal[
     "basic_all_tabs",
     "booking_only",
     "minit_hq",
+    "minit_operator",
     "pro",
 ]
 ShopMobileBookingStatus = Literal["pending", "accepted", "declined", "cancelled", "expired", "moved_to_pool"]

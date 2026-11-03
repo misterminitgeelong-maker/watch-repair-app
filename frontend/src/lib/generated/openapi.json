@@ -385,7 +385,7 @@
           "auth"
         ],
         "summary": "Export tenant data for portability (GDPR-style)",
-        "description": "Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.",
+        "description": "Returns a JSON snapshot of the tenant's data (customers, watches, jobs, quotes, invoices) for backup or portability.\n\nOwner (or platform admin) only: this is a bulk dump of customer contact details.\nEvery export is recorded in the tenant event log.",
         "operationId": "export_my_data_v1_auth_export_my_data_get",
         "responses": {
           "200": {
@@ -6369,6 +6369,64 @@
         }
       }
     },
+    "/v1/sms/usage": {
+      "get": {
+        "tags": [
+          "sms-usage"
+        ],
+        "summary": "Get Sms Usage",
+        "description": "Outbound SMS this calendar month (Melbourne) against the soft fair-use limit.\n\nOwners see their own shop; a platform admin sees any tenant; an owner of an HQ\ntenant sees the operators linked to its network.",
+        "operationId": "get_sms_usage_v1_sms_usage_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Operator to inspect; defaults to your own shop",
+              "title": "Tenant Id"
+            },
+            "description": "Operator to inspect; defaults to your own shop"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsUsageRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/card-payment-issues/{issue_id}": {
       "get": {
         "tags": [
@@ -7958,7 +8016,7 @@
           "public-jobs"
         ],
         "summary": "Verify Portal Access",
-        "description": "Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.\n\nThe answer is identical whether or not the pair matched (a challenge id is\nalways returned), so this cannot be used to probe which tickets exist. The\nphone number and ticket must belong to the same job, and the portal only\nopens once the texted code is entered at ``/portal/verify-code``.",
+        "description": "Step 1 of phone sign-in: text a code to the phone number.\n\nThe ticket number is optional (when given it must match a job on that\nphone). The answer is identical whether or not anything matched (a\nchallenge id is always returned), so this cannot be used to probe which\nphones or tickets exist. The portal only opens once the texted code is\nentered at ``/portal/verify-code``.",
         "operationId": "verify_portal_access_v1_public_portal_verify_post",
         "requestBody": {
           "content": {
@@ -8005,6 +8063,46 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PortalVerifyCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/portal/job-session": {
+      "post": {
+        "tags": [
+          "public-jobs"
+        ],
+        "summary": "Open Portal From Job Link",
+        "description": "Open the customer portal straight from the link texted or emailed about a job.\n\nThe job's status token is already a private link to that job, so it is\naccepted as proof of who is asking. The session is scoped to that one\ncustomer at that one shop (the same scope as a phone + ticket sign-in).",
+        "operationId": "open_portal_from_job_link_v1_public_portal_job_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalJobSessionRequest"
               }
             }
           },
@@ -8612,6 +8710,23 @@
               ],
               "title": "X-Mobile-Lead-Secret"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -8663,6 +8778,23 @@
               "type": "string",
               "format": "uuid",
               "title": "Ingest Public Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -9053,6 +9185,44 @@
                   },
                   "type": "array",
                   "title": "Response List Operators V1 Shop Mobile Bookings Operators Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/shop-mobile-bookings/coverage-contact": {
+      "get": {
+        "tags": [
+          "shop-mobile-bookings"
+        ],
+        "summary": "Coverage Contact",
+        "description": "Who a shop should contact when no operator covers its suburb.",
+        "operationId": "coverage_contact_v1_shop_mobile_bookings_coverage_contact_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": "object",
+                  "title": "Response Coverage Contact V1 Shop Mobile Bookings Coverage Contact Get"
                 }
               }
             }
@@ -9461,17 +9631,36 @@
           "intake-dispatch"
         ],
         "summary": "Submit Public Intake",
-        "description": "Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.",
+        "description": "Accept a job from the public-facing intake form. Geocodes the address and places the job in the pool.\n\nIdempotent: a repeat of the same submission (same Idempotency-Key, or same normalised\npayload within 10 minutes) returns the original job and creates nothing new.",
         "operationId": "submit_public_intake_v1_public_intake_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/IntakeSubmitBody"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -10061,6 +10250,65 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform-admin/tenants/{tenant_id}/keep-own-plan": {
+      "post": {
+        "tags": [
+          "platform-admin"
+        ],
+        "summary": "Set Tenant Keep Own Plan",
+        "description": "Let a Minit-network shop keep a non-Minit plan (e.g. Pro for an early tester).\n\nThe shop stays in the Minit network; it just isn't forced onto booking_only at\nsign-in, and the plan endpoint accepts any plan for it. The HQ itself can't opt out.",
+        "operationId": "set_tenant_keep_own_plan_v1_platform_admin_tenants__tenant_id__keep_own_plan_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformTenantKeepOwnPlanRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -13154,6 +13402,65 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoKeyQuoteRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auto-key-jobs/quotes/{quote_id}/select-option": {
+      "post": {
+        "tags": [
+          "auto-key-jobs"
+        ],
+        "summary": "Select Auto Key Quote Option",
+        "description": "Tech records which outcome applies on site; fixes the quote total and what gets invoiced.",
+        "operationId": "select_auto_key_quote_option_v1_auto_key_jobs_quotes__quote_id__select_option_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Quote Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoKeyQuoteSelectOption"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -20440,6 +20747,186 @@
         }
       }
     },
+    "/v1/hq-billing/monthly-summary": {
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Monthly Summary",
+        "operationId": "monthly_summary_v1_hq_billing_monthly_summary_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM, default current month",
+              "title": "Month"
+            },
+            "description": "YYYY-MM, default current month"
+          },
+          {
+            "name": "routing",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Routing"
+            }
+          },
+          {
+            "name": "prospecting",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Prospecting"
+            }
+          },
+          {
+            "name": "parent_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/monthly-summary.csv": {
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Monthly Summary Csv",
+        "operationId": "monthly_summary_csv_v1_hq_billing_monthly_summary_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          },
+          {
+            "name": "routing",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Routing"
+            }
+          },
+          {
+            "name": "prospecting",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Prospecting"
+            }
+          },
+          {
+            "name": "parent_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/billing/limits": {
       "get": {
         "tags": [
@@ -23687,6 +24174,727 @@
           }
         ]
       }
+    },
+    "/v1/engraving/events": {
+      "get": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events_v1_engraving_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EngravingEventRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Events V1 Engraving Events Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Create Event",
+        "operationId": "create_event_v1_engraving_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingEventCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingEventRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/engraving/events/{event_id}": {
+      "patch": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Update Event",
+        "operationId": "update_event_v1_engraving_events__event_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingEventUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingEventRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/events/{event_id}/queue": {
+      "get": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Get Queue",
+        "operationId": "get_queue_v1_engraving_events__event_id__queue_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingQueueRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/events/{event_id}/orders": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Create Walk Up Order",
+        "operationId": "create_walk_up_order_v1_engraving_events__event_id__orders_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingOperatorOrderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/events/{event_id}/export.csv": {
+      "get": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Export Laser Csv",
+        "description": "One row per medal still to engrave, in queue order.\n\nColumns: Name, Line2, Place, Order, Medal. For other laser programs use\n/export, which can also shape the file for LightBurn, xTool and EZCad2.",
+        "operationId": "export_laser_csv_v1_engraving_events__event_id__export_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "paid_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Paid Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/events/{event_id}/export": {
+      "get": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Export Laser File",
+        "description": "Laser file shaped for the chosen program, optionally only the next `limit` medals.\n\n- csv: header row plus Name, Line2, Place, Order, Medal.\n- lightburn: the same without the header row (LightBurn counts every line as a row).\n- xtool: header row; empty cells become a single space (xTool skips a row with a blank cell).\n- ezcad2: a zip of names.txt, line2.txt and places.txt, one value per line (EZCad2 reads\n  TXT or old-format XLS, not CSV).",
+        "operationId": "export_laser_file_v1_engraving_events__event_id__export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "software",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(csv|lightburn|xtool|ezcad2)$",
+              "default": "csv",
+              "title": "Software"
+            }
+          },
+          {
+            "name": "paid_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Paid Only"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 500,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}": {
+      "patch": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Update Order",
+        "operationId": "update_order_v1_engraving_orders__order_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingOrderUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}/medal-done": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Medal Done",
+        "description": "The operator finished one medal. When the last one is done the order is ready\nand the parent is texted.",
+        "operationId": "medal_done_v1_engraving_orders__order_id__medal_done_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}/start": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Start Order",
+        "description": "Put this order on the laser. Any other order marked engraving goes back to waiting,\nso there is only ever one \"now engraving\".",
+        "operationId": "start_order_v1_engraving_orders__order_id__start_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/engraving/orders/{order_id}/resend-ready": {
+      "post": {
+        "tags": [
+          "engraving"
+        ],
+        "summary": "Resend Ready Text",
+        "operationId": "resend_ready_text_v1_engraving_orders__order_id__resend_ready_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngravingOrderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/engraving/events/{token}": {
+      "get": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Get Public Event",
+        "operationId": "get_public_event_v1_public_engraving_events__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEngravingEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/engraving/events/{token}/orders": {
+      "post": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Create Public Order",
+        "operationId": "create_public_order_v1_public_engraving_events__token__orders_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingOrderCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEngravingOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/engraving/orders/{status_token}": {
+      "get": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Get Public Order",
+        "operationId": "get_public_order_v1_public_engraving_orders__status_token__get",
+        "parameters": [
+          {
+            "name": "status_token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Status Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicEngravingOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -24090,6 +25298,7 @@
               "basic_all_tabs",
               "booking_only",
               "minit_hq",
+              "minit_operator",
               "pro"
             ],
             "title": "Plan Code"
@@ -26232,7 +27441,22 @@
               "$ref": "#/components/schemas/AutoKeyQuoteLineItemCreate"
             },
             "type": "array",
-            "title": "Line Items"
+            "title": "Line Items",
+            "default": []
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AutoKeyQuoteOptionCreate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
           },
           "gst_enabled": {
             "type": "boolean",
@@ -26246,9 +27470,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "line_items"
-        ],
         "title": "AutoKeyQuoteCreate"
       },
       "AutoKeyQuoteDecision": {
@@ -26325,6 +27546,17 @@
             "format": "uuid",
             "title": "Auto Key Quote Id"
           },
+          "option_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Option Key"
+          },
           "description": {
             "type": "string",
             "title": "Description"
@@ -26352,6 +27584,62 @@
           "total_price_cents"
         ],
         "title": "AutoKeyQuoteLineItemRead"
+      },
+      "AutoKeyQuoteOptionCreate": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "line_items": {
+            "items": {
+              "$ref": "#/components/schemas/AutoKeyQuoteLineItemCreate"
+            },
+            "type": "array",
+            "title": "Line Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "line_items"
+        ],
+        "title": "AutoKeyQuoteOptionCreate"
+      },
+      "AutoKeyQuoteOptionRead": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "subtotal_cents": {
+            "type": "integer",
+            "title": "Subtotal Cents"
+          },
+          "tax_cents": {
+            "type": "integer",
+            "title": "Tax Cents"
+          },
+          "total_cents": {
+            "type": "integer",
+            "title": "Total Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "subtotal_cents",
+          "tax_cents",
+          "total_cents"
+        ],
+        "title": "AutoKeyQuoteOptionRead"
       },
       "AutoKeyQuoteRead": {
         "properties": {
@@ -26450,6 +27738,37 @@
             "type": "array",
             "title": "Line Items",
             "default": []
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/AutoKeyQuoteOptionRead"
+            },
+            "type": "array",
+            "title": "Options",
+            "default": []
+          },
+          "selected_option": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Option"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected At"
           }
         },
         "type": "object",
@@ -26467,6 +27786,23 @@
           "created_at"
         ],
         "title": "AutoKeyQuoteRead"
+      },
+      "AutoKeyQuoteSelectOption": {
+        "properties": {
+          "option": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "title": "Option"
+          }
+        },
+        "type": "object",
+        "required": [
+          "option"
+        ],
+        "title": "AutoKeyQuoteSelectOption"
       },
       "AutoKeyQuoteSendResponse": {
         "properties": {
@@ -26525,6 +27861,7 @@
               "basic_all_tabs",
               "booking_only",
               "minit_hq",
+              "minit_operator",
               "pro"
             ],
             "title": "Plan Code"
@@ -29153,6 +30490,676 @@
         ],
         "title": "DeviceRegister"
       },
+      "EngravingEventCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents",
+            "default": 1500
+          },
+          "minutes_per_medal": {
+            "type": "integer",
+            "title": "Minutes Per Medal",
+            "default": 3
+          },
+          "sms_enabled": {
+            "type": "boolean",
+            "title": "Sms Enabled",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "EngravingEventCreate"
+      },
+      "EngravingEventRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents"
+          },
+          "minutes_per_medal": {
+            "type": "integer",
+            "title": "Minutes Per Medal"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sms_enabled": {
+            "type": "boolean",
+            "title": "Sms Enabled"
+          },
+          "public_token": {
+            "type": "string",
+            "title": "Public Token"
+          },
+          "public_url": {
+            "type": "string",
+            "title": "Public Url"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/EngravingEventStats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "event_date",
+          "location",
+          "price_cents",
+          "minutes_per_medal",
+          "status",
+          "sms_enabled",
+          "public_token",
+          "public_url",
+          "created_at",
+          "stats"
+        ],
+        "title": "EngravingEventRead"
+      },
+      "EngravingEventStats": {
+        "properties": {
+          "waiting": {
+            "type": "integer",
+            "title": "Waiting",
+            "default": 0
+          },
+          "engraving": {
+            "type": "integer",
+            "title": "Engraving",
+            "default": 0
+          },
+          "ready": {
+            "type": "integer",
+            "title": "Ready",
+            "default": 0
+          },
+          "collected": {
+            "type": "integer",
+            "title": "Collected",
+            "default": 0
+          },
+          "cancelled": {
+            "type": "integer",
+            "title": "Cancelled",
+            "default": 0
+          },
+          "medals_total": {
+            "type": "integer",
+            "title": "Medals Total",
+            "default": 0
+          },
+          "medals_remaining": {
+            "type": "integer",
+            "title": "Medals Remaining",
+            "default": 0
+          },
+          "paid_cents": {
+            "type": "integer",
+            "title": "Paid Cents",
+            "default": 0
+          },
+          "unpaid_cents": {
+            "type": "integer",
+            "title": "Unpaid Cents",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "EngravingEventStats"
+      },
+      "EngravingEventUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Cents"
+          },
+          "minutes_per_medal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes Per Medal"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "paused",
+                  "closed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "sms_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sms Enabled"
+          }
+        },
+        "type": "object",
+        "title": "EngravingEventUpdate"
+      },
+      "EngravingOperatorOrderCreate": {
+        "properties": {
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place",
+            "default": "None"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty",
+            "default": 1
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "paid": {
+            "type": "boolean",
+            "title": "Paid",
+            "default": false
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "athlete_name"
+        ],
+        "title": "EngravingOperatorOrderCreate"
+      },
+      "EngravingOrderCreate": {
+        "properties": {
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place",
+            "default": "None"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty",
+            "default": 1
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "athlete_name"
+        ],
+        "title": "EngravingOrderCreate"
+      },
+      "EngravingOrderRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "order_number": {
+            "type": "string",
+            "title": "Order Number"
+          },
+          "order_seq": {
+            "type": "integer",
+            "title": "Order Seq"
+          },
+          "status_token": {
+            "type": "string",
+            "title": "Status Token"
+          },
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty"
+          },
+          "medals_done": {
+            "type": "integer",
+            "title": "Medals Done"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "paid": {
+            "type": "boolean",
+            "title": "Paid"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "ready_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready At"
+          },
+          "ready_sms_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready Sms Status"
+          },
+          "collected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "order_number",
+          "order_seq",
+          "status_token",
+          "athlete_name",
+          "line2",
+          "place",
+          "qty",
+          "medals_done",
+          "phone",
+          "status",
+          "paid",
+          "paid_at",
+          "amount_cents",
+          "source",
+          "notes",
+          "ready_at",
+          "ready_sms_status",
+          "collected_at",
+          "created_at"
+        ],
+        "title": "EngravingOrderRead"
+      },
+      "EngravingOrderUpdate": {
+        "properties": {
+          "athlete_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "paid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "engraving",
+                  "ready",
+                  "collected",
+                  "cancelled"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "EngravingOrderUpdate"
+      },
+      "EngravingQueueRead": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/EngravingEventRead"
+          },
+          "orders": {
+            "items": {
+              "$ref": "#/components/schemas/EngravingOrderRead"
+            },
+            "type": "array",
+            "title": "Orders"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "orders"
+        ],
+        "title": "EngravingQueueRead"
+      },
       "FollowUpUpdate": {
         "properties": {
           "expected_version": {
@@ -30397,6 +32404,18 @@
               }
             ],
             "title": "Description"
+          },
+          "ingest_public_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingest Public Id"
           }
         },
         "type": "object",
@@ -33378,6 +35397,7 @@
                   "basic_all_tabs",
                   "booking_only",
                   "minit_hq",
+                  "minit_operator",
                   "pro"
                 ]
               },
@@ -35760,6 +37780,30 @@
         "type": "object",
         "title": "PlatformTenantForceLogoutRequest"
       },
+      "PlatformTenantKeepOwnPlanRequest": {
+        "properties": {
+          "keep_own_plan": {
+            "type": "boolean",
+            "title": "Keep Own Plan"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "keep_own_plan"
+        ],
+        "title": "PlatformTenantKeepOwnPlanRequest"
+      },
       "PlatformTenantPlanUpdateRequest": {
         "properties": {
           "plan_code": {
@@ -35847,6 +37891,11 @@
           "is_minit": {
             "type": "boolean",
             "title": "Is Minit",
+            "default": false
+          },
+          "keep_own_plan": {
+            "type": "boolean",
+            "title": "Keep Own Plan",
             "default": false
           },
           "hq_billed": {
@@ -36085,6 +38134,27 @@
         ],
         "title": "PointsLedgerRead"
       },
+      "PortalJobSessionRequest": {
+        "properties": {
+          "job_type": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Job Type"
+          },
+          "status_token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Status Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_type",
+          "status_token"
+        ],
+        "title": "PortalJobSessionRequest"
+      },
       "PortalMessageToShopRequest": {
         "properties": {
           "job_type": {
@@ -36221,16 +38291,21 @@
             "title": "Phone"
           },
           "ticket_number": {
-            "type": "string",
-            "maxLength": 40,
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Ticket Number"
           }
         },
         "type": "object",
         "required": [
-          "phone",
-          "ticket_number"
+          "phone"
         ],
         "title": "PortalVerifyRequest"
       },
@@ -37361,6 +39436,228 @@
         },
         "type": "object",
         "title": "PublicAutoKeyIntakeSubmit"
+      },
+      "PublicEngravingEvent": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Date"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "price_cents": {
+            "type": "integer",
+            "title": "Price Cents"
+          },
+          "accepting_orders": {
+            "type": "boolean",
+            "title": "Accepting Orders"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "wait_minutes": {
+            "type": "integer",
+            "title": "Wait Minutes"
+          },
+          "medals_ahead": {
+            "type": "integer",
+            "title": "Medals Ahead"
+          },
+          "name_max": {
+            "type": "integer",
+            "title": "Name Max",
+            "default": 24
+          },
+          "line2_max": {
+            "type": "integer",
+            "title": "Line2 Max",
+            "default": 28
+          },
+          "places": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Places",
+            "default": [
+              "1st",
+              "2nd",
+              "3rd",
+              "Participant",
+              "None"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "shop_name",
+          "event_date",
+          "location",
+          "price_cents",
+          "accepting_orders",
+          "status",
+          "wait_minutes",
+          "medals_ahead"
+        ],
+        "title": "PublicEngravingEvent"
+      },
+      "PublicEngravingOrder": {
+        "properties": {
+          "order_number": {
+            "type": "string",
+            "title": "Order Number"
+          },
+          "status_token": {
+            "type": "string",
+            "title": "Status Token"
+          },
+          "event_name": {
+            "type": "string",
+            "title": "Event Name"
+          },
+          "shop_name": {
+            "type": "string",
+            "title": "Shop Name"
+          },
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "line2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line2"
+          },
+          "place": {
+            "type": "string",
+            "title": "Place"
+          },
+          "qty": {
+            "type": "integer",
+            "title": "Qty"
+          },
+          "medals_done": {
+            "type": "integer",
+            "title": "Medals Done"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "paid": {
+            "type": "boolean",
+            "title": "Paid"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "queue_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Position"
+          },
+          "wait_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wait Minutes"
+          },
+          "phone_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Masked"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "ready_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_number",
+          "status_token",
+          "event_name",
+          "shop_name",
+          "athlete_name",
+          "line2",
+          "place",
+          "qty",
+          "medals_done",
+          "status",
+          "paid",
+          "amount_cents",
+          "queue_position",
+          "wait_minutes",
+          "phone_masked",
+          "created_at",
+          "ready_at"
+        ],
+        "title": "PublicEngravingOrder"
       },
       "PublicUser": {
         "properties": {
@@ -41748,6 +44045,18 @@
               }
             ],
             "title": "Region"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
           }
         },
         "type": "object",
@@ -42643,6 +44952,91 @@
           "created_at"
         ],
         "title": "SmsLogRead"
+      },
+      "SmsUsageRead": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Australia/Melbourne"
+          },
+          "sent": {
+            "type": "integer",
+            "title": "Sent"
+          },
+          "suppressed": {
+            "type": "integer",
+            "title": "Suppressed"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "percent_used": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent Used"
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining"
+          },
+          "warn_threshold_reached": {
+            "type": "boolean",
+            "title": "Warn Threshold Reached"
+          },
+          "limit_reached": {
+            "type": "boolean",
+            "title": "Limit Reached"
+          },
+          "enforced": {
+            "type": "boolean",
+            "title": "Enforced",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "period_start",
+          "period_end",
+          "sent",
+          "suppressed",
+          "limit",
+          "percent_used",
+          "remaining",
+          "warn_threshold_reached",
+          "limit_reached"
+        ],
+        "title": "SmsUsageRead"
       },
       "StockImportSummaryResponse": {
         "properties": {
@@ -43610,6 +46004,7 @@
                   "basic_all_tabs",
                   "booking_only",
                   "minit_hq",
+                  "minit_operator",
                   "pro"
                 ]
               },
@@ -43724,6 +46119,7 @@
               "basic_all_tabs",
               "booking_only",
               "minit_hq",
+              "minit_operator",
               "pro"
             ],
             "title": "Plan Code"
@@ -43775,6 +46171,7 @@
                   "basic_all_tabs",
                   "booking_only",
                   "minit_hq",
+                  "minit_operator",
                   "pro"
                 ]
               },

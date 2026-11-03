@@ -38,6 +38,9 @@ class Tenant(SQLModel, table=True):
     #: Mister Minit network tenant (HQ, retail shops, mobile operators). Set only
     #: by Minit provisioning — never inferred from the slug a user typed.
     is_minit: bool = Field(default=False, index=True)
+    #: Platform-admin exception for a Minit-network shop (e.g. an early-tester franchisee
+    #: on Pro): skip the forced Minit plan and the Minit-only plan restriction.
+    keep_own_plan: bool = False
     is_active: bool = True
     auth_revoked_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -229,6 +232,10 @@ class IntakeJob(SQLModel, table=True):
     #: Set once this job has been folded into a "jobs waiting nearby" digest alert — a job is
     #: alerted at most once, ever, regardless of how long it stays unclaimed after that.
     alerted_at: Optional[datetime] = Field(default=None, index=True)
+    #: The HQ network this job belongs to. Pool listing/claim are scoped to it.
+    parent_account_id: Optional[UUID] = Field(default=None, index=True, foreign_key="parentaccount.id")
+    #: Public-submission dedupe key; see ProspectLead.external_ref.
+    external_ref: Optional[str] = Field(default=None, max_length=200, sa_column_kwargs={"unique": True})
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 #: What a site *is* inside its network, independent of what it is billed for.
@@ -574,6 +581,9 @@ class ProspectLead(SQLModel, table=True):
     visit_scheduled_at: Optional[datetime] = None
     next_follow_up_on: Optional[date] = None
     customer_account_id: Optional[UUID] = Field(default=None, index=True)
+    #: Public-submission dedupe key (``k:<parent>:<hash>`` for a client Idempotency-Key,
+    #: ``f:<parent>:<fingerprint>:<bucket>`` for a payload fingerprint). Unique when set.
+    external_ref: Optional[str] = Field(default=None, max_length=200, sa_column_kwargs={"unique": True})
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -833,10 +843,38 @@ class SmsLog(SQLModel, table=True):
     body: str
     event: str  # e.g. "quote_sent", "job_live", "status_ready"
     provider_sid: Optional[str] = None  # Twilio message SID
-    status: str = "dry_run"  # "sent" | "dry_run" | "failed"
+    status: str = "dry_run"  # "sent" | "dry_run" | "failed" | "suppressed"
     attempt_count: int = 0
     last_attempt_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SmsSuppression(SQLModel, table=True):
+    """A phone number that texted STOP (or equivalent) to the shared sending number.
+
+    Deliberately NOT tenant-scoped: the opt-out is addressed to the number, which
+    every operator shares, and carriers/Twilio block all further traffic from it
+    regardless of which shop sent it. One row per normalised phone; `active` flips
+    back to False on START/UNSTOP so the history of the opt-out is kept.
+    `source_tenant_id` (not named tenant_id, so the tenant scope does not hide the
+    row from other shops' sends) is only the shop the reply was attributed to.
+    """
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    phone_normalized: str = Field(unique=True, index=True, max_length=32)
+    active: bool = Field(default=True, index=True)
+    keyword: Optional[str] = Field(default=None, max_length=32)
+    source_tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", ondelete="SET NULL")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class InboundSmsReceipt(SQLModel, table=True):
+    """One row per Twilio MessageSid already processed by the inbound webhook, so a
+    replayed (validly signed) POST is a no-op. Written in the same transaction as
+    the message it guards."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    message_sid: str = Field(unique=True, index=True, max_length=64)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 class EmailLog(SQLModel, table=True):
     """Audit trail for every email sent or attempted — customer-facing and operator alerts.
@@ -1045,6 +1083,24 @@ class AutoKeyJob(SQLModel, table=True):
     callout_inclusive: Optional[bool] = Field(default=None)
     custom_fields_json: Optional[str] = None
 
+
+@event.listens_for(AutoKeyJob, "before_insert")
+@event.listens_for(AutoKeyJob, "before_update")
+def _stamp_auto_key_work_completed_at(_mapper, _connection, target: AutoKeyJob) -> None:
+    """KPI "jobs completed" counts work_completed_at, so stamp it on any route into a done status.
+
+    Covers aliases (completed, collected), jumping straight to invoice_paid, bulk status
+    changes and payment webhooks, none of which go through the single-job status endpoint.
+    """
+    from ..auto_key_status import canonical_auto_key_status
+
+    if target.work_completed_at is None and canonical_auto_key_status(target.status or "") in {
+        "work_completed",
+        "invoice_paid",
+    }:
+        target.work_completed_at = datetime.now(timezone.utc)
+
+
 class OemKeyPricing(SQLModel, table=True):
     """Global OEM key price catalogue (Supabase-managed)."""
     __tablename__ = "oem_key_pricing"
@@ -1104,12 +1160,20 @@ class AutoKeyQuote(SQLModel, table=True):
     signature_storage_key: Optional[str] = None
     signed_at: Optional[datetime] = None
     signer_name: Optional[str] = None
+    #: Two-outcome quotes: labels for options "A"/"B" (None on ordinary quotes). Until the tech picks
+    #: ``selected_option`` the quote totals hold the higher option, so reports see the most it can be.
+    option_a_label: Optional[str] = None
+    option_b_label: Optional[str] = None
+    selected_option: Optional[str] = None
+    selected_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AutoKeyQuoteLineItem(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
     auto_key_quote_id: UUID = Field(index=True, foreign_key="autokeyquote.id")
+    #: "A" / "B" on two-outcome quotes; None = shared by every outcome.
+    option_key: Optional[str] = None
     description: str
     quantity: float = 1
     unit_price_cents: int

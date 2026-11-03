@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 from ..database import get_session
 from ..dependencies import AuthContext, require_manager_or_above
 from ..models import Tenant
-from ..regions import REGION_DEFAULTS, region_for_currency
+from ..regions import ALLOWED_SHOP_TIMEZONES, REGION_DEFAULTS, region_for_currency
 from ..parent_network import parent_ids_for_tenant
 from ..shop_number import assert_shop_number_unique_in_parent, validate_shop_number_format
 
@@ -57,6 +57,8 @@ class ShopIdentityUpdate(BaseModel):
     brand_color: Optional[str] = Field(default=None, max_length=9)
     shop_number: Optional[str] = Field(default=None, max_length=10)
     region: Optional[Literal["AU", "NZ"]] = None
+    #: IANA zone for customer texts and the schedule (e.g. "Australia/Perth").
+    timezone: Optional[str] = Field(default=None, max_length=40)
 
 
 def _read(tenant: Optional[Tenant]) -> ShopIdentityRead:
@@ -117,6 +119,11 @@ def update_shop_identity(
         in_nz = (tenant.timezone or "").startswith("Pacific/Auckland") or tenant.timezone == "NZ"
         if payload.region == "NZ" or in_nz:
             tenant.timezone = defaults["timezone"]
+    if payload.timezone is not None:
+        if payload.timezone not in ALLOWED_SHOP_TIMEZONES:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=422, detail="Unsupported timezone")
+        tenant.timezone = payload.timezone
     if payload.shop_number is not None:
         shop_number = validate_shop_number_format(payload.shop_number)  # raises 400 if malformed
         if shop_number:

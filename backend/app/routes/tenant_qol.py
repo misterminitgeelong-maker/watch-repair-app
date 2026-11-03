@@ -15,7 +15,8 @@ from sqlmodel import Session, delete, func, select
 from ..limiter import limiter, reference_read_limit
 from ..config import settings
 from ..database import get_session
-from ..dependencies import AuthContext, get_auth_context, require_tech_or_above
+from ..dependencies import AuthContext, get_auth_context, require_manager_or_above, require_tech_or_above
+from ..services.webhook_url_guard import WebhookUrlError, validate_webhook_url
 from ..models import (
     AutoKeyJob,
     Customer,
@@ -290,7 +291,7 @@ def list_api_keys(
 @router.post("/tenant/api-keys", response_model=ApiKeyCreateResponse, status_code=201)
 def create_api_key(
     payload: ApiKeyCreateRequest,
-    auth: AuthContext = Depends(require_tech_or_above),
+    auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
     raw = f"msk_{secrets.token_urlsafe(32)}"
@@ -310,7 +311,7 @@ def create_api_key(
 @router.delete("/tenant/api-keys/{key_id}", status_code=204)
 def revoke_api_key(
     key_id: UUID,
-    auth: AuthContext = Depends(require_tech_or_above),
+    auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
     row = session.get(TenantApiKey, key_id)
@@ -352,12 +353,16 @@ def list_webhooks(
 @router.post("/tenant/webhooks", response_model=WebhookRead, status_code=201)
 def create_webhook(
     payload: WebhookCreateRequest,
-    auth: AuthContext = Depends(require_tech_or_above),
+    auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
+    try:
+        safe_url = validate_webhook_url(payload.url)
+    except WebhookUrlError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     row = TenantWebhookSubscription(
         tenant_id=auth.tenant_id,
-        url=payload.url.strip(),
+        url=safe_url,
         event_types=",".join(payload.event_types),
         secret=secrets.token_hex(16),
     )
@@ -370,7 +375,7 @@ def create_webhook(
 @router.delete("/tenant/webhooks/{hook_id}", status_code=204)
 def delete_webhook(
     hook_id: UUID,
-    auth: AuthContext = Depends(require_tech_or_above),
+    auth: AuthContext = Depends(require_manager_or_above),
     session: Session = Depends(get_session),
 ):
     row = session.get(TenantWebhookSubscription, hook_id)

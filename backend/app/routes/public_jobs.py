@@ -16,6 +16,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, or_
+from sqlalchemy import update as sa_update
 from sqlmodel import Field, Session, SQLModel, select
 
 from ..config import settings
@@ -34,6 +35,7 @@ from ..minit_branding import (
     public_shop_branding,
     public_shop_branding_fields,
 )
+from ..auto_key_quote_options import has_options, invoice_line_items, needs_option_choice, option_label, option_totals
 from ..models import (
     Attachment,
     AutoKeyInvoice,
@@ -480,6 +482,8 @@ def get_public_auto_key_booking(request: Request, token: str, session: Session =
             .where(AutoKeyQuoteLineItem.auto_key_quote_id == quote.id)
             .order_by(AutoKeyQuoteLineItem.created_at)
         ).all()
+        # Two-outcome quotes: only shared lines until the tech picks the outcome that applies.
+        items = [i for i in items if i.option_key is None or i.option_key == quote.selected_option]
         line_payload = [
             {
                 "description": i.description,
@@ -751,11 +755,8 @@ def get_public_auto_key_invoice(request: Request, token: str, session: Session =
 
     line_payload: list[dict] = []
     if invoice.auto_key_quote_id:
-        items = session.exec(
-            select(AutoKeyQuoteLineItem)
-            .where(AutoKeyQuoteLineItem.auto_key_quote_id == invoice.auto_key_quote_id)
-            .order_by(AutoKeyQuoteLineItem.created_at)
-        ).all()
+        _inv_quote = session.get(AutoKeyQuote, invoice.auto_key_quote_id)
+        items = invoice_line_items(session, invoice.auto_key_quote_id, _inv_quote.selected_option if _inv_quote else None)
         line_payload = [
             {
                 "description": i.description,
@@ -1360,7 +1361,8 @@ def create_portal_session(request: Request, payload: PortalSessionRequest, sessi
 
 class PortalVerifyRequest(SQLModel):
     phone: str = Field(..., min_length=6, max_length=80)
-    ticket_number: str = Field(..., min_length=1, max_length=40)
+    #: Optional. Phone alone is enough: the texted code is the proof.
+    ticket_number: Optional[str] = Field(default=None, max_length=40)
 
 
 class PortalVerifyCodeRequest(SQLModel):
@@ -1410,15 +1412,38 @@ def _find_customer_by_phone_and_ticket(session: Session, phone: str, ticket: str
     return customer
 
 
+def _find_customer_by_phone(session: Session, phone: str) -> Customer | None:
+    """The customer with this phone who has the most recent repair of any kind.
+
+    A customer record with no jobs is skipped so a stray address-book entry
+    doesn't get the code instead of the person who actually has a repair.
+    """
+    best: tuple[datetime, Customer] | None = None
+    for customer in session.exec(select(Customer).where(Customer.phone_normalized == phone)).all():
+        latest: list[datetime] = []
+        for stmt in (
+            select(func.max(RepairJob.created_at)).join(Watch, RepairJob.watch_id == Watch.id).where(Watch.customer_id == customer.id),
+            select(func.max(ShoeRepairJob.created_at)).join(Shoe, ShoeRepairJob.shoe_id == Shoe.id).where(Shoe.customer_id == customer.id),
+            select(func.max(AutoKeyJob.created_at)).where(AutoKeyJob.customer_id == customer.id),
+        ):
+            value = session.exec(stmt).first()
+            if value is not None:
+                latest.append(value if value.tzinfo else value.replace(tzinfo=timezone.utc))
+        if latest and (best is None or max(latest) > best[0]):
+            best = (max(latest), customer)
+    return best[1] if best else None
+
+
 @router.post("/portal/verify")
 @limiter.limit(auth_limit)
 def verify_portal_access(request: Request, payload: PortalVerifyRequest, session: Session = Depends(get_session)):
-    """Step 1 of phone + ticket sign-in: check the pair, then text a code to that phone.
+    """Step 1 of phone sign-in: text a code to the phone number.
 
-    The answer is identical whether or not the pair matched (a challenge id is
-    always returned), so this cannot be used to probe which tickets exist. The
-    phone number and ticket must belong to the same job, and the portal only
-    opens once the texted code is entered at ``/portal/verify-code``.
+    The ticket number is optional (when given it must match a job on that
+    phone). The answer is identical whether or not anything matched (a
+    challenge id is always returned), so this cannot be used to probe which
+    phones or tickets exist. The portal only opens once the texted code is
+    entered at ``/portal/verify-code``.
     """
     if settings.app_env == "production" and not (
         settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number
@@ -1429,10 +1454,13 @@ def verify_portal_access(request: Request, payload: PortalVerifyRequest, session
     ticket = (payload.ticket_number or "").strip().lstrip("#").strip().lower()
     challenge_id = uuid4()
     response = {"challenge_id": str(challenge_id), "expires_minutes": _PORTAL_CODE_TTL_MINUTES}
-    if not phone or not ticket:
+    if not phone:
         return response
 
-    customer = _find_customer_by_phone_and_ticket(session, phone, ticket)
+    if ticket:
+        customer = _find_customer_by_phone_and_ticket(session, phone, ticket)
+    else:
+        customer = _find_customer_by_phone(session, phone)
     if customer is None or not customer.phone:
         return response
 
@@ -1506,6 +1534,54 @@ def verify_portal_code(request: Request, payload: PortalVerifyCodeRequest, sessi
     session.commit()
     session.refresh(portal_session)
     return {"session_token": portal_session.token, "expires_days": _PORTAL_SESSION_TTL_DAYS}
+
+
+class PortalJobSessionRequest(SQLModel):
+    job_type: str = Field(..., max_length=20)
+    status_token: str = Field(..., min_length=8, max_length=128)
+
+
+@router.post("/portal/job-session")
+@limiter.limit(get_public_write_rate_limit)
+def open_portal_from_job_link(request: Request, payload: PortalJobSessionRequest, session: Session = Depends(get_session)):
+    """Open the customer portal straight from the link texted or emailed about a job.
+
+    The job's status token is already a private link to that job, so it is
+    accepted as proof of who is asking. The session is scoped to that one
+    customer at that one shop (the same scope as a phone + ticket sign-in).
+    """
+    job_type = payload.job_type.strip().lower()
+    customer_id: UUID | None = None
+    tenant_id: UUID | None = None
+    job_number = ""
+    if job_type == "watch":
+        job = session.exec(select(RepairJob).where(RepairJob.status_token == payload.status_token)).first()
+        watch = session.get(Watch, job.watch_id) if job else None
+        if job and watch:
+            customer_id, tenant_id, job_number = watch.customer_id, job.tenant_id, job.job_number
+    elif job_type == "shoe":
+        job = session.exec(select(ShoeRepairJob).where(ShoeRepairJob.status_token == payload.status_token)).first()
+        shoe = session.get(Shoe, job.shoe_id) if job else None
+        if job and shoe:
+            customer_id, tenant_id, job_number = shoe.customer_id, job.tenant_id, job.job_number
+    elif job_type == "auto_key":
+        job = session.exec(select(AutoKeyJob).where(AutoKeyJob.status_token == payload.status_token)).first()
+        if job and job.customer_id:
+            customer_id, tenant_id, job_number = job.customer_id, job.tenant_id, job.job_number
+    if customer_id is None or tenant_id is None:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+
+    customer = session.get(Customer, customer_id)
+    portal_session = PortalSession(
+        email=((customer.email if customer else "") or "").strip().lower(),
+        customer_id=customer_id,
+        tenant_id=tenant_id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=_PORTAL_SESSION_TTL_DAYS),
+    )
+    session.add(portal_session)
+    session.commit()
+    session.refresh(portal_session)
+    return {"session_token": portal_session.token, "job_number": job_number, "expires_days": _PORTAL_SESSION_TTL_DAYS}
 
 
 @router.get("/portal/session/{token}", response_model=CustomerPortalLookupResponse)
@@ -1617,6 +1693,25 @@ def portal_message_to_shop(
 
 # ── Public auto-key quote portal ─────────────────────────────────────────────
 
+def _auto_key_quote_link_expired(quote: AutoKeyQuote) -> bool:
+    """True once the link is older than the watch-quote TTL (default 168h).
+
+    The link is "issued" when the quote was (re)sent; quotes without ``sent_at``
+    (links issued before the timestamp was tracked) fall back to ``created_at``.
+    Re-sending a quote refreshes ``sent_at`` and therefore the link's life.
+    """
+    issued = quote.sent_at or quote.created_at
+    if issued is None:
+        return False
+    if issued.tzinfo is None:
+        issued = issued.replace(tzinfo=timezone.utc)
+    ttl = timedelta(hours=settings.quote_approval_token_ttl_hours)
+    return datetime.now(timezone.utc) > issued + ttl
+
+
+_AUTO_KEY_QUOTE_EXPIRED_DETAIL = "This quote link has expired. Please contact the shop for a new one."
+
+
 @router.get("/auto-key-quote/{token}")
 @limiter.limit(get_public_read_rate_limit)
 def get_public_auto_key_quote(request: Request, token: str, session: Session = Depends(get_session)):
@@ -1625,6 +1720,8 @@ def get_public_auto_key_quote(request: Request, token: str, session: Session = D
     ).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
+    if quote.status in ("draft", "sent") and _auto_key_quote_link_expired(quote):
+        raise HTTPException(status_code=410, detail=_AUTO_KEY_QUOTE_EXPIRED_DETAIL)
 
     job = session.get(AutoKeyJob, quote.auto_key_job_id)
     if not job:
@@ -1660,8 +1757,24 @@ def get_public_auto_key_quote(request: Request, token: str, session: Session = D
         "signed_at": isoformat_z_utc(quote.signed_at) if quote.signed_at else None,
         "signer_name": quote.signer_name,
         "has_signature": bool(quote.signature_storage_key),
+        "selected_option": quote.selected_option,
+        "options": (
+            [
+                {
+                    "key": key,
+                    "label": option_label(quote, key),
+                    "subtotal_cents": sub,
+                    "tax_cents": tax,
+                    "total_cents": total,
+                }
+                for key, (sub, tax, total) in option_totals(quote, list(items)).items()
+            ]
+            if has_options(quote)
+            else []
+        ),
         "line_items": [
             {
+                "option_key": i.option_key,
                 "description": i.description,
                 "quantity": i.quantity,
                 "unit_price_cents": i.unit_price_cents,
@@ -1697,13 +1810,26 @@ def decide_public_auto_key_quote(
         raise HTTPException(status_code=404, detail="Invalid or expired link")
 
     if quote.status not in ("draft", "sent"):
+        # Single-use: a second decision (any value) returns the recorded outcome.
         return {"ok": True, "status": quote.status, "message": f"Quote already {quote.status}."}
+    if _auto_key_quote_link_expired(quote):
+        raise HTTPException(status_code=410, detail=_AUTO_KEY_QUOTE_EXPIRED_DETAIL)
 
     job = session.get(AutoKeyJob, quote.auto_key_job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    quote.status = decision
+    # Atomically claim the decision so concurrent submissions cannot both win.
+    claimed = session.execute(
+        sa_update(AutoKeyQuote)
+        .where(AutoKeyQuote.id == quote.id, AutoKeyQuote.status.in_(("draft", "sent")))
+        .values(status=decision)
+    )
+    if claimed.rowcount != 1:
+        session.rollback()
+        session.refresh(quote)
+        return {"ok": True, "status": quote.status, "message": f"Quote already {quote.status}."}
+    session.refresh(quote)
     if decision == "approved" and job.status in ("quote_sent", "awaiting_quote"):
         job.status = "booking_confirmed"
 
@@ -1723,7 +1849,7 @@ def decide_public_auto_key_quote(
             logger.exception("quote_signature_upload_failed quote=%s", quote.id)
 
     # Auto-create invoice when customer approves
-    if decision == "approved":
+    if decision == "approved" and not needs_option_choice(quote):
         existing_invoice = session.exec(
             select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_quote_id == quote.id)
         ).first()

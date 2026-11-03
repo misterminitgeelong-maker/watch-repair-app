@@ -56,6 +56,7 @@ def route_website_lead_to_prospect(
     payload: dict[str, Any],
     suburb: str,
     state_code: str,
+    external_ref: str | None = None,
 ) -> ProspectLead:
     """Website enquiry (an email, not a live lead): route to one operator's Lead Inbox and
     send a one-time SMS + email alert. No timer, no cascade, no job — unlike a live shop
@@ -101,8 +102,11 @@ def route_website_lead_to_prospect(
         notes="\n\n".join(notes_parts)[:4000],
         status="new",
         source="website_lead",
+        external_ref=external_ref,
     )
     session.add(lead)
+    # Flush before any alert goes out: a unique-ref collision (concurrent duplicate
+    # submission) raises here, so the loser never texts or emails an operator.
     session.flush()
 
     tenant = session.get(Tenant, tenant_id)

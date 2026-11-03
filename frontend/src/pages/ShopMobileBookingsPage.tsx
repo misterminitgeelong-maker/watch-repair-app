@@ -6,6 +6,7 @@ import {
   formatTenantLabel,
   getApiErrorMessage,
   listShopMobileBookings,
+  getShopMobileCoverageContact,
   suggestShopMobileOperator,
   type ShopMobileBooking,
   type ShopMobileOperatorOption,
@@ -32,6 +33,7 @@ const STATUS_LABEL: Record<string, string> = {
 const ROUTING_LABEL: Record<string, string> = {
   suburb_route: 'Mapped suburb',
   fallback_operator: 'Fallback operator',
+  nearest_operator: 'Nearest operator',
   manual_override: 'Manual override',
 }
 
@@ -58,11 +60,22 @@ export default function ShopMobileBookingsPage() {
   const [jobType, setJobType] = useState('')
   const [notes, setNotes] = useState('')
   const [routeSuburb, setRouteSuburb] = useState('')
-  const [routeState, setRouteState] = useState<string>('VIC')
+  // Start on the shop's own state so a hand-typed suburb is looked up where the shop is.
+  const [routeState, setRouteState] = useState<string>(() => {
+    const own = tenantBusinessAddress ? parseAuAddressFromFormatted(tenantBusinessAddress).stateCode : undefined
+    return own && (AU_STATES as readonly string[]).includes(own) ? own : 'VIC'
+  })
   const [routingManualEdit, setRoutingManualEdit] = useState(false)
   const [routingFromAddress, setRoutingFromAddress] = useState(false)
   const [routedOperator, setRoutedOperator] = useState<ShopMobileOperatorOption | null>(null)
   const [routingLookupError, setRoutingLookupError] = useState('')
+
+  // The shop's address can arrive after first render; follow it until a suburb has been entered.
+  useEffect(() => {
+    const own = tenantBusinessAddress ? parseAuAddressFromFormatted(tenantBusinessAddress).stateCode : null
+    if (own && (AU_STATES as readonly string[]).includes(own) && !routeSuburb.trim()) setRouteState(own)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantBusinessAddress])
 
   const applyRoutingFromAddress = useCallback((resolved: ResolvedAuAddress) => {
     if (resolved.suburb) {
@@ -115,7 +128,13 @@ export default function ShopMobileBookingsPage() {
           if (cancelled) return
           setRoutedOperator(res.data)
           if (!res.data) {
-            setRoutingLookupError('No operator configured for this suburb. Contact support.')
+            const contact = await getShopMobileCoverageContact()
+              .then(r => r.data.hq_contact)
+              .catch(() => null)
+            if (cancelled) return
+            setRoutingLookupError(
+              `No mobile operator covers this suburb.${contact ? ` Contact HQ on ${contact}.` : ''} Ask HQ to arrange service manually.`,
+            )
           }
         } catch (err) {
           if (!cancelled) {

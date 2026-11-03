@@ -555,10 +555,17 @@ def test_payment_cannot_be_recorded_on_a_void_invoice(client, auth_headers, make
 def test_a_pool_job_can_only_be_claimed_once(client, bootstrap_and_login):
     from app.models import IntakeJob
 
-    op_a = {"Authorization": f"Bearer {bootstrap_and_login(plan_code='pro')}"}
-    op_b = {"Authorization": f"Bearer {bootstrap_and_login(plan_code='pro')}"}
+    from app.security import decode_access_token
+    from network_link_helpers import put_operators_in_new_network
+
+    tok_a, tok_b = bootstrap_and_login(plan_code='pro'), bootstrap_and_login(plan_code='pro')
+    op_a, op_b = {"Authorization": f"Bearer {tok_a}"}, {"Authorization": f"Bearer {tok_b}"}
+    parent_id = put_operators_in_new_network(
+        decode_access_token(tok_a).tenant_id, decode_access_token(tok_b).tenant_id
+    )
     with Session(engine) as s:
-        job = IntakeJob(customer_name="Pool Customer", job_address="1 Main St", job_lat=-37.8, job_lng=145.0)
+        job = IntakeJob(customer_name="Pool Customer", job_address="1 Main St", job_lat=-37.8, job_lng=145.0,
+                        parent_account_id=parent_id)
         s.add(job)
         s.commit()
         job_id = job.id

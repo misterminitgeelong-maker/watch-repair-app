@@ -418,3 +418,68 @@ def test_portal_phone_and_ticket_sign_in_needs_texted_code(client: TestClient, m
     # A code works once.
     again = client.post("/v1/public/portal/verify-code", json={"challenge_id": challenge, "code": code})
     assert again.status_code == 401
+
+
+def test_job_link_opens_portal_session_for_that_customer(client: TestClient):
+    headers = _bootstrap(client)
+    job = _create_watch_job(client, headers, f"link-{uuid4().hex[:8]}@portal.test", "Linked watch")
+
+    res = client.post(
+        "/v1/public/portal/job-session",
+        json={"job_type": "watch", "status_token": job.status_token},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["job_number"] == job.job_number
+
+    view = client.get(f"/v1/public/portal/session/{res.json()['session_token']}")
+    assert view.status_code == 200, view.text
+    numbers = [j["job_number"] for shop in view.json()["shops"] for j in shop["jobs"]]
+    assert job.job_number in numbers
+
+
+def test_job_link_rejects_unknown_token_and_type(client: TestClient):
+    bad = client.post("/v1/public/portal/job-session", json={"job_type": "watch", "status_token": "nope" * 4})
+    assert bad.status_code == 404
+    odd = client.post("/v1/public/portal/job-session", json={"job_type": "car", "status_token": "nope" * 4})
+    assert odd.status_code == 404
+
+
+def test_job_link_works_for_shoe_and_auto_key(client: TestClient):
+    headers = _bootstrap(client)
+    shoe = _create_shoe_job(client, headers, f"s-{uuid4().hex[:8]}@portal.test", "Linked shoe")
+    key = _create_auto_key_job(client, headers, f"k-{uuid4().hex[:8]}@portal.test", "Linked key")
+    for kind, job in (("shoe", shoe), ("auto_key", key)):
+        res = client.post("/v1/public/portal/job-session", json={"job_type": kind, "status_token": job.status_token})
+        assert res.status_code == 200, res.text
+        view = client.get(f"/v1/public/portal/session/{res.json()['session_token']}").json()
+        assert job.job_number in [j["job_number"] for s in view["shops"] for j in s["jobs"]]
+
+
+def test_portal_phone_only_sign_in_needs_texted_code(client: TestClient, monkeypatch) -> None:
+    sent: list[tuple[str, str]] = []
+
+    def fake_send(session, *, tenant_id, to_phone, shop_name, code):
+        sent.append((to_phone, code))
+        return "sent"
+
+    monkeypatch.setattr("app.sms.send_portal_access_code", fake_send)
+
+    headers = _bootstrap(client)
+    cust = client.post("/v1/customers", headers=headers, json={"full_name": "Phone Only", "phone": "0433 222 111"})
+    assert cust.status_code == 201, cust.text
+    watch = client.post("/v1/watches", headers=headers, json={"customer_id": cust.json()["id"], "brand": "Seiko", "model": "5"})
+    job = client.post("/v1/repair-jobs", headers=headers, json={"watch_id": watch.json()["id"], "title": "Service", "priority": "normal"})
+    assert job.status_code == 201, job.text
+
+    # Unknown phone: same-shaped answer, nothing texted.
+    miss = client.post("/v1/public/portal/verify", json={"phone": "0499 000 111"})
+    assert miss.status_code == 200 and set(miss.json()) == {"challenge_id", "expires_minutes"}
+    assert sent == []
+
+    ok = client.post("/v1/public/portal/verify", json={"phone": "0433222111"})
+    assert ok.status_code == 200, ok.text
+    assert len(sent) == 1
+    done = client.post("/v1/public/portal/verify-code", json={"challenge_id": ok.json()["challenge_id"], "code": sent[0][1]})
+    assert done.status_code == 200, done.text
+    view = client.get(f"/v1/public/portal/session/{done.json()['session_token']}")
+    assert [j["job_number"] for s in view.json()["shops"] for j in s["jobs"]] == [job.json()["job_number"]]

@@ -6,13 +6,15 @@ Compare shop_mobile_bookings.py, which handles the live, timed "book mobile now"
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from ..database import get_session
 from ..limiter import limiter
-from ..models import ParentAccount
+from ..models import ParentAccount, ProspectLead
+from ..public_dedupe import find_existing, make_ref
 from ..security import verify_password
 from ..services.mobile_lead_dispatch import lead_payload_from_body, route_website_lead_to_prospect
 from ..minit_mobile_routing import AU_STATES, normalize_suburb_name
@@ -38,10 +40,12 @@ class MobileKeyLeadIngestBody(BaseModel):
 @limiter.limit("60/minute")
 def ingest_mobile_key_lead(
     request: Request,
+    response: Response,
     ingest_public_id: UUID,
     body: MobileKeyLeadIngestBody,
     session: Session = Depends(get_session),
     x_mobile_lead_secret: str | None = Header(default=None, alias="X-Mobile-Lead-Secret"),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", max_length=200),
 ):
     """Accept a lead from your public website (e.g. Mister Minit key checker). Requires configured parent account + routes.
 
@@ -68,24 +72,37 @@ def ingest_mobile_key_lead(
         raise HTTPException(status_code=400, detail="suburb is required")
 
     payload = lead_payload_from_body(body)
-    try:
-        lead = route_website_lead_to_prospect(
-            session,
-            parent=parent,
-            payload=payload,
-            suburb=body.suburb.strip(),
-            state_code=st,
-        )
-    except ValueError:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "No operator or HQ escalation site configured for this lead. "
-                "Configure suburb routes, a fallback operator, or an HQ escalation site."
-            ),
-        )
-    session.commit()
-    session.refresh(lead)
+    ref, is_key = make_ref(parent.id, idempotency_key, {**payload, "state_code": st})
+    lead = find_existing(session, ProspectLead, ref, is_client_key=is_key)
+    if lead is None:
+        try:
+            lead = route_website_lead_to_prospect(
+                session,
+                parent=parent,
+                payload=payload,
+                suburb=body.suburb.strip(),
+                state_code=st,
+                external_ref=ref,
+            )
+            session.commit()
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "No operator or HQ escalation site configured for this lead. "
+                    "Configure suburb routes, a fallback operator, or an HQ escalation site."
+                ),
+            )
+        except IntegrityError:
+            # A concurrent identical submission won the unique ref; return its lead.
+            session.rollback()
+            lead = find_existing(session, ProspectLead, ref, is_client_key=is_key)
+            if lead is None:
+                raise
+            response.headers["X-Idempotent-Replay"] = "true"
+        session.refresh(lead)
+    else:
+        response.headers["X-Idempotent-Replay"] = "true"
 
     return {
         "lead_id": str(lead.id),
@@ -158,9 +175,11 @@ def _enquiry_option(options: dict[str, str], value: str | None, field: str) -> s
 @limiter.limit("10/minute")
 def submit_key_enquiry(
     request: Request,
+    response: Response,
     ingest_public_id: UUID,
     body: KeyEnquiryBody,
     session: Session = Depends(get_session),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", max_length=200),
 ):
     """Public car key enquiry form → same routing as the website lead feed (operator Lead Inbox, else HQ).
 
@@ -212,15 +231,23 @@ def submit_key_enquiry(
         "registration_plate": body.registration_plate,
         "website_notes": "\n".join(lines),
     }
+    ref, is_key = make_ref(parent.id, idempotency_key, {**payload, "suburb": body.suburb, "state_code": st})
+    if find_existing(session, ProspectLead, ref, is_client_key=is_key) is not None:
+        response.headers["X-Idempotent-Replay"] = "true"
+        return {"message": "Thanks, we'll be in touch shortly."}
     try:
-        lead = route_website_lead_to_prospect(
+        route_website_lead_to_prospect(
             session,
             parent=parent,
             payload=payload,
             suburb=body.suburb.strip(),
             state_code=st,
+            external_ref=ref,
         )
+        session.commit()
     except ValueError:
         raise HTTPException(status_code=503, detail="We can't take online enquiries right now. Please call us instead.")
-    session.commit()
+    except IntegrityError:
+        session.rollback()
+        response.headers["X-Idempotent-Replay"] = "true"
     return {"message": "Thanks, we'll be in touch shortly."}

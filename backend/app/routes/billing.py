@@ -54,7 +54,7 @@ def _get_stripe():
 
 
 SHOP_PLAN_CODE = "basic_all_tabs"
-_MINIT_PLAN_CODES = frozenset({"minit_hq", "booking_only"})
+_MINIT_PLAN_CODES = frozenset({"minit_hq", "booking_only", "minit_operator"})
 _LEGACY_BASIC_PLAN_CODES = frozenset(
     {
         "basic_watch",

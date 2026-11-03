@@ -12,6 +12,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, func, select, update
 
 from ..auto_key_quote_suggestions import gst_tax_cents, suggest_line_items
+from ..auto_key_quote_options import (
+    OPTION_KEYS,
+    apply_totals,
+    has_options,
+    invoice_line_items,
+    needs_option_choice,
+    option_label,
+    option_totals,
+)
 from ..auto_key_status import AUTO_KEY_FINAL_STATUSES, mobile_status_label, statuses_in_category
 from ..mobile_cockpit import FOCUS_BY_KEY, focus_filter, tenant_timezone
 from ..mobile_finance import DATE_FIELDS, list_date_filter
@@ -37,6 +46,8 @@ from ..models import (
     AutoKeyQuoteCreate,
     AutoKeyQuoteLineItem,
     AutoKeyQuoteLineItemRead,
+    AutoKeyQuoteOptionRead,
+    AutoKeyQuoteSelectOption,
     AutoKeyQuoteRead,
     AutoKeyQuoteSendResponse,
     Customer,
@@ -183,10 +194,27 @@ def _to_quote_read(session: Session, quote: AutoKeyQuote) -> AutoKeyQuoteRead:
         signer_name=quote.signer_name,
         has_signature=bool(quote.signature_storage_key),
         created_at=quote.created_at,
+        selected_option=quote.selected_option,
+        selected_at=quote.selected_at,
+        options=(
+            [
+                AutoKeyQuoteOptionRead(
+                    key=key,
+                    label=option_label(quote, key),
+                    subtotal_cents=sub,
+                    tax_cents=tax,
+                    total_cents=total,
+                )
+                for key, (sub, tax, total) in option_totals(quote, items).items()
+            ]
+            if has_options(quote)
+            else []
+        ),
         line_items=[
             AutoKeyQuoteLineItemRead(
                 id=i.id,
                 auto_key_quote_id=i.auto_key_quote_id,
+                option_key=i.option_key,
                 description=i.description,
                 quantity=i.quantity,
                 unit_price_cents=i.unit_price_cents,
@@ -263,11 +291,8 @@ def _create_suggested_quote_for_job(
 
 
 def _auto_key_quote_line_items(session: Session, quote_id: UUID) -> list[dict]:
-    items = session.exec(
-        select(AutoKeyQuoteLineItem)
-        .where(AutoKeyQuoteLineItem.auto_key_quote_id == quote_id)
-        .order_by(AutoKeyQuoteLineItem.created_at)
-    ).all()
+    quote = session.get(AutoKeyQuote, quote_id)
+    items = invoice_line_items(session, quote_id, quote.selected_option if quote else None)
     return [
         {
             "description": i.description,
@@ -305,6 +330,9 @@ def _send_mobile_quote_email(
     job: AutoKeyJob,
     shop_name: str,
 ) -> tuple[bool, str | None, str | None]:
+    if needs_option_choice(quote):
+        # The email/PDF layout is single-total; two-outcome quotes go out as an SMS portal link.
+        return False, "two_option_quote", None
     from ..email_client import email_skip_reason, send_mobile_quote_email
     from ..pdf_invoice import build_quote_pdf
     from ..minit_branding import customer_brand_color, customer_logo_url, document_branding
@@ -1045,6 +1073,18 @@ def update_auto_key_job_status(
     if moved_to_completed and job.work_completed_at is None:
         job.work_completed_at = datetime.now(timezone.utc)
     if moved_to_completed:
+      pending_quote = session.exec(
+          select(AutoKeyQuote)
+          .where(AutoKeyQuote.tenant_id == auth.tenant_id)
+          .where(AutoKeyQuote.auto_key_job_id == job.id)
+          .order_by(AutoKeyQuote.created_at.desc())
+      ).first()
+      if pending_quote and pending_quote.status != "declined" and needs_option_choice(pending_quote):
+          session.rollback()
+          raise HTTPException(
+              status_code=409,
+              detail="Choose which quote option applies before marking this job work completed",
+          )
       existing_invoice = session.exec(
           select(AutoKeyInvoice)
           .where(AutoKeyInvoice.tenant_id == auth.tenant_id)
@@ -1316,7 +1356,13 @@ def create_auto_key_quote(
     job = session.get(AutoKeyJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
-    if not payload.line_items:
+    options = payload.options
+    if options is not None:
+        if len(options) != 2:
+            raise HTTPException(status_code=400, detail="A two-outcome quote needs exactly two options")
+        if not all(o.line_items for o in options):
+            raise HTTPException(status_code=400, detail="Each option needs at least one line item")
+    elif not payload.line_items:
         raise HTTPException(status_code=400, detail="At least one line item is required")
 
     entered = 0
@@ -1327,26 +1373,39 @@ def create_auto_key_quote(
         gst_enabled=payload.gst_enabled,
         gst_inclusive=payload.gst_inclusive,
     )
+    if options is not None:
+        quote.option_a_label = options[0].label.strip()
+        quote.option_b_label = options[1].label.strip()
     session.add(quote)
     session.flush()
 
-    for item in payload.line_items:
-        total_price = line_total_cents(item.quantity, item.unit_price_cents)
-        entered += total_price
-        session.add(
-            AutoKeyQuoteLineItem(
+    created_items: list[AutoKeyQuoteLineItem] = []
+    groups = [(None, payload.line_items)]
+    if options is not None:
+        groups += [("A", options[0].line_items), ("B", options[1].line_items)]
+    for option_key, group in groups:
+        for item in group:
+            total_price = line_total_cents(item.quantity, item.unit_price_cents)
+            if options is None:
+                entered += total_price
+            row = AutoKeyQuoteLineItem(
                 tenant_id=auth.tenant_id,
                 auto_key_quote_id=quote.id,
+                option_key=option_key,
                 description=item.description,
                 quantity=item.quantity,
                 unit_price_cents=item.unit_price_cents,
                 total_price_cents=total_price,
             )
-        )
+            created_items.append(row)
+            session.add(row)
 
-    quote.subtotal_cents, quote.tax_cents, quote.total_cents = compute_gst_amounts(
-        entered, payload.gst_enabled, payload.gst_inclusive, currency=quote.currency
-    )
+    if options is not None:
+        apply_totals(quote, created_items)
+    else:
+        quote.subtotal_cents, quote.tax_cents, quote.total_cents = compute_gst_amounts(
+            entered, payload.gst_enabled, payload.gst_inclusive, currency=quote.currency
+        )
     session.add(quote)
     _log_job_event(
         session,
@@ -1357,6 +1416,65 @@ def create_auto_key_quote(
     )
     session.commit()
     session.refresh(quote)
+    return _to_quote_read(session, quote)
+
+
+@router.post("/quotes/{quote_id}/select-option", response_model=AutoKeyQuoteRead)
+def select_auto_key_quote_option(
+    quote_id: UUID,
+    payload: AutoKeyQuoteSelectOption,
+    auth: AuthContext = Depends(require_tech_or_above),
+    session: Session = Depends(get_session),
+):
+    """Tech records which outcome applies on site; fixes the quote total and what gets invoiced."""
+    quote = session.get(AutoKeyQuote, quote_id)
+    if not quote or quote.tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=404, detail="Auto key quote not found")
+    if not has_options(quote):
+        raise HTTPException(status_code=400, detail="This quote does not have two options")
+    if quote.status == "declined":
+        raise HTTPException(status_code=409, detail="The customer declined this quote")
+    invoiced = session.exec(
+        select(AutoKeyInvoice).where(AutoKeyInvoice.auto_key_quote_id == quote.id)
+    ).first()
+    if invoiced:
+        raise HTTPException(status_code=409, detail="This quote is already invoiced")
+
+    quote.selected_option = payload.option
+    quote.selected_at = datetime.now(timezone.utc)
+    items = list(session.exec(
+        select(AutoKeyQuoteLineItem).where(AutoKeyQuoteLineItem.auto_key_quote_id == quote.id)
+    ).all())
+    apply_totals(quote, items)
+    session.add(quote)
+    job = session.get(AutoKeyJob, quote.auto_key_job_id)
+    if job:
+        _log_job_event(
+            session,
+            auth=auth,
+            job=job,
+            event_type="auto_key_quote_option_selected",
+            summary=f"{option_label(quote, payload.option)} applies: ${quote.total_cents / 100:,.2f}",
+        )
+    session.commit()
+    session.refresh(quote)
+
+    if job and (job.customer_id):
+        customer = session.get(Customer, job.customer_id)
+        if customer and (customer.phone or "").strip():
+            tenant = session.get(Tenant, auth.tenant_id)
+            sms.notify_auto_key_quote_option_selected(
+                session,
+                tenant_id=auth.tenant_id,
+                auto_key_job_id=job.id,
+                to_phone=customer.phone.strip(),
+                customer_name=_customer_first_name(customer),
+                shop_name=(tenant.name if tenant else None) or "Mobile Services",
+                job_number=job.job_number,
+                option_label=option_label(quote, payload.option),
+                total_cents=quote.total_cents,
+                currency=quote.currency or "AUD",
+            )
     return _to_quote_read(session, quote)
 
 
@@ -1415,6 +1533,13 @@ def send_auto_key_quote(
                         total_cents=quote.total_cents,
                         currency=quote.currency or "AUD",
                         quote_approval_token=quote.quote_approval_token,
+                        option_totals_cents=(
+                            sorted(t[2] for t in option_totals(
+                                quote,
+                                list(session.exec(select(AutoKeyQuoteLineItem).where(AutoKeyQuoteLineItem.auto_key_quote_id == quote.id)).all()),
+                            ).values())
+                            if needs_option_choice(quote) else None
+                        ),
                     )
                     logger.info("auto_key_quote.quote_sent_sms tenant=%s job=%s quote=%s", auth.tenant_id, job.id, quote.id)
                 email_sent, email_skipped_reason, email_error_detail = _send_mobile_quote_email(
@@ -1533,6 +1658,9 @@ def create_auto_key_invoice_from_quote(
     quote = session.get(AutoKeyQuote, quote_id)
     if not quote or quote.tenant_id != auth.tenant_id or quote.auto_key_job_id != job_id:
         raise HTTPException(status_code=404, detail="Auto key quote not found")
+
+    if needs_option_choice(quote):
+        raise HTTPException(status_code=409, detail="Choose which option applies before invoicing this quote")
 
     existing = session.exec(
         select(AutoKeyInvoice)
