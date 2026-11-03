@@ -71,6 +71,7 @@ export function PrivacyPolicyPage() {
         <li>Push notifications: Google Firebase Cloud Messaging.</li>
         <li>Maps and address search: Google.</li>
         <li>Error monitoring: Sentry.</li>
+        <li>Website visit statistics: Cloudflare Web Analytics, which uses no cookies and does not track you across sites.</li>
         <li>Accounting: Xero, only where a shop chooses to connect it.</li>
       </ul>
       <p>
