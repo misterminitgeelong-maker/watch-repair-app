@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     fcm_service_account_json: str = ""
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
+    # Key for encrypting customer ID numbers at rest (any long random string). Falls back to
+    # JWT_SECRET when blank; set it separately in production so rotating one never loses the other.
+    id_capture_key: str = ""
     twilio_from_number: str = ""  # E.164 format, e.g. +61400000000
 
     # Public base URL used to build approval links in SMS messages

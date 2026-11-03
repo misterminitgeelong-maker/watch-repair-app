@@ -19,6 +19,10 @@ import {
   refreshStripeConnectStatus,
   setDispatchBaseLocation,
   getShopIdentity,
+  getSupportAccess,
+  setSupportAccess,
+  getIdCaptureSetting,
+  setIdCaptureSetting,
   updateShopIdentity,
   type PlanCode,
   type TenantUser,
@@ -577,6 +581,8 @@ export default function AccountsPage() {
       <ShopIdentityCard />
       <TenantQolSettings />
 
+      {canManagePlan && <ShopPrivacyCard />}
+
       <AppearanceCard />
 
       <Card className="mb-5 p-4 sm:p-5">
@@ -890,6 +896,59 @@ function DispatchBaseLocationCard() {
           {mut.isPending ? 'Geocoding…' : 'Save base location'}
         </Button>
       </div>
+    </Card>
+  )
+}
+
+function ShopPrivacyCard() {
+  const qc = useQueryClient()
+  const access = useQuery({ queryKey: ['support-access'], queryFn: () => getSupportAccess().then((r) => r.data) })
+  const idSetting = useQuery({ queryKey: ['id-capture-setting'], queryFn: () => getIdCaptureSetting().then((r) => r.data) })
+  const accessMut = useMutation({
+    mutationFn: (enabled: boolean) => setSupportAccess(enabled, 24),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['support-access'] }),
+  })
+  const idMut = useMutation({
+    mutationFn: (v: boolean) => setIdCaptureSetting(v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['id-capture-setting'] }),
+  })
+  const until = access.data?.enabled && access.data.until ? new Date(access.data.until).toLocaleString() : null
+  return (
+    <Card className="mb-5 p-4 sm:p-5">
+      <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--ms-text-muted)' }}>
+        Privacy &amp; compliance
+      </p>
+      <label className="flex items-start gap-3 mt-3 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={!!access.data?.enabled}
+          disabled={access.isLoading || accessMut.isPending}
+          onChange={(e) => accessMut.mutate(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium">Allow support access for 24 hours</span>
+          <span className="block" style={{ color: 'var(--ms-text-mid)' }}>
+            Lets head office or Mainspring support open your shop to help you. Every visit is logged with a reason.
+            {until ? ` Allowed until ${until}.` : ' Off until you turn it on.'}
+          </span>
+        </span>
+      </label>
+      <label className="flex items-start gap-3 mt-4 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={!!idSetting.data?.require_id_capture}
+          disabled={idSetting.isLoading || idMut.isPending}
+          onChange={(e) => idMut.mutate(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium">Require customer ID before completing a mobile job</span>
+          <span className="block" style={{ color: 'var(--ms-text-mid)' }}>
+            Draft setting while the locksmith ID rules are confirmed.
+          </span>
+        </span>
+      </label>
     </Card>
   )
 }

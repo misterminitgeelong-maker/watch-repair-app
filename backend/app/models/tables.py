@@ -48,6 +48,11 @@ class Tenant(SQLModel, table=True):
     toolkit_selected_keys: str = Field(default="[]")
     # When False, customer-facing SMS for mobile services (auto key) is skipped; tech reminders unchanged.
     mobile_services_customer_sms_enabled: bool = True
+    # Support-access consent: HQ / support staff may only open this shop while now < this time.
+    # The shop owner grants a time-boxed window and can revoke it. None = no access granted.
+    support_access_until: Optional[datetime] = None
+    # When True a mobile-services job cannot be marked work-complete until an ID record exists.
+    require_id_capture: bool = False
     # Ring-map dispatch: operator's base location for distance-based job routing
     base_lat: Optional[float] = None
     base_lng: Optional[float] = None
@@ -453,7 +458,24 @@ class TenantEventLog(SQLModel, table=True):
     entity_id: Optional[UUID] = Field(default=None, index=True)
     event_type: str = Field(index=True)  # "login", "user_created", "invoice_created", "plan_changed"
     event_summary: str
+    #: Set when the row was written during an HQ / platform support session, so the shop can
+    #: tell its own staff's actions from a supporter acting through the owner login.
+    support_actor_user_id: Optional[UUID] = Field(default=None, index=True, foreign_key="user.id", ondelete="SET NULL")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+@event.listens_for(TenantEventLog, "before_insert")
+def _stamp_support_actor(_mapper, _connection, target: "TenantEventLog") -> None:
+    """Tag every audit row written inside a support session (see get_auth_context)."""
+    if target.support_actor_user_id is not None:
+        return
+    from sqlalchemy.orm import object_session
+
+    sess = object_session(target)
+    actor = sess.info.get("support_actor_user_id") if sess is not None else None
+    if actor is not None:
+        target.support_actor_user_id = actor
+        if "support session" not in (target.event_summary or ""):
+            target.event_summary = f"{target.event_summary} [support session]"
 
 class DeviceToken(SQLModel, table=True):
     """A phone-app push (FCM) registration token for one signed-in user."""
@@ -1699,3 +1721,42 @@ class HqSettings(SQLModel, table=True):
     site_plans_json: str = Field(default="[]")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AutoKeyIdCapture(SQLModel, table=True):
+    """Customer ID and proof-of-ownership record for one mobile-services (auto key) job.
+
+    DRAFT: the exact AASRA / licensing requirements are still to be confirmed (see
+    docs/aasra-id-capture.md). The ID number is stored encrypted; only the last four
+    characters are kept in clear for display. One record per job. A job with a record
+    cannot be hard-deleted.
+    """
+    __table_args__ = (UniqueConstraint("auto_key_job_id", name="uq_autokeyidcapture_job"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id")
+    id_type: str = Field(max_length=32)  # drivers_licence | passport | other_photo_id
+    id_number_encrypted: str
+    id_number_last4: str = Field(max_length=8)
+    id_issuer: Optional[str] = Field(default=None, max_length=64)  # state / country
+    name_on_id: str = Field(max_length=200)
+    proof_of_ownership_type: str = Field(max_length=32)  # registration | purchase_papers | insurance | other
+    proof_of_ownership_notes: Optional[str] = Field(default=None, max_length=500)
+    consent_text_version: str = Field(max_length=32)
+    consent_given_at: datetime
+    consent_method: str = Field(max_length=16)  # verbal | signed
+    verified_by_user_id: UUID = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AutoKeyIdAccessLog(SQLModel, table=True):
+    """Append-only trail of who created, viewed (masked or revealed) or changed an ID record."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    auto_key_job_id: UUID = Field(index=True, foreign_key="autokeyjob.id", ondelete="CASCADE")
+    user_id: UUID = Field(foreign_key="user.id")
+    support_actor_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", ondelete="SET NULL")
+    action: str = Field(max_length=16)  # create | update | view | reveal
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)

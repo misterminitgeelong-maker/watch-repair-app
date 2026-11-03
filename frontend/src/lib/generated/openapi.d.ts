@@ -7211,6 +7211,94 @@ export interface paths {
         patch: operations["update_shop_identity_v1_settings_shop_identity_patch"];
         trace?: never;
     };
+    "/v1/auto-key-jobs/{job_id}/id-capture/consent-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consent Text */
+        get: operations["get_consent_text_v1_auto_key_jobs__job_id__id_capture_consent_text_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/{job_id}/id-capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Id Capture */
+        get: operations["get_id_capture_v1_auto_key_jobs__job_id__id_capture_get"];
+        /** Save Id Capture */
+        put: operations["save_id_capture_v1_auto_key_jobs__job_id__id_capture_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auto-key-jobs/{job_id}/id-capture/access-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Id Access Log */
+        get: operations["list_id_access_log_v1_auto_key_jobs__job_id__id_capture_access_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop/support-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Support Access */
+        get: operations["get_support_access_v1_shop_support_access_get"];
+        /** Set Support Access */
+        put: operations["set_support_access_v1_shop_support_access_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shop/id-capture-setting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Id Capture Setting */
+        get: operations["get_id_capture_setting_v1_shop_id_capture_setting_get"];
+        /** Set Id Capture Setting */
+        put: operations["set_id_capture_setting_v1_shop_id_capture_setting_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/engraving/events": {
         parameters: {
             query?: never;
@@ -9567,6 +9655,121 @@ export interface components {
             modules?: string[];
             /** Site Plans */
             site_plans?: string[];
+        };
+        /** IdAccessLogRead */
+        IdAccessLogRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** User Email */
+            user_email?: string | null;
+            /** Support Actor User Id */
+            support_actor_user_id?: string | null;
+            /** Action */
+            action: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** IdCaptureRead */
+        IdCaptureRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Auto Key Job Id
+             * Format: uuid
+             */
+            auto_key_job_id: string;
+            /** Id Type */
+            id_type: string;
+            /** Id Number Masked */
+            id_number_masked: string;
+            /** Id Number */
+            id_number?: string | null;
+            /** Id Issuer */
+            id_issuer?: string | null;
+            /** Name On Id */
+            name_on_id: string;
+            /** Proof Of Ownership Type */
+            proof_of_ownership_type: string;
+            /** Proof Of Ownership Notes */
+            proof_of_ownership_notes?: string | null;
+            /** Consent Text Version */
+            consent_text_version: string;
+            /**
+             * Consent Given At
+             * Format: date-time
+             */
+            consent_given_at: string;
+            /** Consent Method */
+            consent_method: string;
+            /**
+             * Verified By User Id
+             * Format: uuid
+             */
+            verified_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** IdCaptureSettingRead */
+        IdCaptureSettingRead: {
+            /** Require Id Capture */
+            require_id_capture: boolean;
+        };
+        /** IdCaptureWrite */
+        IdCaptureWrite: {
+            /**
+             * Id Type
+             * @enum {string}
+             */
+            id_type: "drivers_licence" | "passport" | "other_photo_id";
+            /** Id Number */
+            id_number: string;
+            /** Id Issuer */
+            id_issuer?: string | null;
+            /** Name On Id */
+            name_on_id: string;
+            /**
+             * Proof Of Ownership Type
+             * @enum {string}
+             */
+            proof_of_ownership_type: "registration" | "purchase_papers" | "insurance" | "other";
+            /** Proof Of Ownership Notes */
+            proof_of_ownership_notes?: string | null;
+            /** Consent Given */
+            consent_given: boolean;
+            /**
+             * Consent Method
+             * @enum {string}
+             */
+            consent_method: "verbal" | "signed";
+        };
+        /** IdConsentTextRead */
+        IdConsentTextRead: {
+            /** Version */
+            version: string;
+            /** Text */
+            text: string;
         };
         /** ImportSummaryResponse */
         ImportSummaryResponse: {
@@ -14310,6 +14513,23 @@ export interface components {
             /** Completed At */
             completed_at?: string | null;
             progress?: components["schemas"]["StocktakeProgressRead"];
+        };
+        /** SupportAccessRead */
+        SupportAccessRead: {
+            /** Enabled */
+            enabled: boolean;
+            /** Until */
+            until?: string | null;
+        };
+        /** SupportAccessUpdate */
+        SupportAccessUpdate: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Hours
+             * @default 24
+             */
+            hours: number;
         };
         /** TenantBootstrap */
         TenantBootstrap: {
@@ -28346,6 +28566,242 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShopIdentityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consent_text_v1_auto_key_jobs__job_id__id_capture_consent_text_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdConsentTextRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_id_capture_v1_auto_key_jobs__job_id__id_capture_get: {
+        parameters: {
+            query?: {
+                reveal?: boolean;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdCaptureRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_id_capture_v1_auto_key_jobs__job_id__id_capture_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdCaptureWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdCaptureRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_id_access_log_v1_auto_key_jobs__job_id__id_capture_access_log_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdAccessLogRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_support_access_v1_shop_support_access_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccessRead"];
+                };
+            };
+        };
+    };
+    set_support_access_v1_shop_support_access_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportAccessUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccessRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_id_capture_setting_v1_shop_id_capture_setting_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdCaptureSettingRead"];
+                };
+            };
+        };
+    };
+    set_id_capture_setting_v1_shop_id_capture_setting_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdCaptureSettingRead"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdCaptureSettingRead"];
                 };
             };
             /** @description Validation Error */

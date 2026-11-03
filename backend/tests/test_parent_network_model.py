@@ -136,8 +136,24 @@ def test_hq_can_enter_a_shop_after_it_takes_its_own_login():
     session_info = client.get("/v1/auth/session", headers=net["hq"]).json()
     assert net["shop_slug"] not in {s["tenant_slug"] for s in session_info["available_sites"]}
 
-    # ...but the shop is still a site, and HQ can enter it.
-    entered = client.post(f"/v1/parent-accounts/me/sites/{net['shop_id']}/enter", headers=net["hq"])
+    # ...but the shop is still a site. Now that it has its own login HQ needs the owner's consent.
+    blocked = client.post(
+        f"/v1/parent-accounts/me/sites/{net['shop_id']}/enter", headers=net["hq"], json={"reason": "Helping set up"}
+    )
+    assert blocked.status_code == 403, blocked.text
+    owner_login = client.post(
+        "/v1/auth/login", json={"tenant_slug": net["shop_slug"], "email": new_email, "password": "brandnewpass1!"}
+    )
+    assert owner_login.status_code == 200, owner_login.text
+    allow = client.put(
+        "/v1/shop/support-access",
+        headers=_h(owner_login.json()["access_token"]),
+        json={"enabled": True, "hours": 2},
+    )
+    assert allow.status_code == 200, allow.text
+    entered = client.post(
+        f"/v1/parent-accounts/me/sites/{net['shop_id']}/enter", headers=net["hq"], json={"reason": "Helping set up"}
+    )
     assert entered.status_code == 200, entered.text
     body = entered.json()
     assert body["tenant_slug"] == net["shop_slug"]

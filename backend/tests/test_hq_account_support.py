@@ -2,7 +2,7 @@
 account status and message logs."""
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -16,7 +16,7 @@ from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, engine
 from app.main import app
-from app.models import ParentAccountEventLog, RefreshSession, ShopOwnerInvite, User
+from app.models import ParentAccountEventLog, RefreshSession, ShopOwnerInvite, Tenant, User
 
 from tests.test_shop_owner_invites import _headers, _login, _setup_shop
 
@@ -24,8 +24,8 @@ create_db_and_tables()
 client = TestClient(app)
 
 
-def _claimed_shop(suffix: str) -> dict:
-    """A shop whose owner has taken over their own login."""
+def _claimed_shop(suffix: str, allow_support: bool = True) -> dict:
+    """A shop whose owner has taken over their own login (and, by default, allowed support access)."""
     ctx = _setup_shop(suffix)
     invite = client.post(f"/v1/parent-accounts/me/sites/{ctx['tenant_id']}/invite", headers=ctx["hq"]).json()
     token = invite["invite_url"].rsplit("/", 1)[-1]
@@ -38,6 +38,11 @@ def _claimed_shop(suffix: str) -> dict:
     with Session(engine) as session:
         owner = session.exec(select(User).where(User.email == email)).one()
         ctx["owner_id"] = str(owner.id)
+        if allow_support:
+            tenant = session.get(Tenant, UUID(ctx["tenant_id"]))
+            tenant.support_access_until = datetime.now(timezone.utc) + timedelta(hours=1)
+            session.add(tenant)
+            session.commit()
     ctx["owner_email"] = email
     return ctx
 

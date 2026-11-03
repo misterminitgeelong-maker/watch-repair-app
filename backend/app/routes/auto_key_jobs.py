@@ -30,6 +30,7 @@ from ..dependencies import AuthContext, enforce_plan_limit, get_auth_context, re
 from ..gst import compute_gst_amounts, gst_in_inclusive, line_total_cents
 from ..list_page import query_total, set_total_count
 from ..stale_write import reject_stale_write
+from .auto_key_id_capture import has_id_capture
 from ..models import (
     Attachment,
     AutoKeyJob,
@@ -1052,6 +1053,13 @@ def update_auto_key_job_status(
 
     reject_stale_write(job.updated_at, request)
     previous_status = job.status
+    if payload.status == "work_completed" and previous_status != "work_completed":
+        shop = session.get(Tenant, auth.tenant_id)
+        if shop and shop.require_id_capture and not has_id_capture(session, job.id):
+            raise HTTPException(
+                status_code=409,
+                detail="Record the customer's ID and proof of ownership before completing this job.",
+            )
     job.status = payload.status
     job.updated_at = datetime.now(timezone.utc)
     session.add(job)
@@ -1267,6 +1275,11 @@ def delete_auto_key_job(
     job = session.get(AutoKeyJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
+    if has_id_capture(session, job.id):
+        raise HTTPException(
+            status_code=409,
+            detail="This job has an ID record and can't be deleted. Cancel it instead so the record is kept.",
+        )
 
     quote_ids = session.exec(
         select(AutoKeyQuote.id)
