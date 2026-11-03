@@ -17419,6 +17419,75 @@
         }
       }
     },
+    "/v1/parent-accounts/me/operations/shoe-jobs/report": {
+      "get": {
+        "tags": [
+          "parent-shoe-operations"
+        ],
+        "summary": "Shoe Jobs Report",
+        "description": "Repairs grouped by shoe model, by repair type, and warranty versus paid.\n\nWarranty is judged from the shoe's purchase date (see ``shoe_warranty``);\njobs with no purchase date count as \"unknown\".",
+        "operationId": "shoe_jobs_report_v1_parent_accounts_me_operations_shoe_jobs_report_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Date"
+            }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/parent-accounts/me/stock/parts": {
       "get": {
         "tags": [

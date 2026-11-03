@@ -5538,6 +5538,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/operations/shoe-jobs/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shoe Jobs Report
+         * @description Repairs grouped by shoe model, by repair type, and warranty versus paid.
+         *
+         *     Warranty is judged from the shoe's purchase date (see ``shoe_warranty``);
+         *     jobs with no purchase date count as "unknown".
+         */
+        get: operations["shoe_jobs_report_v1_parent_accounts_me_operations_shoe_jobs_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/stock/parts": {
         parameters: {
             query?: never;
@@ -25816,6 +25839,38 @@ export interface operations {
                 status?: string | null;
                 tenant_id?: string | null;
                 limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shoe_jobs_report_v1_parent_accounts_me_operations_shoe_jobs_report_get: {
+        parameters: {
+            query?: {
+                from_date?: string | null;
+                to_date?: string | null;
             };
             header?: never;
             path?: never;

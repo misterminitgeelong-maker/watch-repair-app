@@ -457,6 +457,14 @@ export const getHqShoeSummary = (params?: { from_date?: string; to_date?: string
   api.get<HqShoeSummary>('/parent-accounts/me/operations/shoe-jobs/summary', { params })
 export const searchHqShoeJobs = (params?: { q?: string; status?: string; tenant_id?: string; limit?: number }) =>
   api.get<{ jobs: HqShoeJobRow[]; has_more: boolean }>('/parent-accounts/me/operations/shoe-jobs/search', { params })
+export interface HqShoeReport {
+  total_repairs: number
+  by_model: { model: string; repairs: number; billed_cents: number }[]
+  by_fault: { fault: string; repairs: number; billed_cents: number }[]
+  warranty: { in_warranty: number; expired: number; unknown: number }
+}
+export const getHqShoeReport = (params?: { from_date?: string; to_date?: string }) =>
+  api.get<HqShoeReport>('/parent-accounts/me/operations/shoe-jobs/report', { params })
 export const getHqOwnerInvite = (token: string) => api.get<{ name: string; email: string; full_name: string; tenant_slug: string; existing_account: boolean; expires_at: string }>(`/public/hq-invite/${token}`)
 export const acceptHqOwnerInvite = (token: string, password: string) => api.post<{ access_token: string; refresh_token: string; expires_in_seconds: number }>(`/public/hq-invite/${token}/complete`, { password })
 

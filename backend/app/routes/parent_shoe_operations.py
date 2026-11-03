@@ -177,3 +177,63 @@ def shoe_jobs_search(
         for job, shoe, customer in found[:limit]
     ]
     return {"jobs": jobs, "has_more": len(found) > limit}
+
+
+@router.get("/me/operations/shoe-jobs/report")
+def shoe_jobs_report(
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    """Repairs grouped by shoe model, by repair type, and warranty versus paid.
+
+    Warranty is judged from the shoe's purchase date (see ``shoe_warranty``);
+    jobs with no purchase date count as "unknown".
+    """
+    from .. import shoe_warranty
+
+    require_hq(auth, session, "shoe")
+    _, parent, _ = _parent_for_read(session, auth)
+    shops = _shops(session, parent.id)
+    start, end = _parse(from_date, "from_date"), _parse(to_date, "to_date")
+
+    by_model: dict[str, dict] = {}
+    by_fault: dict[str, dict] = {}
+    warranty = {shoe_warranty.IN_WARRANTY: 0, shoe_warranty.EXPIRED: 0, shoe_warranty.UNKNOWN: 0}
+    total = 0
+    if shops:
+        rows = session.exec(
+            select(ShoeRepairJob, Shoe)
+            .join(Shoe, Shoe.id == ShoeRepairJob.shoe_id)
+            .where(col(ShoeRepairJob.tenant_id).in_(list(shops)))
+        ).all()
+        picked = [
+            (j, s) for j, s in rows
+            if (start is None or _utc(j.created_at) >= start) and (end is None or _utc(j.created_at) <= end)
+        ]
+        total = len(picked)
+        items_by_job: dict[UUID, list[ShoeRepairJobItem]] = defaultdict(list)
+        if picked:
+            for item in session.exec(
+                select(ShoeRepairJobItem).where(col(ShoeRepairJobItem.shoe_repair_job_id).in_([j.id for j, _ in picked]))
+            ).all():
+                items_by_job[item.shoe_repair_job_id].append(item)
+        for job, shoe in picked:
+            model = (shoe.model_name or "").strip() or "Unknown model"
+            m = by_model.setdefault(model, {"model": model, "repairs": 0, "billed_cents": 0})
+            m["repairs"] += 1
+            created_on = _utc(job.created_at).date()
+            warranty[shoe_warranty.warranty_status(shoe.purchase_date, today=created_on)] += 1
+            for item in items_by_job.get(job.id, []):
+                amount = int((item.unit_price_cents or 0) * item.quantity)
+                m["billed_cents"] += amount
+                f = by_fault.setdefault(item.catalogue_group, {"fault": item.catalogue_group, "repairs": 0, "billed_cents": 0})
+                f["repairs"] += 1
+                f["billed_cents"] += amount
+    return {
+        "from_date": start, "to_date": end, "total_repairs": total,
+        "by_model": sorted(by_model.values(), key=lambda r: -r["repairs"]),
+        "by_fault": sorted(by_fault.values(), key=lambda r: -r["repairs"]),
+        "warranty": warranty,
+    }
