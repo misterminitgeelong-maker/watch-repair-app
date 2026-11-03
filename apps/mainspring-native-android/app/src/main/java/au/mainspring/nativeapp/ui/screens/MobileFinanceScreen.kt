@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -75,7 +76,17 @@ import au.mainspring.nativeapp.ui.formatCents
     if(calibre) HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {StatusPill(q.status);Text(formatCents(q.total,q.currency),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)}
     Text("Subtotal ${formatCents(q.subtotal, q.currency)} · GST ${formatCents(q.tax, q.currency)}",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-    q.lines.forEach { Text("${it.description}: ${java.math.BigDecimal.valueOf(it.quantity).stripTrailingZeros().toPlainString()} × ${formatCents(it.unitCents, q.currency)}") }
+    q.lines.forEach { Text("${it.optionKey?.let { key -> "[Option $key] " }.orEmpty()}${it.description}: ${java.math.BigDecimal.valueOf(it.quantity).stripTrailingZeros().toPlainString()} × ${formatCents(it.unitCents, q.currency)}") }
+    val outcomes=q.options.orEmpty()
+    if(outcomes.size==2) Column(Modifier.fillMaxWidth().testTag("quote-outcomes-${q.id}"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+     Text(if(q.selectedOption!=null) "Outcome confirmed" else "Which option applies? Pick one once you have seen the vehicle.",style=MaterialTheme.typography.labelLarge)
+     outcomes.forEach { opt -> val chosen=q.selectedOption==opt.key
+      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
+       Text("${opt.label} — ${formatCents(opt.total,q.currency)}${if(chosen) " ✓" else ""}",Modifier.weight(1f),fontWeight=if(chosen) FontWeight.Bold else FontWeight.Normal)
+       if(q.selectedOption==null && q.status!="declined" && state.invoices.none { it.quoteId==q.id } && TokenStore.canWorkJobs()) OutlinedButton({ vm.selectOption(q.id,opt.key) },enabled=enabled,modifier=Modifier.testTag("quote-apply-${opt.key}")) {Text("This one applies")}
+      }
+     }
+    }
     q.signer?.let { Text("Signed by $it") }
     q.signedAt?.let { Text("Signed ${au.mainspring.nativeapp.ui.formatShopDate(it)}") }
     if(q.hasSignature) OutlinedButton({ onSignature(q.id) }, enabled = !state.loading && !state.busy && TokenStore.canWorkJobs()) { Text("View customer signature") }
@@ -112,7 +123,7 @@ import au.mainspring.nativeapp.ui.formatCents
    }
    state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)}
    if(state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-   QuoteComposer("quote-composer/mobile/$jobId",businessAccount,enabled,catalogue=true,currency=state.quotes.firstOrNull()?.currency ?: state.invoices.firstOrNull()?.currency ?: TokenStore.shopValue("currency"),resetVersion=state.lastCreatedQuoteId,modifier=Modifier.weight(1f),sheetLayout=true,onSave=vm::createQuote)
+   QuoteComposer("quote-composer/mobile/$jobId",businessAccount,enabled,catalogue=true,currency=state.quotes.firstOrNull()?.currency ?: state.invoices.firstOrNull()?.currency ?: TokenStore.shopValue("currency"),resetVersion=state.lastCreatedQuoteId,modifier=Modifier.weight(1f),sheetLayout=true,allowTwoOutcome=true,onSaveOutcomes={ lines,options,gst,inclusive -> vm.createQuote(lines,gst,inclusive,options) },onSave={ lines,gst,inclusive -> vm.createQuote(lines,gst,inclusive) })
   }
  }
  confirm?.takeIf {it.first=="paid"}?.let {action->

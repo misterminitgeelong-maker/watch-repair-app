@@ -32,7 +32,7 @@ class CounterSaleViewModel: ViewModel() {
   search = viewModelScope.launch { try { val rows = api.listCustomers(q = query.trim().ifBlank { null }); mutable.update { it.copy(customerLoading = false, customers = rows) } }
    catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(customerLoading = false, error = e.userMessage()) } } }
  }
- fun prepare(lines: List<MobileQuoteLine>, gst: Boolean, inclusive: Boolean): CounterSaleRequest {
+ fun prepare(lines: List<MobileQuoteLine>, gst: Boolean, inclusive: Boolean, options: List<MobileQuoteOptionCreate>? = null): CounterSaleRequest {
   val customer = if(field("customerMode") == "new") "" else field("customerId")
   require(customer.isNotBlank() || (field("customerMode") == "new" && field("name").isNotBlank())) { "Select a customer or enter the new customer's name." }
   val account = field("accountId").ifBlank { null }
@@ -41,7 +41,7 @@ class CounterSaleViewModel: ViewModel() {
   val date = LocalDate.now(ZoneId.of(TokenStore.calendarTimezone())).format(DateTimeFormatter.ofPattern("dd/MM/uuuu"))
   val link = if(field("customerMode") == "new") null else field("linkJobId").ifBlank { null }
   require(link == null || mutable.value.linkJobs.any { it.id == link }) { "Choose a job that belongs to this customer." }
-  return CounterSaleRequest(customer, field("name"),field("phone"),field("email"),account,mode,lines,gst,inclusive,"${if(mode == "sale") "POS sale" else "Quote"} $date", link)
+  return CounterSaleRequest(customer, field("name"),field("phone"),field("email"),account,mode,lines,gst,inclusive,"${if(mode == "sale") "POS sale" else "Quote"} $date", link, options)
  }
  fun submit(request: CounterSaleRequest) {
   if(mutable.value.busy || field("done") == "true" || !TokenStore.canWorkJobs()) return

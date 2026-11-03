@@ -63,7 +63,8 @@ import au.mainspring.nativeapp.*
      }
     }
     if(au.mainspring.nativeapp.ui.LocalCalibre.current) { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant); au.mainspring.nativeapp.ui.MonoLabel("Cart",Modifier.padding(top = 6.dp)) } else { HorizontalDivider(); Text("Items",style = MaterialTheme.typography.titleLarge) }
-    QuoteComposer("quote-composer/pos",f("accountId").isNotBlank(),!locked && TokenStore.canWorkJobs(),catalogue = true,quickSale = true,buttonLabel = if(f("mode").ifBlank { "sale" } == "sale") "Review counter sale" else "Review quote",onSave = { lines,gst,inclusive ->
+    QuoteComposer("quote-composer/pos",f("accountId").isNotBlank(),!locked && TokenStore.canWorkJobs(),catalogue = true,quickSale = true,buttonLabel = if(f("mode").ifBlank { "sale" } == "sale") "Review counter sale" else "Review quote",allowTwoOutcome = f("mode") == "quote",
+     onSaveOutcomes = { lines,options,gst,inclusive -> try { confirmation = vm.prepare(lines,gst,inclusive,options); localError = null } catch(e: Exception) { localError = e.userMessage() } },onSave = { lines,gst,inclusive ->
      try { confirmation = vm.prepare(lines,gst,inclusive); localError = null } catch(e: Exception) { localError = e.userMessage() }
     })
    }

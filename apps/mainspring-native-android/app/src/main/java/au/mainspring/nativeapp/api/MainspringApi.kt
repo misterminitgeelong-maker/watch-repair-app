@@ -74,6 +74,7 @@ interface MainspringApi {
     @retrofit2.http.Streaming @GET("v1/auto-key-jobs/quotes/{id}/signature") suspend fun quoteSignature(@Path("id") id: String): ResponseBody
     @POST("v1/auto-key-jobs/{id}/quotes") suspend fun createMobileQuote(@Path("id") id: String, @Body body: MobileQuoteCreate): MobileQuote
     @POST("v1/auto-key-jobs/quotes/{id}/send") suspend fun sendMobileQuote(@Path("id") id: String): MobileQuoteSend
+    @POST("v1/auto-key-jobs/quotes/{id}/select-option") suspend fun selectMobileQuoteOption(@Path("id") id: String, @Body body: MobileQuoteSelectOption): MobileQuote
     @GET("v1/auto-key-jobs/{id}/invoices") suspend fun mobileInvoices(@Path("id") id: String): List<MobileInvoice>
     @POST("v1/auto-key-jobs/{jobId}/invoices/from-quote/{quoteId}") suspend fun createMobileInvoice(@Path("jobId") jobId: String, @Path("quoteId") quoteId: String): MobileInvoice
     @POST("v1/auto-key-jobs/invoices/{id}/send") suspend fun sendMobileInvoice(@Path("id") id: String, @Query("channel") channel: String = "both"): MobileInvoiceSend

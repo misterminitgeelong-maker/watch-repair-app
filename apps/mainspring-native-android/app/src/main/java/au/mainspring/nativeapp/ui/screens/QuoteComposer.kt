@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import au.mainspring.nativeapp.*
@@ -22,7 +23,9 @@ import au.mainspring.nativeapp.ui.SectionLabel
 import au.mainspring.nativeapp.ui.formatCents
 
 @Composable fun QuoteComposer(draftKey: String, businessAccount: Boolean, enabled: Boolean, catalogue: Boolean,
- resetVersion: String? = null, quickSale: Boolean = false, currency: String? = TokenStore.shopValue("currency"), buttonLabel: String = "Save draft quote", modifier: Modifier = Modifier, sheetLayout: Boolean = false, secondaryLabel: String? = null, onSecondary: ((List<MobileQuoteLine>, Boolean, Boolean) -> Unit)? = null, onSave: (List<MobileQuoteLine>, Boolean, Boolean) -> Unit) {
+ resetVersion: String? = null, quickSale: Boolean = false, currency: String? = TokenStore.shopValue("currency"), buttonLabel: String = "Save draft quote", modifier: Modifier = Modifier, sheetLayout: Boolean = false, secondaryLabel: String? = null, onSecondary: ((List<MobileQuoteLine>, Boolean, Boolean) -> Unit)? = null,
+ allowTwoOutcome: Boolean = false, onSaveOutcomes: ((List<MobileQuoteLine>, List<au.mainspring.nativeapp.api.MobileQuoteOptionCreate>, Boolean, Boolean) -> Unit)? = null,
+ onSave: (List<MobileQuoteLine>, Boolean, Boolean) -> Unit) {
   @Suppress("NAME_SHADOWING") val currency = currency ?: "AUD" // the app is AUD-first; an unset shop currency must not hide the total
  val drafts = remember(draftKey) { TokenStore.bindDrafts() }
  val gson = remember { Gson() }
@@ -54,10 +57,21 @@ import au.mainspring.nativeapp.ui.formatCents
   if(existing.size + newLines.size > 30) {error="A quote can contain up to 30 lines.";return}
   persist(draft.copy(lines=existing+newLines)); expanded=-1
  }
+ val outcomesOn = allowTwoOutcome && onSaveOutcomes != null && draft.twoOutcome
  @Composable fun totalsAndSave() {
-  val preview=try {currency?.let {quotePreview(draft,it)}} catch(_: Exception) {null}
+  val preview=try {if(outcomesOn) null else currency?.let {quotePreview(draft,it)}} catch(_: Exception) {null}
+  if(outcomesOn) {
+   val previews=try {quoteOutcomePreviews(draft,currency)} catch(_: Exception) {null}
+   FlatPanel { Column(Modifier.testTag("quote-outcome-totals"),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+    listOf("A" to draft.labelA,"B" to draft.labelB).forEach { (key,label) -> Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+     Text(label?.trim().orEmpty().ifBlank { "Option $key" },style=MaterialTheme.typography.titleSmall)
+     Text(previews?.get(key)?.let { formatCents(it.total.toInt(),currency) } ?: "—",style=MaterialTheme.typography.titleSmall,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+    } }
+    Text("The customer approves once; you pick which one applies on site.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+   } }
+  }
   if(sheetLayout && preview==null) Text("Enter an item and price to see the total.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-  val validLines=try {validateQuoteAmountRange(quoteLinesFromDraft(draft.lines));true} catch(_: Exception) {false}
+  val validLines=try {if(outcomesOn) quoteOutcomeSplit(draft) else validateQuoteAmountRange(quoteLinesFromDraft(draft.lines));true} catch(_: Exception) {false}
   if(au.mainspring.nativeapp.ui.LocalCalibre.current) preview?.let {total->Column(Modifier.fillMaxWidth()) {
    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
    Column(Modifier.padding(vertical=14.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
@@ -72,8 +86,8 @@ import au.mainspring.nativeapp.ui.formatCents
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(if(draft.inclusive) "Included GST" else "GST",style=MaterialTheme.typography.bodySmall);Text(formatCents(total.tax.toInt(),currency!!),style=MaterialTheme.typography.bodySmall)}
   } }
 
-  Button(onClick = { try { onSave(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp)) { Text(buttonLabel) }
-  if(secondaryLabel != null && onSecondary != null) OutlinedButton(onClick = { try { onSecondary(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(secondaryLabel) }
+  Button(onClick = { try { if(outcomesOn) { val split=quoteOutcomeSplit(draft); onSaveOutcomes!!(split.shared, split.options, draft.gst, draft.inclusive) } else onSave(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp).testTag("quote-save")) { Text(buttonLabel) }
+  if(secondaryLabel != null && onSecondary != null && !outcomesOn) OutlinedButton(onClick = { try { onSecondary(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(secondaryLabel) }
  }
  Column(modifier) {
  Column(if(sheetLayout) Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=16.dp) else Modifier,verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -98,11 +112,18 @@ import au.mainspring.nativeapp.ui.formatCents
     }} } }
    }
   }
+  if(allowTwoOutcome && onSaveOutcomes != null) {
+   au.mainspring.nativeapp.ui.LabeledCheckbox(draft.twoOutcome, { on -> persist(draft.copy(twoOutcome = on, lines = if(on) draft.lines else draft.lines.map { it.copy(option = null) })) }, enabled = enabled, modifier = Modifier.testTag("quote-two-outcome")) { Text("Two possible outcomes (price depends on what we find on site)") }
+   if(draft.twoOutcome) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    au.mainspring.nativeapp.ui.AtelierTextField(draft.labelA.orEmpty(), { persist(draft.copy(labelA = it)) }, label = { Text("Option A, e.g. CAS3") }, enabled = enabled, modifier = Modifier.weight(1f).testTag("quote-option-a"), singleLine = true)
+    au.mainspring.nativeapp.ui.AtelierTextField(draft.labelB.orEmpty(), { persist(draft.copy(labelB = it)) }, label = { Text("Option B, e.g. CAS3++") }, enabled = enabled, modifier = Modifier.weight(1f).testTag("quote-option-b"), singleLine = true)
+   }
+  }
   SectionLabel("Line items")
   draft.lines.forEachIndexed { index, line ->
    if(line.description.isNotBlank() || expanded!=index || !sheetLayout) FlatPanel {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
-     Text(line.description.ifBlank {"Line ${index+1}"},Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
+     Text(line.description.ifBlank {"Line ${index+1}"}+(if(outcomesOn && line.option != null) " [${line.option}]" else ""),Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
      TextButton({expanded=if(expanded==index) -1 else index},enabled=enabled) {Text(if(expanded==index) "Done" else "Edit line ${index+1}")}
     }
     if(line.price.isNotBlank()) Text("${line.quantity} × ${line.price}",style=MaterialTheme.typography.bodySmall)
@@ -112,6 +133,9 @@ import au.mainspring.nativeapp.ui.formatCents
    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     au.mainspring.nativeapp.ui.AtelierTextField(line.quantity, { change(index, line.copy(quantity = it)) }, label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
     au.mainspring.nativeapp.ui.AtelierTextField(line.price, { change(index, line.copy(price = it)) }, label = { Text("Unit price ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
+   }
+   if(outcomesOn) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    listOf<Pair<String?,String>>(null to "Both options", "A" to (draft.labelA?.trim().orEmpty().ifBlank { "Option A only" }), "B" to (draft.labelB?.trim().orEmpty().ifBlank { "Option B only" })).forEach { (key,label) -> au.mainspring.nativeapp.ui.AtelierChip(line.option == key, { change(index, line.copy(option = key)) }, enabled = enabled, modifier = Modifier.testTag("quote-line-option-${key ?: "both"}"), label = { Text(label) }) }
    }
    if((pricingOptions || line.discountType!="none") && au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel("Discount")
    if(pricingOptions || line.discountType!="none") Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
