@@ -3203,9 +3203,10 @@ export const getInboxCount = (exclude?: string[]) =>
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
 
 // ── Messages between sites in a network ───────────────────────────────────────
-export interface NetworkContact { tenant_id: string; name: string; network_role: string }
+export interface NetworkContact { tenant_id: string; name: string; network_role: string; state_code?: string | null; shop_number?: string | null }
 export interface NetworkConversation {
   id: string
+  parent_account_id?: string
   other_tenant_id: string
   other_name: string
   last_message_at: string
@@ -3213,6 +3214,8 @@ export interface NetworkConversation {
   unread: number
 }
 export interface NetworkMessage {
+  conversation_id?: string | null
+  attachments?: Array<{ id: string; filename: string; content_type: string; size_bytes: number }>
   id: string
   sender_tenant_id: string
   mine: boolean
@@ -5003,3 +5006,4 @@ export const shopSuggestedParts = (jobId: string) => api.get<SuggestedPart[]>(`/
 export const shopJobParts = (jobId: string) => api.get<JobPartUse[]>(`/stock/jobs/${jobId}/parts`)
 export const shopUsePart = (jobId: string, data: { part_id?: string; sku?: string; quantity?: number; location_id?: string }) =>
   api.post<JobPartUse & { stock_left: number }>(`/stock/jobs/${jobId}/parts`, data)
+

@@ -9,3 +9,5 @@ from .tables import *  # noqa: F401,F403
 from .revenue import *  # noqa: F401,F403
 from .schemas import *  # noqa: F401,F403
 from .engraving import *  # noqa: F401,F403
+
+from .network_community import *  # noqa: F401,F403

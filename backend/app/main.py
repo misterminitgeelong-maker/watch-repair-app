@@ -88,6 +88,7 @@ from .routes.global_search import router as global_search_router
 from .routes.tenant_qol import router as tenant_qol_router
 from .routes.engraving import router as engraving_router, public_router as engraving_public_router
 from .routes.network_messages import router as network_messages_router
+from .routes.network_community import router as network_community_router
 
 from .startup_seed import ensure_demo_auto_key_addresses, ensure_demo_b2b_accounts, ensure_demo_parent_account, ensure_demo_supplemental_data, ensure_demo_tenant, ensure_minit_pilot_if_enabled, ensure_platform_admin_account, ensure_suburbs_seeded, ensure_testing_tenant, get_seed_status, seed_from_csv_if_empty
 
@@ -614,6 +615,7 @@ app.include_router(sms_webhook_router)
 app.include_router(shop_settings_router)
 app.include_router(engraving_router)
 app.include_router(network_messages_router)
+app.include_router(network_community_router)
 app.include_router(engraving_public_router)
 
 # ---------- Serve the built React frontend ----------
@@ -663,3 +665,4 @@ if _static and _static.is_dir():
         if index_path.is_file():
             return HTMLResponse(seo.render_index(index_path.read_text(encoding="utf-8"), full_path), headers=headers)
         return FileResponse(str(index_path), headers=headers)
+
