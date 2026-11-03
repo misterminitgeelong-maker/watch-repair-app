@@ -2086,6 +2086,8 @@ export interface PlatformTenant {
   trial_end?: string | null
   has_stripe_subscription?: boolean
   is_minit?: boolean
+  /** Minit shop exempted from the Minit-only plan (keeps its own plan, e.g. Pro). */
+  keep_own_plan?: boolean
   /** Linked to an HQ network: the HQ is invoiced for it, so it isn't a billable shop. */
   hq_billed?: boolean
   hq_name?: string | null
@@ -2188,6 +2190,8 @@ export const setPlatformTenantBillingExempt = (
     reason,
     cancel_stripe_subscription,
   })
+export const setPlatformTenantKeepOwnPlan = (tenantId: string, keep_own_plan: boolean, reason?: string) =>
+  api.post<PlatformTenant>(`/platform-admin/tenants/${tenantId}/keep-own-plan`, { keep_own_plan, reason })
 export const updatePlatformTenant = (tenantId: string, payload: { name?: string; slug?: string; owner_email?: string; new_password?: string }) =>
   api.patch<PlatformTenant>(`/platform-admin/tenants/${tenantId}`, payload)
 
