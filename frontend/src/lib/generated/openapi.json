@@ -25148,6 +25148,31 @@
         ]
       }
     },
+    "/v1/network-community/unread": {
+      "get": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Unread Total",
+        "description": "One number for the Messages nav badge: unread state-hub messages plus unread announcements.",
+        "operationId": "unread_total_v1_network_community_unread_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/network-community/{parent_id}/hubs": {
       "get": {
         "tags": [

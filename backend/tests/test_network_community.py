@@ -380,3 +380,25 @@ def test_important_announcements_raise_an_inbox_alert_that_clears_when_read(worl
     world["as"]("vic")
     c.post(f"{world['base']}/announcements/{ann['id']}/receipt", json={})
     assert alerts("vic") == 0
+
+
+def test_unread_total_counts_hub_messages_and_announcements_and_chat_pushes():
+    from uuid import uuid4 as _u
+    from app.push import PUSH_EVENT_TYPES, push_path
+    assert {"network_message", "network_announcement"} <= PUSH_EVENT_TYPES
+    cid = _u()
+    assert push_path("network_message", "network_message", cid) == f"/messages?c={cid}"
+    assert push_path("network_announcement", "network_announcement", cid) == "/messages?tab=announcements"
+
+
+def test_nav_badge_total(world):
+    c = world["as"]("vic2")
+    c.post(world["base"] + "/hubs/VIC/messages", json={"body": "hello"})
+    world["as"]("hq")
+    ann = c.post(world["base"] + "/announcements", json={"title": "T", "body": "b"}).json()
+    world["as"]("vic")
+    assert c.get("/v1/network-community/unread").json()["count"] == 2
+    c.post(f"{world['base']}/announcements/{ann['id']}/receipt", json={})
+    assert c.get("/v1/network-community/unread").json()["count"] == 1
+    world["as"]("stranger")
+    assert c.get("/v1/network-community/unread").json()["count"] == 0

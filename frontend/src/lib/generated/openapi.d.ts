@@ -8006,6 +8006,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/network-community/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unread Total
+         * @description One number for the Messages nav badge: unread state-hub messages plus unread announcements.
+         */
+        get: operations["unread_total_v1_network_community_unread_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/network-community/{parent_id}/hubs": {
         parameters: {
             query?: never;
@@ -31265,6 +31285,26 @@ export interface operations {
         };
     };
     networks_v1_network_community_networks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    unread_total_v1_network_community_unread_get: {
         parameters: {
             query?: never;
             header?: never;

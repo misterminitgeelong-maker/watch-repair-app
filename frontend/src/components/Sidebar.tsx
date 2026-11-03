@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { useTheme } from '@/context/ThemeContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
+import { useMessagesUnread } from '@/hooks/useMessagesUnread'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
@@ -126,6 +127,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const isMinitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
   const isBookingOnly = isMinitBookingOnlyPlan(effectivePlan) && !isMinitHqUi(product, planCode, tenantSlug)
   const inboxCount = useInboxCount()
+  const messagesUnread = useMessagesUnread()
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
   const { pathname } = useLocation()
@@ -293,6 +295,11 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 {(item.to === '/inbox' || item.to === '/minit/inbox') && inboxCount > 0 && (
                   <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}>
                     {inboxCount > 99 ? '99+' : inboxCount}
+                  </span>
+                )}
+                {item.to === '/messages' && messagesUnread > 0 && (
+                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}>
+                    {messagesUnread > 99 ? '99+' : messagesUnread}
                   </span>
                 )}
               </>

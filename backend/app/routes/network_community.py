@@ -162,6 +162,31 @@ def networks(auth: AuthContext = Depends(get_auth_context), session: Session = D
     return out
 
 
+@router.get("/unread")
+def unread_total(auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """One number for the Messages nav badge: unread state-hub messages plus unread announcements."""
+    _own_context(auth)
+    user = session.get(User, auth.user_id)
+    ids = list(dict.fromkeys(
+        [s.parent_account_id for s in sites_for_tenant(session, auth.tenant_id)]
+        + [p.id for p in parents_for_user(session, user)]
+    ))
+    total = 0
+    for pid in ids:
+        try:
+            ctx = _context(session, auth, pid)
+        except HTTPException:
+            continue
+        total += sum(h["unread"] for h in hubs(pid, auth, session))
+        total += int(session.exec(
+            select(func.count()).select_from(NetworkAnnouncement).where(
+                NetworkAnnouncement.parent_account_id == pid,
+                (col(NetworkAnnouncement.state_code).is_(None)) | col(NetworkAnnouncement.state_code).in_(list(ctx[3])),
+                ~col(NetworkAnnouncement.id).in_(select(AnnouncementReceipt.announcement_id).where(AnnouncementReceipt.tenant_id == auth.tenant_id)),
+            )).one())
+    return {"count": total}
+
+
 @router.get("/{parent_id}/hubs")
 def hubs(parent_id: UUID, auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
     _, _, own, allowed, admin, manager, can_post = _context(session, auth, parent_id)

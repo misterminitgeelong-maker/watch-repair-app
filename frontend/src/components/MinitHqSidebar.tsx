@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
+import { useMessagesUnread } from '@/hooks/useMessagesUnread'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { hqHasModule, useHqConfig } from '@/hooks/useHqConfig'
 import ChangelogModal from './ChangelogModal'
@@ -82,6 +83,7 @@ export default function MinitHqSidebar({
 }: MinitHqSidebarProps) {
   const { logout } = useAuth()
   const inboxCount = useInboxCount()
+  const messagesUnread = useMessagesUnread()
   const hqConfig = useHqConfig().data
   const navItems = hqNavFor(hqConfig?.modules)
   const brandName = hqConfig?.display_name ?? 'Mister Minit'
@@ -207,6 +209,11 @@ export default function MinitHqSidebar({
                     style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}
                   >
                     {inboxCount > 99 ? '99+' : inboxCount}
+                  </span>
+                )}
+                {item.to === '/minit/messages' && messagesUnread > 0 && (
+                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}>
+                    {messagesUnread > 99 ? '99+' : messagesUnread}
                   </span>
                 )}
               </>
