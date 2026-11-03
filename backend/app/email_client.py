@@ -48,7 +48,7 @@ def _api_key() -> str:
 
 
 def _from_email() -> str:
-    return (getattr(settings, "email_from_address", "") or "noreply@mainspring.au").strip()
+    return (getattr(settings, "email_from_address", "") or "admin@mainspring.au").strip()
 
 
 def _from_name(shop_name: str | None = None) -> str:
