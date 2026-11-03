@@ -28,7 +28,7 @@ data class MobileIntakeState(val fields: Map<String,String> = emptyMap(), val cu
     val lastJob: AutoKeyJobRead? = null, val lastJobDismissed: Boolean = false, val addressSuggestions: List<String> = emptyList())
 class MobileIntakeViewModel(private val saved: SavedStateHandle): ViewModel() {
     /** Replaceable so tests can run without the platform geocoder. */
-    var addressSuggester: AddressSuggester = DeviceAddressSuggester
+    var addressSuggester: AddressSuggester = ServerAddressSuggester()
     private var suggestionJob: Job? = null; private var specJob: Job? = null; private var lastJobJob: Job? = null; private var addressJob: Job? = null
     private var suppressAddressLookup = false
     private val api = au.mainspring.nativeapp.api.ApiClient.api
@@ -105,7 +105,14 @@ class MobileIntakeViewModel(private val saved: SavedStateHandle): ViewModel() {
             mutable.update { it.copy(addressSuggestions = found.filter { it != query.trim() }) }
         }
     }
-    fun pickAddress(address: String) { addressJob?.cancel(); suppressAddressLookup = field("address") != address; set("address", address); mutable.update { it.copy(addressSuggestions = emptyList()) } }
+    fun pickAddress(address: String) {
+        addressJob?.cancel(); suppressAddressLookup = field("address") != address; set("address", address); mutable.update { it.copy(addressSuggestions = emptyList()) }
+        // Upgrade to the full address (suburb, state, postcode) unless the user has already started editing the field again.
+        viewModelScope.launch {
+            val full = try { addressSuggester.resolve(address) } catch(e: CancellationException) { throw e } catch(_: Exception) { address }
+            if(full != address && field("address") == address) { suppressAddressLookup = true; set("address", full) }
+        }
+    }
     init { refreshSuggestion(); scheduleSpecLookup(); loadLastJob() }
     init { viewModelScope.launch {
         mutable.update { it.copy(accountsLoading = true) }
