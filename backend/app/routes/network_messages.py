@@ -12,10 +12,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, col, func, select
+from sqlalchemy.exc import IntegrityError
 
 from ..database import unscoped_session
 from ..dependencies import AuthContext, get_auth_context
 from ..models import NetworkConversation, NetworkMessage, Tenant, TenantEventLog, User
+from ..models import Region
+from ..models.network_community import NetworkMessageAttachment
+from ..parent_network import site_for_tenant_in_parent
 from ..parent_network import sites_for_parent, sites_for_tenant
 from ..shop_number import format_tenant_label
 
@@ -28,15 +32,31 @@ class ContactRead(BaseModel):
     tenant_id: UUID
     name: str
     network_role: str
+    state_code: str | None = None
+    shop_number: str | None = None
 
 
 class ConversationRead(BaseModel):
     id: UUID
+    parent_account_id: UUID
     other_tenant_id: UUID
     other_name: str
     last_message_at: datetime
     last_body: str | None = None
     unread: int = 0
+
+
+class NetworkAttachmentRead(BaseModel):
+    id: UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+
+
+def _attachments(session, message_id, hub=False):
+    column = NetworkMessageAttachment.hub_message_id if hub else NetworkMessageAttachment.direct_message_id
+    rows = session.exec(select(NetworkMessageAttachment.id, NetworkMessageAttachment.filename, NetworkMessageAttachment.content_type, NetworkMessageAttachment.size_bytes).where(column == message_id)).all()
+    return [NetworkAttachmentRead(id=row[0], filename=row[1], content_type=row[2], size_bytes=row[3]) for row in rows]
 
 
 class MessageRead(BaseModel):
@@ -46,6 +66,8 @@ class MessageRead(BaseModel):
     sender_name: str | None = None
     body: str
     created_at: datetime
+    conversation_id: UUID | None = None
+    attachments: list[NetworkAttachmentRead] = Field(default_factory=list)
 
 
 class SendBody(BaseModel):
@@ -81,6 +103,8 @@ def _get_mine(session: Session, conv_id: UUID, me: UUID) -> NetworkConversation:
     conv = session.get(NetworkConversation, conv_id)
     if not conv or me not in (conv.tenant_low_id, conv.tenant_high_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
+    if not site_for_tenant_in_parent(session, conv.parent_account_id, me):
+        raise HTTPException(status_code=404, detail="Conversation not found")
     return conv
 
 
@@ -96,27 +120,38 @@ def _clear_alerts(session: Session, tenant_id: UUID, conv_id: UUID) -> None:
 
 @router.get("/contacts", response_model=list[ContactRead])
 def list_contacts(
+    parent_account_id: UUID | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
     """Every other active site in the networks this site belongs to."""
     _own_context(auth)
     found: dict[UUID, str] = {}
-    for mine in sites_for_tenant(session, auth.tenant_id):
+    mine_sites = sites_for_tenant(session, auth.tenant_id)
+    if parent_account_id and not any(s.parent_account_id == parent_account_id for s in mine_sites):
+        raise HTTPException(status_code=403, detail="Network not available")
+    for mine in mine_sites:
+        if parent_account_id and mine.parent_account_id != parent_account_id:
+            continue
         for site in sites_for_parent(session, mine.parent_account_id):
             if site.tenant_id != auth.tenant_id:
                 found.setdefault(site.tenant_id, site.network_role)
+    live_ids = set(session.exec(select(User.tenant_id).where(User.is_active == True, col(User.tenant_id).in_(list(found)))).all())  # noqa: E712
     out: list[ContactRead] = []
     for tid, role in found.items():
         t = session.get(Tenant, tid)
-        if t and t.is_active and not t.merged_into_tenant_id:
-            out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role))
+        if t and t.is_active and not t.merged_into_tenant_id and tid in live_ids:
+            from .network_community import state_code
+            site = site_for_tenant_in_parent(session, parent_account_id, tid) if parent_account_id else None
+            region = session.get(Region, site.region_id) if site and site.region_id else None
+            out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role, shop_number=t.shop_number, state_code=state_code(region.code if region else t.minit_region)))
     out.sort(key=lambda c: c.name.lower())
     return out
 
 
 @router.get("/conversations", response_model=list[ConversationRead])
 def list_conversations(
+    parent_account_id: UUID | None = None,
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(unscoped_session),
 ):
@@ -129,7 +164,12 @@ def list_conversations(
         .limit(200)
     ).all()
     out: list[ConversationRead] = []
+    my_parents = {s.parent_account_id for s in sites_for_tenant(session, me)}
+    if parent_account_id and parent_account_id not in my_parents:
+        raise HTTPException(status_code=403, detail="Network not available")
     for c in convs:
+        if c.parent_account_id not in my_parents or (parent_account_id and c.parent_account_id != parent_account_id):
+            continue
         last = session.exec(
             select(NetworkMessage).where(NetworkMessage.conversation_id == c.id)
             .order_by(col(NetworkMessage.created_at).desc()).limit(1)
@@ -142,7 +182,7 @@ def list_conversations(
         ).one()
         other = session.get(Tenant, _other(c, me))
         out.append(ConversationRead(
-            id=c.id, other_tenant_id=_other(c, me), other_name=_label(other),
+            id=c.id, parent_account_id=c.parent_account_id, other_tenant_id=_other(c, me), other_name=_label(other),
             last_message_at=c.last_message_at, last_body=last.body[:140] if last else None, unread=int(unread),
         ))
     return out
@@ -174,28 +214,23 @@ def list_messages(
         MessageRead(
             id=m.id, sender_tenant_id=m.sender_tenant_id, mine=m.sender_tenant_id == me,
             sender_name=(users[m.sender_user_id].full_name or users[m.sender_user_id].email) if m.sender_user_id in users else None,
-            body=m.body, created_at=m.created_at,
+            body=m.body, created_at=m.created_at, conversation_id=conv.id, attachments=_attachments(session, m.id),
         )
         for m in reversed(rows)
     ]
 
 
-@router.post("/with/{tenant_id}", response_model=MessageRead, status_code=201)
-def send_message(
-    tenant_id: UUID,
-    body: SendBody,
-    auth: AuthContext = Depends(get_auth_context),
-    session: Session = Depends(unscoped_session),
-):
-    """Send a message to another site in a shared network, starting the thread if needed."""
+def _prepare_direct(session, auth, tenant_id, body, parent_account_id=None):
     _own_context(auth)
     me = auth.tenant_id
     if tenant_id == me:
         raise HTTPException(status_code=400, detail="You cannot message your own site")
     other = session.get(Tenant, tenant_id)
-    if not other or not other.is_active or other.merged_into_tenant_id:
+    if not other or not other.is_active or other.merged_into_tenant_id or not session.exec(select(User.id).where(User.tenant_id == tenant_id, User.is_active == True)).first():  # noqa: E712
         raise HTTPException(status_code=404, detail="Site not found")
-    parent_id = _shared_parent(session, me, tenant_id)
+    parent_id = parent_account_id or _shared_parent(session, me, tenant_id)
+    if parent_account_id and (not site_for_tenant_in_parent(session, parent_account_id, me) or not site_for_tenant_in_parent(session, parent_account_id, tenant_id)):
+        raise HTTPException(status_code=403, detail="You can only message sites in your own network")
     if parent_id is None:
         raise HTTPException(status_code=403, detail="You can only message sites in your own network")
     text = body.body.strip()
@@ -210,9 +245,18 @@ def send_message(
         .where(NetworkConversation.tenant_high_id == high)
     ).first()
     if conv is None:
-        conv = NetworkConversation(parent_account_id=parent_id, tenant_low_id=low, tenant_high_id=high)
-        session.add(conv)
-        session.flush()
+        try:
+            with session.begin_nested():
+                conv = NetworkConversation(parent_account_id=parent_id, tenant_low_id=low, tenant_high_id=high)
+                session.add(conv)
+                session.flush()
+        except IntegrityError:
+            conv = session.exec(select(NetworkConversation).where(
+                NetworkConversation.parent_account_id == parent_id,
+                NetworkConversation.tenant_low_id == low, NetworkConversation.tenant_high_id == high,
+            )).first()
+            if conv is None:
+                raise
     msg = NetworkMessage(conversation_id=conv.id, sender_tenant_id=me, sender_user_id=auth.user_id, body=text)
     conv.last_message_at = msg.created_at
     session.add(msg)
@@ -231,9 +275,24 @@ def send_message(
         event_type=EVENT_TYPE,
         event_summary=f"Message from {_label(sender)}: {text[:200]}",
     ))
+    session.flush()
+    return msg, user
+
+
+@router.post("/with/{tenant_id}", response_model=MessageRead, status_code=201)
+def send_message(
+    tenant_id: UUID,
+    body: SendBody,
+    parent_account_id: UUID | None = None,
+    auth: AuthContext = Depends(get_auth_context),
+    session: Session = Depends(unscoped_session),
+):
+    """Send a message to another site in a shared network, starting the thread if needed."""
+    msg, user = _prepare_direct(session, auth, tenant_id, body, parent_account_id)
     session.commit()
     session.refresh(msg)
     return MessageRead(
-        id=msg.id, sender_tenant_id=me, mine=True,
-        sender_name=(user.full_name or user.email) if user else None, body=msg.body, created_at=msg.created_at,
+        id=msg.id, sender_tenant_id=auth.tenant_id, mine=True,
+        sender_name=(user.full_name or user.email) if user else None, body=msg.body, created_at=msg.created_at, conversation_id=msg.conversation_id, attachments=_attachments(session, msg.id),
     )
+

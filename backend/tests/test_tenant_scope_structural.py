@@ -243,6 +243,7 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
         "hq_stock",  # an HQ's parts catalogue, stock and transfers across its own network (stock module only)
         "parent_shoe_operations",  # an HQ's read-only shoe repair totals and search across its own network's shops
         "platform_admin",        # administration across all tenants
+        "network_community",     # state hubs and announcements span linked sites; parent/state/participant checks own each request
         "network_messages",      # a direct thread between two sites of one network; only its two participants can read it
         "platform_hqs",          # platform admin creates and configures company HQs (a new tenant plus its network)
         "shop_mobile_bookings",  # dispatch between a requesting and an operator shop
@@ -255,3 +256,4 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
         f"  added:   {sorted(actual - expected)}\n"
         f"  removed: {sorted(expected - actual)}"
     )
+
