@@ -1,10 +1,11 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Download, Pause, Play, Plus, QrCode, RotateCcw, SkipForward } from 'lucide-react'
+import { ArrowLeft, Download, Pause, Play, Plus, Printer, QrCode, RotateCcw, Search, SkipForward } from 'lucide-react'
 import { Button, Card, Input, Modal, Select, Spinner } from '@/components/ui'
 import MedalPreview from '@/components/engraving/MedalPreview'
 import { EngravingQrModal } from './EngravingEventsPage'
+import { ordersInBunch, printTicketSheet, printTubTicket } from './printTicket'
 import {
   ENGRAVING_PLACES,
   createWalkUpEngravingOrder,
@@ -126,6 +127,7 @@ export default function EngravingQueuePage() {
     }
   })
   const [exportLimit, setExportLimit] = useState('')
+  const [search, setSearch] = useState('')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['engraving-queue', eventId],
@@ -162,9 +164,19 @@ export default function EngravingQueuePage() {
   const active = useMemo(() => orders.filter((o) => o.status === 'waiting' || o.status === 'engraving'), [orders])
   const current = active.find((o) => o.status === 'engraving') ?? null
   const upNext = active.filter((o) => o.id !== current?.id)
+  const term = search.trim().toLowerCase()
+  // Searching looks across every order, whatever the filter: order number, ticket, name or last digits of the mobile.
   const shown = orders.filter((o) =>
-    filter === 'all' ? true : filter === 'ready' ? o.status === 'ready' : o.status === 'waiting' || o.status === 'engraving',
+    term
+      ? [o.order_number, o.ticket_number ?? '', o.athlete_name, o.line2 ?? ''].some((v) => v.toLowerCase().includes(term)) ||
+        (/^\d{3,}$/.test(term) && (o.phone ?? '').replace(/\D/g, '').endsWith(term))
+      : filter === 'all' ? true : filter === 'ready' ? o.status === 'ready' : o.status === 'waiting' || o.status === 'engraving',
   )
+  const bunchOf = (o: EngravingOrder) => ordersInBunch(o, orders)
+  const collectAll = (o: EngravingOrder) => {
+    const mates = bunchOf(o).filter((m) => m.status === 'ready')
+    mates.forEach((m) => patch.mutate({ id: m.id, data: { status: 'collected', paid: true } }))
+  }
   const busy = start.isPending || done.isPending || patch.isPending || resend.isPending
 
   async function downloadCsv() {
@@ -243,6 +255,11 @@ export default function EngravingQueuePage() {
           ) : (
             <Button variant="secondary" onClick={() => setEventStatus.mutate('open')} disabled={setEventStatus.isPending}><Play size={14} />Resume orders</Button>
           )}
+          <Button variant="secondary" onClick={() => {
+            const from = Number(window.prompt('Print tear-off tickets starting from number…', '1'))
+            const count = Number(window.prompt('How many tickets?', '50'))
+            if (from > 0 && count > 0 && count <= 500 && !printTicketSheet(event.name, Math.floor(from), Math.floor(count))) setActionError('Allow pop-ups to print.')
+          }}><Printer size={14} />Ticket sheet</Button>
           <Button onClick={() => setShowWalkUp(true)}><Plus size={14} />Walk-up order</Button>
         </div>
       </div>
@@ -271,7 +288,7 @@ export default function EngravingQueuePage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between rounded-md px-3 py-2 text-xs" style={{ background: 'var(--ms-bg)', color: 'var(--ms-text-mid)' }}>
-                  <span>{current.paid ? `Paid ${formatCents(current.amount_cents)}` : `Unpaid · ${formatCents(current.amount_cents)}`}</span>
+                  <span>{current.paid ? `Paid ${formatCents(current.amount_cents)}${current.payment_method === 'stripe' ? ' by card' : ''}` : `Unpaid · ${formatCents(current.amount_cents)}`}</span>
                   <span>{current.phone ? `Text to ${current.phone.slice(0, 4)} ••• ${current.phone.slice(-3)}` : 'No mobile'}</span>
                 </div>
                 <button
@@ -323,6 +340,18 @@ export default function EngravingQueuePage() {
         <Card className="flex flex-col min-w-0 overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--ms-border)' }}>
             <h2 className="text-base font-semibold" style={{ color: 'var(--ms-text)' }}>Orders</h2>
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ms-text-mid)' }} aria-hidden />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search orders"
+                placeholder="Order, ticket, name or last 4 of mobile"
+                className="h-9 w-64 pl-8 pr-3 text-sm"
+                style={{ border: '1px solid var(--ms-border-strong, var(--ms-border))', background: 'var(--ms-surface)', color: 'var(--ms-text)', borderRadius: 'var(--ms-radius)' }}
+              />
+            </div>
             <div className="flex gap-1.5" role="group" aria-label="Filter orders">
               {(['active', 'ready', 'all'] as Filter[]).map((f) => (
                 <button
@@ -361,7 +390,11 @@ export default function EngravingQueuePage() {
                 )}
                 {shown.map((o) => (
                   <tr key={o.id} style={{ borderTop: '1px solid var(--ms-border)' }}>
-                    <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{o.order_number}</td>
+                    <td className="px-4 py-2.5 font-semibold whitespace-nowrap">
+                      {o.order_number}
+                      {o.ticket_number && <span className="block text-xs font-normal" style={{ color: 'var(--ms-text-mid)' }}>Ticket {o.ticket_number}</span>}
+                      {o.group_id && <span className="block text-xs font-normal" style={{ color: 'var(--ms-text-mid)' }}>with {bunchOf(o).filter((m) => m.id !== o.id).map((m) => m.order_number).join(', ')}</span>}
+                    </td>
                     <td className="px-3 py-2.5"><span className="font-semibold">{o.athlete_name}</span>{o.line2 && <span className="block text-xs" style={{ color: 'var(--ms-text-mid)' }}>{o.line2}</span>}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{o.place === 'None' ? '' : o.place}</td>
                     <td className="px-3 py-2.5">{o.medals_done > 0 && o.medals_done < o.qty ? `${o.medals_done}/${o.qty}` : o.qty}</td>
@@ -384,8 +417,14 @@ export default function EngravingQueuePage() {
                         {(o.status === 'waiting' || o.status === 'engraving') && (
                           <Button size="sm" variant="ghost" onClick={() => { if (window.confirm(`Cancel ${o.order_number} for ${o.athlete_name}?`)) patch.mutate({ id: o.id, data: { status: 'cancelled' } }) }} disabled={busy}>Cancel</Button>
                         )}
+                        <Button size="sm" variant="ghost" aria-label={`Print ticket for ${o.order_number}`} title="Print tub ticket" onClick={() => { if (!printTubTicket(event, bunchOf(o))) setActionError('Allow pop-ups to print.') }}>
+                          <Printer size={13} />
+                        </Button>
                         {o.status === 'ready' && (
                           <>
+                            {bunchOf(o).filter((m) => m.status === 'ready').length > 1 && (
+                              <Button size="sm" onClick={() => collectAll(o)} disabled={busy}>Collect all</Button>
+                            )}
                             <Button size="sm" onClick={() => patch.mutate({ id: o.id, data: { status: 'collected', paid: true } })} disabled={busy}>Collected</Button>
                             {o.phone && <Button size="sm" variant="ghost" onClick={() => resend.mutate(o.id)} disabled={busy}>Resend text</Button>}
                           </>

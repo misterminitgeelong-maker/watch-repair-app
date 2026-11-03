@@ -25143,6 +25143,63 @@
         }
       }
     },
+    "/v1/public/engraving/events/{token}/orders/batch": {
+      "post": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Create Public Order Batch",
+        "description": "Order several different medals in one go. Every medal is checked before any is\ncreated, so a typo in the third one doesn't leave the first two half-ordered.",
+        "operationId": "create_public_order_batch_v1_public_engraving_events__token__orders_batch_post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngravingBatchCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicEngravingOrder"
+                  },
+                  "title": "Response Create Public Order Batch V1 Public Engraving Events  Token  Orders Batch Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/engraving/orders/{status_token}": {
       "get": {
         "tags": [
@@ -25169,6 +25226,47 @@
                 "schema": {
                   "$ref": "#/components/schemas/PublicEngravingOrder"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/engraving/orders/{status_token}/checkout": {
+      "post": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Create Public Order Checkout",
+        "description": "Start Stripe Checkout for this order plus any unpaid medals ordered with it.\n\nThe card is charged on the shop's own Stripe account (a direct charge, like Mobile Services\ninvoices). The order is marked paid when Stripe's Connect webhook reports the payment.",
+        "operationId": "create_public_order_checkout_v1_public_engraving_orders__status_token__checkout_post",
+        "parameters": [
+          {
+            "name": "status_token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Status Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -30850,6 +30948,39 @@
         ],
         "title": "DeviceRegister"
       },
+      "EngravingBatchCreate": {
+        "properties": {
+          "orders": {
+            "items": {
+              "$ref": "#/components/schemas/EngravingOrderCreate"
+            },
+            "type": "array",
+            "title": "Orders"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "ticket_number": {
+            "type": "string",
+            "title": "Ticket Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orders",
+          "ticket_number"
+        ],
+        "title": "EngravingBatchCreate",
+        "description": "Several medals ordered together (a parent bringing a bunch). Each medal becomes its\nown order with its own number, sharing one mobile number."
+      },
       "EngravingEventCreate": {
         "properties": {
           "name": {
@@ -30892,6 +31023,11 @@
           "sms_enabled": {
             "type": "boolean",
             "title": "Sms Enabled",
+            "default": true
+          },
+          "online_payments": {
+            "type": "boolean",
+            "title": "Online Payments",
             "default": true
           }
         },
@@ -30950,6 +31086,16 @@
           "sms_enabled": {
             "type": "boolean",
             "title": "Sms Enabled"
+          },
+          "online_payments": {
+            "type": "boolean",
+            "title": "Online Payments",
+            "default": true
+          },
+          "online_payments_ready": {
+            "type": "boolean",
+            "title": "Online Payments Ready",
+            "default": false
           },
           "public_token": {
             "type": "string",
@@ -31120,6 +31266,17 @@
               }
             ],
             "title": "Sms Enabled"
+          },
+          "online_payments": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Online Payments"
           }
         },
         "type": "object",
@@ -31255,6 +31412,29 @@
             "type": "string",
             "title": "Status Token"
           },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "ticket_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Number"
+          },
           "athlete_name": {
             "type": "string",
             "title": "Athlete Name"
@@ -31312,6 +31492,17 @@
               }
             ],
             "title": "Paid At"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
           },
           "amount_cents": {
             "type": "integer",
@@ -40053,6 +40244,34 @@
         ],
         "title": "PublicEngravingEvent"
       },
+      "PublicEngravingGroupMember": {
+        "properties": {
+          "order_number": {
+            "type": "string",
+            "title": "Order Number"
+          },
+          "athlete_name": {
+            "type": "string",
+            "title": "Athlete Name"
+          },
+          "status_token": {
+            "type": "string",
+            "title": "Status Token"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_number",
+          "athlete_name",
+          "status_token",
+          "status"
+        ],
+        "title": "PublicEngravingGroupMember"
+      },
       "PublicEngravingOrder": {
         "properties": {
           "order_number": {
@@ -40110,6 +40329,16 @@
             "type": "integer",
             "title": "Amount Cents"
           },
+          "can_pay_online": {
+            "type": "boolean",
+            "title": "Can Pay Online",
+            "default": false
+          },
+          "amount_due_cents": {
+            "type": "integer",
+            "title": "Amount Due Cents",
+            "default": 0
+          },
           "queue_position": {
             "anyOf": [
               {
@@ -40159,6 +40388,25 @@
               }
             ],
             "title": "Ready At"
+          },
+          "ticket_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Number"
+          },
+          "group_members": {
+            "items": {
+              "$ref": "#/components/schemas/PublicEngravingGroupMember"
+            },
+            "type": "array",
+            "title": "Group Members",
+            "default": []
           }
         },
         "type": "object",
