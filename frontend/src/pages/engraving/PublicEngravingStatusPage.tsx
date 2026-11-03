@@ -1,8 +1,9 @@
-import { Link, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Check, Clock, MessageSquare, PartyPopper } from 'lucide-react'
+import { Check, Clock, CreditCard, MessageSquare, PartyPopper } from 'lucide-react'
 import MedalPreview from '@/components/engraving/MedalPreview'
-import { engravingPlaceText, getPublicEngravingOrder, type PublicEngravingOrder } from '@/lib/api/engraving'
+import { engravingPlaceText, getPublicEngravingOrder, startPublicEngravingCheckout, type PublicEngravingOrder } from '@/lib/api/engraving'
 import { formatCents } from '@/lib/utils'
 
 function headline(order: PublicEngravingOrder): { title: string; sub: string } {
@@ -34,13 +35,18 @@ function ordinal(n: number): string {
 
 export default function PublicEngravingStatusPage() {
   const { statusToken } = useParams<{ statusToken: string }>()
+  const [searchParams] = useSearchParams()
+  const justPaid = searchParams.get('paid') === '1'
+  const [payBusy, setPayBusy] = useState(false)
+  const [payError, setPayError] = useState('')
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['public-engraving-order', statusToken],
     queryFn: () => getPublicEngravingOrder(statusToken!).then((r) => r.data),
     enabled: !!statusToken,
     retry: false,
     // Live: keeps updating while the parent watches the races.
-    refetchInterval: (q) => (q.state.data && ['collected', 'cancelled'].includes(q.state.data.status) ? false : 10000),
+    // Keep polling after returning from card checkout until the payment shows up.
+    refetchInterval: (q) => (q.state.data && !(justPaid && !q.state.data.paid) && ['collected', 'cancelled'].includes(q.state.data.status) ? false : 10000),
   })
 
   if (isLoading) {
@@ -61,6 +67,18 @@ export default function PublicEngravingStatusPage() {
     )
   }
 
+  async function payOnline() {
+    setPayBusy(true)
+    setPayError('')
+    try {
+      const res = await startPublicEngravingCheckout(statusToken!)
+      window.location.assign(res.data.checkout_url)
+    } catch {
+      setPayError("Couldn't start card payment. Try again, or pay at the stall.")
+      setPayBusy(false)
+    }
+  }
+
   const { title, sub } = headline(order)
   const ready = order.status === 'ready'
   const done = ready || order.status === 'collected'
@@ -70,7 +88,7 @@ export default function PublicEngravingStatusPage() {
     ['Place', engravingPlaceText(order.place) || '—'],
     ...(order.ticket_number ? ([['Ticket', order.ticket_number]] as [string, string][]) : []),
     ['Medals', String(order.qty)],
-    [order.paid ? 'Paid' : 'To pay at the stall', formatCents(order.amount_cents)],
+    [order.paid ? 'Paid' : order.can_pay_online ? 'To pay' : 'To pay at the stall', formatCents(order.amount_cents)],
   ]
 
   return (
@@ -109,6 +127,27 @@ export default function PublicEngravingStatusPage() {
             </div>
           ))}
         </section>
+
+        {order.can_pay_online && (
+          <section aria-label="Pay online" className="rounded-[var(--ms-radius)] px-4 py-4 flex flex-col gap-2" style={{ background: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>
+            {justPaid && <p className="text-sm" style={{ color: 'var(--ms-text-mid)' }}>Thanks! Confirming your payment…</p>}
+            <button
+              type="button"
+              onClick={payOnline}
+              disabled={payBusy}
+              className="flex items-center justify-center gap-2 rounded-[var(--ms-radius)] px-4 py-3 text-[15px] font-semibold disabled:opacity-60"
+              style={{ background: 'var(--ms-accent)', color: '#fff' }}
+            >
+              <CreditCard size={18} aria-hidden />
+              {payBusy ? 'Opening payment…' : `Pay ${formatCents(order.amount_due_cents)} by card`}
+            </button>
+            {order.group_members.length > 0 && (
+              <p className="text-xs text-center" style={{ color: 'var(--ms-text-mid)' }}>Covers all medals ordered together.</p>
+            )}
+            <p className="text-xs text-center" style={{ color: 'var(--ms-text-mid)' }}>Or pay at the stall when you collect.</p>
+            {payError && <p className="text-sm text-center" role="alert" style={{ color: 'var(--ms-error)' }}>{payError}</p>}
+          </section>
+        )}
 
         {order.group_members.length > 0 && (
           <section aria-label="Your other medals" className="rounded-[var(--ms-radius)] px-4 py-3 flex flex-col gap-1" style={{ background: 'var(--ms-surface)', border: '1px solid var(--ms-border)' }}>

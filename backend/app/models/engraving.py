@@ -68,6 +68,8 @@ class EngravingEvent(SQLModel, table=True):
     minutes_per_medal: int = 3
     status: str = Field(default="open")  # open | paused | closed
     sms_enabled: bool = True
+    # Parents may pay by card from their order page (needs the shop's Stripe Connect set up).
+    online_payments: bool = True
     public_token: str = Field(default_factory=_public_token, index=True, unique=True)
     next_order_seq: int = 1
     created_at: datetime = Field(default_factory=_utcnow)
@@ -95,6 +97,8 @@ class EngravingOrder(SQLModel, table=True):
     status: str = Field(default="waiting", index=True)  # waiting | engraving | ready | collected | cancelled
     paid: bool = False
     paid_at: Optional[datetime] = None
+    payment_method: Optional[str] = None  # stripe | stall (set when marked paid)
+    stripe_checkout_id: Optional[str] = None
     amount_cents: int = 0
     source: str = "online"  # online | walk_up
     notes: Optional[str] = None
@@ -116,6 +120,7 @@ class EngravingEventCreate(SQLModel):
     price_cents: int = 1500
     minutes_per_medal: int = 3
     sms_enabled: bool = True
+    online_payments: bool = True
 
 
 class EngravingEventUpdate(SQLModel):
@@ -126,6 +131,7 @@ class EngravingEventUpdate(SQLModel):
     minutes_per_medal: Optional[int] = None
     status: Optional[EngravingEventStatus] = None
     sms_enabled: Optional[bool] = None
+    online_payments: Optional[bool] = None
 
 
 class EngravingEventStats(SQLModel):
@@ -149,6 +155,8 @@ class EngravingEventRead(SQLModel):
     minutes_per_medal: int
     status: str
     sms_enabled: bool
+    online_payments: bool = True
+    online_payments_ready: bool = False  # card payment would actually work right now
     public_token: str
     public_url: str
     created_at: datetime
@@ -208,6 +216,7 @@ class EngravingOrderRead(SQLModel):
     status: str
     paid: bool
     paid_at: Optional[datetime]
+    payment_method: Optional[str] = None
     amount_cents: int
     source: str
     notes: Optional[str]
@@ -257,6 +266,8 @@ class PublicEngravingOrder(SQLModel):
     status: str
     paid: bool
     amount_cents: int
+    can_pay_online: bool = False
+    amount_due_cents: int = 0  # unpaid total for this order plus any ordered with it
     queue_position: Optional[int]
     wait_minutes: Optional[int]
     phone_masked: Optional[str]

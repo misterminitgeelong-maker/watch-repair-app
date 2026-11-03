@@ -1,6 +1,7 @@
 """Medal engraving events: QR ordering, operator queue, laser CSV, ready alerts."""
 import csv
 import io
+from uuid import UUID
 
 import pytest
 from sqlmodel import Session, select
@@ -284,3 +285,126 @@ def test_public_batch_requires_unique_ticket(client, owner):
     order = client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["orders"][0]
     client.patch(f"/v1/engraving/orders/{order['id']}", json={"status": "collected"}, headers=owner)
     assert client.post(url, json={**one, "ticket_number": "ab12"}).status_code == 200
+
+
+# ── Online card payments ─────────────────────────────────────────────────────
+
+def _enable_card_payments(monkeypatch, headers, client):
+    from uuid import UUID
+
+    from app.config import settings
+    from app.models import Tenant
+
+    monkeypatch.setattr(settings, "enable_stripe_invoice_checkout", True)
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_123")
+    tid = UUID(client.get("/v1/auth/session", headers=headers).json()["tenant_id"])
+    with Session(engine) as s:
+        t = s.get(Tenant, tid)
+        t.stripe_connect_account_id = "acct_shop1"
+        t.stripe_connect_charges_enabled = True
+        s.add(t)
+        s.commit()
+    return tid
+
+
+def _batch(client, token):
+    res = client.post(
+        f"/v1/public/engraving/events/{token}/orders/batch",
+        json={
+            "orders": [
+                {"athlete_name": "Mia Thompson", "place": "1st", "qty": 1},
+                {"athlete_name": "Leo Thompson", "place": "3rd", "qty": 2},
+            ],
+            "phone": "0412 345 678",
+            "ticket_number": "21",
+        },
+    )
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def test_card_payment_hidden_until_shop_has_stripe(client, owner):
+    event = _make_event(client, owner)
+    assert event["online_payments_ready"] is False
+    order = _public_order(client, event["public_token"]).json()
+    assert order["can_pay_online"] is False
+    res = client.post(f"/v1/public/engraving/orders/{order['status_token']}/checkout")
+    assert res.status_code == 503
+
+
+def test_checkout_covers_the_whole_group_and_charges_shop_account(client, owner, monkeypatch):
+    _enable_card_payments(monkeypatch, owner, client)
+    event = _make_event(client, owner)
+    assert event["online_payments_ready"] is True
+    orders = _batch(client, event["public_token"])
+    status = client.get(f"/v1/public/engraving/orders/{orders[0]['status_token']}").json()
+    assert status["can_pay_online"] is True
+    assert status["amount_due_cents"] == 4500
+
+    captured = {}
+
+    class FakeSession:
+        @staticmethod
+        def create(**params):
+            captured.update(params)
+            return type("S", (), {"url": "https://checkout.stripe.test/c/1"})()
+
+    import stripe
+
+    monkeypatch.setattr(stripe.checkout, "Session", FakeSession)
+    res = client.post(f"/v1/public/engraving/orders/{orders[0]['status_token']}/checkout")
+    assert res.status_code == 200, res.text
+    assert res.json()["checkout_url"] == "https://checkout.stripe.test/c/1"
+    assert captured["stripe_account"] == "acct_shop1"
+    assert captured["metadata"]["purpose"] == "engraving_orders"
+    assert sum(i["price_data"]["unit_amount"] for i in captured["line_items"]) == 4500
+    assert len(captured["metadata"]["engraving_order_ids"].split(",")) == 2
+
+
+def test_paid_webhook_marks_group_paid_once(client, owner, monkeypatch):
+    from app.routes.engraving import apply_engraving_checkout
+    from app.models import EngravingOrder
+
+    _enable_card_payments(monkeypatch, owner, client)
+    event = _make_event(client, owner)
+    orders = _batch(client, event["public_token"])
+    queue = client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["orders"]
+    ids = ",".join(o["id"] for o in queue)
+    obj = {
+        "id": "cs_eng_1", "payment_status": "paid", "amount_total": 4500,
+        "metadata": {"purpose": "engraving_orders", "engraving_order_ids": ids},
+    }
+    with Session(engine) as s:
+        apply_engraving_checkout(s, obj, connect_account="acct_shop1")
+        apply_engraving_checkout(s, obj, connect_account="acct_shop1")  # redelivery is harmless
+        rows = [s.get(EngravingOrder, UUID(i)) for i in ids.split(",")]
+        assert all(o.paid and o.payment_method == "stripe" and o.stripe_checkout_id == "cs_eng_1" for o in rows)
+    status = client.get(f"/v1/public/engraving/orders/{orders[0]['status_token']}").json()
+    assert status["paid"] is True and status["can_pay_online"] is False
+    assert client.post(f"/v1/public/engraving/orders/{orders[0]['status_token']}/checkout").status_code == 409
+
+
+def test_webhook_ignores_wrong_account_and_wrong_amount(client, owner, monkeypatch):
+    from app.routes.engraving import apply_engraving_checkout
+    from app.models import EngravingOrder
+
+    _enable_card_payments(monkeypatch, owner, client)
+    event = _make_event(client, owner)
+    _batch(client, event["public_token"])
+    queue = client.get(f"/v1/engraving/events/{event['id']}/queue", headers=owner).json()["orders"]
+    ids = ",".join(o["id"] for o in queue)
+    base = {"id": "cs_x", "payment_status": "paid", "metadata": {"purpose": "engraving_orders", "engraving_order_ids": ids}}
+    with Session(engine) as s:
+        apply_engraving_checkout(s, {**base, "amount_total": 4500}, connect_account="acct_someone_else")
+        apply_engraving_checkout(s, {**base, "amount_total": 100}, connect_account="acct_shop1")
+        assert not any(s.get(EngravingOrder, UUID(i)).paid for i in ids.split(","))
+
+
+def test_operator_marking_paid_records_stall_payment(client, owner):
+    event = _make_event(client, owner)
+    order = client.post(
+        f"/v1/engraving/events/{event['id']}/orders",
+        json={"athlete_name": "Walk Up", "paid": True},
+        headers=owner,
+    ).json()
+    assert order["paid"] and order["payment_method"] == "stall"

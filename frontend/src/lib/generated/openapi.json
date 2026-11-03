@@ -23611,6 +23611,47 @@
           }
         }
       }
+    },
+    "/v1/public/engraving/orders/{status_token}/checkout": {
+      "post": {
+        "tags": [
+          "public-engraving"
+        ],
+        "summary": "Create Public Order Checkout",
+        "description": "Start Stripe Checkout for this order plus any unpaid medals ordered with it.\n\nThe card is charged on the shop's own Stripe account (a direct charge, like Mobile Services\ninvoices). The order is marked paid when Stripe's Connect webhook reports the payment.",
+        "operationId": "create_public_order_checkout_v1_public_engraving_orders__status_token__checkout_post",
+        "parameters": [
+          {
+            "name": "status_token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Status Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -29221,6 +29262,11 @@
             "type": "boolean",
             "title": "Sms Enabled",
             "default": true
+          },
+          "online_payments": {
+            "type": "boolean",
+            "title": "Online Payments",
+            "default": true
           }
         },
         "type": "object",
@@ -29278,6 +29324,16 @@
           "sms_enabled": {
             "type": "boolean",
             "title": "Sms Enabled"
+          },
+          "online_payments": {
+            "type": "boolean",
+            "title": "Online Payments",
+            "default": true
+          },
+          "online_payments_ready": {
+            "type": "boolean",
+            "title": "Online Payments Ready",
+            "default": false
           },
           "public_token": {
             "type": "string",
@@ -29448,6 +29504,17 @@
               }
             ],
             "title": "Sms Enabled"
+          },
+          "online_payments": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Online Payments"
           }
         },
         "type": "object",
@@ -29663,6 +29730,17 @@
               }
             ],
             "title": "Paid At"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
           },
           "amount_cents": {
             "type": "integer",
@@ -37973,6 +38051,16 @@
           "amount_cents": {
             "type": "integer",
             "title": "Amount Cents"
+          },
+          "can_pay_online": {
+            "type": "boolean",
+            "title": "Can Pay Online",
+            "default": false
+          },
+          "amount_due_cents": {
+            "type": "integer",
+            "title": "Amount Due Cents",
+            "default": 0
           },
           "queue_position": {
             "anyOf": [
