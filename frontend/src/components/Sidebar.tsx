@@ -26,6 +26,7 @@ import {
   Kanban,
   Award,
   ShoppingBag,
+  Boxes,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { isDemoModeEnabled } from '@/lib/onboarding'
@@ -43,6 +44,7 @@ import MinitHqSidebar from './MinitHqSidebar'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
+import { useShopStockEnabled } from '@/hooks/useShopStock'
 
 type NavLinkItem = {
   to: string
@@ -106,6 +108,7 @@ interface SidebarProps {
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature, planCode, product, tenantSlug, minitHqUi, platformConsole } = useAuth()
   const demoModeEnabled = isDemoModeEnabled()
+  const hasPartsStock = useShopStockEnabled()
   const hqCtx = {
     product,
     planCode,
@@ -171,7 +174,10 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     ? filterItems(demoNavAfterMobile)
     : isMinitUi
     ? []
-    : filterItems(navAfterMobile).filter((item) => !(autoKeyOnly && item.to === '/stocktakes'))
+    : [
+        ...filterItems(navAfterMobile).filter((item) => !(autoKeyOnly && item.to === '/stocktakes')),
+        ...(hasPartsStock ? [{ to: '/parts-stock', label: 'Parts stock', icon: Boxes } as NavLinkItem] : []),
+      ]
   const showMobile = !isMinitUi && hasFeature('auto_key')
   const insideMobile = pathname.startsWith('/auto-key')
 

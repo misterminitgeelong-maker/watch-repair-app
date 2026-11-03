@@ -240,6 +240,7 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
         "parent_network_admin",  # HQ support sessions into sibling shops; network org chart, roles, regions
         "parent_regions",        # a region's week rolled up across its shops; regional-manager scope
         "parent_operations",     # franchise-network reporting across shops
+        "hq_stock",  # an HQ's parts catalogue, stock and transfers across its own network (stock module only)
         "parent_shoe_operations",  # an HQ's read-only shoe repair totals and search across its own network's shops
         "platform_admin",        # administration across all tenants
         "network_messages",      # a direct thread between two sites of one network; only its two participants can read it
