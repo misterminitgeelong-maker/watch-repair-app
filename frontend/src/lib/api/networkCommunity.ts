@@ -45,6 +45,12 @@ export const publishAnnouncement = (network: string, data: AnnouncementDraft) =>
 export const acknowledgeAnnouncement = (network: string, id: string, confirm = false) =>
   api.post<Announcement>(`${root(network)}/announcements/${id}/receipt`, { confirm }).then(r => r.data)
 
+export const deleteHubMessage = (network: string, code: string, id: string) =>
+  api.delete(`${root(network)}/hubs/${code}/messages/${id}`)
+export const updateAnnouncement = (network: string, id: string, data: Partial<Pick<AnnouncementDraft, 'title' | 'body' | 'category' | 'pinned' | 'requires_confirmation'>>) =>
+  api.patch<Announcement>(`${root(network)}/announcements/${id}`, data).then(r => r.data)
+export const deleteAnnouncement = (network: string, id: string) =>
+  api.delete(`${root(network)}/announcements/${id}`)
 export const announcementReceipts = (network: string, id: string) =>
   api.get<ReceiptReport>(`${root(network)}/announcements/${id}/receipts`).then(r => r.data)
 export const downloadReceiptsCsv = async (network: string, id: string) => {

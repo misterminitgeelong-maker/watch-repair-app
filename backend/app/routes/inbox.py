@@ -26,6 +26,8 @@ INBOX_EVENT_TYPES = [
     "hq_message",
     # A direct message from another site (routes/network_messages.py).
     "network_message",
+    # An "important" announcement from Support office (routes/network_community.py).
+    "network_announcement",
     # A customer's card was charged but the payment couldn't be applied
     # (routes/card_payment_issues.py resolves it and removes the alert).
     "card_payment_needs_attention",

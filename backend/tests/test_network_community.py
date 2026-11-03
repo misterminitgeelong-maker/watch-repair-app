@@ -337,3 +337,46 @@ def test_hub_message_list_uses_a_fixed_number_of_queries(world):
     finally:
         event.remove(world["engine"], "before_cursor_execute", count)
     assert len(counted) < 40, len(counted)
+
+
+def test_moderators_can_delete_hub_messages_and_edit_or_remove_announcements(world):
+    c = world["as"]("vic")
+    path = world["base"] + "/hubs/VIC/messages"
+    root = c.post(path, json={"body": "oops"}).json()
+    reply = c.post(path, json={"body": "reply", "reply_to_id": root["id"]}).json()
+    world["as"]("vic2")
+    assert c.delete(path + "/" + root["id"]).status_code == 403  # a different shop
+    world["as"]("staff")
+    assert c.delete(path + "/" + root["id"]).status_code == 204  # colleague at the posting shop
+    listing = c.get(path).json()["messages"]
+    assert [m["id"] for m in listing] == [reply["id"]] and listing[0]["reply_preview"] is None
+    world["as"]("qld")
+    assert c.delete(path + "/" + reply["id"]).status_code == 403
+    world["as"]("manager")
+    assert c.delete(path + "/" + reply["id"]).status_code == 204
+    world["as"]("hq")
+    ann = c.post(world["base"] + "/announcements", json={"title": "Typo", "body": "b", "category": "important"}).json()
+    edited = c.patch(f"{world['base']}/announcements/{ann['id']}", json={"title": "Fixed", "pinned": True}).json()
+    assert edited["title"] == "Fixed" and edited["pinned"] is True and edited["body"] == "b"
+    world["as"]("vic")
+    assert c.patch(f"{world['base']}/announcements/{ann['id']}", json={"pinned": False}).status_code == 403
+    assert c.delete(f"{world['base']}/announcements/{ann['id']}").status_code == 403
+    world["as"]("hq")
+    assert c.delete(f"{world['base']}/announcements/{ann['id']}").status_code == 204
+    assert c.get(world["base"] + "/announcements").json()["announcements"] == []
+
+
+def test_important_announcements_raise_an_inbox_alert_that_clears_when_read(world):
+    from app.models import TenantEventLog
+    c = world["as"]("hq")
+    ann = c.post(world["base"] + "/announcements", json={"title": "Recall", "body": "b", "category": "important", "state_code": "VIC"}).json()
+    c.post(world["base"] + "/announcements", json={"title": "FYI", "body": "b"})  # ordinary: no alert
+
+    def alerts(name):
+        with Session(world["engine"]) as s:
+            return len(s.exec(select(TenantEventLog).where(TenantEventLog.tenant_id == world["people"][name][0],
+                                                           TenantEventLog.event_type == "network_announcement")).all())
+    assert alerts("vic") == 1 and alerts("vic2") == 1 and alerts("qld") == 0 and alerts("hq") == 0
+    world["as"]("vic")
+    c.post(f"{world['base']}/announcements/{ann['id']}/receipt", json={})
+    assert alerts("vic") == 0

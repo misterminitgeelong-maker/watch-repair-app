@@ -8051,7 +8051,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Hub Delete
+         * @description The posting shop or a state moderator can remove a message (and its files).
+         */
+        delete: operations["hub_delete_v1_network_community__parent_id__hubs__code__messages__message_id__delete"];
         options?: never;
         head?: never;
         /** Hub Update */
@@ -8108,6 +8112,24 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/announcements/{announcement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Announcement Delete */
+        delete: operations["announcement_delete_v1_network_community__parent_id__announcements__announcement_id__delete"];
+        options?: never;
+        head?: never;
+        /** Announcement Update */
+        patch: operations["announcement_update_v1_network_community__parent_id__announcements__announcement_id__patch"];
         trace?: never;
     };
     "/v1/network-community/{parent_id}/announcements/{announcement_id}/receipts": {
@@ -8385,6 +8407,19 @@ export interface components {
              * @default false
              */
             requires_confirmation: boolean;
+        };
+        /** AnnouncementUpdate */
+        AnnouncementUpdate: {
+            /** Title */
+            title?: string | null;
+            /** Body */
+            body?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Pinned */
+            pinned?: boolean | null;
+            /** Requires Confirmation */
+            requires_confirmation?: boolean | null;
         };
         /** ApiKeyCreateRequest */
         ApiKeyCreateRequest: {
@@ -31351,6 +31386,37 @@ export interface operations {
             };
         };
     };
+    hub_delete_v1_network_community__parent_id__hubs__code__messages__message_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                code: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     hub_update_v1_network_community__parent_id__hubs__code__messages__message_id__patch: {
         parameters: {
             query?: never;
@@ -31504,6 +31570,72 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ReceiptBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    announcement_delete_v1_network_community__parent_id__announcements__announcement_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                announcement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    announcement_update_v1_network_community__parent_id__announcements__announcement_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                announcement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementUpdate"];
             };
         };
         responses: {

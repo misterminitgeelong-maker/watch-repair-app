@@ -5,9 +5,9 @@ import { ArrowLeft, Check, CheckCheck, Hash, Info, LockKeyhole, Megaphone, Messa
 import { useAuth } from '@/context/AuthContext'
 import api, { getApiErrorMessage, type NetworkContact, type NetworkConversation, type NetworkMessage } from '@/lib/api'
 import {
-  acknowledgeAnnouncement, announcementReceipts, downloadReceiptsCsv, hubMessages, listAnnouncements, messagingNetworks, publishAnnouncement,
-  readHub, sendHubPost, sendDirectPost, stateGaps, stateHubs, updateHubMessage,
-  type AnnouncementDraft, type ChatAttachment, type HubMessage, type MessagingNetwork, type StateHub,
+  acknowledgeAnnouncement, announcementReceipts, deleteAnnouncement, deleteHubMessage, downloadReceiptsCsv, hubMessages, listAnnouncements, messagingNetworks, publishAnnouncement,
+  readHub, sendHubPost, sendDirectPost, stateGaps, stateHubs, updateAnnouncement, updateHubMessage,
+  type Announcement, type AnnouncementDraft, type ChatAttachment, type HubMessage, type MessagingNetwork, type StateHub,
 } from '@/lib/api/networkCommunity'
 import './networkMessaging.css'
 
@@ -177,6 +177,8 @@ function HubThread({ network, hub }: { network: MessagingNetwork; hub: StateHub 
     onSuccess: () => { setDraft(''); setFiles([]); setReply(null); setKind('message'); void qc.invalidateQueries({ queryKey: key }); void qc.invalidateQueries({ queryKey: ['state-hubs'] }) } })
   const update = useMutation({ mutationFn: ({ id, ...data }: { id: string; pinned?: boolean; resolved?: boolean }) => updateHubMessage(network.id, hub.code, id, data),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: key }) } })
+  const remove = useMutation({ mutationFn: (id: string) => deleteHubMessage(network.id, hub.code, id),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: key }) } })
   return <>
     <div className="nc-thread-heading"><div><h2><Hash size={21} />{hub.name}</h2><p>{hub.code} · Your state chat hub</p></div><button className="nc-text-button" onClick={() => setInfo(!info)} aria-expanded={info}><Info size={16} />Conversation info</button></div>
     <p className="nc-audience">A shared space for {hub.name} shops. Staff at each participating shop can read and reply.</p>
@@ -197,7 +199,7 @@ function HubThread({ network, hub }: { network: MessagingNetwork; hub: StateHub 
           <p>{m.body}</p><MessageFiles attachments={m.attachments ?? []} />
           {m.kind === 'stock_request' && m.can_moderate && <button className="nc-text-button" disabled={update.isPending} onClick={() => update.mutate({ id: m.id, resolved: !m.resolved_at })}>{m.resolved_at ? 'Reopen request' : 'Mark resolved'}</button>}
         </div>
-        {hub.can_post && <div className="nc-inline-actions"><button className="nc-text-button" onClick={() => setReply(m)}><Reply size={13} />Reply</button>{m.can_moderate && <button className="nc-text-button" disabled={update.isPending} onClick={() => update.mutate({ id: m.id, pinned: !m.pinned })}><Pin size={13} />{m.pinned ? 'Unpin' : 'Pin'}</button>}</div>}
+        {hub.can_post && <div className="nc-inline-actions"><button className="nc-text-button" onClick={() => setReply(m)}><Reply size={13} />Reply</button>{m.can_moderate && <button className="nc-text-button" disabled={update.isPending} onClick={() => update.mutate({ id: m.id, pinned: !m.pinned })}><Pin size={13} />{m.pinned ? 'Unpin' : 'Pin'}</button>}{m.can_moderate && <button className="nc-text-button" disabled={remove.isPending} onClick={() => { if (window.confirm('Delete this message for everyone in the hub?')) remove.mutate(m.id) }}>Delete</button>}</div>}
       </article>)}<div ref={bottom} />
     </div>
     {hub.can_post ? <form className="nc-composer" onSubmit={e => { e.preventDefault(); if ((draft.trim() || files.length) && !send.isPending) send.mutate() }}>
@@ -264,6 +266,7 @@ function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (
   const [compose, setCompose] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [receiptsFor, setReceiptsFor] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
   const gaps = useQuery({ queryKey: ['state-gaps', tenantId, network.id], queryFn: () => stateGaps(network.id), enabled: network.can_publish_network })
   const [draft, setDraft] = useState<AnnouncementDraft>({ title: '', body: '', state_code: network.can_publish_network ? null : network.publish_states[0] ?? null, category: 'update', pinned: false, requires_confirmation: false })
   const query = useInfiniteQuery({ queryKey: key, initialPageParam: 0,
@@ -273,23 +276,29 @@ function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (
   const rows = query.data?.pages.flatMap(p => p.announcements) ?? []
   const acknowledge = useMutation({ mutationFn: ({ id, confirm }: { id: string; confirm: boolean }) => acknowledgeAnnouncement(network.id, id, confirm),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: key }) } })
-  const publish = useMutation({ mutationFn: () => publishAnnouncement(network.id, draft),
-    onSuccess: () => { setCompose(false); setDraft({ ...draft, title: '', body: '' }); void qc.invalidateQueries({ queryKey: key }) } })
+  const publish = useMutation({ mutationFn: () => editing
+      ? updateAnnouncement(network.id, editing, { title: draft.title, body: draft.body, category: draft.category, pinned: draft.pinned, requires_confirmation: draft.requires_confirmation })
+      : publishAnnouncement(network.id, draft),
+    onSuccess: () => { setEditing(null); setCompose(false); setDraft({ ...draft, title: '', body: '' }); void qc.invalidateQueries({ queryKey: key }) } })
+  const changePin = useMutation({ mutationFn: (a: Announcement) => updateAnnouncement(network.id, a.id, { pinned: !a.pinned }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: key }) } })
+  const removeAnnouncement = useMutation({ mutationFn: (id: string) => deleteAnnouncement(network.id, id),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: key }); void qc.invalidateQueries({ queryKey: ['inbox-count'] }) } })
   const visible = rows.filter(a => filter === 'all' || filter === 'unread' && !a.read || filter === 'network' && !a.state_code || filter === 'state' && a.state_code === network.own_state)
   return <section>
     <div className="nc-announcement-toolbar"><div className="nc-inline-actions">{[['all', 'All updates'], ['state', network.own_state ? stateNames[network.own_state] : 'My state'], ['network', 'Network-wide'], ['unread', 'Unread']].map(([value, label]) => <button key={value} className={'nc-filter' + (filter === value ? ' active' : '')} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>)}</div>
-      {(network.can_publish_network || network.publish_states.length > 0) && <button className="nc-button primary" onClick={() => setCompose(!compose)} aria-expanded={compose}>New announcement</button>}
+      {(network.can_publish_network || network.publish_states.length > 0) && <button className="nc-button primary" onClick={() => { setEditing(null); setCompose(!compose) }} aria-expanded={compose}>New announcement</button>}
     </div>
     {(gaps.data?.length ?? 0) > 0 && <div className="nc-publish" role="status"><strong>{gaps.data!.length} shop{gaps.data!.length === 1 ? '' : 's'} can't see a state hub</strong><p className="nc-muted">Set a state for: {gaps.data!.slice(0, 12).map(g => g.name).join(', ')}{gaps.data!.length > 12 ? ` and ${gaps.data!.length - 12} more` : ''}. They still get network-wide announcements.</p></div>}
-    <ErrorNotice error={query.error ?? acknowledge.error ?? publish.error} />
-    {compose && <form className="nc-publish" onSubmit={e => { e.preventDefault(); publish.mutate() }}><h2>Publish an announcement</h2>
-      <label>Audience<select value={draft.state_code ?? ''} onChange={e => setDraft({ ...draft, state_code: e.target.value || null })}>{network.can_publish_network && <option value="">All shops in this network</option>}{network.publish_states.map(code => <option key={code} value={code}>{stateNames[code]}</option>)}</select></label>
+    <ErrorNotice error={query.error ?? acknowledge.error ?? publish.error ?? changePin.error ?? removeAnnouncement.error} />
+    {compose && <form className="nc-publish" onSubmit={e => { e.preventDefault(); publish.mutate() }}><h2>{editing ? 'Edit announcement' : 'Publish an announcement'}</h2>
+      <label>Audience<select disabled={!!editing} value={draft.state_code ?? ''} onChange={e => setDraft({ ...draft, state_code: e.target.value || null })}>{network.can_publish_network && <option value="">All shops in this network</option>}{network.publish_states.map(code => <option key={code} value={code}>{stateNames[code]}</option>)}</select></label>
       <label>Category<select value={draft.category} onChange={e => setDraft({ ...draft, category: e.target.value as AnnouncementDraft['category'] })}><option value="update">Update</option><option value="training">Training</option><option value="important">Important</option></select></label>
       <label>Title<input required maxLength={200} value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} /></label>
       <label>Message<textarea required maxLength={10000} rows={5} value={draft.body} onChange={e => setDraft({ ...draft, body: e.target.value })} /></label>
       <label className="nc-check"><input type="checkbox" checked={draft.pinned} onChange={e => setDraft({ ...draft, pinned: e.target.checked })} />Pin this update</label><label className="nc-check"><input type="checkbox" checked={draft.requires_confirmation} onChange={e => setDraft({ ...draft, requires_confirmation: e.target.checked })} />Ask each shop to confirm receipt</label>
       <p className="nc-muted">This publishes to {draft.state_code ? stateNames[draft.state_code] : 'every shop in this network'}.</p>
-      <button className="nc-button primary" disabled={publish.isPending || !draft.title.trim() || !draft.body.trim()}>{publish.isPending ? 'Publishing…' : 'Publish announcement'}</button>
+      <button className="nc-button primary" disabled={publish.isPending || !draft.title.trim() || !draft.body.trim()}>{publish.isPending ? 'Saving…' : editing ? 'Save changes' : 'Publish announcement'}</button>
     </form>}
     <div className="nc-announcement-layout"><div className="nc-announcement-feed">
       {query.isPending && <p role="status">Loading updates…</p>}
@@ -301,6 +310,9 @@ function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (
           {!a.read && <button className="nc-text-button" disabled={acknowledge.isPending} onClick={() => acknowledge.mutate({ id: a.id, confirm: false })}>Mark read</button>}
           {a.requires_confirmation && <button className="nc-button" disabled={a.confirmed || acknowledge.isPending} onClick={() => acknowledge.mutate({ id: a.id, confirm: true })}>{a.confirmed ? <><CheckCheck size={15} />Shop confirmed</> : <><Check size={15} />Confirm received</>}</button>}
           {a.state_code && <button className="nc-text-button" onClick={() => onHub(a.state_code!)}>Open state hub →</button>}
+          {a.can_view_receipts && <button className="nc-text-button" onClick={() => { setEditing(a.id); setDraft({ title: a.title, body: a.body, state_code: a.state_code, category: a.category, pinned: a.pinned, requires_confirmation: a.requires_confirmation }); setCompose(true) }}>Edit</button>}
+          {a.can_view_receipts && <button className="nc-text-button" disabled={changePin.isPending} onClick={() => changePin.mutate(a)}>{a.pinned ? 'Unpin' : 'Pin'}</button>}
+          {a.can_view_receipts && <button className="nc-text-button" disabled={removeAnnouncement.isPending} onClick={() => { if (window.confirm('Delete this announcement for every shop?')) removeAnnouncement.mutate(a.id) }}>Delete</button>}
           {a.can_view_receipts && <button className="nc-text-button" aria-expanded={receiptsFor === a.id} onClick={() => setReceiptsFor(receiptsFor === a.id ? null : a.id)}>Who has read this</button>}
         </div>
         {receiptsFor === a.id && <Receipts networkId={network.id} announcementId={a.id} />}

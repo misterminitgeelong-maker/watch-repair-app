@@ -178,23 +178,27 @@ def list_conversations(
     my_parents = {s.parent_account_id for s in sites_for_tenant(session, me)}
     if parent_account_id and parent_account_id not in my_parents:
         raise HTTPException(status_code=403, detail="Network not available")
+    convs = [c for c in convs if c.parent_account_id in my_parents and (not parent_account_id or c.parent_account_id == parent_account_id)]
+    ids = [c.id for c in convs]
+    unread_by: dict = {}
+    last_by: dict = {}
+    if ids:
+        unread_by = dict(session.exec(
+            select(NetworkMessage.conversation_id, func.count()).where(col(NetworkMessage.conversation_id).in_(ids))
+            .where(NetworkMessage.sender_tenant_id != me).where(col(NetworkMessage.read_at).is_(None))
+            .group_by(NetworkMessage.conversation_id)
+        ).all())
+        newest = (select(NetworkMessage.conversation_id.label("cid"), func.max(NetworkMessage.created_at).label("m"))
+                  .where(col(NetworkMessage.conversation_id).in_(ids)).group_by(NetworkMessage.conversation_id).subquery())
+        for m in session.exec(select(NetworkMessage).join(newest, (NetworkMessage.conversation_id == newest.c.cid) & (NetworkMessage.created_at == newest.c.m))).all():
+            last_by[m.conversation_id] = m
+    other_ids = {_other(c, me) for c in convs}
+    tenants = {t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_(other_ids))).all()} if other_ids else {}
     for c in convs:
-        if c.parent_account_id not in my_parents or (parent_account_id and c.parent_account_id != parent_account_id):
-            continue
-        last = session.exec(
-            select(NetworkMessage).where(NetworkMessage.conversation_id == c.id)
-            .order_by(col(NetworkMessage.created_at).desc()).limit(1)
-        ).first()
-        unread = session.exec(
-            select(func.count()).select_from(NetworkMessage)
-            .where(NetworkMessage.conversation_id == c.id)
-            .where(NetworkMessage.sender_tenant_id != me)
-            .where(col(NetworkMessage.read_at).is_(None))
-        ).one()
-        other = session.get(Tenant, _other(c, me))
+        last = last_by.get(c.id)
         out.append(ConversationRead(
-            id=c.id, parent_account_id=c.parent_account_id, other_tenant_id=_other(c, me), other_name=_label(other),
-            last_message_at=c.last_message_at, last_body=last.body[:140] if last else None, unread=int(unread),
+            id=c.id, parent_account_id=c.parent_account_id, other_tenant_id=_other(c, me), other_name=_label(tenants.get(_other(c, me))),
+            last_message_at=c.last_message_at, last_body=last.body[:140] if last else None, unread=int(unread_by.get(c.id, 0)),
         ))
     return out
 

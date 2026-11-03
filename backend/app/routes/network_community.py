@@ -13,7 +13,7 @@ from sqlmodel import Session, col, func, select
 
 from ..database import unscoped_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import NetworkMessage, ParentAccount, Region, Tenant, User
+from ..models import NetworkMessage, ParentAccount, Region, Tenant, TenantEventLog, User
 from ..models.network_community import AnnouncementReceipt, NetworkAnnouncement, StateHubMessage, StateHubRead, NetworkMessageAttachment
 from ..parent_network import (
     parent_region_scope, parent_role_for_user, parents_for_user, sites_for_parent, sites_for_tenant,
@@ -21,6 +21,7 @@ from ..parent_network import (
 from .network_messages import _label, _own_context, _attachments, _attachments_by_message, _get_mine, _prepare_direct, SendBody
 
 router = APIRouter(prefix="/v1/network-community", tags=["network-community"])
+ANNOUNCEMENT_EVENT = "network_announcement"
 STATES = {
     "VIC": "Victoria", "NSW": "New South Wales", "QLD": "Queensland",
     "WA": "Western Australia", "SA": "South Australia", "TAS": "Tasmania",
@@ -125,6 +126,14 @@ class AnnouncementCreate(BaseModel):
     category: str = "update"
     pinned: bool = False
     requires_confirmation: bool = False
+
+
+class AnnouncementUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    body: str | None = Field(default=None, min_length=1, max_length=10000)
+    category: str | None = None
+    pinned: bool | None = None
+    requires_confirmation: bool | None = None
 
 
 class ReadBody(BaseModel):
@@ -331,6 +340,15 @@ def publish(parent_id: UUID, body: AnnouncementCreate,
                               **body.model_dump(exclude={"title", "body"}),
                               title=body.title.strip(), body=body.body.strip())
     session.add(row)
+    session.flush()
+    if row.category == "important":
+        # Shops see important notices in their Inbox badge; the alert clears when they open it.
+        actor = session.get(User, auth.user_id)
+        for _, tenant, _code in _audience_sites(session, parent_id, row.state_code):
+            session.add(TenantEventLog(
+                tenant_id=tenant.id, actor_user_id=auth.user_id, actor_email=actor.email if actor else None,
+                entity_type="network_announcement", entity_id=row.id, event_type=ANNOUNCEMENT_EVENT,
+                event_summary=f"Important update from Support Office: {row.title[:180]}"))
     session.commit()
     session.refresh(row)
     return _announcement_read(session, row, auth, ctx)
@@ -351,6 +369,10 @@ def receipt(parent_id: UUID, announcement_id: UUID, body: ReceiptBody,
         if body.confirm and not row.confirmed_at:
             row.confirmed_at = datetime.now(timezone.utc)
         session.add(row)
+        for alert in session.exec(select(TenantEventLog).where(
+                TenantEventLog.tenant_id == auth.tenant_id, TenantEventLog.event_type == ANNOUNCEMENT_EVENT,
+                TenantEventLog.entity_id == announcement_id)).all():
+            session.delete(alert)
         session.commit()
     try:
         save()
@@ -358,6 +380,63 @@ def receipt(parent_id: UUID, announcement_id: UUID, body: ReceiptBody,
         session.rollback()
         save()
     return _announcement_read(session, announcement, auth, ctx)
+
+
+@router.patch("/{parent_id}/announcements/{announcement_id}")
+def announcement_update(parent_id: UUID, announcement_id: UUID, body: AnnouncementUpdate,
+                        auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    ctx, row = _announcement_context(session, auth, parent_id, announcement_id)
+    if not _can_view_receipts(ctx, row):
+        raise HTTPException(403, "Only the people who can publish this announcement can change it")
+    data = body.model_dump(exclude_unset=True)
+    if "category" in data and data["category"] not in {"update", "training", "important"}:
+        raise HTTPException(400, "Choose a valid category")
+    for key in ("title", "body"):
+        if key in data:
+            data[key] = data[key].strip()
+            if not data[key]:
+                raise HTTPException(400, "Enter a title and message")
+    for key, value in data.items():
+        if value is not None:
+            setattr(row, key, value)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return _announcement_read(session, row, auth, ctx)
+
+
+@router.delete("/{parent_id}/announcements/{announcement_id}", status_code=204)
+def announcement_delete(parent_id: UUID, announcement_id: UUID,
+                        auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    ctx, row = _announcement_context(session, auth, parent_id, announcement_id)
+    if not _can_view_receipts(ctx, row):
+        raise HTTPException(403, "Only the people who can publish this announcement can delete it")
+    for receipt in session.exec(select(AnnouncementReceipt).where(AnnouncementReceipt.announcement_id == row.id)).all():
+        session.delete(receipt)
+    for alert in session.exec(select(TenantEventLog).where(
+            TenantEventLog.event_type == ANNOUNCEMENT_EVENT, TenantEventLog.entity_id == row.id)).all():
+        session.delete(alert)
+    session.delete(row)
+    session.commit()
+
+
+@router.delete("/{parent_id}/hubs/{code}/messages/{message_id}", status_code=204)
+def hub_delete(parent_id: UUID, code: str, message_id: UUID,
+               auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """The posting shop or a state moderator can remove a message (and its files)."""
+    ctx = _hub_context(session, auth, parent_id, code, write=True)
+    row = session.get(StateHubMessage, message_id)
+    if not row or row.parent_account_id != parent_id or row.state_code != code:
+        raise HTTPException(404, "Message not found")
+    if row.sender_tenant_id != auth.tenant_id and not ctx[4] and ctx[5] != code:
+        raise HTTPException(403, "Only the posting shop or state moderator can delete this message")
+    for att in session.exec(select(NetworkMessageAttachment).where(NetworkMessageAttachment.hub_message_id == row.id)).all():
+        session.delete(att)
+    for reply in session.exec(select(StateHubMessage).where(StateHubMessage.reply_to_id == row.id)).all():
+        reply.reply_to_id = None
+        session.add(reply)
+    session.delete(row)
+    session.commit()
 
 
 def _audience_sites(session, parent_id, state):
