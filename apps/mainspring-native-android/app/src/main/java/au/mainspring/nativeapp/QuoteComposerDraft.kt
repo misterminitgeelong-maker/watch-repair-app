@@ -13,8 +13,10 @@ fun validateQuoteAmountRange(lines: List<MobileQuoteLine>) {
  require(subtotal.multiply(BigDecimal("1.15")).setScale(0,RoundingMode.HALF_UP) <= BigDecimal.valueOf(Int.MAX_VALUE.toLong())) { "This quote exceeds the amount supported by the native app. Reduce the quantity or split the work into separate quotes." }
 }
 
-data class QuoteLineDraft(val description: String = "", val quantity: String = "1", val price: String = "", val discountType: String = "none", val discount: String = "")
-data class QuoteComposerDraft(val lines: List<QuoteLineDraft> = listOf(QuoteLineDraft()), val gst: Boolean = true, val inclusive: Boolean = true, val gstChoiceMade: Boolean = false, val lastResetVersion: String? = null)
+data class QuoteLineDraft(val description: String = "", val quantity: String = "1", val price: String = "", val discountType: String = "none", val discount: String = "",
+    /** Two-outcome quotes: "A" or "B" when the line belongs to one outcome, null when it applies to both. */ val option: String? = null)
+data class QuoteComposerDraft(val lines: List<QuoteLineDraft> = listOf(QuoteLineDraft()), val gst: Boolean = true, val inclusive: Boolean = true, val gstChoiceMade: Boolean = false, val lastResetVersion: String? = null,
+    val twoOutcome: Boolean = false, val labelA: String? = null, val labelB: String? = null)
 
 data class QuotePreview(val subtotal: Long,val tax: Long,val total: Long)
 fun quotePreview(draft: QuoteComposerDraft,currency: String): QuotePreview {
@@ -50,3 +52,21 @@ fun quoteLinesFromDraft(draft: List<QuoteLineDraft>): List<MobileQuoteLine> {
   MobileQuoteLine(description, quantity, discounted)
  }.also(::validateQuoteAmountRange)
 }
+
+/** A two-outcome quote split the way the web POS sends it: shared lines plus exactly two named options. */
+data class QuoteOutcomeSplit(val shared: List<MobileQuoteLine>, val options: List<au.mainspring.nativeapp.api.MobileQuoteOptionCreate>)
+fun quoteOutcomeSplit(draft: QuoteComposerDraft): QuoteOutcomeSplit {
+ val labelA = draft.labelA.orEmpty().trim(); val labelB = draft.labelB.orEmpty().trim()
+ require(labelA.isNotBlank() && labelB.isNotBlank()) { "Give both options a name, e.g. CAS3 and CAS3++." }
+ require(labelA.length <= 120 && labelB.length <= 120) { "Option names can be up to 120 characters." }
+ require(draft.lines.any { it.option == "A" } && draft.lines.any { it.option == "B" }) { "Each option needs at least one item of its own." }
+ require(draft.lines.size <= 30) { "A quote can contain up to 30 lines." }
+ fun convert(key: String?) = draft.lines.filter { it.option == key }.let { rows -> if(rows.isEmpty()) emptyList() else quoteLinesFromDraft(rows) }
+ val split = QuoteOutcomeSplit(convert(null), listOf(
+  au.mainspring.nativeapp.api.MobileQuoteOptionCreate(labelA, convert("A")), au.mainspring.nativeapp.api.MobileQuoteOptionCreate(labelB, convert("B"))))
+ split.options.forEach { validateQuoteAmountRange(split.shared + it.lines) }
+ return split
+}
+/** Per-option totals for the live preview: each option is the shared lines plus that option's own lines. */
+fun quoteOutcomePreviews(draft: QuoteComposerDraft, currency: String): Map<String, QuotePreview> =
+ listOf("A", "B").associateWith { key -> quotePreview(draft.copy(lines = draft.lines.filter { it.option == null || it.option == key }), currency) }

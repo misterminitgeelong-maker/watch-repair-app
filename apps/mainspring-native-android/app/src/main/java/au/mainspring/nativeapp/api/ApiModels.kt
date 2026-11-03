@@ -533,12 +533,21 @@ data class InvoiceSendResponse(
     @SerializedName("email_error_detail") val errorDetail: String?,
 )
 
-data class MobileQuoteCreate(@SerializedName("line_items") val lines: List<MobileQuoteLine>, @SerializedName("gst_enabled") val gst: Boolean, @SerializedName("gst_inclusive") val inclusive: Boolean)
-data class MobileQuoteLine(val description: String, val quantity: Double = 1.0, @SerializedName("unit_price_cents") val unitCents: Int)
+data class MobileQuoteCreate(@SerializedName("line_items") val lines: List<MobileQuoteLine>, @SerializedName("gst_enabled") val gst: Boolean, @SerializedName("gst_inclusive") val inclusive: Boolean,
+    /** Two-outcome quote: exactly two entries (A then B); `lines` are then the lines shared by both (web `AutoKeyQuoteCreate.options`). */
+    val options: List<MobileQuoteOptionCreate>? = null)
+data class MobileQuoteLine(val description: String, val quantity: Double = 1.0, @SerializedName("unit_price_cents") val unitCents: Int,
+    /** Read side only: "A" or "B" for a line that belongs to one outcome, null when it applies to both. */
+    @SerializedName("option_key") val optionKey: String? = null)
+data class MobileQuoteOptionCreate(val label: String, @SerializedName("line_items") val lines: List<MobileQuoteLine>)
+data class MobileQuoteOption(val key: String, val label: String, @SerializedName("subtotal_cents") val subtotal: Int = 0,
+    @SerializedName("tax_cents") val tax: Int = 0, @SerializedName("total_cents") val total: Int = 0)
+data class MobileQuoteSelectOption(val option: String)
 data class MobileQuote(val id: String, val status: String, @SerializedName("subtotal_cents") val subtotal: Int,
     @SerializedName("tax_cents") val tax: Int, @SerializedName("total_cents") val total: Int, val currency: String,
     @SerializedName("line_items") val lines: List<MobileQuoteLine> = emptyList(), @SerializedName("signer_name") val signer: String? = null,
-    @SerializedName("signed_at") val signedAt: String? = null, @SerializedName("has_signature") val hasSignature: Boolean = false)
+    @SerializedName("signed_at") val signedAt: String? = null, @SerializedName("has_signature") val hasSignature: Boolean = false,
+    val options: List<MobileQuoteOption>? = null, @SerializedName("selected_option") val selectedOption: String? = null)
 data class MobileInvoice(val id: String, @SerializedName("invoice_number") val number: String, val status: String,
     @SerializedName("auto_key_quote_id") val quoteId: String?, @SerializedName("total_cents") val total: Int,
     val currency: String, @SerializedName("payment_method") val paymentMethod: String? = null,
