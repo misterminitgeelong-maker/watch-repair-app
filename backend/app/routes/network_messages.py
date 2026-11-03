@@ -59,6 +59,17 @@ def _attachments(session, message_id, hub=False):
     return [NetworkAttachmentRead(id=row[0], filename=row[1], content_type=row[2], size_bytes=row[3]) for row in rows]
 
 
+def _attachments_by_message(session, message_ids, hub=False):
+    if not message_ids:
+        return {}
+    column = NetworkMessageAttachment.hub_message_id if hub else NetworkMessageAttachment.direct_message_id
+    rows = session.exec(select(column, NetworkMessageAttachment.id, NetworkMessageAttachment.filename, NetworkMessageAttachment.content_type, NetworkMessageAttachment.size_bytes).where(col(column).in_(message_ids))).all()
+    out: dict = {}
+    for mid, aid, name, ctype, size in rows:
+        out.setdefault(mid, []).append(NetworkAttachmentRead(id=aid, filename=name, content_type=ctype, size_bytes=size))
+    return out
+
+
 class MessageRead(BaseModel):
     id: UUID
     sender_tenant_id: UUID
@@ -210,11 +221,12 @@ def list_messages(
     _clear_alerts(session, me, conv.id)
     session.commit()
     users = {u.id: u for u in session.exec(select(User).where(col(User.id).in_([m.sender_user_id for m in rows if m.sender_user_id]))).all()} if rows else {}
+    files = _attachments_by_message(session, [m.id for m in rows])
     return [
         MessageRead(
             id=m.id, sender_tenant_id=m.sender_tenant_id, mine=m.sender_tenant_id == me,
             sender_name=(users[m.sender_user_id].full_name or users[m.sender_user_id].email) if m.sender_user_id in users else None,
-            body=m.body, created_at=m.created_at, conversation_id=conv.id, attachments=_attachments(session, m.id),
+            body=m.body, created_at=m.created_at, conversation_id=conv.id, attachments=files.get(m.id, []),
         )
         for m in reversed(rows)
     ]

@@ -18,8 +18,11 @@ export interface HubPage { messages: HubMessage[]; has_more: boolean; next_befor
 export interface Announcement {
   id: string; title: string; body: string; state_code: string | null
   category: 'update' | 'training' | 'important'; pinned: boolean; requires_confirmation: boolean
-  created_at: string; author_name: string; read: boolean; confirmed: boolean
+  created_at: string; author_name: string; read: boolean; confirmed: boolean; can_view_receipts?: boolean
 }
+export interface ReceiptShop { tenant_id: string; name: string; state_code: string | null; read_at: string | null; confirmed_at: string | null }
+export interface ReceiptReport { summary: { audience: number; read: number; confirmed: number; requires_confirmation: boolean }; shops: ReceiptShop[] }
+export interface StateGapShop { tenant_id: string; name: string; region_value: string | null }
 export interface AnnouncementDraft {
   title: string; body: string; state_code: string | null; category: Announcement['category']
   pinned: boolean; requires_confirmation: boolean
@@ -42,6 +45,19 @@ export const publishAnnouncement = (network: string, data: AnnouncementDraft) =>
 export const acknowledgeAnnouncement = (network: string, id: string, confirm = false) =>
   api.post<Announcement>(`${root(network)}/announcements/${id}/receipt`, { confirm }).then(r => r.data)
 
+export const announcementReceipts = (network: string, id: string) =>
+  api.get<ReceiptReport>(`${root(network)}/announcements/${id}/receipts`).then(r => r.data)
+export const downloadReceiptsCsv = async (network: string, id: string) => {
+  const res = await api.get<Blob>(`${root(network)}/announcements/${id}/receipts`, { params: { export: 'csv' }, responseType: 'blob' })
+  const url = URL.createObjectURL(res.data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'announcement-receipts.csv'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+export const stateGaps = (network: string) =>
+  api.get<{ shops: StateGapShop[] }>(`${root(network)}/state-gaps`).then(r => r.data.shops)
 
 export const sendHubPost = (network: string, code: string, data: { body: string; kind: string; reply_to_id?: string }, files: File[]) => {
   const form = new FormData()

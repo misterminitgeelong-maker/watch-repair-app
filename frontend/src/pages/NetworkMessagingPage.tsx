@@ -5,8 +5,8 @@ import { ArrowLeft, Check, CheckCheck, Hash, Info, LockKeyhole, Megaphone, Messa
 import { useAuth } from '@/context/AuthContext'
 import api, { getApiErrorMessage, type NetworkContact, type NetworkConversation, type NetworkMessage } from '@/lib/api'
 import {
-  acknowledgeAnnouncement, hubMessages, listAnnouncements, messagingNetworks, publishAnnouncement,
-  readHub, sendHubPost, sendDirectPost, stateHubs, updateHubMessage,
+  acknowledgeAnnouncement, announcementReceipts, downloadReceiptsCsv, hubMessages, listAnnouncements, messagingNetworks, publishAnnouncement,
+  readHub, sendHubPost, sendDirectPost, stateGaps, stateHubs, updateHubMessage,
   type AnnouncementDraft, type ChatAttachment, type HubMessage, type MessagingNetwork, type StateHub,
 } from '@/lib/api/networkCommunity'
 import './networkMessaging.css'
@@ -244,6 +244,18 @@ function DirectThread({ networkId, conversation, conversationId, recipient, reci
   </>
 }
 
+function Receipts({ networkId, announcementId }: { networkId: string; announcementId: string }) {
+  const report = useQuery({ queryKey: ['announcement-receipts', networkId, announcementId], queryFn: () => announcementReceipts(networkId, announcementId), refetchInterval: 30_000 })
+  if (report.isPending) return <p role="status">Loading receipts…</p>
+  if (report.error || !report.data) return <ErrorNotice error={report.error} />
+  const { summary, shops } = report.data
+  return <div className="nc-receipts">
+    <p><strong>{summary.read}</strong> of {summary.audience} shops have read this{summary.requires_confirmation ? <>; <strong>{summary.confirmed}</strong> confirmed</> : null}.</p>
+    <ul>{shops.map(s => <li key={s.tenant_id}>{s.name}{s.state_code ? ` (${s.state_code})` : ''} — {s.confirmed_at ? 'Confirmed ' + when(s.confirmed_at) : s.read_at ? 'Read ' + when(s.read_at) : 'Not read yet'}</li>)}</ul>
+    <button className="nc-text-button" onClick={() => void downloadReceiptsCsv(networkId, announcementId)}>Download as CSV</button>
+  </div>
+}
+
 function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (code: string) => void }) {
   const { tenantId } = useAuth()
   const qc = useQueryClient()
@@ -251,6 +263,8 @@ function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (
   const [filter, setFilter] = useState('all')
   const [compose, setCompose] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [receiptsFor, setReceiptsFor] = useState<string | null>(null)
+  const gaps = useQuery({ queryKey: ['state-gaps', tenantId, network.id], queryFn: () => stateGaps(network.id), enabled: network.can_publish_network })
   const [draft, setDraft] = useState<AnnouncementDraft>({ title: '', body: '', state_code: network.can_publish_network ? null : network.publish_states[0] ?? null, category: 'update', pinned: false, requires_confirmation: false })
   const query = useInfiniteQuery({ queryKey: key, initialPageParam: 0,
     queryFn: ({ pageParam }) => listAnnouncements(network.id, pageParam),
@@ -266,6 +280,7 @@ function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (
     <div className="nc-announcement-toolbar"><div className="nc-inline-actions">{[['all', 'All updates'], ['state', network.own_state ? stateNames[network.own_state] : 'My state'], ['network', 'Network-wide'], ['unread', 'Unread']].map(([value, label]) => <button key={value} className={'nc-filter' + (filter === value ? ' active' : '')} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>)}</div>
       {(network.can_publish_network || network.publish_states.length > 0) && <button className="nc-button primary" onClick={() => setCompose(!compose)} aria-expanded={compose}>New announcement</button>}
     </div>
+    {(gaps.data?.length ?? 0) > 0 && <div className="nc-publish" role="status"><strong>{gaps.data!.length} shop{gaps.data!.length === 1 ? '' : 's'} can't see a state hub</strong><p className="nc-muted">Set a state for: {gaps.data!.slice(0, 12).map(g => g.name).join(', ')}{gaps.data!.length > 12 ? ` and ${gaps.data!.length - 12} more` : ''}. They still get network-wide announcements.</p></div>}
     <ErrorNotice error={query.error ?? acknowledge.error ?? publish.error} />
     {compose && <form className="nc-publish" onSubmit={e => { e.preventDefault(); publish.mutate() }}><h2>Publish an announcement</h2>
       <label>Audience<select value={draft.state_code ?? ''} onChange={e => setDraft({ ...draft, state_code: e.target.value || null })}>{network.can_publish_network && <option value="">All shops in this network</option>}{network.publish_states.map(code => <option key={code} value={code}>{stateNames[code]}</option>)}</select></label>
@@ -286,7 +301,9 @@ function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (
           {!a.read && <button className="nc-text-button" disabled={acknowledge.isPending} onClick={() => acknowledge.mutate({ id: a.id, confirm: false })}>Mark read</button>}
           {a.requires_confirmation && <button className="nc-button" disabled={a.confirmed || acknowledge.isPending} onClick={() => acknowledge.mutate({ id: a.id, confirm: true })}>{a.confirmed ? <><CheckCheck size={15} />Shop confirmed</> : <><Check size={15} />Confirm received</>}</button>}
           {a.state_code && <button className="nc-text-button" onClick={() => onHub(a.state_code!)}>Open state hub →</button>}
+          {a.can_view_receipts && <button className="nc-text-button" aria-expanded={receiptsFor === a.id} onClick={() => setReceiptsFor(receiptsFor === a.id ? null : a.id)}>Who has read this</button>}
         </div>
+        {receiptsFor === a.id && <Receipts networkId={network.id} announcementId={a.id} />}
       </article>)}
       {!query.isPending && !visible.length && <div className="nc-empty"><Megaphone /><h2>No updates here yet</h2><p>Network and state announcements will appear here.</p></div>}
       {query.hasNextPage && <button className="nc-button" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>Load older updates</button>}

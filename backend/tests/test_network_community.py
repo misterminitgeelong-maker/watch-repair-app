@@ -277,3 +277,63 @@ def test_direct_files_are_visible_only_to_the_two_participating_shops(world):
     assert c.get(url).status_code == 404
 
 
+
+
+def test_publishers_see_which_shops_read_and_confirmed(world):
+    c = world["as"]("hq")
+    made = c.post(world["base"] + "/announcements", json={"title": "New returns policy", "body": "Read this", "requires_confirmation": True})
+    assert made.status_code == 201, made.text
+    assert made.json()["can_view_receipts"] is True
+    aid = made.json()["id"]
+    world["as"]("vic")
+    shop_view = c.get(world["base"] + "/announcements").json()["announcements"][0]
+    assert shop_view["can_view_receipts"] is False
+    assert c.get(f"{world['base']}/announcements/{aid}/receipts").status_code == 403
+    c.post(f"{world['base']}/announcements/{aid}/receipt", json={"confirm": True})
+    world["as"]("qld")
+    c.post(f"{world['base']}/announcements/{aid}/receipt", json={})
+    world["as"]("hq")
+    data = c.get(f"{world['base']}/announcements/{aid}/receipts").json()
+    assert data["summary"]["audience"] == 4  # vic, qld and the unknown-state shop, plus vic2
+    assert data["summary"]["read"] == 2 and data["summary"]["confirmed"] == 1
+    names = {s["name"]: s for s in data["shops"]}
+    assert names["vic"]["confirmed_at"] and names["qld"]["read_at"] and not names["qld"]["confirmed_at"]
+    assert not names["vic2"]["read_at"]
+    assert "Shop,State" in c.get(f"{world['base']}/announcements/{aid}/receipts?export=csv").text
+
+
+def test_state_manager_sees_receipts_only_for_their_own_state(world):
+    c = world["as"]("manager")
+    own = c.post(world["base"] + "/announcements", json={"title": "VIC only", "body": "x", "state_code": "VIC"}).json()
+    data = c.get(f"{world['base']}/announcements/{own['id']}/receipts").json()
+    assert {s["name"] for s in data["shops"]} == {"vic", "vic2"}
+    world["as"]("hq")
+    network = c.post(world["base"] + "/announcements", json={"title": "Everyone", "body": "x"}).json()
+    world["as"]("manager")
+    assert c.get(f"{world['base']}/announcements/{network['id']}/receipts").status_code == 403
+
+
+def test_state_gaps_list_only_for_hq_admins(world):
+    c = world["as"]("hq")
+    gaps = c.get(world["base"] + "/state-gaps").json()["shops"]
+    assert [g["name"] for g in gaps] == ["unknown"]
+    world["as"]("vic")
+    assert c.get(world["base"] + "/state-gaps").status_code == 403
+
+
+def test_hub_message_list_uses_a_fixed_number_of_queries(world):
+    from sqlalchemy import event
+    c = world["as"]("vic")
+    path = world["base"] + "/hubs/VIC/messages"
+    first = c.post(path, json={"body": "root"}).json()
+    for i in range(30):
+        c.post(path, json={"body": f"reply {i}", "reply_to_id": first["id"]})
+    counted = []
+    def count(*_):
+        counted.append(1)
+    event.listen(world["engine"], "before_cursor_execute", count)
+    try:
+        assert len(c.get(path).json()["messages"]) == 31
+    finally:
+        event.remove(world["engine"], "before_cursor_execute", count)
+    assert len(counted) < 40, len(counted)

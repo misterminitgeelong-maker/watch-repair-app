@@ -25665,6 +25665,126 @@
         }
       }
     },
+    "/v1/network-community/{parent_id}/announcements/{announcement_id}/receipts": {
+      "get": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Announcement Receipts",
+        "description": "Which shops have read or confirmed an announcement. Publishers only.",
+        "operationId": "announcement_receipts_v1_network_community__parent_id__announcements__announcement_id__receipts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "name": "announcement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Announcement Id"
+            }
+          },
+          {
+            "name": "export",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Export"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-community/{parent_id}/state-gaps": {
+      "get": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "State Gaps",
+        "description": "Shops whose state cannot be worked out, so they get no state hub. HQ admins only.",
+        "operationId": "state_gaps_v1_network_community__parent_id__state_gaps_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/network-community/{parent_id}/hubs/{code}/posts": {
       "post": {
         "tags": [
