@@ -1111,7 +1111,7 @@ export default function AppShell() {
         </main>
       </div>
 
-      <div className="print-hide">{demoModeEnabled ? <BottomTabBar /> : minitHq ? <MinitHqBottomTabBar /> : !minitUi ? <BottomTabBar /> : null}</div>
+      <div className="print-hide">{demoModeEnabled ? <BottomTabBar /> : minitHq ? <MinitHqBottomTabBar /> : <BottomTabBar bookingOnly={minitUi} />}</div>
 
       {showWelcomeModal && (
         <Modal title="Welcome to the Mainspring Demo" onClose={() => chooseMode('self')}>

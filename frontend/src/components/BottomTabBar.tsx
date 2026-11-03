@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
+  MessageSquare,
   Inbox,
   Wrench,
   Scissors,
@@ -55,7 +56,7 @@ function pickServiceTabs(hasWatch: boolean, hasShoe: boolean, hasMobile: boolean
   return { primary: others.slice(0, 2), overflow: others.slice(2) }
 }
 
-export default function BottomTabBar() {
+export default function BottomTabBar({ bookingOnly = false }: { bookingOnly?: boolean } = {}) {
   const { hasFeature, logout, availableSites, activeSiteTenantId, switchSite } = useAuth()
   const demoModeEnabled = isDemoModeEnabled()
   const navigate = useNavigate()
@@ -68,10 +69,17 @@ export default function BottomTabBar() {
   const hasShoe = hasFeature('shoe')
   const hasMobile = hasFeature('auto_key')
 
-  const { primary: primaryServiceTabs, overflow: overflowServiceTabs } = pickServiceTabs(hasWatch, hasShoe, hasMobile)
+  const { primary: serviceTabs, overflow: overflowServiceTabs } = pickServiceTabs(hasWatch, hasShoe, hasMobile)
+  const primaryServiceTabs: TabItem[] = bookingOnly ? [{ to: '/messages', label: 'Messages', icon: MessageSquare }] : serviceTabs
+  const HomeIcon = bookingOnly ? KeyRound : LayoutDashboard
+  const homePath = bookingOnly ? '/shop-mobile-bookings' : '/dashboard'
+  const homeLabel = bookingOnly ? 'Book mobile' : 'Home'
 
-  const moreMenuItems = [
+  const moreMenuItems = (bookingOnly ? [
+    { to: '/accounts', label: 'Settings', icon: UserCog },
+  ] : [
     ...overflowServiceTabs,
+    !demoModeEnabled && { to: '/messages', label: 'Messages', icon: MessageSquare },
     { to: '/customers', label: 'Customers', icon: Users },
     { to: '/invoices', label: 'Invoices', icon: Receipt },
     { to: '/reports', label: 'Reports', icon: BarChart3 },
@@ -80,7 +88,7 @@ export default function BottomTabBar() {
     !demoModeEnabled && hasFeature('multi_site') && { to: '/parent-account', label: 'Parent', icon: Building2 },
     !demoModeEnabled && { to: '/database', label: 'Database', icon: Database },
     { to: '/accounts', label: 'Settings', icon: UserCog },
-  ].filter(Boolean) as TabItem[]
+  ]).filter(Boolean) as TabItem[]
 
   const tabStyle = (isActive: boolean) => ({
     color: isActive ? 'var(--ms-accent)' : 'var(--ms-text-muted)',
@@ -179,14 +187,14 @@ export default function BottomTabBar() {
       >
         {/* Dashboard */}
         <NavLink
-          to="/dashboard"
+          to={homePath}
           className="flex flex-1 flex-col items-center justify-center gap-1 pt-2 transition-colors active:opacity-60"
           style={({ isActive }) => tabStyle(isActive)}
         >
           {({ isActive }) => (
             <>
-              <LayoutDashboard size={22} strokeWidth={isActive ? 2.5 : 1.8} />
-              <span className="text-[10px] font-medium">Home</span>
+              <HomeIcon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+              <span className="text-[10px] font-medium">{homeLabel}</span>
             </>
           )}
         </NavLink>
