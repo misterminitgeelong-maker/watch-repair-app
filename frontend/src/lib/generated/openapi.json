@@ -25148,6 +25148,31 @@
         ]
       }
     },
+    "/v1/network-community/unread": {
+      "get": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Unread Total",
+        "description": "One number for the Messages nav badge: unread state-hub messages plus unread announcements.",
+        "operationId": "unread_total_v1_network_community_unread_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/network-community/{parent_id}/hubs": {
       "get": {
         "tags": [
@@ -25414,6 +25439,65 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Hub Delete",
+        "description": "The posting shop or a state moderator can remove a message (and its files).",
+        "operationId": "hub_delete_v1_network_community__parent_id__hubs__code__messages__message_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/network-community/{parent_id}/hubs/{code}/read": {
@@ -25643,6 +25727,298 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-community/{parent_id}/announcements/{announcement_id}": {
+      "patch": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Announcement Update",
+        "operationId": "announcement_update_v1_network_community__parent_id__announcements__announcement_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "name": "announcement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Announcement Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Announcement Delete",
+        "operationId": "announcement_delete_v1_network_community__parent_id__announcements__announcement_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "name": "announcement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Announcement Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-community/{parent_id}/hub-assignments": {
+      "post": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Assign Hubs",
+        "description": "Put shops (by shop number) into a messaging hub in one go. HQ admins only; previews unless dry_run is false.",
+        "operationId": "assign_hubs_v1_network_community__parent_id__hub_assignments_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubAssignment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-community/{parent_id}/announcements/{announcement_id}/receipts": {
+      "get": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Announcement Receipts",
+        "description": "Which shops have read or confirmed an announcement. Publishers only.",
+        "operationId": "announcement_receipts_v1_network_community__parent_id__announcements__announcement_id__receipts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "name": "announcement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Announcement Id"
+            }
+          },
+          {
+            "name": "export",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Export"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-community/{parent_id}/state-gaps": {
+      "get": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "State Gaps",
+        "description": "Shops whose state cannot be worked out, so they get no state hub. HQ admins only.",
+        "operationId": "state_gaps_v1_network_community__parent_id__state_gaps_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -26277,6 +26653,71 @@
           "body"
         ],
         "title": "AnnouncementCreate"
+      },
+      "AnnouncementUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned"
+          },
+          "requires_confirmation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requires Confirmation"
+          }
+        },
+        "type": "object",
+        "title": "AnnouncementUpdate"
       },
       "ApiKeyCreateRequest": {
         "properties": {
@@ -33070,6 +33511,35 @@
         ],
         "title": "HqSettingsPayload"
       },
+      "HubAssignment": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "maxLength": 8,
+            "title": "State"
+          },
+          "shop_numbers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Shop Numbers"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "shop_numbers"
+        ],
+        "title": "HubAssignment"
+      },
       "HubSend": {
         "properties": {
           "body": {
@@ -37243,6 +37713,28 @@
             ],
             "title": "Region Code"
           },
+          "messaging_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messaging State"
+          },
+          "messaging_hub": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messaging Hub"
+          },
           "plan_code": {
             "type": "string",
             "title": "Plan Code"
@@ -37458,6 +37950,18 @@
             "type": "boolean",
             "title": "Clear Region",
             "default": false
+          },
+          "messaging_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messaging State"
           },
           "shop_email": {
             "anyOf": [

@@ -221,6 +221,10 @@ class ParentAccountSiteRead(SQLModel):
     region: Optional[str] = None
     region_id: Optional[UUID] = None
     region_code: Optional[str] = None
+    #: Messaging hub override set by HQ (a state code, or NONE); null means automatic.
+    messaging_state: Optional[str] = None
+    #: The hub the site is actually in (override, else area, else region); null if none.
+    messaging_hub: Optional[str] = None
     plan_code: str
     #: hq | retail | operator — the site's place in the network, not its plan.
     network_role: str = "retail"
@@ -271,6 +275,8 @@ class ParentAccountSiteUpdateRequest(SQLModel):
     #: Set to a Region id to assign; explicit null clears. Omit to leave unchanged.
     region_id: Optional[UUID] = None
     clear_region: bool = False
+    #: State code or NONE to override the messaging hub; empty string goes back to automatic.
+    messaging_state: Optional[str] = Field(default=None, max_length=8)
     #: Shop contact email stored on the tenant (shop identity). Empty string clears.
     shop_email: Optional[str] = Field(default=None, max_length=200)
     #: Shop contact phone stored on the tenant (shop identity). Empty string clears.

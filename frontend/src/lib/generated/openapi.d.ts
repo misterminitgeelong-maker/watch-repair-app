@@ -7989,6 +7989,280 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/network-community/networks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Networks */
+        get: operations["networks_v1_network_community_networks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unread Total
+         * @description One number for the Messages nav badge: unread state-hub messages plus unread announcements.
+         */
+        get: operations["unread_total_v1_network_community_unread_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/hubs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hubs */
+        get: operations["hubs_v1_network_community__parent_id__hubs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/hubs/{code}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hub Messages */
+        get: operations["hub_messages_v1_network_community__parent_id__hubs__code__messages_get"];
+        put?: never;
+        /** Hub Send */
+        post: operations["hub_send_v1_network_community__parent_id__hubs__code__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/hubs/{code}/messages/{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Hub Delete
+         * @description The posting shop or a state moderator can remove a message (and its files).
+         */
+        delete: operations["hub_delete_v1_network_community__parent_id__hubs__code__messages__message_id__delete"];
+        options?: never;
+        head?: never;
+        /** Hub Update */
+        patch: operations["hub_update_v1_network_community__parent_id__hubs__code__messages__message_id__patch"];
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/hubs/{code}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hub Read */
+        post: operations["hub_read_v1_network_community__parent_id__hubs__code__read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Announcements */
+        get: operations["announcements_v1_network_community__parent_id__announcements_get"];
+        put?: never;
+        /** Publish */
+        post: operations["publish_v1_network_community__parent_id__announcements_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/announcements/{announcement_id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receipt */
+        post: operations["receipt_v1_network_community__parent_id__announcements__announcement_id__receipt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/announcements/{announcement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Announcement Delete */
+        delete: operations["announcement_delete_v1_network_community__parent_id__announcements__announcement_id__delete"];
+        options?: never;
+        head?: never;
+        /** Announcement Update */
+        patch: operations["announcement_update_v1_network_community__parent_id__announcements__announcement_id__patch"];
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/hub-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign Hubs
+         * @description Put shops (by shop number) into a messaging hub in one go. HQ admins only; previews unless dry_run is false.
+         */
+        post: operations["assign_hubs_v1_network_community__parent_id__hub_assignments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/announcements/{announcement_id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Announcement Receipts
+         * @description Which shops have read or confirmed an announcement. Publishers only.
+         */
+        get: operations["announcement_receipts_v1_network_community__parent_id__announcements__announcement_id__receipts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/state-gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * State Gaps
+         * @description Shops whose state cannot be worked out, so they get no state hub. HQ admins only.
+         */
+        get: operations["state_gaps_v1_network_community__parent_id__state_gaps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/hubs/{code}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hub Post */
+        post: operations["hub_post_v1_network_community__parent_id__hubs__code__posts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/{parent_id}/direct/{tenant_id}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Direct Post */
+        post: operations["direct_post_v1_network_community__parent_id__direct__tenant_id__posts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-community/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Attachment */
+        get: operations["download_attachment_v1_network_community_attachments__attachment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/engraving/events/{token}": {
         parameters: {
             query?: never;
@@ -8149,6 +8423,43 @@ export interface components {
             kind: string;
             /** Note */
             note?: string | null;
+        };
+        /** AnnouncementCreate */
+        AnnouncementCreate: {
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** State Code */
+            state_code?: string | null;
+            /**
+             * Category
+             * @default update
+             */
+            category: string;
+            /**
+             * Pinned
+             * @default false
+             */
+            pinned: boolean;
+            /**
+             * Requires Confirmation
+             * @default false
+             */
+            requires_confirmation: boolean;
+        };
+        /** AnnouncementUpdate */
+        AnnouncementUpdate: {
+            /** Title */
+            title?: string | null;
+            /** Body */
+            body?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Pinned */
+            pinned?: boolean | null;
+            /** Requires Confirmation */
+            requires_confirmation?: boolean | null;
         };
         /** ApiKeyCreateRequest */
         ApiKeyCreateRequest: {
@@ -9058,6 +9369,39 @@ export interface components {
              */
             file: string;
         };
+        /** Body_direct_post_v1_network_community__parent_id__direct__tenant_id__posts_post */
+        Body_direct_post_v1_network_community__parent_id__direct__tenant_id__posts_post: {
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Files
+             * @default []
+             */
+            files: string[];
+        };
+        /** Body_hub_post_v1_network_community__parent_id__hubs__code__posts_post */
+        Body_hub_post_v1_network_community__parent_id__hubs__code__posts_post: {
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Kind
+             * @default message
+             */
+            kind: string;
+            /** Reply To Id */
+            reply_to_id?: string | null;
+            /**
+             * Files
+             * @default []
+             */
+            files: string[];
+        };
         /** Body_import_csv_v1_import_csv_post */
         Body_import_csv_v1_import_csv_post: {
             /**
@@ -9238,6 +9582,10 @@ export interface components {
             name: string;
             /** Network Role */
             network_role: string;
+            /** State Code */
+            state_code?: string | null;
+            /** Shop Number */
+            shop_number?: string | null;
         };
         /** ConversationRead */
         ConversationRead: {
@@ -9246,6 +9594,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Parent Account Id
+             * Format: uuid
+             */
+            parent_account_id: string;
             /**
              * Other Tenant Id
              * Format: uuid
@@ -10292,6 +10645,37 @@ export interface components {
             /** Site Plans */
             site_plans?: string[];
         };
+        /** HubAssignment */
+        HubAssignment: {
+            /** State */
+            state: string;
+            /** Shop Numbers */
+            shop_numbers: string[];
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+        };
+        /** HubSend */
+        HubSend: {
+            /** Body */
+            body: string;
+            /** Reply To Id */
+            reply_to_id?: string | null;
+            /**
+             * Kind
+             * @default message
+             */
+            kind: string;
+        };
+        /** HubUpdate */
+        HubUpdate: {
+            /** Pinned */
+            pinned?: boolean | null;
+            /** Resolved */
+            resolved?: boolean | null;
+        };
         /** ImportSummaryResponse */
         ImportSummaryResponse: {
             /**
@@ -10935,6 +11319,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Attachments */
+            attachments?: components["schemas"]["NetworkAttachmentRead"][];
         };
         /** MobileCatalogueCategoryRead */
         MobileCatalogueCategoryRead: {
@@ -11543,6 +11931,20 @@ export interface components {
             /** Dispatch Phone */
             dispatch_phone?: string | null;
         };
+        /** NetworkAttachmentRead */
+        NetworkAttachmentRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Filename */
+            filename: string;
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
         /** NotificationPrefsRead */
         NotificationPrefsRead: {
             /** Email Quote Approved */
@@ -11716,6 +12118,10 @@ export interface components {
             region_id?: string | null;
             /** Region Code */
             region_code?: string | null;
+            /** Messaging State */
+            messaging_state?: string | null;
+            /** Messaging Hub */
+            messaging_hub?: string | null;
             /** Plan Code */
             plan_code: string;
             /**
@@ -11783,6 +12189,8 @@ export interface components {
              * @default false
              */
             clear_region: boolean;
+            /** Messaging State */
+            messaging_state?: string | null;
             /** Shop Email */
             shop_email?: string | null;
             /** Shop Phone */
@@ -13338,6 +13746,22 @@ export interface components {
             sent_at: string;
             /** Approval Token */
             approval_token: string;
+        };
+        /** ReadBody */
+        ReadBody: {
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+        };
+        /** ReceiptBody */
+        ReceiptBody: {
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
         };
         /** ReceiveIn */
         ReceiveIn: {
@@ -30770,7 +31194,9 @@ export interface operations {
     };
     list_contacts_v1_network_messages_contacts_get: {
         parameters: {
-            query?: never;
+            query?: {
+                parent_account_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -30786,11 +31212,22 @@ export interface operations {
                     "application/json": components["schemas"]["ContactRead"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_conversations_v1_network_messages_conversations_get: {
         parameters: {
-            query?: never;
+            query?: {
+                parent_account_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -30804,6 +31241,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConversationRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -30841,7 +31287,9 @@ export interface operations {
     };
     send_message_v1_network_messages_with__tenant_id__post: {
         parameters: {
-            query?: never;
+            query?: {
+                parent_account_id?: string | null;
+            };
             header?: never;
             path: {
                 tenant_id: string;
@@ -30861,6 +31309,624 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    networks_v1_network_community_networks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    unread_total_v1_network_community_unread_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    hubs_v1_network_community__parent_id__hubs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hub_messages_v1_network_community__parent_id__hubs__code__messages_get: {
+        parameters: {
+            query?: {
+                before?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                parent_id: string;
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hub_send_v1_network_community__parent_id__hubs__code__messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HubSend"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hub_delete_v1_network_community__parent_id__hubs__code__messages__message_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                code: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hub_update_v1_network_community__parent_id__hubs__code__messages__message_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                code: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HubUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hub_read_v1_network_community__parent_id__hubs__code__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    announcements_v1_network_community__parent_id__announcements_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_v1_network_community__parent_id__announcements_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receipt_v1_network_community__parent_id__announcements__announcement_id__receipt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                announcement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiptBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    announcement_delete_v1_network_community__parent_id__announcements__announcement_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                announcement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    announcement_update_v1_network_community__parent_id__announcements__announcement_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                announcement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_hubs_v1_network_community__parent_id__hub_assignments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HubAssignment"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    announcement_receipts_v1_network_community__parent_id__announcements__announcement_id__receipts_get: {
+        parameters: {
+            query?: {
+                export?: string | null;
+            };
+            header?: never;
+            path: {
+                parent_id: string;
+                announcement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    state_gaps_v1_network_community__parent_id__state_gaps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hub_post_v1_network_community__parent_id__hubs__code__posts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_hub_post_v1_network_community__parent_id__hubs__code__posts_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    direct_post_v1_network_community__parent_id__direct__tenant_id__posts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_direct_post_v1_network_community__parent_id__direct__tenant_id__posts_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_attachment_v1_network_community_attachments__attachment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

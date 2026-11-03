@@ -277,3 +277,176 @@ def test_direct_files_are_visible_only_to_the_two_participating_shops(world):
     assert c.get(url).status_code == 404
 
 
+
+
+def test_publishers_see_which_shops_read_and_confirmed(world):
+    c = world["as"]("hq")
+    made = c.post(world["base"] + "/announcements", json={"title": "New returns policy", "body": "Read this", "requires_confirmation": True})
+    assert made.status_code == 201, made.text
+    assert made.json()["can_view_receipts"] is True
+    aid = made.json()["id"]
+    world["as"]("vic")
+    shop_view = c.get(world["base"] + "/announcements").json()["announcements"][0]
+    assert shop_view["can_view_receipts"] is False
+    assert c.get(f"{world['base']}/announcements/{aid}/receipts").status_code == 403
+    c.post(f"{world['base']}/announcements/{aid}/receipt", json={"confirm": True})
+    world["as"]("qld")
+    c.post(f"{world['base']}/announcements/{aid}/receipt", json={})
+    world["as"]("hq")
+    data = c.get(f"{world['base']}/announcements/{aid}/receipts").json()
+    assert data["summary"]["audience"] == 4  # vic, qld and the unknown-state shop, plus vic2
+    assert data["summary"]["read"] == 2 and data["summary"]["confirmed"] == 1
+    names = {s["name"]: s for s in data["shops"]}
+    assert names["vic"]["confirmed_at"] and names["qld"]["read_at"] and not names["qld"]["confirmed_at"]
+    assert not names["vic2"]["read_at"]
+    assert "Shop,State" in c.get(f"{world['base']}/announcements/{aid}/receipts?export=csv").text
+
+
+def test_state_manager_sees_receipts_only_for_their_own_state(world):
+    c = world["as"]("manager")
+    own = c.post(world["base"] + "/announcements", json={"title": "VIC only", "body": "x", "state_code": "VIC"}).json()
+    data = c.get(f"{world['base']}/announcements/{own['id']}/receipts").json()
+    assert {s["name"] for s in data["shops"]} == {"vic", "vic2"}
+    world["as"]("hq")
+    network = c.post(world["base"] + "/announcements", json={"title": "Everyone", "body": "x"}).json()
+    world["as"]("manager")
+    assert c.get(f"{world['base']}/announcements/{network['id']}/receipts").status_code == 403
+
+
+def test_state_gaps_list_only_for_hq_admins(world):
+    c = world["as"]("hq")
+    gaps = c.get(world["base"] + "/state-gaps").json()["shops"]
+    assert [g["name"] for g in gaps] == ["unknown"]
+    world["as"]("vic")
+    assert c.get(world["base"] + "/state-gaps").status_code == 403
+
+
+def test_hub_message_list_uses_a_fixed_number_of_queries(world):
+    from sqlalchemy import event
+    c = world["as"]("vic")
+    path = world["base"] + "/hubs/VIC/messages"
+    first = c.post(path, json={"body": "root"}).json()
+    for i in range(30):
+        c.post(path, json={"body": f"reply {i}", "reply_to_id": first["id"]})
+    counted = []
+    def count(*_):
+        counted.append(1)
+    event.listen(world["engine"], "before_cursor_execute", count)
+    try:
+        assert len(c.get(path).json()["messages"]) == 31
+    finally:
+        event.remove(world["engine"], "before_cursor_execute", count)
+    assert len(counted) < 40, len(counted)
+
+
+def test_moderators_can_delete_hub_messages_and_edit_or_remove_announcements(world):
+    c = world["as"]("vic")
+    path = world["base"] + "/hubs/VIC/messages"
+    root = c.post(path, json={"body": "oops"}).json()
+    reply = c.post(path, json={"body": "reply", "reply_to_id": root["id"]}).json()
+    world["as"]("vic2")
+    assert c.delete(path + "/" + root["id"]).status_code == 403  # a different shop
+    world["as"]("staff")
+    assert c.delete(path + "/" + root["id"]).status_code == 204  # colleague at the posting shop
+    listing = c.get(path).json()["messages"]
+    assert [m["id"] for m in listing] == [reply["id"]] and listing[0]["reply_preview"] is None
+    world["as"]("qld")
+    assert c.delete(path + "/" + reply["id"]).status_code == 403
+    world["as"]("manager")
+    assert c.delete(path + "/" + reply["id"]).status_code == 204
+    world["as"]("hq")
+    ann = c.post(world["base"] + "/announcements", json={"title": "Typo", "body": "b", "category": "important"}).json()
+    edited = c.patch(f"{world['base']}/announcements/{ann['id']}", json={"title": "Fixed", "pinned": True}).json()
+    assert edited["title"] == "Fixed" and edited["pinned"] is True and edited["body"] == "b"
+    world["as"]("vic")
+    assert c.patch(f"{world['base']}/announcements/{ann['id']}", json={"pinned": False}).status_code == 403
+    assert c.delete(f"{world['base']}/announcements/{ann['id']}").status_code == 403
+    world["as"]("hq")
+    assert c.delete(f"{world['base']}/announcements/{ann['id']}").status_code == 204
+    assert c.get(world["base"] + "/announcements").json()["announcements"] == []
+
+
+def test_important_announcements_raise_an_inbox_alert_that_clears_when_read(world):
+    from app.models import TenantEventLog
+    c = world["as"]("hq")
+    ann = c.post(world["base"] + "/announcements", json={"title": "Recall", "body": "b", "category": "important", "state_code": "VIC"}).json()
+    c.post(world["base"] + "/announcements", json={"title": "FYI", "body": "b"})  # ordinary: no alert
+
+    def alerts(name):
+        with Session(world["engine"]) as s:
+            return len(s.exec(select(TenantEventLog).where(TenantEventLog.tenant_id == world["people"][name][0],
+                                                           TenantEventLog.event_type == "network_announcement")).all())
+    assert alerts("vic") == 1 and alerts("vic2") == 1 and alerts("qld") == 0 and alerts("hq") == 0
+    world["as"]("vic")
+    c.post(f"{world['base']}/announcements/{ann['id']}/receipt", json={})
+    assert alerts("vic") == 0
+
+
+def test_unread_total_counts_hub_messages_and_announcements_and_chat_pushes():
+    from uuid import uuid4 as _u
+    from app.push import PUSH_EVENT_TYPES, push_path
+    assert {"network_message", "network_announcement"} <= PUSH_EVENT_TYPES
+    cid = _u()
+    assert push_path("network_message", "network_message", cid) == f"/messages?c={cid}"
+    assert push_path("network_announcement", "network_announcement", cid) == "/messages?tab=announcements"
+
+
+def test_nav_badge_total(world):
+    c = world["as"]("vic2")
+    c.post(world["base"] + "/hubs/VIC/messages", json={"body": "hello"})
+    world["as"]("hq")
+    ann = c.post(world["base"] + "/announcements", json={"title": "T", "body": "b"}).json()
+    world["as"]("vic")
+    assert c.get("/v1/network-community/unread").json()["count"] == 2
+    c.post(f"{world['base']}/announcements/{ann['id']}/receipt", json={})
+    assert c.get("/v1/network-community/unread").json()["count"] == 1
+    world["as"]("stranger")
+    assert c.get("/v1/network-community/unread").json()["count"] == 0
+
+
+def test_area_and_overrides_decide_the_hub(world):
+    from app.messaging_hubs import hub_for
+    class T:  # minimal tenant/site/region stand-ins
+        def __init__(self, area=None, region=None): self.minit_area, self.minit_region = area, region
+    class S:
+        def __init__(self, state=None): self.messaging_state = state
+    class R:
+        def __init__(self, code): self.code = code
+    assert hub_for(S(), T("SOUTH AUSTRALIA"), R("SW")) == "SA"
+    assert hub_for(S(), T("WA NORTH"), R("SW")) == "WA"
+    assert hub_for(S(), T("TASMANIA"), R("VIC")) == "TAS"
+    assert hub_for(S(), T("VIC SOUTH"), R("VSWT")) == "VIC"
+    assert hub_for(S(), T("MALAYSIA"), R("SEA")) is None
+    assert hub_for(S(), T(None), R("QLD")) == "QLD"
+    assert hub_for(S("ACT"), T("NSW CENTRAL"), R("NSW")) == "ACT"
+    assert hub_for(S("NONE"), T("NSW CENTRAL"), R("NSW")) is None
+
+
+def test_bulk_hub_assignment_previews_then_applies(world):
+    with Session(world["engine"]) as s:
+        t = s.get(Tenant, world["people"]["qld"][0])
+        t.shop_number = "9991"
+        s.add(t)
+        s.commit()
+    c = world["as"]("vic")
+    assert c.post(world["base"] + "/hub-assignments", json={"state": "NT", "shop_numbers": ["9991"]}).status_code == 403
+    world["as"]("hq")
+    preview = c.post(world["base"] + "/hub-assignments", json={"state": "NT", "shop_numbers": ["9991", "0000"]}).json()
+    assert preview["dry_run"] and len(preview["changed"]) == 1 and preview["not_found"] == ["0000"]
+    world["as"]("qld")
+    assert next(h for h in c.get(world["base"] + "/hubs").json() if h["code"] == "QLD")["accessible"]
+    world["as"]("hq")
+    c.post(world["base"] + "/hub-assignments", json={"state": "NT", "shop_numbers": ["9991"], "dry_run": False})
+    world["as"]("qld")
+    hubs = {h["code"]: h for h in c.get(world["base"] + "/hubs").json()}
+    assert hubs["NT"]["accessible"] and not hubs["QLD"]["accessible"]
+
+
+def test_malaysia_and_singapore_are_not_reported_as_gaps(world):
+    with Session(world["engine"]) as s:
+        t = s.get(Tenant, world["people"]["unknown"][0])
+        t.minit_area = "SINGAPORE"
+        s.add(t)
+        s.commit()
+    c = world["as"]("hq")
+    assert c.get(world["base"] + "/state-gaps").json()["shops"] == []

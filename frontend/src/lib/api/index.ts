@@ -126,6 +126,10 @@ export type NetworkRole = 'hq' | 'retail' | 'operator'
 export type ParentRole = 'hq_admin' | 'hq_viewer'
 
 export interface ParentAccountSite {
+  /** Messaging hub override (state code or NONE); null means automatic. */
+  messaging_state?: string | null
+  /** The hub the shop is actually in; null when none. */
+  messaging_hub?: string | null
   /** Dispatch base and ring size, set by HQ (null until set). */
   base_lat?: number | null
   base_lng?: number | null
@@ -503,6 +507,7 @@ export const updateLinkedSite = (
     network_role?: NetworkRole
     region_id?: string | null
     clear_region?: boolean
+    messaging_state?: string
     shop_email?: string | null
     shop_phone?: string | null
   },

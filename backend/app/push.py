@@ -35,6 +35,9 @@ PUSH_EVENT_TYPES = frozenset({
     "portal_customer_message",
     "portal_booking_received",
     "card_payment_needs_attention",
+    # In-app chat: direct messages and "important" announcements push like a chat app.
+    "network_message",
+    "network_announcement",
 })
 
 _QUEUE_KEY = "push_queue"
@@ -50,6 +53,10 @@ def push_path(event_type: str, entity_type: str | None, entity_id: UUID | None) 
             return f"/shoe-repairs/{entity_id}{tab}"
         if entity_type == "auto_key_job":
             return f"/auto-key/{entity_id}{tab}"
+    if event_type == "network_message" and entity_id is not None:
+        return f"/messages?c={entity_id}"
+    if event_type == "network_announcement":
+        return "/messages?tab=announcements"
     if event_type == "invoice_paid":
         return "/invoices"
     return "/inbox"

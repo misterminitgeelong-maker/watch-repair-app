@@ -13,33 +13,20 @@ from sqlmodel import Session, col, func, select
 
 from ..database import unscoped_session
 from ..dependencies import AuthContext, get_auth_context
-from ..models import NetworkMessage, ParentAccount, Region, Tenant, User
+from ..models import NetworkMessage, ParentAccount, Region, Tenant, TenantEventLog, User
 from ..models.network_community import AnnouncementReceipt, NetworkAnnouncement, StateHubMessage, StateHubRead, NetworkMessageAttachment
+from ..messaging_hubs import HUB_NONE, STATES, hub_for, intentionally_excluded, state_code  # noqa: F401  (re-exported)
 from ..parent_network import (
     parent_region_scope, parent_role_for_user, parents_for_user, sites_for_parent, sites_for_tenant,
 )
-from .network_messages import _label, _own_context, _attachments, _get_mine, _prepare_direct, SendBody
+from .network_messages import _label, _own_context, _attachments, _attachments_by_message, _get_mine, _prepare_direct, SendBody
 
 router = APIRouter(prefix="/v1/network-community", tags=["network-community"])
-STATES = {
-    "VIC": "Victoria", "NSW": "New South Wales", "QLD": "Queensland",
-    "WA": "Western Australia", "SA": "South Australia", "TAS": "Tasmania",
-    "ACT": "Australian Capital Territory", "NT": "Northern Territory", "NZ": "New Zealand",
-}
-
-
-def state_code(value):
-    value = re.sub(r"\s+", " ", (value or "").strip().upper())
-    if value in {name.upper(): code for code, name in STATES.items()}:
-        return next(code for code, name in STATES.items() if name.upper() == value)
-    match = re.match(r"^(VIC|NSW|QLD|WA|SA|TAS|ACT|NT|NZ)(?:$|[\s_-])", value)
-    return match.group(1) if match else None
-
+ANNOUNCEMENT_EVENT = "network_announcement"
 
 def _site_state(session, site):
     region = session.get(Region, site.region_id) if site.region_id else None
-    tenant = session.get(Tenant, site.tenant_id)
-    return state_code(region.code if region else (tenant.minit_region if tenant else None))
+    return hub_for(site, session.get(Tenant, site.tenant_id), region)
 
 
 def _context(session, auth, parent_id):
@@ -75,20 +62,36 @@ def _hub_context(session, auth, parent_id, code, write=False):
     return ctx
 
 
+def _messages_read(session, rows, auth, parent_id):
+    """Serialise hub messages with a fixed number of queries, however many rows there are."""
+    if not rows:
+        return []
+    ctx = _context(session, auth, parent_id)
+    user_ids = {r.sender_user_id for r in rows if r.sender_user_id}
+    tenant_ids = {r.sender_tenant_id for r in rows}
+    reply_ids = {r.reply_to_id for r in rows if r.reply_to_id}
+    users = {u.id: u for u in session.exec(select(User).where(col(User.id).in_(user_ids))).all()} if user_ids else {}
+    tenants = {t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_(tenant_ids))).all()}
+    replies = {m.id: m for m in session.exec(select(StateHubMessage).where(col(StateHubMessage.id).in_(reply_ids))).all()} if reply_ids else {}
+    files = _attachments_by_message(session, [r.id for r in rows], hub=True)
+    out = []
+    for message in rows:
+        user = users.get(message.sender_user_id)
+        reply = replies.get(message.reply_to_id)
+        out.append({
+            "can_moderate": message.sender_tenant_id == auth.tenant_id or ctx[4] or ctx[5] == message.state_code,
+            "attachments": files.get(message.id, []),
+            "id": message.id, "body": message.body, "created_at": message.created_at,
+            "sender_name": user.full_name if user else "Former staff member", "shop_name": _label(tenants.get(message.sender_tenant_id)),
+            "mine": message.sender_tenant_id == auth.tenant_id,
+            "kind": message.kind, "resolved_at": message.resolved_at, "pinned": message.pinned_at is not None,
+            "reply_to_id": message.reply_to_id, "reply_preview": reply.body[:160] if reply else None,
+        })
+    return out
+
+
 def _message_read(session, message, auth):
-    user = session.get(User, message.sender_user_id) if message.sender_user_id else None
-    tenant = session.get(Tenant, message.sender_tenant_id)
-    reply = session.get(StateHubMessage, message.reply_to_id) if message.reply_to_id else None
-    ctx = _context(session, auth, message.parent_account_id)
-    return {
-        "can_moderate": message.sender_tenant_id == auth.tenant_id or ctx[4] or ctx[5] == message.state_code,
-        "attachments": _attachments(session, message.id, hub=True),
-        "id": message.id, "body": message.body, "created_at": message.created_at,
-        "sender_name": user.full_name if user else "Former staff member", "shop_name": _label(tenant),
-        "mine": message.sender_tenant_id == auth.tenant_id,
-        "kind": message.kind, "resolved_at": message.resolved_at, "pinned": message.pinned_at is not None,
-        "reply_to_id": message.reply_to_id, "reply_preview": reply.body[:160] if reply else None,
-    }
+    return _messages_read(session, [message], auth, message.parent_account_id)[0]
 
 
 class HubSend(BaseModel):
@@ -109,6 +112,20 @@ class AnnouncementCreate(BaseModel):
     category: str = "update"
     pinned: bool = False
     requires_confirmation: bool = False
+
+
+class AnnouncementUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    body: str | None = Field(default=None, min_length=1, max_length=10000)
+    category: str | None = None
+    pinned: bool | None = None
+    requires_confirmation: bool | None = None
+
+
+class HubAssignment(BaseModel):
+    state: str = Field(max_length=8)  # a state code, NONE, or AUTO to go back to automatic
+    shop_numbers: list[str] = Field(min_length=1, max_length=500)
+    dry_run: bool = True
 
 
 class ReadBody(BaseModel):
@@ -135,6 +152,31 @@ def networks(auth: AuthContext = Depends(get_auth_context), session: Session = D
                     "can_publish_network": admin, "publish_states": list(STATES) if admin else ([manager] if manager else []),
                     "can_post": can_post})
     return out
+
+
+@router.get("/unread")
+def unread_total(auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """One number for the Messages nav badge: unread state-hub messages plus unread announcements."""
+    _own_context(auth)
+    user = session.get(User, auth.user_id)
+    ids = list(dict.fromkeys(
+        [s.parent_account_id for s in sites_for_tenant(session, auth.tenant_id)]
+        + [p.id for p in parents_for_user(session, user)]
+    ))
+    total = 0
+    for pid in ids:
+        try:
+            ctx = _context(session, auth, pid)
+        except HTTPException:
+            continue
+        total += sum(h["unread"] for h in hubs(pid, auth, session))
+        total += int(session.exec(
+            select(func.count()).select_from(NetworkAnnouncement).where(
+                NetworkAnnouncement.parent_account_id == pid,
+                (col(NetworkAnnouncement.state_code).is_(None)) | col(NetworkAnnouncement.state_code).in_(list(ctx[3])),
+                ~col(NetworkAnnouncement.id).in_(select(AnnouncementReceipt.announcement_id).where(AnnouncementReceipt.tenant_id == auth.tenant_id)),
+            )).one())
+    return {"count": total}
 
 
 @router.get("/{parent_id}/hubs")
@@ -173,7 +215,7 @@ def hub_messages(parent_id: UUID, code: str, before: UUID | None = None,
             raise HTTPException(404, "Message cursor not found")
         stmt = stmt.where((StateHubMessage.created_at < cursor.created_at) | ((StateHubMessage.created_at == cursor.created_at) & (StateHubMessage.id < cursor.id)))
     rows = session.exec(stmt.order_by(col(StateHubMessage.created_at).desc(), col(StateHubMessage.id).desc()).limit(limit + 1)).all()
-    return {"messages": [_message_read(session, row, auth) for row in reversed(rows[:limit])],
+    return {"messages": _messages_read(session, list(reversed(rows[:limit])), auth, parent_id),
             "has_more": len(rows) > limit, "next_before": rows[limit - 1].id if len(rows) > limit else None}
 
 
@@ -260,15 +302,33 @@ def _announcement_context(session, auth, parent_id, announcement_id):
     return ctx, row
 
 
-def _announcement_read(session, row, auth):
-    receipt = session.exec(select(AnnouncementReceipt).where(
-        AnnouncementReceipt.announcement_id == row.id, AnnouncementReceipt.tenant_id == auth.tenant_id,
-    )).first()
-    user = session.get(User, row.author_user_id) if row.author_user_id else None
-    return {"id": row.id, "title": row.title, "body": row.body, "state_code": row.state_code,
-            "category": row.category, "pinned": row.pinned, "requires_confirmation": row.requires_confirmation,
-            "created_at": row.created_at, "author_name": user.full_name if user else "Support Office",
-            "read": receipt is not None, "confirmed": receipt is not None and receipt.confirmed_at is not None}
+def _announcements_read(session, rows, auth, ctx):
+    if not rows:
+        return []
+    ids = [r.id for r in rows]
+    receipts = {r.announcement_id: r for r in session.exec(select(AnnouncementReceipt).where(
+        col(AnnouncementReceipt.announcement_id).in_(ids), AnnouncementReceipt.tenant_id == auth.tenant_id)).all()}
+    author_ids = {r.author_user_id for r in rows if r.author_user_id}
+    users = {u.id: u for u in session.exec(select(User).where(col(User.id).in_(author_ids))).all()} if author_ids else {}
+    out = []
+    for row in rows:
+        receipt = receipts.get(row.id)
+        user = users.get(row.author_user_id)
+        out.append({"id": row.id, "title": row.title, "body": row.body, "state_code": row.state_code,
+                    "category": row.category, "pinned": row.pinned, "requires_confirmation": row.requires_confirmation,
+                    "created_at": row.created_at, "author_name": user.full_name if user else "Support Office",
+                    "read": receipt is not None, "confirmed": receipt is not None and receipt.confirmed_at is not None,
+                    "can_view_receipts": _can_view_receipts(ctx, row)})
+    return out
+
+
+def _can_view_receipts(ctx, row):
+    return bool(ctx[4] or (ctx[5] and row.state_code == ctx[5]))
+
+
+def _announcement_read(session, row, auth, ctx=None):
+    ctx = ctx or _context(session, auth, row.parent_account_id)
+    return _announcements_read(session, [row], auth, ctx)[0]
 
 
 @router.get("/{parent_id}/announcements")
@@ -280,7 +340,7 @@ def announcements(parent_id: UUID, offset: int = Query(0, ge=0), limit: int = Qu
         (col(NetworkAnnouncement.state_code).is_(None)) | col(NetworkAnnouncement.state_code).in_(list(ctx[3])),
     ).order_by(col(NetworkAnnouncement.pinned).desc(), col(NetworkAnnouncement.created_at).desc())
         .offset(offset).limit(limit + 1)).all()
-    return {"announcements": [_announcement_read(session, row, auth) for row in rows[:limit]], "has_more": len(rows) > limit}
+    return {"announcements": _announcements_read(session, rows[:limit], auth, ctx), "has_more": len(rows) > limit}
 
 
 @router.post("/{parent_id}/announcements", status_code=201)
@@ -297,15 +357,24 @@ def publish(parent_id: UUID, body: AnnouncementCreate,
                               **body.model_dump(exclude={"title", "body"}),
                               title=body.title.strip(), body=body.body.strip())
     session.add(row)
+    session.flush()
+    if row.category == "important":
+        # Shops see important notices in their Inbox badge; the alert clears when they open it.
+        actor = session.get(User, auth.user_id)
+        for _, tenant, _code in _audience_sites(session, parent_id, row.state_code):
+            session.add(TenantEventLog(
+                tenant_id=tenant.id, actor_user_id=auth.user_id, actor_email=actor.email if actor else None,
+                entity_type="network_announcement", entity_id=row.id, event_type=ANNOUNCEMENT_EVENT,
+                event_summary=f"Important update from Support Office: {row.title[:180]}"))
     session.commit()
     session.refresh(row)
-    return _announcement_read(session, row, auth)
+    return _announcement_read(session, row, auth, ctx)
 
 
 @router.post("/{parent_id}/announcements/{announcement_id}/receipt")
 def receipt(parent_id: UUID, announcement_id: UUID, body: ReceiptBody,
             auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
-    _, announcement = _announcement_context(session, auth, parent_id, announcement_id)
+    ctx, announcement = _announcement_context(session, auth, parent_id, announcement_id)
     if body.confirm and not announcement.requires_confirmation:
         raise HTTPException(400, "This announcement does not request confirmation")
     def save():
@@ -317,13 +386,170 @@ def receipt(parent_id: UUID, announcement_id: UUID, body: ReceiptBody,
         if body.confirm and not row.confirmed_at:
             row.confirmed_at = datetime.now(timezone.utc)
         session.add(row)
+        for alert in session.exec(select(TenantEventLog).where(
+                TenantEventLog.tenant_id == auth.tenant_id, TenantEventLog.event_type == ANNOUNCEMENT_EVENT,
+                TenantEventLog.entity_id == announcement_id)).all():
+            session.delete(alert)
         session.commit()
     try:
         save()
     except IntegrityError:
         session.rollback()
         save()
-    return _announcement_read(session, announcement, auth)
+    return _announcement_read(session, announcement, auth, ctx)
+
+
+@router.patch("/{parent_id}/announcements/{announcement_id}")
+def announcement_update(parent_id: UUID, announcement_id: UUID, body: AnnouncementUpdate,
+                        auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    ctx, row = _announcement_context(session, auth, parent_id, announcement_id)
+    if not _can_view_receipts(ctx, row):
+        raise HTTPException(403, "Only the people who can publish this announcement can change it")
+    data = body.model_dump(exclude_unset=True)
+    if "category" in data and data["category"] not in {"update", "training", "important"}:
+        raise HTTPException(400, "Choose a valid category")
+    for key in ("title", "body"):
+        if key in data:
+            data[key] = data[key].strip()
+            if not data[key]:
+                raise HTTPException(400, "Enter a title and message")
+    for key, value in data.items():
+        if value is not None:
+            setattr(row, key, value)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return _announcement_read(session, row, auth, ctx)
+
+
+@router.delete("/{parent_id}/announcements/{announcement_id}", status_code=204)
+def announcement_delete(parent_id: UUID, announcement_id: UUID,
+                        auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    ctx, row = _announcement_context(session, auth, parent_id, announcement_id)
+    if not _can_view_receipts(ctx, row):
+        raise HTTPException(403, "Only the people who can publish this announcement can delete it")
+    for receipt in session.exec(select(AnnouncementReceipt).where(AnnouncementReceipt.announcement_id == row.id)).all():
+        session.delete(receipt)
+    for alert in session.exec(select(TenantEventLog).where(
+            TenantEventLog.event_type == ANNOUNCEMENT_EVENT, TenantEventLog.entity_id == row.id)).all():
+        session.delete(alert)
+    session.delete(row)
+    session.commit()
+
+
+@router.delete("/{parent_id}/hubs/{code}/messages/{message_id}", status_code=204)
+def hub_delete(parent_id: UUID, code: str, message_id: UUID,
+               auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """The posting shop or a state moderator can remove a message (and its files)."""
+    ctx = _hub_context(session, auth, parent_id, code, write=True)
+    row = session.get(StateHubMessage, message_id)
+    if not row or row.parent_account_id != parent_id or row.state_code != code:
+        raise HTTPException(404, "Message not found")
+    if row.sender_tenant_id != auth.tenant_id and not ctx[4] and ctx[5] != code:
+        raise HTTPException(403, "Only the posting shop or state moderator can delete this message")
+    for att in session.exec(select(NetworkMessageAttachment).where(NetworkMessageAttachment.hub_message_id == row.id)).all():
+        session.delete(att)
+    for reply in session.exec(select(StateHubMessage).where(StateHubMessage.reply_to_id == row.id)).all():
+        reply.reply_to_id = None
+        session.add(reply)
+    session.delete(row)
+    session.commit()
+
+
+@router.post("/{parent_id}/hub-assignments")
+def assign_hubs(parent_id: UUID, body: HubAssignment,
+                auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """Put shops (by shop number) into a messaging hub in one go. HQ admins only; previews unless dry_run is false."""
+    ctx = _context(session, auth, parent_id)
+    if not ctx[4]:
+        raise HTTPException(403, "Only HQ admins can assign hubs")
+    wanted = body.state.strip().upper()
+    if wanted == "AUTO":
+        wanted = None
+    elif wanted != HUB_NONE and wanted not in STATES:
+        raise HTTPException(400, "Choose a state hub, NONE, or AUTO")
+    numbers = {n.strip() for n in body.shop_numbers if n.strip()}
+    by_number = {}
+    for site in sites_for_parent(session, parent_id):
+        tenant = session.get(Tenant, site.tenant_id)
+        if tenant and tenant.shop_number in numbers:
+            by_number.setdefault(tenant.shop_number, []).append((site, tenant))
+    changed, unchanged = [], []
+    for number, matches in by_number.items():
+        for site, tenant in matches:
+            row = {"shop_number": number, "name": _label(tenant), "from": site.messaging_state, "to": wanted}
+            (unchanged if site.messaging_state == wanted else changed).append(row)
+            if not body.dry_run and site.messaging_state != wanted:
+                site.messaging_state = wanted
+                session.add(site)
+    if not body.dry_run:
+        session.commit()
+    return {"dry_run": body.dry_run, "changed": changed, "unchanged": unchanged,
+            "not_found": sorted(numbers - set(by_number))}
+
+
+def _audience_sites(session, parent_id, state):
+    """Active shop sites an announcement reaches (Support office sites are not an audience)."""
+    sites = [x for x in sites_for_parent(session, parent_id) if x.network_role != "hq"]
+    tenants = {t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_([x.tenant_id for x in sites]))).all()} if sites else {}
+    regions = {r.id: r for r in session.exec(select(Region).where(col(Region.parent_account_id) == parent_id)).all()}
+    out = []
+    for site in sites:
+        tenant = tenants.get(site.tenant_id)
+        if not tenant or not tenant.is_active or tenant.merged_into_tenant_id:
+            continue
+        region = regions.get(site.region_id) if site.region_id else None
+        code = hub_for(site, tenant, region)
+        if state is None or code == state:
+            out.append((site, tenant, code))
+    return out
+
+
+@router.get("/{parent_id}/announcements/{announcement_id}/receipts")
+def announcement_receipts(parent_id: UUID, announcement_id: UUID, export: str | None = None,
+                          auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """Which shops have read or confirmed an announcement. Publishers only."""
+    ctx, row = _announcement_context(session, auth, parent_id, announcement_id)
+    if not _can_view_receipts(ctx, row):
+        raise HTTPException(403, "Only the people who can publish this announcement can see receipts")
+    audience = _audience_sites(session, parent_id, row.state_code)
+    receipts = {r.tenant_id: r for r in session.exec(select(AnnouncementReceipt).where(AnnouncementReceipt.announcement_id == row.id)).all()}
+    shops = []
+    for _, tenant, code in audience:
+        receipt = receipts.get(tenant.id)
+        shops.append({"tenant_id": tenant.id, "name": _label(tenant), "state_code": code,
+                      "read_at": receipt.read_at if receipt else None,
+                      "confirmed_at": receipt.confirmed_at if receipt else None})
+    shops.sort(key=lambda s: (s["confirmed_at"] is not None, s["read_at"] is not None, s["name"].lower()))
+    summary = {"audience": len(shops), "read": sum(1 for s in shops if s["read_at"]),
+               "confirmed": sum(1 for s in shops if s["confirmed_at"]),
+               "requires_confirmation": row.requires_confirmation}
+    if export == "csv":
+        import csv
+        import io
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["Shop", "State", "Read at (UTC)", "Confirmed at (UTC)"])
+        for s in shops:
+            writer.writerow([s["name"], s["state_code"] or "", s["read_at"].isoformat() if s["read_at"] else "",
+                             s["confirmed_at"].isoformat() if s["confirmed_at"] else ""])
+        return Response(buffer.getvalue(), media_type="text/csv", headers={
+            "Content-Disposition": 'attachment; filename="announcement-receipts.csv"', "Cache-Control": "private, no-store"})
+    return {"summary": summary, "shops": shops}
+
+
+@router.get("/{parent_id}/state-gaps")
+def state_gaps(parent_id: UUID, auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """Shops whose state cannot be worked out, so they get no state hub. HQ admins only."""
+    ctx = _context(session, auth, parent_id)
+    if not ctx[4]:
+        raise HTTPException(403, "Only HQ admins can see this list")
+    regions = {r.id: r for r in session.exec(select(Region).where(col(Region.parent_account_id) == parent_id)).all()}
+    shops = [{"tenant_id": tenant.id, "name": _label(tenant), "region_value": tenant.minit_region}
+             for site, tenant, code in _audience_sites(session, parent_id, None)
+             if code is None and not intentionally_excluded(site, tenant, regions.get(site.region_id) if site.region_id else None)]
+    shops.sort(key=lambda s: s["name"].lower())
+    return {"shops": shops}
 
 
 async def _files(files):

@@ -59,6 +59,17 @@ def _attachments(session, message_id, hub=False):
     return [NetworkAttachmentRead(id=row[0], filename=row[1], content_type=row[2], size_bytes=row[3]) for row in rows]
 
 
+def _attachments_by_message(session, message_ids, hub=False):
+    if not message_ids:
+        return {}
+    column = NetworkMessageAttachment.hub_message_id if hub else NetworkMessageAttachment.direct_message_id
+    rows = session.exec(select(column, NetworkMessageAttachment.id, NetworkMessageAttachment.filename, NetworkMessageAttachment.content_type, NetworkMessageAttachment.size_bytes).where(col(column).in_(message_ids))).all()
+    out: dict = {}
+    for mid, aid, name, ctype, size in rows:
+        out.setdefault(mid, []).append(NetworkAttachmentRead(id=aid, filename=name, content_type=ctype, size_bytes=size))
+    return out
+
+
 class MessageRead(BaseModel):
     id: UUID
     sender_tenant_id: UUID
@@ -141,10 +152,10 @@ def list_contacts(
     for tid, role in found.items():
         t = session.get(Tenant, tid)
         if t and t.is_active and not t.merged_into_tenant_id and tid in live_ids:
-            from .network_community import state_code
+            from ..messaging_hubs import hub_for
             site = site_for_tenant_in_parent(session, parent_account_id, tid) if parent_account_id else None
             region = session.get(Region, site.region_id) if site and site.region_id else None
-            out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role, shop_number=t.shop_number, state_code=state_code(region.code if region else t.minit_region)))
+            out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role, shop_number=t.shop_number, state_code=hub_for(site, t, region)))
     out.sort(key=lambda c: c.name.lower())
     return out
 
@@ -167,23 +178,27 @@ def list_conversations(
     my_parents = {s.parent_account_id for s in sites_for_tenant(session, me)}
     if parent_account_id and parent_account_id not in my_parents:
         raise HTTPException(status_code=403, detail="Network not available")
+    convs = [c for c in convs if c.parent_account_id in my_parents and (not parent_account_id or c.parent_account_id == parent_account_id)]
+    ids = [c.id for c in convs]
+    unread_by: dict = {}
+    last_by: dict = {}
+    if ids:
+        unread_by = dict(session.exec(
+            select(NetworkMessage.conversation_id, func.count()).where(col(NetworkMessage.conversation_id).in_(ids))
+            .where(NetworkMessage.sender_tenant_id != me).where(col(NetworkMessage.read_at).is_(None))
+            .group_by(NetworkMessage.conversation_id)
+        ).all())
+        newest = (select(NetworkMessage.conversation_id.label("cid"), func.max(NetworkMessage.created_at).label("m"))
+                  .where(col(NetworkMessage.conversation_id).in_(ids)).group_by(NetworkMessage.conversation_id).subquery())
+        for m in session.exec(select(NetworkMessage).join(newest, (NetworkMessage.conversation_id == newest.c.cid) & (NetworkMessage.created_at == newest.c.m))).all():
+            last_by[m.conversation_id] = m
+    other_ids = {_other(c, me) for c in convs}
+    tenants = {t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_(other_ids))).all()} if other_ids else {}
     for c in convs:
-        if c.parent_account_id not in my_parents or (parent_account_id and c.parent_account_id != parent_account_id):
-            continue
-        last = session.exec(
-            select(NetworkMessage).where(NetworkMessage.conversation_id == c.id)
-            .order_by(col(NetworkMessage.created_at).desc()).limit(1)
-        ).first()
-        unread = session.exec(
-            select(func.count()).select_from(NetworkMessage)
-            .where(NetworkMessage.conversation_id == c.id)
-            .where(NetworkMessage.sender_tenant_id != me)
-            .where(col(NetworkMessage.read_at).is_(None))
-        ).one()
-        other = session.get(Tenant, _other(c, me))
+        last = last_by.get(c.id)
         out.append(ConversationRead(
-            id=c.id, parent_account_id=c.parent_account_id, other_tenant_id=_other(c, me), other_name=_label(other),
-            last_message_at=c.last_message_at, last_body=last.body[:140] if last else None, unread=int(unread),
+            id=c.id, parent_account_id=c.parent_account_id, other_tenant_id=_other(c, me), other_name=_label(tenants.get(_other(c, me))),
+            last_message_at=c.last_message_at, last_body=last.body[:140] if last else None, unread=int(unread_by.get(c.id, 0)),
         ))
     return out
 
@@ -210,11 +225,12 @@ def list_messages(
     _clear_alerts(session, me, conv.id)
     session.commit()
     users = {u.id: u for u in session.exec(select(User).where(col(User.id).in_([m.sender_user_id for m in rows if m.sender_user_id]))).all()} if rows else {}
+    files = _attachments_by_message(session, [m.id for m in rows])
     return [
         MessageRead(
             id=m.id, sender_tenant_id=m.sender_tenant_id, mine=m.sender_tenant_id == me,
             sender_name=(users[m.sender_user_id].full_name or users[m.sender_user_id].email) if m.sender_user_id in users else None,
-            body=m.body, created_at=m.created_at, conversation_id=conv.id, attachments=_attachments(session, m.id),
+            body=m.body, created_at=m.created_at, conversation_id=conv.id, attachments=files.get(m.id, []),
         )
         for m in reversed(rows)
     ]
