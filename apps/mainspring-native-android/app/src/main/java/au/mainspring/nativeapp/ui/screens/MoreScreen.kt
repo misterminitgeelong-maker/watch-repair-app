@@ -50,6 +50,7 @@ internal fun moreTools(features: Set<String>, owner: Boolean): List<MoreItem> {
     }
     val shop = buildList {
         if(owner) { add(MoreItem("Sales & activity", "reportExtras")); add(MoreItem("Database", "database")); add(MoreItem("Team", "team")); add(MoreItem("Shop settings", "shopSettings")) }
+        if(owner) add(MoreItem("API keys & webhooks", "integrations"))
         add(MoreItem("Queued changes", "queuedChanges")); add(MoreItem("Accounts", "accounts"))
     }
     return buildList {
