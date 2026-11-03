@@ -1,13 +1,13 @@
 """State hubs, announcements and per-shop read/receipt markers.
 
 Revision ID: 20261103_network_community
-Revises: 20261102_network_messages
+Revises: 20261103_engraving_payments
 """
 import sqlalchemy as sa
 from alembic import op
 
 revision = "20261103_network_community"
-down_revision = "20261102_network_messages"
+down_revision = "20261103_engraving_payments"
 branch_labels = None
 depends_on = None
 

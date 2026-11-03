@@ -46,7 +46,7 @@ describe('Network messaging workspace', () => {
   it('shows state hubs without opening other states to a shop', async () => {
     render('/messages?tab=hubs')
     expect(await screen.findByRole('heading', { name: 'Victoria' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Queensland/ })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: /Queensland/ })).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: 'Open my state hub' }))
     expect(await screen.findByText('Need a spring bar')).toBeInTheDocument()
     expect(mocks.messages).toHaveBeenCalledWith('network', 'VIC', undefined)

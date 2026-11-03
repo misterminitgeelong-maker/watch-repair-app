@@ -46,7 +46,7 @@ class ConversationRead(BaseModel):
     unread: int = 0
 
 
-class AttachmentRead(BaseModel):
+class NetworkAttachmentRead(BaseModel):
     id: UUID
     filename: str
     content_type: str
@@ -56,7 +56,7 @@ class AttachmentRead(BaseModel):
 def _attachments(session, message_id, hub=False):
     column = NetworkMessageAttachment.hub_message_id if hub else NetworkMessageAttachment.direct_message_id
     rows = session.exec(select(NetworkMessageAttachment.id, NetworkMessageAttachment.filename, NetworkMessageAttachment.content_type, NetworkMessageAttachment.size_bytes).where(column == message_id)).all()
-    return [AttachmentRead(id=row[0], filename=row[1], content_type=row[2], size_bytes=row[3]) for row in rows]
+    return [NetworkAttachmentRead(id=row[0], filename=row[1], content_type=row[2], size_bytes=row[3]) for row in rows]
 
 
 class MessageRead(BaseModel):
@@ -67,7 +67,7 @@ class MessageRead(BaseModel):
     body: str
     created_at: datetime
     conversation_id: UUID | None = None
-    attachments: list[AttachmentRead] = Field(default_factory=list)
+    attachments: list[NetworkAttachmentRead] = Field(default_factory=list)
 
 
 class SendBody(BaseModel):

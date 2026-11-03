@@ -26363,25 +26363,119 @@
             "format": "uuid",
             "title": "Id"
           },
-          "filename": {
+          "tenant_id": {
             "type": "string",
-            "title": "Filename"
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "repair_job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Job Id"
+          },
+          "watch_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Id"
+          },
+          "shoe_repair_job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shoe Repair Job Id"
+          },
+          "auto_key_job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Key Job Id"
+          },
+          "storage_key": {
+            "type": "string",
+            "title": "Storage Key"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name"
           },
           "content_type": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Content Type"
           },
-          "size_bytes": {
-            "type": "integer",
-            "title": "Size Bytes"
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "filename",
-          "content_type",
-          "size_bytes"
+          "tenant_id",
+          "storage_key",
+          "created_at"
         ],
         "title": "AttachmentRead"
       },
@@ -35027,7 +35121,7 @@
           },
           "attachments": {
             "items": {
-              "$ref": "#/components/schemas/AttachmentRead"
+              "$ref": "#/components/schemas/NetworkAttachmentRead"
             },
             "type": "array",
             "title": "Attachments"
@@ -36548,6 +36642,35 @@
           "preview_token"
         ],
         "title": "MvOperatorUpdateRequest"
+      },
+      "NetworkAttachmentRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "content_type",
+          "size_bytes"
+        ],
+        "title": "NetworkAttachmentRead"
       },
       "NotificationPrefsRead": {
         "properties": {
