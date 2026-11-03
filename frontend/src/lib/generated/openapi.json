@@ -19442,8 +19442,14 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "default": false,
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Routing"
             }
           },
@@ -19452,8 +19458,14 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "default": false,
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Prospecting"
             }
           },
@@ -19531,8 +19543,14 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "default": false,
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Routing"
             }
           },
@@ -19541,8 +19559,14 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "default": false,
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Prospecting"
             }
           },
@@ -19561,6 +19585,394 @@
                 }
               ],
               "title": "Parent Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/settings": {
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Get Billing Settings",
+        "operationId": "get_billing_settings_v1_hq_billing_settings_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Put Billing Settings",
+        "operationId": "put_billing_settings_v1_hq_billing_settings_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_account_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingSettingsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/invoices": {
+      "post": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Create Invoice",
+        "description": "Freeze this month's numbers as a draft. Re-running replaces an unissued draft.",
+        "operationId": "create_invoice_v1_hq_billing_invoices_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoiceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "List Invoices",
+        "operationId": "list_invoices_v1_hq_billing_invoices_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/invoices/{invoice_id}": {
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Get Invoice",
+        "operationId": "get_invoice_v1_hq_billing_invoices__invoice_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/invoices/{invoice_id}/pdf": {
+      "get": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Invoice Pdf",
+        "operationId": "invoice_pdf_v1_hq_billing_invoices__invoice_id__pdf_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/invoices/{invoice_id}/issue": {
+      "post": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Issue Invoice",
+        "description": "Create the Stripe invoice and email it to the HQ's billing contact.",
+        "operationId": "issue_invoice_v1_hq_billing_invoices__invoice_id__issue_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hq-billing/invoices/{invoice_id}/void": {
+      "post": {
+        "tags": [
+          "hq-billing"
+        ],
+        "summary": "Void Invoice",
+        "operationId": "void_invoice_v1_hq_billing_invoices__invoice_id__void_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Invoice Id"
             }
           }
         ],
@@ -26629,6 +27041,36 @@
         ],
         "title": "BillingPlanLimits"
       },
+      "BillingSettingsIn": {
+        "properties": {
+          "routing_addon": {
+            "type": "boolean",
+            "title": "Routing Addon"
+          },
+          "prospecting_addon": {
+            "type": "boolean",
+            "title": "Prospecting Addon"
+          },
+          "billing_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Billing Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "routing_addon",
+          "prospecting_addon"
+        ],
+        "title": "BillingSettingsIn"
+      },
       "Body_backfill_shop_owner_contacts_v1_parent_accounts_me_backfill_shop_owner_contacts_post": {
         "properties": {
           "file": {
@@ -27211,6 +27653,26 @@
           "owner_email"
         ],
         "title": "CreateHqRequest"
+      },
+      "CreateInvoiceIn": {
+        "properties": {
+          "parent_account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Parent Account Id"
+          },
+          "month": {
+            "type": "string",
+            "title": "Month",
+            "description": "YYYY-MM"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parent_account_id",
+          "month"
+        ],
+        "title": "CreateInvoiceIn"
       },
       "CustomFieldsUpdate": {
         "properties": {

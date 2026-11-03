@@ -10,10 +10,11 @@ import { isMinitHqTenantSlug } from '@/lib/minitProduct'
 import './platformAdmin.css'
 import PlatformHqOwnersPanel from './PlatformHqOwnersPanel'
 import PlatformHqsPanel from './PlatformHqsPanel'
+import PlatformHqBillingPanel from './PlatformHqBillingPanel'
 
-type Tab = 'overview' | 'shops' | 'billing' | 'audit' | 'users' | 'hqs' | 'hq-owners' | 'reports'
-const TABS: Tab[] = ['overview', 'shops', 'billing', 'audit', 'users', 'hqs', 'hq-owners', 'reports']
-const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', shops: 'Shops', billing: 'Billing', audit: 'Audit log', users: 'Users', hqs: 'HQs', 'hq-owners': 'HQ owners', reports: 'Reports' }
+type Tab = 'overview' | 'shops' | 'billing' | 'audit' | 'users' | 'hqs' | 'hq-owners' | 'hq-billing' | 'reports'
+const TABS: Tab[] = ['overview', 'shops', 'billing', 'audit', 'users', 'hqs', 'hq-owners', 'hq-billing', 'reports']
+const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', shops: 'Shops', billing: 'Billing', audit: 'Audit log', users: 'Users', hqs: 'HQs', 'hq-owners': 'HQ owners', 'hq-billing': 'HQ invoices', reports: 'Reports' }
 
 const ACTIVITY_PAGE_SIZE = 100
 const formatLabel = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -26,6 +27,7 @@ const TAB_DESCRIPTIONS: Record<Tab, string> = {
   users: 'The people behind your network, with a direct route to their shop.',
   hqs: 'Create company HQs and choose what each one can see and do.',
   'hq-owners': 'Invite owners to manage HQ accounts and track their invitations.',
+  'hq-billing': 'Prepare, send and track each HQ\'s bundled monthly invoice.',
   audit: 'A clear record of who did what, and when.',
   reports: 'Understand shop activity, adoption, and invoicing across your network.',
 }
@@ -56,6 +58,7 @@ export default function PlatformAdminPage() {
       {tab === 'users' && <UsersTab search={search} setSearch={setSearch} />}
       {tab === 'hqs' && <PlatformHqsPanel />}
       {tab === 'hq-owners' && <PlatformHqOwnersPanel />}
+      {tab === 'hq-billing' && <PlatformHqBillingPanel />}
       {tab === 'audit' && <ActivityTab search={search} setSearch={setSearch} />}
       {tab === 'reports' && <ReportsTab />}
     </div>

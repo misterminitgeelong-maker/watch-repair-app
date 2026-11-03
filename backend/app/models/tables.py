@@ -136,6 +136,12 @@ class ParentAccount(SQLModel, table=True):
     #: sales/enquiry-backlog for the most recently completed week) to owner_email.
     mobile_weekly_report_opt_in: bool = Field(default=False)
     last_mobile_weekly_report_sent_at: Optional[datetime] = None
+    #: Bundled monthly HQ invoice (app.minit_billing): which add-ons this HQ pays for,
+    #: applied to every billable operator, and where the invoice goes.
+    billing_routing_addon: bool = Field(default=False)
+    billing_prospecting_addon: bool = Field(default=False)
+    billing_email: Optional[str] = None
+    stripe_customer_id: Optional[str] = Field(default=None, index=True)
 
 class MobileLeadDispatch(SQLModel, table=True):
     """Website lead offered sequentially to operators; escalates to HQ when exhausted."""
