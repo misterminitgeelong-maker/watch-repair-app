@@ -435,6 +435,31 @@ export const createPlatformHq = (payload: PlatformHqSettingsInput & { slug: stri
 export const updatePlatformHq = (parentAccountId: string, payload: PlatformHqSettingsInput) =>
   api.patch<PlatformHq>(`/platform-admin/hqs/${parentAccountId}`, payload)
 
+export interface HqBillingSettings {
+  parent_account_id: string; routing_addon: boolean; prospecting_addon: boolean; billing_email: string; billing_email_is_default: boolean
+}
+export interface HqInvoiceRow {
+  id: string; parent_account_id: string; billing_month: string; invoice_number: string
+  status: 'draft' | 'issued' | 'paid' | 'void'; operator_count: number
+  subtotal_ex_gst_cents: number; gst_cents: number; total_inc_gst_cents: number; currency: string
+  stripe_hosted_url: string | null; issued_at: string | null; due_at: string | null; paid_at: string | null
+}
+export interface HqInvoiceDetail extends HqInvoiceRow {
+  snapshot: { lines: { tenant_id: string; name: string; shop_number: string | null; core_cents: number; routing_cents: number; prospecting_cents: number; subtotal_ex_gst_cents: number; gst_cents: number }[]; excluded: { tenant_id: string; name: string; reason: string }[] }
+}
+export const getHqBillingSettings = (parentAccountId: string) =>
+  api.get<HqBillingSettings>('/hq-billing/settings', { params: { parent_account_id: parentAccountId } })
+export const saveHqBillingSettings = (parentAccountId: string, payload: { routing_addon: boolean; prospecting_addon: boolean; billing_email: string | null }) =>
+  api.put<HqBillingSettings>('/hq-billing/settings', payload, { params: { parent_account_id: parentAccountId } })
+export const listHqInvoices = (parentAccountId: string) =>
+  api.get<{ invoices: HqInvoiceRow[] }>('/hq-billing/invoices', { params: { parent_account_id: parentAccountId } })
+export const getHqInvoice = (id: string) => api.get<HqInvoiceDetail>(`/hq-billing/invoices/${id}`)
+export const createHqInvoiceDraft = (parentAccountId: string, month: string) =>
+  api.post<HqInvoiceDetail>('/hq-billing/invoices', { parent_account_id: parentAccountId, month })
+export const issueHqInvoice = (id: string) => api.post<HqInvoiceRow>(`/hq-billing/invoices/${id}/issue`)
+export const voidHqInvoice = (id: string) => api.post<HqInvoiceRow>(`/hq-billing/invoices/${id}/void`)
+export const downloadHqInvoicePdf = (id: string) => api.get<Blob>(`/hq-billing/invoices/${id}/pdf`, { responseType: 'blob' })
+
 export interface HqConfig { product_key: string; display_name: string; logo_url: string | null; brand_color: string | null; modules: string[] }
 export const getMyHqConfig = () => api.get<HqConfig>('/parent-accounts/me/hq-config')
 

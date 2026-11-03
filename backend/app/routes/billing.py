@@ -22,6 +22,7 @@ from ..models import (
     BillingPlanLimits,
     BillingLimitsUsage,
     CardPaymentIssue,
+    HqInvoice,
     NETWORK_ROLE_HQ,
     RepairJob,
     ShoeRepairJob,
@@ -646,6 +647,14 @@ def _handle_subscription_deleted(session: Session, obj, _stripe) -> dict | None:
             session.commit()
 
 
+def _hq_invoice_for(session: Session, obj) -> "HqInvoice | None":
+    """The bundled HQ invoice this Stripe invoice belongs to, if any."""
+    sid = obj.get("id") or ""
+    if not sid:
+        return None
+    return session.exec(select(HqInvoice).where(HqInvoice.stripe_invoice_id == sid)).first()
+
+
 def _handle_invoice_payment_failed(session: Session, obj, _stripe) -> dict | None:
     """A failed charge puts the tenant past_due.
 
@@ -669,6 +678,14 @@ def _handle_invoice_paid(session: Session, obj, _stripe) -> dict | None:
     Returns a status dict to send back immediately, or None to fall through
     to the default {"status": "ok"} acknowledgement.
     """
+    hq_inv = _hq_invoice_for(session, obj)
+    if hq_inv is not None:
+        if hq_inv.status in ("issued", "draft"):
+            hq_inv.status = "paid"
+            hq_inv.paid_at = datetime.now(timezone.utc)
+            session.add(hq_inv)
+            session.commit()
+        return {"status": "ok"}
     sub_id = (obj.get("subscription") or "")
     if sub_id:
         tenant = session.exec(
