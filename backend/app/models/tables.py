@@ -1757,7 +1757,7 @@ class StockLocation(SQLModel, table=True):
     parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
     name: str = Field(max_length=120)
     kind: str = Field(default="workshop", max_length=20)  # workshop | store | warehouse
-    tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", index=True)
+    tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", index=True, ondelete="SET NULL")
     active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

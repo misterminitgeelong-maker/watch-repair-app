@@ -49,7 +49,7 @@ def upgrade():
     op.create_table(
         "stocklocation", _id(), _parent(),
         sa.Column("name", sa.String(120), nullable=False), sa.Column("kind", sa.String(20), nullable=False),
-        sa.Column("tenant_id", sa.Uuid(), sa.ForeignKey("tenant.id")), sa.Column("active", sa.Boolean(), nullable=False),
+        sa.Column("tenant_id", sa.Uuid(), sa.ForeignKey("tenant.id", ondelete="SET NULL")), sa.Column("active", sa.Boolean(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.UniqueConstraint("parent_account_id", "name", name="uq_stocklocation_parent_name"),
     )
