@@ -7,6 +7,7 @@ import {
   Building2,
   KeyRound,
   Inbox,
+  MessageSquare,
   Sparkles,
   Download,
   Route,
@@ -24,6 +25,7 @@ import { APP_BUILD_ID } from '@/lib/buildInfo'
 export const MINIT_HQ_NAV = [
   { to: '/minit/dashboard', label: 'Dashboard', icon: LayoutDashboard, module: 'mobile_services' },
   { to: '/minit/inbox', label: 'Inbox', icon: Inbox, module: 'lead_routing', title: 'Website leads, email enquiries, and Support Office alerts' },
+  { to: '/minit/messages', label: 'Messages', icon: MessageSquare, module: 'mobile_services', title: 'Message shops and operators in your network' },
   { to: '/minit/shops', label: 'Shops', icon: Building2, title: 'Browse the retail network by region' },
   { to: '/minit/lead-routing', label: 'Lead routing', icon: Route, module: 'lead_routing', title: 'Website ingest, dispatch, and territory map' },
   { to: '/minit/mobile-services', label: 'Mobile reports', icon: KeyRound, module: 'kpis', title: 'Live mobile-services KPIs and compiled daily/weekly reports' },

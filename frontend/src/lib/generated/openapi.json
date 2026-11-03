@@ -17906,6 +17906,53 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/operations/shop-messages": {
+      "post": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Send Shop Messages",
+        "description": "HQ sends a short message to the Inbox of each chosen shop. No SMS or email, so\nit costs nothing; the shop sees it as \"Message from {HQ name}\" with the unread badge.",
+        "operationId": "send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendShopMessagesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendShopMessagesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/operations/mobile-weekly-report/send-now": {
       "post": {
         "tags": [
@@ -23419,6 +23466,179 @@
         }
       }
     },
+    "/v1/network-messages/contacts": {
+      "get": {
+        "tags": [
+          "network-messages"
+        ],
+        "summary": "List Contacts",
+        "description": "Every other active site in the networks this site belongs to.",
+        "operationId": "list_contacts_v1_network_messages_contacts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ContactRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Contacts V1 Network Messages Contacts Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/network-messages/conversations": {
+      "get": {
+        "tags": [
+          "network-messages"
+        ],
+        "summary": "List Conversations",
+        "operationId": "list_conversations_v1_network_messages_conversations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Conversations V1 Network Messages Conversations Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/network-messages/conversations/{conv_id}/messages": {
+      "get": {
+        "tags": [
+          "network-messages"
+        ],
+        "summary": "List Messages",
+        "description": "Opening a thread marks the other site's messages as read and clears its Inbox alert.",
+        "operationId": "list_messages_v1_network_messages_conversations__conv_id__messages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conv_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conv Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageRead"
+                  },
+                  "title": "Response List Messages V1 Network Messages Conversations  Conv Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network-messages/with/{tenant_id}": {
+      "post": {
+        "tags": [
+          "network-messages"
+        ],
+        "summary": "Send Message",
+        "description": "Send a message to another site in a shared network, starting the thread if needed.",
+        "operationId": "send_message_v1_network_messages_with__tenant_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tenant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/public/engraving/events/{token}": {
       "get": {
         "tags": [
@@ -27132,6 +27352,77 @@
           "created_at"
         ],
         "title": "CardPaymentIssueRead"
+      },
+      "ContactRead": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "network_role": {
+            "type": "string",
+            "title": "Network Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "name",
+          "network_role"
+        ],
+        "title": "ContactRead"
+      },
+      "ConversationRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "other_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Other Tenant Id"
+          },
+          "other_name": {
+            "type": "string",
+            "title": "Other Name"
+          },
+          "last_message_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Message At"
+          },
+          "last_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Body"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "other_tenant_id",
+          "other_name",
+          "last_message_at"
+        ],
+        "title": "ConversationRead"
       },
       "CreateHqRequest": {
         "properties": {
@@ -31999,6 +32290,53 @@
         ],
         "title": "LoyaltyProfileResponse"
       },
+      "MessageRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "sender_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Sender Tenant Id"
+          },
+          "mine": {
+            "type": "boolean",
+            "title": "Mine"
+          },
+          "sender_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Name"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sender_tenant_id",
+          "mine",
+          "body",
+          "created_at"
+        ],
+        "title": "MessageRead"
+      },
       "MobileCatalogueCategoryRead": {
         "properties": {
           "key": {
@@ -35420,6 +35758,62 @@
         ],
         "title": "ParentOperationsOverview"
       },
+      "ParentOperatorBookingResponse": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          },
+          "offered": {
+            "type": "integer",
+            "title": "Offered"
+          },
+          "responded": {
+            "type": "integer",
+            "title": "Responded"
+          },
+          "moved_to_pool": {
+            "type": "integer",
+            "title": "Moved To Pool"
+          },
+          "avg_response_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Response Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "tenant_name",
+          "offered",
+          "responded",
+          "moved_to_pool"
+        ],
+        "title": "ParentOperatorBookingResponse"
+      },
       "ParentProvisionShopRequest": {
         "properties": {
           "shop_number": {
@@ -35702,6 +36096,33 @@
           "expired": {
             "type": "integer",
             "title": "Expired"
+          },
+          "avg_response_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Response Minutes"
+          },
+          "per_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Week"
+          },
+          "under_weekly_goal": {
+            "type": "boolean",
+            "title": "Under Weekly Goal",
+            "default": false
           }
         },
         "type": "object",
@@ -35752,6 +36173,40 @@
             },
             "type": "array",
             "title": "By Shop"
+          },
+          "by_operator": {
+            "items": {
+              "$ref": "#/components/schemas/ParentOperatorBookingResponse"
+            },
+            "type": "array",
+            "title": "By Operator"
+          },
+          "weekly_goal": {
+            "type": "integer",
+            "title": "Weekly Goal",
+            "default": 1
+          },
+          "weeks": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weeks"
+          },
+          "shops_under_goal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shops Under Goal"
           },
           "bookings": {
             "items": {
@@ -40232,6 +40687,21 @@
         ],
         "title": "SaveLeadBody"
       },
+      "SendBody": {
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "SendBody"
+      },
       "SendMessagePayload": {
         "properties": {
           "body": {
@@ -40244,6 +40714,53 @@
           "body"
         ],
         "title": "SendMessagePayload"
+      },
+      "SendShopMessagesRequest": {
+        "properties": {
+          "tenant_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "minItems": 1,
+            "title": "Tenant Ids"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_ids",
+          "message"
+        ],
+        "title": "SendShopMessagesRequest"
+      },
+      "SendShopMessagesResponse": {
+        "properties": {
+          "sent": {
+            "type": "integer",
+            "title": "Sent"
+          },
+          "skipped": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent"
+        ],
+        "title": "SendShopMessagesResponse"
       },
       "ServicePricingRow": {
         "properties": {

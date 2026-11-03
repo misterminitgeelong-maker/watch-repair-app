@@ -5679,6 +5679,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/operations/shop-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Shop Messages
+         * @description HQ sends a short message to the Inbox of each chosen shop. No SMS or email, so
+         *     it costs nothing; the shop sees it as "Message from {HQ name}" with the unread badge.
+         */
+        post: operations["send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/operations/mobile-weekly-report/send-now": {
         parameters: {
             query?: never;
@@ -7405,6 +7426,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/network-messages/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Contacts
+         * @description Every other active site in the networks this site belongs to.
+         */
+        get: operations["list_contacts_v1_network_messages_contacts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Conversations */
+        get: operations["list_conversations_v1_network_messages_conversations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/conversations/{conv_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Messages
+         * @description Opening a thread marks the other site's messages as read and clears its Inbox alert.
+         */
+        get: operations["list_messages_v1_network_messages_conversations__conv_id__messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network-messages/with/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Message
+         * @description Send a message to another site in a shared network, starting the thread if needed.
+         */
+        post: operations["send_message_v1_network_messages_with__tenant_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/engraving/events/{token}": {
         parameters: {
             query?: never;
@@ -8577,6 +8675,45 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ContactRead */
+        ContactRead: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Network Role */
+            network_role: string;
+        };
+        /** ConversationRead */
+        ConversationRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Other Tenant Id
+             * Format: uuid
+             */
+            other_tenant_id: string;
+            /** Other Name */
+            other_name: string;
+            /**
+             * Last Message At
+             * Format: date-time
+             */
+            last_message_at: string;
+            /** Last Body */
+            last_body?: string | null;
+            /**
+             * Unread
+             * @default 0
+             */
+            unread: number;
         };
         /** CreateHqRequest */
         CreateHqRequest: {
@@ -10151,6 +10288,30 @@ export interface components {
             /** Recent Ledger */
             recent_ledger: components["schemas"]["PointsLedgerRead"][];
         };
+        /** MessageRead */
+        MessageRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Sender Tenant Id
+             * Format: uuid
+             */
+            sender_tenant_id: string;
+            /** Mine */
+            mine: boolean;
+            /** Sender Name */
+            sender_name?: string | null;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** MobileCatalogueCategoryRead */
         MobileCatalogueCategoryRead: {
             /** Key */
@@ -11489,6 +11650,26 @@ export interface components {
             /** Attention Items */
             attention_items?: components["schemas"]["ParentTroubleshootingItem"][];
         };
+        /** ParentOperatorBookingResponse */
+        ParentOperatorBookingResponse: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Offered */
+            offered: number;
+            /** Responded */
+            responded: number;
+            /** Moved To Pool */
+            moved_to_pool: number;
+            /** Avg Response Minutes */
+            avg_response_minutes?: number | null;
+        };
         /** ParentProvisionShopRequest */
         ParentProvisionShopRequest: {
             /** Shop Number */
@@ -11574,6 +11755,15 @@ export interface components {
             cancelled: number;
             /** Expired */
             expired: number;
+            /** Avg Response Minutes */
+            avg_response_minutes?: number | null;
+            /** Per Week */
+            per_week?: number | null;
+            /**
+             * Under Weekly Goal
+             * @default false
+             */
+            under_weekly_goal: boolean;
         };
         /** ParentShopBookingsReport */
         ParentShopBookingsReport: {
@@ -11584,6 +11774,17 @@ export interface components {
             totals: components["schemas"]["ParentShopBookingVolume"];
             /** By Shop */
             by_shop?: components["schemas"]["ParentShopBookingVolume"][];
+            /** By Operator */
+            by_operator?: components["schemas"]["ParentOperatorBookingResponse"][];
+            /**
+             * Weekly Goal
+             * @default 1
+             */
+            weekly_goal: number;
+            /** Weeks */
+            weeks?: number | null;
+            /** Shops Under Goal */
+            shops_under_goal?: number | null;
             /** Bookings */
             bookings?: components["schemas"]["ShopMobileBookingRead"][];
         };
@@ -13050,10 +13251,29 @@ export interface components {
             /** State Code */
             state_code?: string | null;
         };
+        /** SendBody */
+        SendBody: {
+            /** Body */
+            body: string;
+        };
         /** SendMessagePayload */
         SendMessagePayload: {
             /** Body */
             body: string;
+        };
+        /** SendShopMessagesRequest */
+        SendShopMessagesRequest: {
+            /** Tenant Ids */
+            tenant_ids: string[];
+            /** Message */
+            message: string;
+        };
+        /** SendShopMessagesResponse */
+        SendShopMessagesResponse: {
+            /** Sent */
+            sent: number;
+            /** Skipped */
+            skipped?: string[];
         };
         /** ServicePricingRow */
         ServicePricingRow: {
@@ -25358,6 +25578,39 @@ export interface operations {
             };
         };
     };
+    send_shop_messages_v1_parent_accounts_me_operations_shop_messages_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendShopMessagesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendShopMessagesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     send_mobile_weekly_report_now_v1_parent_accounts_me_operations_mobile_weekly_report_send_now_post: {
         parameters: {
             query?: never;
@@ -28696,6 +28949,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EngravingOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_contacts_v1_network_messages_contacts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactRead"][];
+                };
+            };
+        };
+    };
+    list_conversations_v1_network_messages_conversations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRead"][];
+                };
+            };
+        };
+    };
+    list_messages_v1_network_messages_conversations__conv_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_message_v1_network_messages_with__tenant_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"];
                 };
             };
             /** @description Validation Error */

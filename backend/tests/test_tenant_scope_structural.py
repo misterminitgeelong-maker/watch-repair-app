@@ -242,6 +242,7 @@ def test_the_set_of_cross_tenant_modules_is_pinned():
         "parent_operations",     # franchise-network reporting across shops
         "parent_shoe_operations",  # an HQ's read-only shoe repair totals and search across its own network's shops
         "platform_admin",        # administration across all tenants
+        "network_messages",      # a direct thread between two sites of one network; only its two participants can read it
         "platform_hqs",          # platform admin creates and configures company HQs (a new tenant plus its network)
         "shop_mobile_bookings",  # dispatch between a requesting and an operator shop
         "shop_owner_invites",    # onboards a shop that is not the caller's tenant

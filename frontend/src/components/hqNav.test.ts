@@ -8,7 +8,7 @@ describe('hqNavFor', () => {
     const labels = MINIT_HQ_NAV.map(i => i.label)
     expect(hqNavFor(undefined).map(i => i.label)).toEqual(labels)
     expect(hqNavFor(MINIT_MODULES).map(i => i.label)).toEqual(labels)
-    expect(labels).toEqual(['Dashboard', 'Inbox', 'Shops', 'Lead routing', 'Mobile reports', 'Reports'])
+    expect(labels).toEqual(['Dashboard', 'Inbox', 'Messages', 'Shops', 'Lead routing', 'Mobile reports', 'Reports'])
   })
 
   it('shows a shoe-only HQ just Shops and Shoe repairs', () => {
@@ -17,11 +17,11 @@ describe('hqNavFor', () => {
 
   it('adds Shoe repairs after the mobile links when both are on', () => {
     const labels = hqNavFor([...MINIT_MODULES, 'shoe']).map(i => i.label)
-    expect(labels.slice(0, 6)).toEqual(MINIT_HQ_NAV.map(i => i.label))
-    expect(labels[6]).toBe('Shoe repairs')
+    expect(labels.slice(0, 7)).toEqual(MINIT_HQ_NAV.map(i => i.label))
+    expect(labels[7]).toBe('Shoe repairs')
   })
 
   it('hides mobile links for modules that are off', () => {
-    expect(hqNavFor(['mobile_services']).map(i => i.label)).toEqual(['Dashboard', 'Shops', 'Reports'])
+    expect(hqNavFor(['mobile_services']).map(i => i.label)).toEqual(['Dashboard', 'Messages', 'Shops', 'Reports'])
   })
 })

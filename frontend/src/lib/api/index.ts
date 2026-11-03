@@ -806,6 +806,19 @@ export interface ParentShopBookingVolume {
   declined: number
   cancelled: number
   expired: number
+  avg_response_minutes?: number | null
+  per_week?: number | null
+  under_weekly_goal?: boolean
+}
+
+export interface ParentOperatorBookingResponse {
+  tenant_id: string
+  tenant_name: string
+  shop_number?: string | null
+  offered: number
+  responded: number
+  moved_to_pool: number
+  avg_response_minutes?: number | null
 }
 
 export interface ParentShopBookingsReport {
@@ -813,6 +826,10 @@ export interface ParentShopBookingsReport {
   to_date?: string | null
   totals: ParentShopBookingVolume
   by_shop?: ParentShopBookingVolume[]
+  by_operator?: ParentOperatorBookingResponse[]
+  weekly_goal?: number
+  weeks?: number | null
+  shops_under_goal?: number | null
   bookings?: ShopMobileBooking[]
 }
 
@@ -855,6 +872,14 @@ export interface ParentTroubleshootingItem {
   related_id?: string | null
   created_at?: string | null
 }
+
+export interface SendShopMessagesResult {
+  sent: number
+  skipped: string[]
+}
+
+export const sendShopMessages = (body: { tenant_ids: string[]; message: string }) =>
+  api.post<SendShopMessagesResult>('/parent-accounts/me/operations/shop-messages', body)
 
 export const getParentOperationsOverview = () =>
   api.get<ParentOperationsOverview>('/parent-accounts/me/operations/overview')
@@ -3157,6 +3182,31 @@ export const getInboxCount = (exclude?: string[]) =>
     params: exclude?.length ? { exclude: exclude.join(',') } : undefined,
   })
 export const deleteInboxEvent = (id: string) => api.delete(`/inbox/${id}`)
+
+// ── Messages between sites in a network ───────────────────────────────────────
+export interface NetworkContact { tenant_id: string; name: string; network_role: string }
+export interface NetworkConversation {
+  id: string
+  other_tenant_id: string
+  other_name: string
+  last_message_at: string
+  last_body?: string | null
+  unread: number
+}
+export interface NetworkMessage {
+  id: string
+  sender_tenant_id: string
+  mine: boolean
+  sender_name?: string | null
+  body: string
+  created_at: string
+}
+export const getNetworkContacts = () => api.get<NetworkContact[]>('/network-messages/contacts')
+export const getNetworkConversations = () => api.get<NetworkConversation[]>('/network-messages/conversations')
+export const getNetworkMessages = (conversationId: string) =>
+  api.get<NetworkMessage[]>(`/network-messages/conversations/${conversationId}/messages`)
+export const sendNetworkMessage = (tenantId: string, body: string) =>
+  api.post<NetworkMessage>(`/network-messages/with/${tenantId}`, { body })
 
 // ── Card payments that couldn't be applied (inbox "needs attention") ─────────
 export interface CardPaymentIssue {

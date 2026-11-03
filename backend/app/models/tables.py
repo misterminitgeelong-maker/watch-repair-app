@@ -455,6 +455,35 @@ class TenantEventLog(SQLModel, table=True):
     event_summary: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class NetworkConversation(SQLModel, table=True):
+    """A direct thread between two sites (shop, operator or HQ) of one network.
+
+    The pair is stored in a fixed order (lower id first) so there is only ever one
+    thread per pair per network. HQ cannot read other sites' threads: only the two
+    participants can.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "tenant_low_id", "tenant_high_id", name="uq_networkconversation_pair"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id", ondelete="CASCADE")
+    tenant_low_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    tenant_high_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_message_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class NetworkMessage(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    conversation_id: UUID = Field(index=True, foreign_key="networkconversation.id", ondelete="CASCADE")
+    sender_tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    sender_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", ondelete="SET NULL")
+    body: str = Field(max_length=2000)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    #: When the other site opened the thread after this was sent.
+    read_at: Optional[datetime] = None
+
 class DeviceToken(SQLModel, table=True):
     """A phone-app push (FCM) registration token for one signed-in user."""
     id: UUID = Field(default_factory=uuid4, primary_key=True)

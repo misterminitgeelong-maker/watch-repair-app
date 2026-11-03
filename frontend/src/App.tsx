@@ -46,6 +46,7 @@ const CataloguePage = lazyPage(() => import('@/pages/CataloguePage'))
 const ToolkitPage = lazyPage(() => import('@/pages/ToolkitPage'))
 const ReportsPage = lazyPage(() => import('@/pages/ReportsPage'))
 const InboxPage = lazyPage(() => import('@/pages/InboxPage'))
+const MessagesPage = lazyPage(() => import('@/pages/MessagesPage'))
 const LoginPage = lazyPage(() => import('@/pages/LoginPage'))
 const TradeLandingPage = lazyPage(() => import('@/pages/TradeLandingPage'))
 const MobileServicesLandingPage = lazyPage(() => import('@/pages/MobileServicesLandingPage'))
@@ -171,6 +172,7 @@ function LocationBoundary({ children }: { children: React.ReactNode }) {
     '/quotes',
     '/invoices',
     '/inbox',
+    '/messages',
     '/reports',
     '/stocktakes',
     '/database',
@@ -254,6 +256,8 @@ export default function App() {
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="invoices/:id/print" element={<PrintInvoicePage />} />
               <Route path="inbox" element={<InboxPage />} />
+              <Route path="messages" element={<MessagesPage />} />
+              <Route path="minit/messages" element={<MinitHqGate><MessagesPage /></MinitHqGate>} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="stocktakes" element={<StocktakesPage />} />
               <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />

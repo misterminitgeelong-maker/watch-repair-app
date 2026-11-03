@@ -5,6 +5,7 @@ import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Users,
+  MessageSquare,
   Wrench,
   Receipt,
   LayoutDashboard,
@@ -54,6 +55,8 @@ type NavLinkItem = {
 const bookingOnlyNav: NavLinkItem[] = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile', icon: KeyRound, feature: 'shop_mobile_booking' },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Booking updates and messages from the Support office' },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, title: 'Message other shops, operators and the Support office' },
   { to: '/accounts', label: 'Account', icon: UserCog },
 ]
 
@@ -68,6 +71,7 @@ const navBeforeMobile: NavLinkItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile services', icon: KeyRound, feature: 'shop_mobile_booking' },
   { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Quote activity and website mobile key leads' },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, title: 'Message other shops, operators and the Support office' },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/engraving', label: 'Engraving Events', icon: Award, title: 'QR ordering and queue for on-the-spot medal engraving' },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' },
