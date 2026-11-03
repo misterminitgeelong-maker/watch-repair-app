@@ -152,10 +152,10 @@ def list_contacts(
     for tid, role in found.items():
         t = session.get(Tenant, tid)
         if t and t.is_active and not t.merged_into_tenant_id and tid in live_ids:
-            from .network_community import state_code
+            from ..messaging_hubs import hub_for
             site = site_for_tenant_in_parent(session, parent_account_id, tid) if parent_account_id else None
             region = session.get(Region, site.region_id) if site and site.region_id else None
-            out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role, shop_number=t.shop_number, state_code=state_code(region.code if region else t.minit_region)))
+            out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role, shop_number=t.shop_number, state_code=hub_for(site, t, region)))
     out.sort(key=lambda c: c.name.lower())
     return out
 

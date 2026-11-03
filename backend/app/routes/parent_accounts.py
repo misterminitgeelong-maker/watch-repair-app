@@ -307,6 +307,9 @@ def shop_invite_phone(tenant: Tenant, owner: User | None) -> str | None:
     return phone or None
 
 
+from ..messaging_hubs import hub_for  # noqa: E402
+
+
 def _regions_by_id(session: Session, parent_id: UUID) -> dict[UUID, Region]:
     return {r.id: r for r in regions_for_parent(session, parent_id)}
 
@@ -357,6 +360,8 @@ def _site_reads_for_sites(
                 region=region.name if region else tenant.minit_region,
                 region_id=region.id if region else None,
                 region_code=region.code if region else None,
+                messaging_state=site.messaging_state,
+                messaging_hub=hub_for(site, tenant, region),
                 plan_code=normalize_plan_code(tenant.plan_code),
                 network_role=site.network_role,
                 mobile_reporting_enabled=site.mobile_reporting_enabled,

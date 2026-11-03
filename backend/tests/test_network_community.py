@@ -402,3 +402,41 @@ def test_nav_badge_total(world):
     assert c.get("/v1/network-community/unread").json()["count"] == 1
     world["as"]("stranger")
     assert c.get("/v1/network-community/unread").json()["count"] == 0
+
+
+def test_area_and_overrides_decide_the_hub(world):
+    from app.messaging_hubs import hub_for
+    class T:  # minimal tenant/site/region stand-ins
+        def __init__(self, area=None, region=None): self.minit_area, self.minit_region = area, region
+    class S:
+        def __init__(self, state=None): self.messaging_state = state
+    class R:
+        def __init__(self, code): self.code = code
+    assert hub_for(S(), T("SOUTH AUSTRALIA"), R("SW")) == "SA"
+    assert hub_for(S(), T("WA NORTH"), R("SW")) == "WA"
+    assert hub_for(S(), T("TASMANIA"), R("VIC")) == "TAS"
+    assert hub_for(S(), T("VIC SOUTH"), R("VSWT")) == "VIC"
+    assert hub_for(S(), T("MALAYSIA"), R("SEA")) is None
+    assert hub_for(S(), T(None), R("QLD")) == "QLD"
+    assert hub_for(S("ACT"), T("NSW CENTRAL"), R("NSW")) == "ACT"
+    assert hub_for(S("NONE"), T("NSW CENTRAL"), R("NSW")) is None
+
+
+def test_bulk_hub_assignment_previews_then_applies(world):
+    with Session(world["engine"]) as s:
+        t = s.get(Tenant, world["people"]["qld"][0])
+        t.shop_number = "9991"
+        s.add(t)
+        s.commit()
+    c = world["as"]("vic")
+    assert c.post(world["base"] + "/hub-assignments", json={"state": "NT", "shop_numbers": ["9991"]}).status_code == 403
+    world["as"]("hq")
+    preview = c.post(world["base"] + "/hub-assignments", json={"state": "NT", "shop_numbers": ["9991", "0000"]}).json()
+    assert preview["dry_run"] and len(preview["changed"]) == 1 and preview["not_found"] == ["0000"]
+    world["as"]("qld")
+    assert next(h for h in c.get(world["base"] + "/hubs").json() if h["code"] == "QLD")["accessible"]
+    world["as"]("hq")
+    c.post(world["base"] + "/hub-assignments", json={"state": "NT", "shop_numbers": ["9991"], "dry_run": False})
+    world["as"]("qld")
+    hubs = {h["code"]: h for h in c.get(world["base"] + "/hubs").json()}
+    assert hubs["NT"]["accessible"] and not hubs["QLD"]["accessible"]

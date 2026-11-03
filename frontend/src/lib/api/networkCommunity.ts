@@ -79,3 +79,12 @@ export const sendDirectPost = (network: string, tenant: string, body: string, fi
   files.forEach(file => form.append('files', file))
   return api.post<{ conversation_id: string }>(`${root(network)}/direct/${tenant}/posts`, form).then(r => r.data)
 }
+
+export interface HubAssignmentResult {
+  dry_run: boolean
+  changed: { shop_number: string; name: string; from: string | null; to: string | null }[]
+  unchanged: { shop_number: string; name: string; from: string | null; to: string | null }[]
+  not_found: string[]
+}
+export const assignHubs = (network: string, data: { state: string; shop_numbers: string[]; dry_run: boolean }) =>
+  api.post<HubAssignmentResult>(`${root(network)}/hub-assignments`, data).then(r => r.data)

@@ -298,6 +298,8 @@ class ParentAccountSite(SQLModel, table=True):
     # Reporting opt-in only; never changes operator/dispatch eligibility.
     mobile_reporting_enabled: bool = Field(default=False)
     region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
+    # Messaging hub override: a state code, or NONE to leave the site out of every hub.
+    messaging_state: Optional[str] = Field(default=None, max_length=8)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

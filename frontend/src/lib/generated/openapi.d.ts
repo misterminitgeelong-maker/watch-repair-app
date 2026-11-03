@@ -8152,6 +8152,26 @@ export interface paths {
         patch: operations["announcement_update_v1_network_community__parent_id__announcements__announcement_id__patch"];
         trace?: never;
     };
+    "/v1/network-community/{parent_id}/hub-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assign Hubs
+         * @description Put shops (by shop number) into a messaging hub in one go. HQ admins only; previews unless dry_run is false.
+         */
+        post: operations["assign_hubs_v1_network_community__parent_id__hub_assignments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/network-community/{parent_id}/announcements/{announcement_id}/receipts": {
         parameters: {
             query?: never;
@@ -10625,6 +10645,18 @@ export interface components {
             /** Site Plans */
             site_plans?: string[];
         };
+        /** HubAssignment */
+        HubAssignment: {
+            /** State */
+            state: string;
+            /** Shop Numbers */
+            shop_numbers: string[];
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+        };
         /** HubSend */
         HubSend: {
             /** Body */
@@ -12086,6 +12118,10 @@ export interface components {
             region_id?: string | null;
             /** Region Code */
             region_code?: string | null;
+            /** Messaging State */
+            messaging_state?: string | null;
+            /** Messaging Hub */
+            messaging_hub?: string | null;
             /** Plan Code */
             plan_code: string;
             /**
@@ -12153,6 +12189,8 @@ export interface components {
              * @default false
              */
             clear_region: boolean;
+            /** Messaging State */
+            messaging_state?: string | null;
             /** Shop Email */
             shop_email?: string | null;
             /** Shop Phone */
@@ -31676,6 +31714,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AnnouncementUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_hubs_v1_network_community__parent_id__hub_assignments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HubAssignment"];
             };
         };
         responses: {

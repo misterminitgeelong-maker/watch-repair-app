@@ -25864,6 +25864,63 @@
         }
       }
     },
+    "/v1/network-community/{parent_id}/hub-assignments": {
+      "post": {
+        "tags": [
+          "network-community"
+        ],
+        "summary": "Assign Hubs",
+        "description": "Put shops (by shop number) into a messaging hub in one go. HQ admins only; previews unless dry_run is false.",
+        "operationId": "assign_hubs_v1_network_community__parent_id__hub_assignments_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Parent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HubAssignment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/network-community/{parent_id}/announcements/{announcement_id}/receipts": {
       "get": {
         "tags": [
@@ -33454,6 +33511,35 @@
         ],
         "title": "HqSettingsPayload"
       },
+      "HubAssignment": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "maxLength": 8,
+            "title": "State"
+          },
+          "shop_numbers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Shop Numbers"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "shop_numbers"
+        ],
+        "title": "HubAssignment"
+      },
       "HubSend": {
         "properties": {
           "body": {
@@ -37627,6 +37713,28 @@
             ],
             "title": "Region Code"
           },
+          "messaging_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messaging State"
+          },
+          "messaging_hub": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messaging Hub"
+          },
           "plan_code": {
             "type": "string",
             "title": "Plan Code"
@@ -37842,6 +37950,18 @@
             "type": "boolean",
             "title": "Clear Region",
             "default": false
+          },
+          "messaging_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messaging State"
           },
           "shop_email": {
             "anyOf": [

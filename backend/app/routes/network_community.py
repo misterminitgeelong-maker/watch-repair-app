@@ -15,6 +15,7 @@ from ..database import unscoped_session
 from ..dependencies import AuthContext, get_auth_context
 from ..models import NetworkMessage, ParentAccount, Region, Tenant, TenantEventLog, User
 from ..models.network_community import AnnouncementReceipt, NetworkAnnouncement, StateHubMessage, StateHubRead, NetworkMessageAttachment
+from ..messaging_hubs import HUB_NONE, STATES, hub_for, state_code  # noqa: F401  (re-exported)
 from ..parent_network import (
     parent_region_scope, parent_role_for_user, parents_for_user, sites_for_parent, sites_for_tenant,
 )
@@ -22,25 +23,10 @@ from .network_messages import _label, _own_context, _attachments, _attachments_b
 
 router = APIRouter(prefix="/v1/network-community", tags=["network-community"])
 ANNOUNCEMENT_EVENT = "network_announcement"
-STATES = {
-    "VIC": "Victoria", "NSW": "New South Wales", "QLD": "Queensland",
-    "WA": "Western Australia", "SA": "South Australia", "TAS": "Tasmania",
-    "ACT": "Australian Capital Territory", "NT": "Northern Territory", "NZ": "New Zealand",
-}
-
-
-def state_code(value):
-    value = re.sub(r"\s+", " ", (value or "").strip().upper())
-    if value in {name.upper(): code for code, name in STATES.items()}:
-        return next(code for code, name in STATES.items() if name.upper() == value)
-    match = re.match(r"^(VIC|NSW|QLD|WA|SA|TAS|ACT|NT|NZ)(?:$|[\s_-])", value)
-    return match.group(1) if match else None
-
 
 def _site_state(session, site):
     region = session.get(Region, site.region_id) if site.region_id else None
-    tenant = session.get(Tenant, site.tenant_id)
-    return state_code(region.code if region else (tenant.minit_region if tenant else None))
+    return hub_for(site, session.get(Tenant, site.tenant_id), region)
 
 
 def _context(session, auth, parent_id):
@@ -134,6 +120,12 @@ class AnnouncementUpdate(BaseModel):
     category: str | None = None
     pinned: bool | None = None
     requires_confirmation: bool | None = None
+
+
+class HubAssignment(BaseModel):
+    state: str = Field(max_length=8)  # a state code, NONE, or AUTO to go back to automatic
+    shop_numbers: list[str] = Field(min_length=1, max_length=500)
+    dry_run: bool = True
 
 
 class ReadBody(BaseModel):
@@ -464,6 +456,38 @@ def hub_delete(parent_id: UUID, code: str, message_id: UUID,
     session.commit()
 
 
+@router.post("/{parent_id}/hub-assignments")
+def assign_hubs(parent_id: UUID, body: HubAssignment,
+                auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
+    """Put shops (by shop number) into a messaging hub in one go. HQ admins only; previews unless dry_run is false."""
+    ctx = _context(session, auth, parent_id)
+    if not ctx[4]:
+        raise HTTPException(403, "Only HQ admins can assign hubs")
+    wanted = body.state.strip().upper()
+    if wanted == "AUTO":
+        wanted = None
+    elif wanted != HUB_NONE and wanted not in STATES:
+        raise HTTPException(400, "Choose a state hub, NONE, or AUTO")
+    numbers = {n.strip() for n in body.shop_numbers if n.strip()}
+    by_number = {}
+    for site in sites_for_parent(session, parent_id):
+        tenant = session.get(Tenant, site.tenant_id)
+        if tenant and tenant.shop_number in numbers:
+            by_number.setdefault(tenant.shop_number, []).append((site, tenant))
+    changed, unchanged = [], []
+    for number, matches in by_number.items():
+        for site, tenant in matches:
+            row = {"shop_number": number, "name": _label(tenant), "from": site.messaging_state, "to": wanted}
+            (unchanged if site.messaging_state == wanted else changed).append(row)
+            if not body.dry_run and site.messaging_state != wanted:
+                site.messaging_state = wanted
+                session.add(site)
+    if not body.dry_run:
+        session.commit()
+    return {"dry_run": body.dry_run, "changed": changed, "unchanged": unchanged,
+            "not_found": sorted(numbers - set(by_number))}
+
+
 def _audience_sites(session, parent_id, state):
     """Active shop sites an announcement reaches (Support office sites are not an audience)."""
     sites = [x for x in sites_for_parent(session, parent_id) if x.network_role != "hq"]
@@ -475,7 +499,7 @@ def _audience_sites(session, parent_id, state):
         if not tenant or not tenant.is_active or tenant.merged_into_tenant_id:
             continue
         region = regions.get(site.region_id) if site.region_id else None
-        code = state_code(region.code if region else tenant.minit_region)
+        code = hub_for(site, tenant, region)
         if state is None or code == state:
             out.append((site, tenant, code))
     return out
@@ -521,7 +545,7 @@ def state_gaps(parent_id: UUID, auth: AuthContext = Depends(get_auth_context), s
     if not ctx[4]:
         raise HTTPException(403, "Only HQ admins can see this list")
     shops = [{"tenant_id": tenant.id, "name": _label(tenant), "region_value": tenant.minit_region}
-             for _, tenant, code in _audience_sites(session, parent_id, None) if code is None]
+             for site, tenant, code in _audience_sites(session, parent_id, None) if code is None and site.messaging_state != HUB_NONE]
     shops.sort(key=lambda s: s["name"].lower())
     return {"shops": shops}
 
