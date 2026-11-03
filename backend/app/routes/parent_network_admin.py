@@ -60,6 +60,8 @@ from .parent_accounts import (
     normalize_shop_contact_phone,
 )
 
+from ..support_access import MIN_REASON_CHARS, clean_reason, owner_has_own_login, require_support_access
+
 router = APIRouter(
     prefix="/v1/parent-accounts",
     tags=["parent-network"],
@@ -112,10 +114,13 @@ def enter_linked_shop(
     if owner is None:
         raise HTTPException(status_code=400, detail="This shop has no active owner account")
 
+    # Consent: a shop that has taken its own login must have allowed support access.
+    require_support_access(session, tenant, owner)
     # The reason is what makes this accountable rather than merely audited:
     # it lands in the shop's own inbox, so the shop sees HQ was in and why.
-    reason = (payload.reason if payload else None) or ""
-    reason = " ".join(reason.split())[:300]
+    reason = clean_reason(payload.reason if payload else None)
+    if owner_has_own_login(session, owner) and len(reason) < MIN_REASON_CHARS:
+        raise HTTPException(status_code=422, detail="Say why you are going in (at least a few words).")
     reason_suffix = f" — {reason}" if reason else ""
     session.add(
         TenantEventLog(

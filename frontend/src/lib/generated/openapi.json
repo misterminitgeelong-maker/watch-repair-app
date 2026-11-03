@@ -22834,6 +22834,360 @@
         ]
       }
     },
+    "/v1/auto-key-jobs/{job_id}/id-capture/consent-text": {
+      "get": {
+        "tags": [
+          "auto-key-id-capture"
+        ],
+        "summary": "Get Consent Text",
+        "operationId": "get_consent_text_v1_auto_key_jobs__job_id__id_capture_consent_text_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdConsentTextRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auto-key-jobs/{job_id}/id-capture": {
+      "get": {
+        "tags": [
+          "auto-key-id-capture"
+        ],
+        "summary": "Get Id Capture",
+        "operationId": "get_id_capture_v1_auto_key_jobs__job_id__id_capture_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "reveal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Reveal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdCaptureRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "auto-key-id-capture"
+        ],
+        "summary": "Save Id Capture",
+        "operationId": "save_id_capture_v1_auto_key_jobs__job_id__id_capture_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdCaptureWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdCaptureRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auto-key-jobs/{job_id}/id-capture/access-log": {
+      "get": {
+        "tags": [
+          "auto-key-id-capture"
+        ],
+        "summary": "List Id Access Log",
+        "operationId": "list_id_access_log_v1_auto_key_jobs__job_id__id_capture_access_log_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IdAccessLogRead"
+                  },
+                  "title": "Response List Id Access Log V1 Auto Key Jobs  Job Id  Id Capture Access Log Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/shop/support-access": {
+      "get": {
+        "tags": [
+          "shop-compliance"
+        ],
+        "summary": "Get Support Access",
+        "operationId": "get_support_access_v1_shop_support_access_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportAccessRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "shop-compliance"
+        ],
+        "summary": "Set Support Access",
+        "operationId": "set_support_access_v1_shop_support_access_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportAccessUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportAccessRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/shop/id-capture-setting": {
+      "get": {
+        "tags": [
+          "shop-compliance"
+        ],
+        "summary": "Get Id Capture Setting",
+        "operationId": "get_id_capture_setting_v1_shop_id_capture_setting_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdCaptureSettingRead"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "shop-compliance"
+        ],
+        "summary": "Set Id Capture Setting",
+        "operationId": "set_id_capture_setting_v1_shop_id_capture_setting_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdCaptureSettingRead"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdCaptureSettingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/engraving/events": {
       "get": {
         "tags": [
@@ -30190,6 +30544,279 @@
           "display_name"
         ],
         "title": "HqSettingsPayload"
+      },
+      "IdAccessLogRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "user_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Email"
+          },
+          "support_actor_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Actor User Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "action",
+          "created_at"
+        ],
+        "title": "IdAccessLogRead"
+      },
+      "IdCaptureRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "auto_key_job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Auto Key Job Id"
+          },
+          "id_type": {
+            "type": "string",
+            "title": "Id Type"
+          },
+          "id_number_masked": {
+            "type": "string",
+            "title": "Id Number Masked"
+          },
+          "id_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Number"
+          },
+          "id_issuer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Issuer"
+          },
+          "name_on_id": {
+            "type": "string",
+            "title": "Name On Id"
+          },
+          "proof_of_ownership_type": {
+            "type": "string",
+            "title": "Proof Of Ownership Type"
+          },
+          "proof_of_ownership_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proof Of Ownership Notes"
+          },
+          "consent_text_version": {
+            "type": "string",
+            "title": "Consent Text Version"
+          },
+          "consent_given_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Consent Given At"
+          },
+          "consent_method": {
+            "type": "string",
+            "title": "Consent Method"
+          },
+          "verified_by_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Verified By User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "auto_key_job_id",
+          "id_type",
+          "id_number_masked",
+          "name_on_id",
+          "proof_of_ownership_type",
+          "consent_text_version",
+          "consent_given_at",
+          "consent_method",
+          "verified_by_user_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "IdCaptureRead"
+      },
+      "IdCaptureSettingRead": {
+        "properties": {
+          "require_id_capture": {
+            "type": "boolean",
+            "title": "Require Id Capture"
+          }
+        },
+        "type": "object",
+        "required": [
+          "require_id_capture"
+        ],
+        "title": "IdCaptureSettingRead"
+      },
+      "IdCaptureWrite": {
+        "properties": {
+          "id_type": {
+            "type": "string",
+            "enum": [
+              "drivers_licence",
+              "passport",
+              "other_photo_id"
+            ],
+            "title": "Id Type"
+          },
+          "id_number": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 3,
+            "title": "Id Number"
+          },
+          "id_issuer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Issuer"
+          },
+          "name_on_id": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Name On Id"
+          },
+          "proof_of_ownership_type": {
+            "type": "string",
+            "enum": [
+              "registration",
+              "purchase_papers",
+              "insurance",
+              "other"
+            ],
+            "title": "Proof Of Ownership Type"
+          },
+          "proof_of_ownership_notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proof Of Ownership Notes"
+          },
+          "consent_given": {
+            "type": "boolean",
+            "title": "Consent Given"
+          },
+          "consent_method": {
+            "type": "string",
+            "enum": [
+              "verbal",
+              "signed"
+            ],
+            "title": "Consent Method"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_type",
+          "id_number",
+          "name_on_id",
+          "proof_of_ownership_type",
+          "consent_given",
+          "consent_method"
+        ],
+        "title": "IdCaptureWrite"
+      },
+      "IdConsentTextRead": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "text"
+        ],
+        "title": "IdConsentTextRead"
       },
       "ImportSummaryResponse": {
         "properties": {
@@ -43792,6 +44419,51 @@
           "created_at"
         ],
         "title": "StocktakeSessionRead"
+      },
+      "SupportAccessRead": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "SupportAccessRead"
+      },
+      "SupportAccessUpdate": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "hours": {
+            "type": "integer",
+            "maximum": 168.0,
+            "minimum": 1.0,
+            "title": "Hours",
+            "default": 24
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "SupportAccessUpdate"
       },
       "TenantBootstrap": {
         "properties": {

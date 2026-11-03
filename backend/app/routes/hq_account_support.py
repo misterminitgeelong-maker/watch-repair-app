@@ -19,6 +19,7 @@ from .. import email_client
 from .. import sms as sms_service
 from ..config import settings
 from ..database import unscoped_session
+from ..support_access import require_support_access
 from ..dependencies import AuthContext, invalidate_auth_cache, require_feature, require_owner
 from ..models import (
     EmailLog,
@@ -267,6 +268,8 @@ def change_account_email(
     hq_user, parent = _parent_for_write(session, auth)
     tenant, target = _target_user(session, parent, tenant_id, user_id)
     _require_not_hq_login(session, target)
+    # Changing a login email is a takeover path, so the shop must have allowed support access.
+    require_support_access(session, tenant, target)
     new_email = body.email.strip().lower()
     if not new_email or "@" not in new_email:
         raise HTTPException(status_code=400, detail="A valid email is required")

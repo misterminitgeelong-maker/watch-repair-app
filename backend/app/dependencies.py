@@ -335,6 +335,9 @@ def get_auth_context(
     """
     ctx = _resolve_auth_context(request, credentials, session)
     scope_to_tenant(session, ctx.tenant_id)
+    # Audit rows written in this request are tagged when a supporter is acting as the owner.
+    if ctx.support_actor_user_id is not None:
+        session.info["support_actor_user_id"] = ctx.support_actor_user_id
     return ctx
 
 

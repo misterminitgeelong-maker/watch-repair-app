@@ -4280,6 +4280,19 @@ export const getShopIdentity = () =>
 export const updateShopIdentity = (data: Partial<Omit<ShopIdentity, 'name' | 'business_address'>>) =>
   api.patch<ShopIdentity>('/settings/shop-identity', data)
 
+export interface SupportAccess { enabled: boolean; until?: string | null }
+
+export const getSupportAccess = () => api.get<SupportAccess>('/shop/support-access')
+
+export const setSupportAccess = (enabled: boolean, hours = 24) =>
+  api.put<SupportAccess>('/shop/support-access', { enabled, hours })
+
+export const getIdCaptureSetting = () =>
+  api.get<{ require_id_capture: boolean }>('/shop/id-capture-setting')
+
+export const setIdCaptureSetting = (require_id_capture: boolean) =>
+  api.put<{ require_id_capture: boolean }>('/shop/id-capture-setting', { require_id_capture })
+
 // ── Customer Portal (public, no auth header) ──────────────────────────────────
 export interface PortalLoyalty {
   tier_name: string
