@@ -90,6 +90,10 @@ const ShoeApprovePage = lazyPage(() => import('@/pages/ShoeApprovePage'))
 const JobPoolPage = lazyPage(() => import('@/pages/JobPoolPage'))
 const PublicIntakePage = lazyPage(() => import('@/pages/PublicIntakePage'))
 const KeyEnquiryPage = lazyPage(() => import('@/pages/KeyEnquiryPage'))
+const EngravingEventsPage = lazyPage(() => import('@/pages/engraving/EngravingEventsPage'))
+const EngravingQueuePage = lazyPage(() => import('@/pages/engraving/EngravingQueuePage'))
+const PublicEngravingOrderPage = lazyPage(() => import('@/pages/engraving/PublicEngravingOrderPage'))
+const PublicEngravingStatusPage = lazyPage(() => import('@/pages/engraving/PublicEngravingStatusPage'))
 const CustomerOrdersPage = lazyPage(() => import('@/pages/CustomerOrdersPage'))
 const ShopMobileBookingsPage = lazyPage(() => import('@/pages/ShopMobileBookingsPage'))
 const ShopOwnerInvitePage = lazyPage(() => import('@/pages/ShopOwnerInvitePage'))
@@ -178,6 +182,7 @@ function LocationBoundary({ children }: { children: React.ReactNode }) {
     '/customer-orders',
     '/shop-mobile-bookings',
     '/toolkit',
+    '/engraving',
     '/minit',
   ].some((prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`))
   // The key stays stable across shop routes on purpose: it stops AppShell
@@ -230,6 +235,8 @@ export default function App() {
             <Route path="/hq-invite/:token" element={<HqOwnerInvitePage />} />
             <Route path="/intake" element={<PublicIntakePage />} />
             <Route path="/key-enquiry/:ingestId" element={<KeyEnquiryPage />} />
+            <Route path="/engrave/o/:statusToken" element={<PublicEngravingStatusPage />} />
+            <Route path="/engrave/:token" element={<PublicEngravingOrderPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupPage />} />
             <Route path="/signup/checkout" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupCheckoutPage />} />
@@ -252,6 +259,8 @@ export default function App() {
               <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />
               <Route path="stocktakes/:id/summary" element={<StocktakeSummaryPage />} />
               <Route path="database" element={<DatabasePage />} />
+              <Route path="engraving" element={<EngravingEventsPage />} />
+              <Route path="engraving/:eventId" element={<EngravingQueuePage />} />
               <Route path="subscription-required" element={<SubscriptionRequiredPage />} />
               <Route path="accounts" element={<AccountsPage />} />
               <Route

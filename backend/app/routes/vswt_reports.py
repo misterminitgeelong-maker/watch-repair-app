@@ -50,6 +50,7 @@ from ..vswt_workbook import build_all_weeks_workbook
 from ..vswt_kpis import (
     CATEGORY_SALES_KEYS,
     COLUMN_MAP,
+    METRIC_COLUMN_MAP,
     KPI_BY_KEY,
     KPI_DEFS,
     KPI_GROUPS,
@@ -65,6 +66,7 @@ router = APIRouter(prefix="/v1/reports/vswt", tags=["vswt"])
 # Per-workbook cap; HQ exports often exceed 10 MB and typically stay under 20 MB.
 MAX_VSWT_WORKBOOK_BYTES = 25 * 1024 * 1024
 
+_METRIC_FIELDS = {name for name, _ in METRIC_COLUMN_MAP}
 _DATA_START_ROW = 6  # 1-based Excel row; shop rows start here
 _WEEK_NUMBER_ROW = 3  # 1-based Excel row: "Week Number:" label in col A, value in col C
 _WEEK_NUMBER_COL = 3  # column C
@@ -117,6 +119,13 @@ def _parse_vswt_workbook(raw_bytes: bytes, filename: str) -> dict[str, Any]:
         row: dict[str, Any] = {}
         for field, col in COLUMN_MAP:
             value = clean_cell(r[col - 1]) if len(r) >= col else None
+            # Metric columns are numeric in the DB; stray text (e.g. a lone space or "n/a")
+            # would otherwise 500 at commit time, so treat it as a blank.
+            if field in _METRIC_FIELDS and isinstance(value, str):
+                try:
+                    value = float(value.replace(",", "").strip())
+                except ValueError:
+                    value = None
             row[field] = value
         sn = row.get("shop_number")
         if isinstance(sn, float) and sn.is_integer():

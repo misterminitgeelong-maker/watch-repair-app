@@ -1076,6 +1076,24 @@ class AutoKeyJob(SQLModel, table=True):
     callout_inclusive: Optional[bool] = Field(default=None)
     custom_fields_json: Optional[str] = None
 
+
+@event.listens_for(AutoKeyJob, "before_insert")
+@event.listens_for(AutoKeyJob, "before_update")
+def _stamp_auto_key_work_completed_at(_mapper, _connection, target: AutoKeyJob) -> None:
+    """KPI "jobs completed" counts work_completed_at, so stamp it on any route into a done status.
+
+    Covers aliases (completed, collected), jumping straight to invoice_paid, bulk status
+    changes and payment webhooks, none of which go through the single-job status endpoint.
+    """
+    from ..auto_key_status import canonical_auto_key_status
+
+    if target.work_completed_at is None and canonical_auto_key_status(target.status or "") in {
+        "work_completed",
+        "invoice_paid",
+    }:
+        target.work_completed_at = datetime.now(timezone.utc)
+
+
 class OemKeyPricing(SQLModel, table=True):
     """Global OEM key price catalogue (Supabase-managed)."""
     __tablename__ = "oem_key_pricing"

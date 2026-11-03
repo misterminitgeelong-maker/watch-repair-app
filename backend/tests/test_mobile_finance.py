@@ -207,26 +207,29 @@ def _seed(headers, tenant_id) -> dict:
         assert r.status_code == 201, r.text
         return UUID(r.json()["id"])
 
-    d1 = month_start  # first day of this month (always in the period, always <= today)
-    paid_now = job("Paid this month", "invoice_paid", 30000, _local(d1, 9))
-    unpaid_now = job("Done unpaid", "work_completed", 20000, _local(d1, 11))
-    booked_only = job("Booked, not done", "booking_confirmed", 15000, _local(d1, 14))
+    # First day of this month. Hours are shifted 8h earlier so every seeded event is already
+    # in the past even when the suite runs on the 1st (otherwise future paid_at stamps
+    # count as unpaid and the outstanding figure is wrong before mid-afternoon).
+    d1 = month_start
+    paid_now = job("Paid this month", "invoice_paid", 30000, _local(d1, 1))
+    unpaid_now = job("Done unpaid", "work_completed", 20000, _local(d1, 3))
+    booked_only = job("Booked, not done", "booking_confirmed", 15000, _local(d1, 6))
     paid_prev = job("Paid last month", "invoice_paid", 50000, _local(prev_month_end, 9))
-    lost = job("No go", "no_go", 99999, _local(d1, 16))
+    lost = job("No go", "no_go", 99999, _local(d1, 8))
     with Session(engine) as s:
-        for jid, when in ((paid_now, _local(d1, 12)), (unpaid_now, _local(d1, 13)), (paid_prev, _local(prev_month_end, 12))):
+        for jid, when in ((paid_now, _local(d1, 4)), (unpaid_now, _local(d1, 5)), (paid_prev, _local(prev_month_end, 12))):
             j = s.get(AutoKeyJob, jid)
             j.work_completed_at = when.replace(tzinfo=None)
             s.add(j)
-        s.add(AutoKeyInvoice(tenant_id=tenant_id, auto_key_job_id=paid_now, invoice_number="F-1", status="paid", total_cents=30000, created_at=_local(d1, 12).replace(tzinfo=None), paid_at=_local(d1, 15).replace(tzinfo=None), payment_method="eftpos"))
-        s.add(AutoKeyInvoice(tenant_id=tenant_id, auto_key_job_id=unpaid_now, invoice_number="F-2", status="unpaid", total_cents=20000, created_at=_local(d1, 13).replace(tzinfo=None)))
+        s.add(AutoKeyInvoice(tenant_id=tenant_id, auto_key_job_id=paid_now, invoice_number="F-1", status="paid", total_cents=30000, created_at=_local(d1, 4).replace(tzinfo=None), paid_at=_local(d1, 7).replace(tzinfo=None), payment_method="eftpos"))
+        s.add(AutoKeyInvoice(tenant_id=tenant_id, auto_key_job_id=unpaid_now, invoice_number="F-2", status="unpaid", total_cents=20000, created_at=_local(d1, 5).replace(tzinfo=None)))
         s.add(AutoKeyInvoice(tenant_id=tenant_id, auto_key_job_id=paid_prev, invoice_number="F-0", status="paid", total_cents=50000, created_at=_local(prev_month_end, 12).replace(tzinfo=None), paid_at=_local(prev_month_end, 13).replace(tzinfo=None)))
         # Quotes: two sent this month, one approved.
-        s.add(AutoKeyQuote(tenant_id=tenant_id, auto_key_job_id=paid_now, status="approved", total_cents=30000, sent_at=_local(d1, 8).replace(tzinfo=None), created_at=_local(d1, 8).replace(tzinfo=None)))
-        s.add(AutoKeyQuote(tenant_id=tenant_id, auto_key_job_id=booked_only, status="sent", total_cents=15000, sent_at=_local(d1, 8).replace(tzinfo=None), created_at=_local(d1, 8).replace(tzinfo=None)))
+        s.add(AutoKeyQuote(tenant_id=tenant_id, auto_key_job_id=paid_now, status="approved", total_cents=30000, sent_at=_local(d1, 0).replace(tzinfo=None), created_at=_local(d1, 0).replace(tzinfo=None)))
+        s.add(AutoKeyQuote(tenant_id=tenant_id, auto_key_job_id=booked_only, status="sent", total_cents=15000, sent_at=_local(d1, 0).replace(tzinfo=None), created_at=_local(d1, 0).replace(tzinfo=None)))
         # Real transition events for the paid job: en route 09:00, on site 09:30, completed 12:00 -> 150 min on site, 30 min travel.
-        s.add(TenantEventLog(tenant_id=tenant_id, entity_type="auto_key_job", entity_id=paid_now, event_type="auto_key_status_changed", event_summary="Status changed from Booking Confirmed to En Route", created_at=_local(d1, 9).replace(tzinfo=None)))
-        s.add(TenantEventLog(tenant_id=tenant_id, entity_type="auto_key_job", entity_id=paid_now, event_type="auto_key_status_changed", event_summary="Status changed from En Route to On Site", created_at=(_local(d1, 9) + timedelta(minutes=30)).replace(tzinfo=None)))
+        s.add(TenantEventLog(tenant_id=tenant_id, entity_type="auto_key_job", entity_id=paid_now, event_type="auto_key_status_changed", event_summary="Status changed from Booking Confirmed to En Route", created_at=_local(d1, 1).replace(tzinfo=None)))
+        s.add(TenantEventLog(tenant_id=tenant_id, entity_type="auto_key_job", entity_id=paid_now, event_type="auto_key_status_changed", event_summary="Status changed from En Route to On Site", created_at=(_local(d1, 1) + timedelta(minutes=30)).replace(tzinfo=None)))
         # Commission rules for the tech: 20% on everything.
         u = s.get(User, UUID(tech))
         u.mobile_commission_rules_json = '{"enabled": true, "retainer_cents_per_period": 0, "rates_bp": {"shop_referred": 2000, "tech_sourced": 2000, "minit_sourced": 2000}, "eligible_job_statuses": ["invoice_paid", "work_completed"]}'
@@ -259,8 +262,9 @@ def test_finance_report_this_month():
     assert m["contribution"]["current"] == 24000
     assert m["aov"]["current"] == 30000
     assert m["jobs_completed"]["current"] == 2
-    assert m["jobs_per_working_day"]["sample"] == body["period"]["working_days"] > 0
-    assert m["jobs_per_working_day"]["current"] == pytest.approx(round(2 / body["period"]["working_days"], 2))
+    assert m["jobs_per_working_day"]["sample"] == body["period"]["working_days"]
+    if body["period"]["working_days"] > 0:  # zero when the 1st is a Sunday
+        assert m["jobs_per_working_day"]["current"] == pytest.approx(round(2 / body["period"]["working_days"], 2))
     assert m["quotes_sent"]["current"] == 2
     # Definitions travel with the numbers.
     assert "gross margin" in m["contribution"]["definition"].lower()
@@ -286,7 +290,8 @@ def test_finance_report_this_month():
     tech = next(t for t in body["technicians"] if t["user_id"] == ids["tech"])
     assert tech["jobs_completed"] == 2 and tech["collected_cents"] == 30000 and tech["commission_cents"] == 6000
     assert tech["on_site"]["count"] == 1 and tech["on_site"]["avg_minutes"] == 150.0
-    assert tech["utilisation_pct"] is not None
+    if body["period"]["working_days"] > 0:  # no working days when the 1st is a Sunday
+        assert tech["utilisation_pct"] is not None
 
     d = body["durations"]
     assert d["on_site"] == {"count": 1, "avg_minutes": 150.0, "median_minutes": 150.0, "p90_minutes": 150.0}
