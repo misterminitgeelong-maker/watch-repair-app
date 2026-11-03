@@ -1275,6 +1275,34 @@ def notify_shop_mobile_booking_moved_to_pool(
     return sid is not None
 
 
+def notify_support_office_booking_unanswered(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    customer_name: str,
+    suburb: str | None,
+    offers: int,
+) -> bool:
+    """Tell the Support office a shop booking went unanswered by every operator offered
+    and was opened to the Dispatch Pool."""
+    where = f" in {suburb.title()}" if suburb else ""
+    body = (
+        f"Mainspring: {shop_name}'s booking for {customer_name.strip()}{where} wasn't picked up by "
+        f"{offers} operator(s) and is now in the Dispatch Pool. You may want to chase it."
+    )
+    sid, _status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_mobile_booking_unanswered",
+    )
+    return sid is not None
+
+
 def notify_pool_jobs_waiting(
     session: Session,
     *,

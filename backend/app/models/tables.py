@@ -429,6 +429,10 @@ class ShopMobileBookingRequest(SQLModel, table=True):
     job_lng: Optional[float] = None
     #: Set once this moved to the pool — the claimable IntakeJob any nearby operator can take.
     pool_intake_job_id: Optional[UUID] = Field(default=None, foreign_key="intakejob.id")
+    #: How many operators this booking has been offered to (the first plus any re-offers).
+    offer_count: int = Field(default=1)
+    #: JSON list of operator tenant ids already offered, so a re-offer never repeats one.
+    offered_operator_ids_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ParentAccountEventLog(SQLModel, table=True):
