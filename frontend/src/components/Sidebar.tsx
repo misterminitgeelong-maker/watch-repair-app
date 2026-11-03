@@ -55,6 +55,8 @@ type NavLinkItem = {
 const bookingOnlyNav: NavLinkItem[] = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile', icon: KeyRound, feature: 'shop_mobile_booking' },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Booking updates and messages from the Support office' },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, title: 'Message other shops, operators and the Support office' },
   { to: '/accounts', label: 'Account', icon: UserCog },
 ]
 

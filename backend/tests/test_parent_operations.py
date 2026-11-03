@@ -434,6 +434,13 @@ def test_hq_can_message_shop_inbox():
     body = res.json()
     assert body["sent"] == 1 and body["skipped"] == [stranger["tenant_id"]]
 
+    again = client.post(
+        "/v1/parent-accounts/me/operations/shop-messages",
+        headers=ctx["hq"],
+        json={"tenant_ids": [shop_id], "message": "Please send us a booking this week"},
+    )
+    assert again.status_code == 200 and again.json()["sent"] == 1
+
     shop_token = _login(ctx["shop_slug"], owner_email)
     inbox = client.get("/v1/inbox", headers=_headers(shop_token)).json()
     msgs = [e for e in inbox if e["event_type"] == "hq_message"]

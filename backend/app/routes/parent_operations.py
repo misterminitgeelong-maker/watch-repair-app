@@ -1125,6 +1125,15 @@ def send_shop_messages(
         if shop is None:
             skipped.append(tid)
             continue
+        summary = f"Message from {parent.name}: {text}"
+        # Sending the same nudge again replaces it rather than stacking duplicates in the Inbox.
+        for old_ev in session.exec(
+            select(TenantEventLog)
+            .where(TenantEventLog.tenant_id == shop.id)
+            .where(TenantEventLog.event_type == "hq_message")
+            .where(TenantEventLog.event_summary == summary)
+        ).all():
+            session.delete(old_ev)
         session.add(
             TenantEventLog(
                 tenant_id=shop.id,
@@ -1132,7 +1141,7 @@ def send_shop_messages(
                 actor_email=user.email,
                 entity_type="hq_message",
                 event_type="hq_message",
-                event_summary=f"Message from {parent.name}: {text}",
+                event_summary=summary,
             )
         )
         sent += 1

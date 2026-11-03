@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  minitBookingOnlyAllowedPath,
   defaultHomePathForMinit,
   effectiveMinitPlanCode,
   isMinitRestrictedUi,
@@ -104,5 +105,14 @@ describe('isMinitRestrictedUi', () => {
     const restricted = isMinitRestrictedUi('minit', 'basic_auto_key', 'minit-mobile-3904')
     const home = restricted ? defaultHomePathForMinit('basic_auto_key', 'minit-mobile-3904') : '/dashboard'
     expect(home).toBe('/dashboard')
+  })
+})
+
+describe('minitBookingOnlyAllowedPath', () => {
+  it('lets booking-only shops reach booking, Inbox, Messages and Account', () => {
+    for (const path of ['/shop-mobile-bookings', '/inbox', '/messages', '/accounts']) {
+      expect(minitBookingOnlyAllowedPath(path)).toBe(true)
+    }
+    expect(minitBookingOnlyAllowedPath('/customers')).toBe(false)
   })
 })
