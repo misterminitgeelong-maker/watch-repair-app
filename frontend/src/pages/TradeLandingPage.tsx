@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import StickyMobileCta from '@/components/StickyMobileCta'
 import { Link } from 'react-router-dom'
 import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
 
@@ -96,11 +97,12 @@ export default function TradeLandingPage({ trade }: { trade: keyof typeof TRADES
           {[
             ['/', 'All trades'], ['/watch-repair-software', 'Watch repair software'],
             ['/shoe-repair-software', 'Shoe repair software'], ['/mobile-services', 'Mobile locksmith software'],
-            ['/pricing', 'Pricing'], ['/privacy', 'Privacy'],
+            ['/pricing', 'Pricing'], ['/privacy', 'Privacy'], ['/terms', 'Terms'],
           ].map(([path, label]) => <Link key={path} to={path} className="inline-flex min-h-11 items-center underline" style={{ color: MKT.textBody }}>{label}</Link>)}
           <a href="mailto:admin@mainspring.au" className="inline-flex min-h-11 items-center underline" style={{ color: MKT.textBody }}>Contact us</a>
         </nav>
       </footer>
+      <StickyMobileCta />
     </div>
   )
 }

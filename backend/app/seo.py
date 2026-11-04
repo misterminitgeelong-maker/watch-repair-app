@@ -15,7 +15,7 @@ import json
 import re
 
 SITE = "https://mainspring.au"
-SHARE_IMAGE = f"{SITE}/icon-512.png"
+SHARE_IMAGE = f"{SITE}/og-image.png"
 
 # path -> (title, description). Titles stay under ~60 characters, descriptions under ~160.
 PUBLIC_PAGES: dict[str, tuple[str, str]] = {
@@ -62,7 +62,7 @@ TRADE_CONTENT = {
 }
 
 # Public but not worth ranking: keep indexable so links resolve, but no custom tags.
-INDEXABLE_PATHS = {"privacy"}
+INDEXABLE_PATHS = {"privacy", "terms"}
 
 _CONTENT_RE = re.compile(r"<!-- seo-content-start -->.*?<!-- seo-content-end -->", re.S)
 _TITLE_RE = re.compile(r"<title>.*?</title>", re.S)

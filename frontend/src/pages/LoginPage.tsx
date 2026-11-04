@@ -348,6 +348,7 @@ export default function LoginPage() {
         <footer className="ms-login-footer">
           <span>© {new Date().getFullYear()} Mainspring</span>
           <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
         </footer>
       </section>
       <aside className="ms-login-product" aria-label="About Mainspring">
