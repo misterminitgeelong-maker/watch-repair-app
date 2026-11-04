@@ -26,6 +26,7 @@ import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/u
 import { HqStaffCard, REGIONS_QUERY_KEY, RegionsCard, useRegions } from '@/components/minit/MinitNetworkPanels'
 import { AccountSupportModal } from '@/components/minit/AccountSupportModal'
 import { MvMergeModal } from '@/components/minit/MvMergeModal'
+import { DuplicateShopsModal } from '@/components/minit/DuplicateShopsModal'
 import { LoadError } from '@/components/minit/LoadError'
 import { HubAssignmentCard } from '@/components/minit/HubAssignmentCard'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
@@ -269,6 +270,7 @@ export default function MinitAccountsPage() {
   const { data: summary, isLoading: summaryLoading } = useParentAccount()
   const [stageFilter, setStageFilter] = useState<OwnerStage | null>(null)
   const [showMvMerge, setShowMvMerge] = useState(false)
+  const [showDuplicates, setShowDuplicates] = useState(false)
   const {
     data: retailPage,
     isLoading: retailLoading,
@@ -800,6 +802,16 @@ export default function MinitAccountsPage() {
                 Merge MV duplicates
               </Button>
             )}
+            {canEdit && (
+              <Button
+                variant="secondary"
+                className="text-xs px-3 py-1.5"
+                onClick={() => setShowDuplicates(true)}
+                title="Find shop numbers that have more than one record"
+              >
+                Duplicate shop numbers
+              </Button>
+            )}
           </div>
           {operators.map(site => {
             const areaRegion = formatAreaRegion(site.area, site.region)
@@ -857,6 +869,7 @@ export default function MinitAccountsPage() {
       </div>
 
       {showMvMerge && <MvMergeModal onClose={() => setShowMvMerge(false)} />}
+      {showDuplicates && <DuplicateShopsModal onClose={() => setShowDuplicates(false)} />}
 
       {showAdd && (
         <Modal title="Add shop" onClose={() => setShowAdd(false)}>

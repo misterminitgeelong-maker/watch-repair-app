@@ -16378,6 +16378,106 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/duplicate-shops": {
+      "get": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "List Duplicate Shops",
+        "description": "Shop numbers held by more than one active record in this network. Changes nothing.",
+        "operationId": "list_duplicate_shops_v1_parent_accounts_me_duplicate_shops_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "keep",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "default": [],
+              "title": "Keep"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateShopsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/duplicate-shops/retire": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Retire Duplicate Shop",
+        "description": "Retire one duplicate record into the kept one. Nothing is deleted; blocked if it holds real records.",
+        "operationId": "retire_duplicate_shop_v1_parent_accounts_me_duplicate_shops_retire_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateShopRetireRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateShopRetireResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/mv-operators/{tenant_id}": {
       "post": {
         "tags": [
@@ -32314,6 +32414,258 @@
           "token"
         ],
         "title": "DeviceRegister"
+      },
+      "DuplicateShopGroupRead": {
+        "properties": {
+          "shop_number": {
+            "type": "string",
+            "title": "Shop Number"
+          },
+          "suggested_keep": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Suggested Keep"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateShopMemberRead"
+            },
+            "type": "array",
+            "title": "Members"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_number",
+          "suggested_keep"
+        ],
+        "title": "DuplicateShopGroupRead"
+      },
+      "DuplicateShopMemberRead": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          },
+          "plan_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Code"
+          },
+          "network_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Role"
+          },
+          "is_member": {
+            "type": "boolean",
+            "title": "Is Member",
+            "default": false
+          },
+          "reporting_link": {
+            "type": "boolean",
+            "title": "Reporting Link",
+            "default": false
+          },
+          "placeholder": {
+            "type": "boolean",
+            "title": "Placeholder",
+            "default": false
+          },
+          "record_total": {
+            "type": "integer",
+            "title": "Record Total",
+            "default": 0
+          },
+          "records": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Records"
+          },
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateShopUserRead"
+            },
+            "type": "array",
+            "title": "Users"
+          },
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blockers"
+          },
+          "preview_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "name",
+          "slug"
+        ],
+        "title": "DuplicateShopMemberRead"
+      },
+      "DuplicateShopRetireRequest": {
+        "properties": {
+          "keep_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Keep Tenant Id"
+          },
+          "retire_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Retire Tenant Id"
+          },
+          "preview_token": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Preview Token"
+          },
+          "move_user_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Move User Ids"
+          },
+          "user_email_overrides": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "type": "object",
+            "title": "User Email Overrides"
+          }
+        },
+        "type": "object",
+        "required": [
+          "keep_tenant_id",
+          "retire_tenant_id",
+          "preview_token"
+        ],
+        "title": "DuplicateShopRetireRequest"
+      },
+      "DuplicateShopRetireResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "users_moved": {
+            "type": "integer",
+            "title": "Users Moved",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "message"
+        ],
+        "title": "DuplicateShopRetireResponse"
+      },
+      "DuplicateShopUserRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role"
+        ],
+        "title": "DuplicateShopUserRead"
+      },
+      "DuplicateShopsResponse": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateShopGroupRead"
+            },
+            "type": "array",
+            "title": "Groups"
+          }
+        },
+        "type": "object",
+        "title": "DuplicateShopsResponse"
       },
       "EngravingBatchCreate": {
         "properties": {

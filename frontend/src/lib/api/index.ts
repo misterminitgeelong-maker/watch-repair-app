@@ -4935,6 +4935,30 @@ export interface MvMergePair {
 }
 export const runMvMerge = (pairs: MvMergePair[]) =>
   api.post<{ results: MvMergeResult[] }>('/parent-accounts/me/mv-merge', { pairs })
+export interface DuplicateShopMember {
+  tenant_id: string
+  name: string
+  slug: string
+  shop_number: string | null
+  network_role: string | null
+  is_member: boolean
+  reporting_link: boolean
+  record_total: number
+  users: { id: string; email: string; full_name: string | null; role: string }[]
+  blockers: string[]
+  preview_token: string | null
+}
+export interface DuplicateShopGroup {
+  shop_number: string
+  suggested_keep: string
+  members: DuplicateShopMember[]
+}
+export const getDuplicateShops = (keep: string[] = []) =>
+  api.get<{ groups: DuplicateShopGroup[] }>('/parent-accounts/me/duplicate-shops', { params: { keep }, paramsSerializer: { indexes: null } })
+export const retireDuplicateShop = (data: {
+  keep_tenant_id: string; retire_tenant_id: string; preview_token: string
+  move_user_ids: string[]; user_email_overrides: Record<string, string>
+}) => api.post<{ ok: boolean; message: string; users_moved: number }>('/parent-accounts/me/duplicate-shops/retire', data)
 export const updateMvOperator = (tenantId: string, data: {
   preview_token: string; activate_dispatch: boolean; dispatch_phone?: string
 }) => api.post<{ message: string }>(`/parent-accounts/me/mv-operators/${tenantId}`, data)

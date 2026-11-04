@@ -5193,6 +5193,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/duplicate-shops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Duplicate Shops
+         * @description Shop numbers held by more than one active record in this network. Changes nothing.
+         */
+        get: operations["list_duplicate_shops_v1_parent_accounts_me_duplicate_shops_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/duplicate-shops/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retire Duplicate Shop
+         * @description Retire one duplicate record into the kept one. Nothing is deleted; blocked if it holds real records.
+         */
+        post: operations["retire_duplicate_shop_v1_parent_accounts_me_duplicate_shops_retire_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/mv-operators/{tenant_id}": {
         parameters: {
             query?: never;
@@ -10215,6 +10255,118 @@ export interface components {
              * @default android
              */
             platform: string;
+        };
+        /** DuplicateShopGroupRead */
+        DuplicateShopGroupRead: {
+            /** Shop Number */
+            shop_number: string;
+            /**
+             * Suggested Keep
+             * Format: uuid
+             */
+            suggested_keep: string;
+            /** Members */
+            members?: components["schemas"]["DuplicateShopMemberRead"][];
+        };
+        /** DuplicateShopMemberRead */
+        DuplicateShopMemberRead: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Plan Code */
+            plan_code?: string | null;
+            /** Network Role */
+            network_role?: string | null;
+            /**
+             * Is Member
+             * @default false
+             */
+            is_member: boolean;
+            /**
+             * Reporting Link
+             * @default false
+             */
+            reporting_link: boolean;
+            /**
+             * Placeholder
+             * @default false
+             */
+            placeholder: boolean;
+            /**
+             * Record Total
+             * @default 0
+             */
+            record_total: number;
+            /** Records */
+            records?: {
+                [key: string]: number;
+            };
+            /** Users */
+            users?: components["schemas"]["DuplicateShopUserRead"][];
+            /** Blockers */
+            blockers?: string[];
+            /** Preview Token */
+            preview_token?: string | null;
+        };
+        /** DuplicateShopRetireRequest */
+        DuplicateShopRetireRequest: {
+            /**
+             * Keep Tenant Id
+             * Format: uuid
+             */
+            keep_tenant_id: string;
+            /**
+             * Retire Tenant Id
+             * Format: uuid
+             */
+            retire_tenant_id: string;
+            /** Preview Token */
+            preview_token: string;
+            /** Move User Ids */
+            move_user_ids?: string[];
+            /** User Email Overrides */
+            user_email_overrides?: {
+                [key: string]: string;
+            };
+        };
+        /** DuplicateShopRetireResponse */
+        DuplicateShopRetireResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Message */
+            message: string;
+            /**
+             * Users Moved
+             * @default 0
+             */
+            users_moved: number;
+        };
+        /** DuplicateShopUserRead */
+        DuplicateShopUserRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name?: string | null;
+            /** Role */
+            role: string;
+        };
+        /** DuplicateShopsResponse */
+        DuplicateShopsResponse: {
+            /** Groups */
+            groups?: components["schemas"]["DuplicateShopGroupRead"][];
         };
         /**
          * EngravingBatchCreate
@@ -25966,6 +26118,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MvMergeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_duplicate_shops_v1_parent_accounts_me_duplicate_shops_get: {
+        parameters: {
+            query?: {
+                keep?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateShopsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retire_duplicate_shop_v1_parent_accounts_me_duplicate_shops_retire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DuplicateShopRetireRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateShopRetireResponse"];
                 };
             };
             /** @description Validation Error */
