@@ -117,6 +117,10 @@ OTHER_NETWORK_BLOCKER = "Source belongs to another network"
 def van_blockers(session: Session, parent_id: UUID, shop: Tenant, van: Tenant, *, allow_other_networks: bool = False) -> list[str]:
     """Blockers for folding a mobile-service record (van) into its franchisee's shop site."""
     blockers = merge_blockers(session, parent_id, shop, van, require_placeholder=False)
+    from .site_entitlements import SUPPORT_OFFICE_VAN_NUMBERS
+
+    if _number(van.shop_number) in SUPPORT_OFFICE_VAN_NUMBERS or _number(shop.shop_number) in SUPPORT_OFFICE_VAN_NUMBERS:
+        blockers.append("Support office van; it is not a location and is never folded into a shop")
     if allow_other_networks:
         blockers = [b for b in blockers if not b.startswith(OTHER_NETWORK_BLOCKER)]
     return blockers

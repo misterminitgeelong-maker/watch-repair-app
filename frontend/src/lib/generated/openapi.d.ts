@@ -10734,6 +10734,16 @@ export interface components {
         EntitlementBackfillPreview: {
             /** Rows */
             rows?: components["schemas"]["EntitlementProposalRead"][];
+            /** Breakdown */
+            breakdown?: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Skipped */
+            skipped?: components["schemas"]["EntitlementSiteNoteRead"][];
+            /** Flagged */
+            flagged?: components["schemas"]["EntitlementSiteNoteRead"][];
             /** Preview Token */
             preview_token: string;
         };
@@ -10762,6 +10772,31 @@ export interface components {
             kind: string;
             /** Payer */
             payer: string;
+        };
+        /** EntitlementSiteNoteRead */
+        EntitlementSiteNoteRead: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Plan */
+            plan?: string | null;
+            /** Network Role */
+            network_role?: string | null;
         };
         /** EntitlementUsageResponse */
         EntitlementUsageResponse: {

@@ -33653,6 +33653,30 @@
             "type": "array",
             "title": "Rows"
           },
+          "breakdown": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Breakdown"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/EntitlementSiteNoteRead"
+            },
+            "type": "array",
+            "title": "Skipped"
+          },
+          "flagged": {
+            "items": {
+              "$ref": "#/components/schemas/EntitlementSiteNoteRead"
+            },
+            "type": "array",
+            "title": "Flagged"
+          },
           "preview_token": {
             "type": "string",
             "title": "Preview Token"
@@ -33724,6 +33748,86 @@
           "payer"
         ],
         "title": "EntitlementProposalRead"
+      },
+      "EntitlementSiteNoteRead": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Site Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shop_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Number"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          },
+          "network_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "site_id",
+          "tenant_id",
+          "name"
+        ],
+        "title": "EntitlementSiteNoteRead"
       },
       "EntitlementUsageResponse": {
         "properties": {

@@ -74,6 +74,7 @@ from ..models import (
     EntitlementBackfillPreview,
     EntitlementBackfillRequest,
     EntitlementProposalRead,
+    EntitlementSiteNoteRead,
     EntitlementUsageResponse,
     VanMergePreviewResponse,
     VanMergeRequest,
@@ -2470,8 +2471,17 @@ def preview_entitlement_backfill(
     from ..site_entitlements import backfill_token, plan_backfill
 
     _user, parent = _parent_for_write(session, auth)
-    rows = plan_backfill(session, parent)
-    return EntitlementBackfillPreview(rows=[EntitlementProposalRead(**r) for r in rows], preview_token=backfill_token(rows))
+    plan = plan_backfill(session, parent)
+    rows = plan["rows"]
+    breakdown: dict[str, dict[str, int]] = {}
+    for r in rows:
+        breakdown.setdefault(r["kind"], {}).setdefault(r["payer"], 0)
+        breakdown[r["kind"]][r["payer"]] += 1
+    return EntitlementBackfillPreview(
+        rows=[EntitlementProposalRead(**r) for r in rows], breakdown=breakdown,
+        skipped=[EntitlementSiteNoteRead(**r) for r in plan["skipped"]],
+        flagged=[EntitlementSiteNoteRead(**r) for r in plan["flagged"]],
+        preview_token=backfill_token(rows))
 
 
 @router.post("/me/entitlements/backfill")

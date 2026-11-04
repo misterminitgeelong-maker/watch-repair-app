@@ -116,7 +116,7 @@ export function EntitlementsPanel() {
     },
   })
   const rows = proposal.data?.rows ?? []
-  const counts = rows.reduce<Record<string, number>>((acc, r) => { const k = `${r.kind} (${r.payer} pays)`; acc[k] = (acc[k] ?? 0) + 1; return acc }, {})
+  const label = (n: { name: string; shop_number?: string | null }) => `${n.name}${n.shop_number ? ` (#${n.shop_number})` : ''}`
   return (
     <div className="rounded-lg p-3 text-sm space-y-2" style={{ border: '1px solid var(--ms-border)' }}>
       <p className="font-semibold">Entitlements: what each side pays for</p>
@@ -125,7 +125,25 @@ export function EntitlementsPanel() {
           `${kind} — ${Object.entries(payers).map(([p, n]) => `${n} paid by ${p}`).join(', ')}`).join('; ')}</p>
       {rows.length > 0 ? (
         <>
-          <p className="text-xs">To grant from current plans: {Object.entries(counts).map(([k, n]) => `${n} × ${k}`).join(', ')}</p>
+          <p className="text-xs font-semibold">To grant from current plans</p>
+          <ul className="text-xs list-disc pl-5">
+            {Object.entries(proposal.data?.breakdown ?? {}).flatMap(([kind, payers]) =>
+              Object.entries(payers).map(([payer, n]) => (
+                <li key={`${kind}-${payer}`}>{n} × {kind} — {payer === 'parent' ? 'Minit pays' : payer === 'comp' ? 'complimentary, never invoiced' : 'shop pays'}</li>
+              )))}
+          </ul>
+          {(proposal.data?.flagged.length ?? 0) > 0 && (
+            <div className="text-xs" style={{ color: '#8A5010' }}>
+              <p className="font-semibold">Check these before granting</p>
+              {proposal.data!.flagged.map(f => <p key={f.site_id}>{label(f)}: {f.note}</p>)}
+            </div>
+          )}
+          {(proposal.data?.skipped.length ?? 0) > 0 && (
+            <details className="text-xs">
+              <summary>Skipped, no entitlement ({proposal.data!.skipped.length})</summary>
+              {proposal.data!.skipped.map(k => <p key={k.site_id}>{label(k)}: {k.reason}</p>)}
+            </details>
+          )}
           <Button variant="secondary" disabled={apply.isPending}
             onClick={() => { if (window.confirm(`Grant ${rows.length} starting entitlements? This can be undone by hand from the activity log.`)) apply.mutate(proposal.data!.preview_token) }}>
             Grant starting entitlements
