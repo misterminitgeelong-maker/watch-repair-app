@@ -124,12 +124,13 @@ export function EntitlementsPanel() {
       <p className="text-xs">Active now: {Object.keys(usage.data ?? {}).length === 0 ? 'none yet' :
         Object.entries(usage.data ?? {}).map(([kind, payers]) =>
           `${kind} — ${Object.entries(payers).map(([p, n]) => `${n} (${payerLabel(p)})`).join(', ')}`).join('; ')}</p>
+      {usage.error && <p role="alert" className="text-xs">{getApiErrorMessage(usage.error, 'Could not load active entitlements. Refresh before granting.')}</p>}
       {proposal.isPending && <p role="status" className="text-xs">Loading starting entitlements…</p>}
       {proposal.error && <p role="alert" className="text-xs">{getApiErrorMessage(proposal.error, 'Could not load the dry run. Refresh before granting.')}</p>}
       {(proposal.data?.flagged.length ?? 0) > 0 && (
         <div className="text-xs" style={{ color: '#8A5010' }}>
           <p className="font-semibold">Review these sites</p>
-          {proposal.data!.flagged.map(f => <p key={f.site_id}>{label(f)}: {f.note}</p>)}
+          {proposal.data!.flagged.map(f => <p key={f.site_id}>{label(f)} · plan: {f.plan ?? 'unknown'} · role: {f.network_role ?? 'unknown'}: {f.note}</p>)}
         </div>
       )}
       {(proposal.data?.skipped.length ?? 0) > 0 && (
@@ -147,7 +148,28 @@ export function EntitlementsPanel() {
                 <li key={`${kind}-${payer}`}>{n} × {kind} — {payerLabel(payer)}</li>
               )))}
           </ul>
-          <Button variant="secondary" disabled={apply.isPending || proposal.isFetching || proposal.isError}
+          <details className="text-xs">
+            <summary>Proposed grants by site ({rows.length})</summary>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <caption className="text-left py-2">Additional entitlements in this preview. Existing grants are excluded.</caption>
+                <thead>
+                  <tr><th scope="col">Site</th><th scope="col">Entitlement</th><th scope="col">Payer</th><th scope="col">Account reference</th></tr>
+                </thead>
+                <tbody>
+                  {rows.map(row => (
+                    <tr key={`${row.site_id}-${row.kind}`}>
+                      <td className="p-1">{label(row)}</td>
+                      <td className="p-1">{row.kind}</td>
+                      <td className="p-1">{payerLabel(row.payer)}</td>
+                      <td className="p-1 break-all">Tenant: {row.tenant_id}<br />Site: {row.site_id}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+          <Button variant="secondary" disabled={apply.isPending || proposal.isFetching || proposal.isError || usage.isPending || usage.isFetching || usage.isError}
             onClick={() => { if (window.confirm(`Grant ${rows.length} starting entitlements? This can be undone by hand from the activity log.`)) apply.mutate(proposal.data!.preview_token) }}>
             Grant starting entitlements
           </Button>
