@@ -4966,7 +4966,9 @@ export interface VanMergePreview {
   other_networks: string[]
   preview_token: string
 }
-export const getVanMergePreview = (params: { shop_number: string; van_number: string; allow_other_networks: boolean }) =>
+export const getVanMergePreview = (params: {
+  shop_number?: string; van_number?: string; shop_tenant_id?: string; van_tenant_id?: string; allow_other_networks: boolean
+}) =>
   api.get<VanMergePreview>('/parent-accounts/me/van-merge/preview', { params })
 export const runVanMerge = (data: {
   shop_tenant_id: string; van_tenant_id: string; preview_token: string; mv_number?: string
