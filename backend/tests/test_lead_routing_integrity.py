@@ -109,9 +109,11 @@ def test_testing_mode_without_escalation_uses_support_office_and_sends_no_alerts
         assert len(events) == 1
         assert str(events[0].entity_id) == response.json()["lead_id"]
         assert db.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == n["hq_id"])).all() == []
-    preview = client.get("/v1/parent-accounts/me/routing/test?suburb=Sydney&state_code=NSW", headers=n["hq_h"])
-    assert preview.status_code == 200
-    assert preview.json()["operator_tenant_id"] == str(n["hq_id"])
+    with Session(engine) as db:
+        from app.minit_mobile_routing import resolve_mobile_operator_route
+        parent = db.exec(select(ParentAccount).where(ParentAccount.mobile_lead_ingest_public_id == UUID(n["ingest_id"]))).one()
+        preview = resolve_mobile_operator_route(db, parent_id=parent.id, suburb="Sydney", state_code="NSW")
+        assert preview.operator_tenant_id == n["hq_id"]
     details = client.get(f'/v1/parent-accounts/me/website-enquiries/{response.json()["lead_id"]}', headers=n["hq_h"])
     assert details.status_code == 200 and details.json()["name"] == "Jane Doe"
     assert client.get(f'/v1/parent-accounts/me/website-enquiries/{response.json()["lead_id"]}',
