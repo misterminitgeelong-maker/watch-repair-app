@@ -48,6 +48,12 @@ COMPED_PRO_SLUGS = {"minit-6441": "Complimentary Pro (Baldivis tester)"}
 #: Support office's own vans: mobile services only, no booking, never folded into a shop.
 SUPPORT_OFFICE_VAN_NUMBERS = {"4903"}
 
+# Billing plans are deliberately narrower than dispatch-capable plans.
+MOBILE_ENTITLEMENT_PLANS = frozenset({"basic_auto_key", "minit_operator"})
+PENDING_SHOP_NUMBERS = {
+    "2300": "Rouse Hill: awaiting confirmation whether this is a van only or a shop with a van; no grant until confirmed",
+}
+
 
 def plan_backfill(session: Session, parent: ParentAccount) -> dict:
     """Entitlements we would create, from each site's PLAN, plus what we skip or flag.
@@ -57,7 +63,6 @@ def plan_backfill(session: Session, parent: ParentAccount) -> dict:
     Only Minit networks get a proposal.
     """
     from .minit_mv_merge import is_mobile_placeholder
-    from .parent_network import OPERATOR_PLAN_CODES
 
     out: dict = {"rows": [], "skipped": [], "flagged": []}
     if not _is_minit_parent(session, parent.id):
@@ -88,7 +93,12 @@ def plan_backfill(session: Session, parent: ParentAccount) -> dict:
             out["skipped"].append({**ident(site, tenant), "reason": "Imported Mobile Services placeholder, never invited"})
             continue
         plan = normalize_plan_code(tenant.plan_code)
-        is_operator_plan = plan in OPERATOR_PLAN_CODES
+        if number in PENDING_SHOP_NUMBERS:
+            out["skipped"].append({**ident(site, tenant), "reason": PENDING_SHOP_NUMBERS[number]})
+            out["flagged"].append({**ident(site, tenant), "plan": plan, "network_role": site.network_role,
+                                   "note": PENDING_SHOP_NUMBERS[number]})
+            continue
+        is_operator_plan = plan in MOBILE_ENTITLEMENT_PLANS
         if is_operator_plan != (site.network_role == "operator"):
             out["flagged"].append({**ident(site, tenant), "plan": plan, "network_role": site.network_role,
                                    "note": "Role and plan disagree; granted by plan. Confirm whether it is a van only or a shop with a van"})
@@ -110,13 +120,17 @@ def plan_backfill(session: Session, parent: ParentAccount) -> dict:
     return out
 
 
-def backfill_token(rows: list[dict]) -> str:
-    return hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+def backfill_token(proposal: dict) -> str:
+    # Bind consent to the full review, including skipped and pending sites.
+    return hashlib.sha256(json.dumps({"version": 2, "proposal": proposal}, sort_keys=True).encode()).hexdigest()
 
 
 def apply_backfill(session: Session, *, parent: ParentAccount, actor: User, expected_token: str) -> int:
-    rows = plan_backfill(session, parent)["rows"]
-    if backfill_token(rows) != expected_token:
+    # Serialize repeat/concurrent grants for this network before recomputing.
+    session.exec(select(ParentAccount).where(ParentAccount.id == parent.id).with_for_update()).one()
+    proposal = plan_backfill(session, parent)
+    rows = proposal["rows"]
+    if backfill_token(proposal) != expected_token:
         raise ValueError("Preview changed; refresh and review again")
     now = datetime.now(timezone.utc)
     for r in rows:
@@ -158,3 +172,4 @@ def mv_numbers_by_tenant(session: Session, parent_id: UUID) -> dict[UUID, str]:
                             .where(ParentAccountSite.parent_account_id == parent_id)
                             .where(ParentAccountSite.mv_number != None)).all()  # noqa: E711
     return {tid: mv for tid, mv in rows if mv}
+

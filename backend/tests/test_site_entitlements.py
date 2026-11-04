@@ -42,8 +42,8 @@ def test_apply_needs_matching_token_and_is_idempotent(network):
     db, parent, actor, *_ = network
     with pytest.raises(ValueError):
         apply_backfill(db, parent=parent, actor=actor, expected_token="0" * 64)
-    rows = plan_backfill(db, parent)["rows"]
-    assert apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(rows)) == 4
+    proposal = plan_backfill(db, parent)
+    assert apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal)) == 4
     assert plan_backfill(db, parent)["rows"] == []
     assert usage(db, parent.id) == {"booking": {"parent": 2}, "mobile_services": {"parent": 1}, "pro": {"tenant": 1}}
 
@@ -155,3 +155,100 @@ def test_rules_by_plan_with_skips_comp_and_flags():
         skipped = {r["name"] for r in plan["skipped"]}
         assert any("Mobile Services Baldivis" in n for n in skipped) and any(n.startswith("MinitR") for n in skipped)
         assert any(f["shop_number"] == "2915" for f in plan["flagged"])  # role retail, plan operator
+
+
+
+# Regression coverage for the 4 Nov reviewed starting grants.
+def add_site(db, parent, *, number, plan, role="retail", slug=None, name=None):
+    s = uuid4().hex[:8]
+    tenant = Tenant(name=name or f"Site {s}", slug=slug or f"site-{s}",
+                    plan_code=plan, shop_number=number)
+    db.add(tenant); db.flush()
+    site = ParentAccountSite(parent_account_id=parent.id, tenant_id=tenant.id, network_role=role)
+    db.add(site); db.commit()
+    return tenant, site
+
+
+@pytest.mark.parametrize("number", ["6902", "6903", "8905", "4903", "2915", "8901"])
+@pytest.mark.parametrize("plan", ["basic_auto_key", "minit_operator"])
+def test_retail_list_vans_only_get_mobile_services(network, number, plan):
+    db, parent, *_ = network
+    tenant, _ = add_site(db, parent, number=number, plan=plan)
+    rows = [r for r in plan_backfill(db, parent)["rows"] if r["tenant_id"] == str(tenant.id)]
+    assert [(r["kind"], r["payer"]) for r in rows] == [("mobile_services", "parent")]
+
+
+@pytest.mark.parametrize("plan", ["basic_watch_auto_key", "basic_shoe_auto_key", "basic_all_tabs"])
+def test_dispatch_capable_plans_do_not_imply_mobile_billing(network, plan):
+    db, parent, *_ = network
+    tenant, _ = add_site(db, parent, number="9876", plan=plan)
+    rows = [r for r in plan_backfill(db, parent)["rows"] if r["tenant_id"] == str(tenant.id)]
+    assert [(r["kind"], r["payer"]) for r in rows] == [("booking", "parent")]
+
+
+@pytest.mark.parametrize("number", ["0101", "01111", "3904", "2300"])
+def test_ignored_and_unconfirmed_sites_never_granted(network, number):
+    db, parent, actor, *_ = network
+    tenant, site = add_site(db, parent, number=number, plan="basic_auto_key")
+    proposal = plan_backfill(db, parent)
+    assert any(r["tenant_id"] == str(tenant.id) for r in proposal["skipped"])
+    assert not any(r["tenant_id"] == str(tenant.id) for r in proposal["rows"])
+    apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal))
+    assert not db.exec(select(SiteEntitlement).where(SiteEntitlement.site_id == site.id)).all()
+
+
+@pytest.mark.parametrize("number", ["2311", "6441", "8833", "8829"])
+def test_placeholder_slugs_never_granted(network, number):
+    db, parent, *_ = network
+    tenant, _ = add_site(db, parent, number=number, plan="pro", slug=f"minit-mobile-{number}",
+                         name="Mobile Services placeholder")
+    proposal = plan_backfill(db, parent)
+    assert not any(r["tenant_id"] == str(tenant.id) for r in proposal["rows"])
+    assert any(r["tenant_id"] == str(tenant.id) for r in proposal["skipped"])
+
+
+def test_pending_review_change_invalidates_confirmation(network):
+    db, parent, actor, *_ = network
+    tenant, _ = add_site(db, parent, number="2300", plan="basic_auto_key")
+    proposal = plan_backfill(db, parent)
+    tenant.plan_code = "booking_only"
+    db.add(tenant); db.commit()
+    updated = plan_backfill(db, parent)
+    assert updated["rows"] == proposal["rows"]  # only the review context changed
+    with pytest.raises(ValueError, match="Preview changed"):
+        apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal))
+    db.rollback()
+    assert not db.exec(select(SiteEntitlement).where(SiteEntitlement.parent_account_id == parent.id)).all()
+
+
+def test_comped_pro_is_recorded_separately_from_paid_usage(network):
+    db, parent, actor, *_ = network
+    comped = db.exec(select(Tenant).where(Tenant.slug == "minit-6441")).first()
+    if comped is None:
+        comped, _ = add_site(db, parent, number="6441", plan="pro", slug="minit-6441")
+    else:
+        db.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=comped.id, network_role="retail"))
+        db.commit()
+    proposal = plan_backfill(db, parent)
+    apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal))
+    assert usage(db, parent.id)["pro"] == {"tenant": 1, "comp": 1}
+    assert usage(db, parent.id)["booking"]["parent"] == 3
+
+
+@pytest.mark.parametrize("van_mode", [False, True])
+def test_support_office_cannot_be_folded_through_either_route(pair, van_mode):
+    from app.shop_duplicates import duplicate_blockers, van_blockers
+    db, parent, shop, van, actor, *_ = pair
+    shop.shop_number = "4903"
+    van.shop_number = "4903"
+    db.add_all([shop, van]); db.commit()
+    blockers = (van_blockers(db, parent.id, shop, van, allow_other_networks=True) if van_mode
+                else duplicate_blockers(db, parent.id, shop, van))
+    assert any("Support office van" in b for b in blockers)
+    from app.minit_mv_merge import preview_token
+    with pytest.raises(MvMergeError, match="Support office van"):
+        retire_duplicate(db, parent=parent, keep_tenant_id=shop.id, retire_tenant_id=van.id, actor=actor,
+                         expected_preview_token=preview_token(db, parent.id, shop, van, blockers=blockers),
+                         van_mode=van_mode, allow_other_networks=True)
+    db.rollback(); db.refresh(van)
+    assert van.is_active

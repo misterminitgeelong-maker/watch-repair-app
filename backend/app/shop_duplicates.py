@@ -106,6 +106,7 @@ def find_duplicate_groups(session: Session, parent: ParentAccount, keep_ids: set
 
 def duplicate_blockers(session: Session, parent_id: UUID, keep: Tenant, retire: Tenant) -> list[str]:
     blockers = merge_blockers(session, parent_id, keep, retire, require_placeholder=False)
+    blockers.extend(_support_office_blockers(keep, retire))
     if _number(keep.shop_number) != _number(retire.shop_number) or not _number(keep.shop_number):
         blockers.append("The two records must have the same shop number")
     return blockers
@@ -114,13 +115,18 @@ def duplicate_blockers(session: Session, parent_id: UUID, keep: Tenant, retire: 
 OTHER_NETWORK_BLOCKER = "Source belongs to another network"
 
 
+def _support_office_blockers(first: Tenant, second: Tenant) -> list[str]:
+    from .site_entitlements import SUPPORT_OFFICE_VAN_NUMBERS
+
+    if any(_number(t.shop_number) in SUPPORT_OFFICE_VAN_NUMBERS for t in (first, second)):
+        return ["Support office van; it is not a location and is never folded into a shop"]
+    return []
+
+
 def van_blockers(session: Session, parent_id: UUID, shop: Tenant, van: Tenant, *, allow_other_networks: bool = False) -> list[str]:
     """Blockers for folding a mobile-service record (van) into its franchisee's shop site."""
     blockers = merge_blockers(session, parent_id, shop, van, require_placeholder=False)
-    from .site_entitlements import SUPPORT_OFFICE_VAN_NUMBERS
-
-    if _number(van.shop_number) in SUPPORT_OFFICE_VAN_NUMBERS or _number(shop.shop_number) in SUPPORT_OFFICE_VAN_NUMBERS:
-        blockers.append("Support office van; it is not a location and is never folded into a shop")
+    blockers.extend(_support_office_blockers(shop, van))
     if allow_other_networks:
         blockers = [b for b in blockers if not b.startswith(OTHER_NETWORK_BLOCKER)]
     return blockers
@@ -334,3 +340,4 @@ def _fold_van(session: Session, *, parent: ParentAccount, keep: Tenant, retire: 
         session.add(ent)
         session.flush()
         manifest["created_entitlements"].append(str(ent.id))
+

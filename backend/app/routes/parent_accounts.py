@@ -2481,7 +2481,7 @@ def preview_entitlement_backfill(
         rows=[EntitlementProposalRead(**r) for r in rows], breakdown=breakdown,
         skipped=[EntitlementSiteNoteRead(**r) for r in plan["skipped"]],
         flagged=[EntitlementSiteNoteRead(**r) for r in plan["flagged"]],
-        preview_token=backfill_token(rows))
+        preview_token=backfill_token(plan))
 
 
 @router.post("/me/entitlements/backfill")
@@ -2624,3 +2624,4 @@ def update_mv_operator_status(
         session.rollback()
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"message": message}
+
