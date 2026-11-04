@@ -10,6 +10,7 @@ import {
 import { PARENT_ACCOUNT_QUERY_KEY } from '@/hooks/useParentAccount'
 import { PARENT_ACCOUNT_SITES_QUERY_KEY } from '@/hooks/useParentAccountSites'
 import { Button, Modal, Spinner } from '@/components/ui'
+import { EntitlementsPanel, VanMergePanel } from '@/components/minit/ShopCleanupPanels'
 
 function describe(m: DuplicateShopMember) {
   const bits = [m.is_member ? (m.network_role === 'operator' ? 'Operator site' : 'Retail site') : 'Reporting link only']
@@ -112,6 +113,8 @@ export function DuplicateShopsModal({ onClose }: { onClose: () => void }) {
             )
           })}
         </div>
+        <VanMergePanel />
+        <EntitlementsPanel />
         <div className="flex justify-end"><Button onClick={onClose}>Close</Button></div>
       </div>
     </Modal>

@@ -300,6 +300,32 @@ class ParentAccountSite(SQLModel, table=True):
     region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
     # Messaging hub override: a state code, or NONE to leave the site out of every hub.
     messaging_state: Optional[str] = Field(default=None, max_length=8)
+    # The franchise's mobile-service number (e.g. 2913) when it differs from the shop's own number.
+    mv_number: Optional[str] = Field(default=None, max_length=16, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SiteEntitlement(SQLModel, table=True):
+    """What a site has access to and who pays for it.
+
+    One site per franchisee shop; access is a set of entitlements on that site,
+    each with a payer. ``payer`` is ``parent`` (the network, e.g. Minit pays) or
+    ``tenant`` (the shop itself pays, e.g. a franchisee's own Pro). Billing
+    counts active entitlements, never sites.
+    """
+
+    __table_args__ = (
+        Index("ix_siteentitlement_site_kind", "site_id", "kind"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    site_id: UUID = Field(index=True, foreign_key="parentaccountsite.id", ondelete="CASCADE")
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    kind: str = Field(max_length=32)  # booking | mobile_services | pro | ...
+    payer: str = Field(default="parent", max_length=16)  # parent | tenant
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ended_at: Optional[datetime] = Field(default=None)
+    source: str = Field(default="manual", max_length=40)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

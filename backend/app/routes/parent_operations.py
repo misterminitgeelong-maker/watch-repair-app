@@ -885,6 +885,9 @@ def get_operations_mobile_jobs_report(
         [job.tenant_id for job in rows]
         + [job.referring_shop_tenant_id for job in rows if job.referring_shop_tenant_id],
     )
+    from ..site_entitlements import mv_numbers_by_tenant
+
+    mv_by_tenant = mv_numbers_by_tenant(session, parent.id)
     jobs: list[ParentMobileJobNetworkRead] = []
     for job in rows:
         op = job_tenants.get(job.tenant_id)
@@ -898,6 +901,7 @@ def get_operations_mobile_jobs_report(
                 operator_tenant_id=job.tenant_id,
                 operator_name=op.name if op else "Unknown",
                 operator_shop_number=op.shop_number if op else None,
+                operator_mv_number=mv_by_tenant.get(job.tenant_id),
                 referring_shop_tenant_id=job.referring_shop_tenant_id,
                 referring_shop_name=ref_shop.name if ref_shop else None,
                 referring_shop_number=ref_shop.shop_number if ref_shop else None,

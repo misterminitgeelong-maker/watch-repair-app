@@ -5193,6 +5193,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/entitlements/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Entitlement Backfill
+         * @description Starting entitlements we would grant from today's plans. Changes nothing.
+         */
+        get: operations["preview_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_get"];
+        put?: never;
+        /** Apply Entitlement Backfill */
+        post: operations["apply_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/entitlements/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Entitlement Usage
+         * @description Active entitlements by kind and payer: what the network is invoiced for.
+         */
+        get: operations["entitlement_usage_v1_parent_accounts_me_entitlements_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/van-merge/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Van Merge
+         * @description What folding a van into its franchisee's shop would do. Changes nothing.
+         */
+        get: operations["preview_van_merge_v1_parent_accounts_me_van_merge_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/van-merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Van Merge
+         * @description Fold the van into the shop site: mobile_services (paid by the network) and MV number move across.
+         */
+        post: operations["run_van_merge_v1_parent_accounts_me_van_merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/duplicate-shops": {
         parameters: {
             query?: never;
@@ -10649,6 +10730,48 @@ export interface components {
             /** Orders */
             orders: components["schemas"]["EngravingOrderRead"][];
         };
+        /** EntitlementBackfillPreview */
+        EntitlementBackfillPreview: {
+            /** Rows */
+            rows?: components["schemas"]["EntitlementProposalRead"][];
+            /** Preview Token */
+            preview_token: string;
+        };
+        /** EntitlementBackfillRequest */
+        EntitlementBackfillRequest: {
+            /** Preview Token */
+            preview_token: string;
+        };
+        /** EntitlementProposalRead */
+        EntitlementProposalRead: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Kind */
+            kind: string;
+            /** Payer */
+            payer: string;
+        };
+        /** EntitlementUsageResponse */
+        EntitlementUsageResponse: {
+            /** Usage */
+            usage?: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+        };
         /** FollowUpUpdate */
         FollowUpUpdate: {
             /** Expected Version */
@@ -11596,6 +11719,8 @@ export interface components {
             operator_name: string;
             /** Operator Shop Number */
             operator_shop_number?: string | null;
+            /** Operator Mv Number */
+            operator_mv_number?: string | null;
             /**
              * Customers Count
              * @default 0
@@ -12712,6 +12837,8 @@ export interface components {
             operator_name: string;
             /** Operator Shop Number */
             operator_shop_number?: string | null;
+            /** Operator Mv Number */
+            operator_mv_number?: string | null;
             /** Referring Shop Tenant Id */
             referring_shop_tenant_id?: string | null;
             /** Referring Shop Name */
@@ -16120,6 +16247,45 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VanMergePreviewResponse */
+        VanMergePreviewResponse: {
+            shop: components["schemas"]["DuplicateShopMemberRead"];
+            van: components["schemas"]["DuplicateShopMemberRead"];
+            /** Blockers */
+            blockers?: string[];
+            /** Other Networks */
+            other_networks?: string[];
+            /** Preview Token */
+            preview_token: string;
+        };
+        /** VanMergeRequest */
+        VanMergeRequest: {
+            /**
+             * Shop Tenant Id
+             * Format: uuid
+             */
+            shop_tenant_id: string;
+            /**
+             * Van Tenant Id
+             * Format: uuid
+             */
+            van_tenant_id: string;
+            /** Preview Token */
+            preview_token: string;
+            /** Mv Number */
+            mv_number?: string | null;
+            /**
+             * Allow Other Networks
+             * @default false
+             */
+            allow_other_networks: boolean;
+            /** Move User Ids */
+            move_user_ids?: string[];
+            /** User Email Overrides */
+            user_email_overrides?: {
+                [key: string]: string;
+            };
         };
         /** VerifyBody */
         VerifyBody: {
@@ -26118,6 +26284,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MvMergeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementBackfillPreview"];
+                };
+            };
+        };
+    };
+    apply_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntitlementBackfillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlement_usage_v1_parent_accounts_me_entitlements_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementUsageResponse"];
+                };
+            };
+        };
+    };
+    preview_van_merge_v1_parent_accounts_me_van_merge_preview_get: {
+        parameters: {
+            query: {
+                shop_number: string;
+                van_number: string;
+                allow_other_networks?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VanMergePreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_van_merge_v1_parent_accounts_me_van_merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VanMergeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateShopRetireResponse"];
                 };
             };
             /** @description Validation Error */

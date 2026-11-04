@@ -192,6 +192,14 @@ def dispatch_operators_for_parent(session: Session, parent_id: UUID) -> list[Ten
                     operators = {tid: op for tid, op in operators.items()
                                  if op.shop_number != tenant.shop_number or tid == tenant.id}
                 operators[tenant.id] = tenant
+    # A shop that holds a mobile_services entitlement dispatches like an operator.
+    from .site_entitlements import mobile_services_tenant_ids
+
+    with without_scope(session):
+        for tid in mobile_services_tenant_ids(session, parent_id) - set(operators):
+            tenant = session.get(Tenant, tid)
+            if tenant and tenant_is_live(session, tenant.id):
+                operators[tenant.id] = tenant
     return [t for t in operators.values()
             if t.is_active and not t.mobile_dispatch_paused and not t.merged_into_tenant_id]
 
@@ -270,6 +278,9 @@ def mobile_reporting_tenants_for_parent(session: Session, parent_id: UUID) -> li
     ids = {site.tenant_id for site in sites_for_parent(session, parent_id)
            if site.network_role == NETWORK_ROLE_OPERATOR
            or (site.network_role == NETWORK_ROLE_RETAIL and site.mobile_reporting_enabled)}
+    from .site_entitlements import mobile_services_tenant_ids
+
+    ids.update(mobile_services_tenant_ids(session, parent_id))
     with without_scope(session):
         ids.update(session.exec(
             select(ParentMobileReportingSource.tenant_id).where(
