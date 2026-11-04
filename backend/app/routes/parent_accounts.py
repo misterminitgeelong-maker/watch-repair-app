@@ -2515,8 +2515,10 @@ def entitlement_usage(
 
 @router.get("/me/van-merge/preview", response_model=VanMergePreviewResponse)
 def preview_van_merge(
-    shop_number: str = Query(min_length=1, max_length=16),
-    van_number: str = Query(min_length=1, max_length=16),
+    shop_number: str | None = Query(default=None, max_length=16),
+    van_number: str | None = Query(default=None, max_length=16),
+    shop_tenant_id: UUID | None = Query(default=None),
+    van_tenant_id: UUID | None = Query(default=None),
     allow_other_networks: bool = Query(default=False),
     auth: AuthContext = Depends(require_owner),
     session: Session = Depends(unscoped_session),
@@ -2527,8 +2529,9 @@ def preview_van_merge(
 
     _user, parent = _parent_for_write(session, auth)
     try:
-        return VanMergePreviewResponse(**van_preview(session, parent, shop_number, van_number,
-                                                     allow_other_networks=allow_other_networks))
+        return VanMergePreviewResponse(**van_preview(
+            session, parent, shop_number, van_number, allow_other_networks=allow_other_networks,
+            shop_tenant_id=shop_tenant_id, van_tenant_id=van_tenant_id))
     except MvMergeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
