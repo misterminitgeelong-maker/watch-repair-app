@@ -86,6 +86,78 @@ def _alert_count(tenant_id) -> int:
                           .where(SmsLog.event == "website_lead_alert")).all())
 
 
+@pytest.mark.parametrize("hq_identity", ["legacy_grant", "hq_site"])
+def test_testing_mode_without_escalation_uses_support_office_and_sends_no_alerts(client, lead_network, monkeypatch, hq_identity):
+    from app.models import TenantEventLog
+    n = lead_network
+    if hq_identity == "hq_site":
+        from app.models import ParentAccountSite
+        with Session(engine) as db:
+            site = db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == n["hq_id"])).one()
+            site.network_role = "hq"
+            db.add(site); db.commit()
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Testing mode must not send an SMS or email")
+    monkeypatch.setattr("app.sms.notify_website_lead_alert", forbidden)
+    monkeypatch.setattr("app.email_client.send_website_lead_alert_email", forbidden)
+    assert client.put("/v1/parent-accounts/me/mobile-lead-ingest/escalation-tenant", headers=n["hq_h"],
+                      json={"tenant_id": None}).status_code == 200
+    assert client.put("/v1/parent-accounts/me/mobile-lead-ingest/dispatch-settings", headers=n["hq_h"],
+                      json={"force_hq_dispatch": True}).status_code == 200
+    response = _post_lead(client, n["ingest_id"], _lead_body(), **{"Idempotency-Key": "test-hq-intake"})
+    assert response.status_code == 200, response.text
+    assert response.json()["tenant_id"] == str(n["hq_id"])
+    again = _post_lead(client, n["ingest_id"], _lead_body(), **{"Idempotency-Key": "test-hq-intake"})
+    assert again.json() == response.json()
+    assert _lead_count(n["op_id"]) == 0 and _lead_count(n["hq_id"]) == 1
+    with Session(engine) as db:
+        events = db.exec(select(TenantEventLog).where(TenantEventLog.tenant_id == n["hq_id"],
+            TenantEventLog.event_type == "mobile_lead_quote_needed")).all()
+        assert len(events) == 1
+        assert str(events[0].entity_id) == response.json()["lead_id"]
+        assert db.exec(select(AutoKeyJob).where(AutoKeyJob.tenant_id == n["hq_id"])).all() == []
+    with Session(engine) as db:
+        from app.minit_mobile_routing import resolve_mobile_operator_route
+        parent = db.exec(select(ParentAccount).where(ParentAccount.mobile_lead_ingest_public_id == UUID(n["ingest_id"]))).one()
+        preview = resolve_mobile_operator_route(db, parent_id=parent.id, suburb="Sydney", state_code="NSW")
+        assert preview.operator_tenant_id == n["hq_id"]
+    details = client.get(f'/v1/parent-accounts/me/website-enquiries/{response.json()["lead_id"]}', headers=n["hq_h"])
+    assert details.status_code == 200 and details.json()["name"] == "Jane Doe"
+    assert client.get(f'/v1/parent-accounts/me/website-enquiries/{response.json()["lead_id"]}',
+                      headers=_h(n["op_tok"])).status_code in (403, 404)
+
+
+def test_route_review_is_read_only_and_does_not_expose_secrets(client, lead_network):
+    n = lead_network
+    with Session(engine) as db:
+        from app.models import MobileSuburbRoute
+        before = [(r.id, r.target_tenant_id) for r in db.exec(select(MobileSuburbRoute)).all()]
+    response = client.get("/v1/parent-accounts/me/mobile-lead-routes/review", headers=n["hq_h"])
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["read_only"] and data["total_routes"] == 1
+    assert data["targets"][0]["tenant_id"] == str(n["op_id"])
+    assert data["targets"][0]["replacement_tenant_id"] is None
+    assert SECRET not in response.text and "password" not in response.text
+    with Session(engine) as db:
+        after = [(r.id, r.target_tenant_id) for r in db.exec(select(MobileSuburbRoute)).all()]
+        assert sorted(before) == sorted(after)
+
+
+def test_testing_mode_missing_support_office_does_not_fall_back_to_operator(client, lead_network):
+    from app.models import ParentAccountSite
+    n = lead_network
+    assert client.put("/v1/parent-accounts/me/mobile-lead-ingest/dispatch-settings", headers=n["hq_h"],
+                      json={"force_hq_dispatch": True}).status_code == 200
+    with Session(engine) as db:
+        site = db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == n["hq_id"])).one()
+        site.network_role = "operator"
+        db.add(site); db.commit()
+    response = _post_lead(client, n["ingest_id"], _lead_body())
+    assert response.status_code == 422
+    assert _lead_count(n["op_id"]) == 0 and _lead_count(n["hq_id"]) == 0
+
+
 # ── 1. idempotency ───────────────────────────────────────────────────────────
 
 def test_double_post_mobile_key_lead_creates_one_lead_and_one_alert(client, lead_network):

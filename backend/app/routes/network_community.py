@@ -16,6 +16,7 @@ from ..dependencies import AuthContext, get_auth_context
 from ..models import NetworkMessage, ParentAccount, Region, Tenant, TenantEventLog, User
 from ..models.network_community import AnnouncementReceipt, NetworkAnnouncement, StateHubMessage, StateHubRead, NetworkMessageAttachment
 from ..messaging_hubs import HUB_NONE, STATES, hub_for, intentionally_excluded, state_code  # noqa: F401  (re-exported)
+from ..network_site_classification import excluded_site_reason
 from ..parent_network import (
     parent_region_scope, parent_role_for_user, parents_for_user, sites_for_parent, sites_for_tenant,
 )
@@ -496,7 +497,7 @@ def _audience_sites(session, parent_id, state):
     out = []
     for site in sites:
         tenant = tenants.get(site.tenant_id)
-        if not tenant or not tenant.is_active or tenant.merged_into_tenant_id:
+        if not tenant or not tenant.is_active or tenant.merged_into_tenant_id or excluded_site_reason(parent_id, tenant):
             continue
         region = regions.get(site.region_id) if site.region_id else None
         code = hub_for(site, tenant, region)
@@ -632,5 +633,3 @@ def download_attachment(attachment_id: UUID, auth: AuthContext = Depends(get_aut
         "Content-Disposition": "attachment; filename*=UTF-8''" + quote(row.filename, safe=""),
         "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store",
     })
-
-
