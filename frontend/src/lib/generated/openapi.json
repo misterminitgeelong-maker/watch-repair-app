@@ -16474,6 +16474,124 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/van-merge/preview": {
+      "get": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Preview Van Merge",
+        "description": "What folding a van into its franchisee's shop would do. Changes nothing.",
+        "operationId": "preview_van_merge_v1_parent_accounts_me_van_merge_preview_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shop_number",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16,
+              "title": "Shop Number"
+            }
+          },
+          {
+            "name": "van_number",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16,
+              "title": "Van Number"
+            }
+          },
+          {
+            "name": "allow_other_networks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Allow Other Networks"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VanMergePreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/van-merge": {
+      "post": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Run Van Merge",
+        "description": "Fold the van into the shop site: mobile_services (paid by the network) and MV number move across.",
+        "operationId": "run_van_merge_v1_parent_accounts_me_van_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VanMergeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateShopRetireResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/duplicate-shops": {
       "get": {
         "tags": [
@@ -36502,6 +36620,17 @@
             ],
             "title": "Operator Shop Number"
           },
+          "operator_mv_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Mv Number"
+          },
           "customers_count": {
             "type": "integer",
             "title": "Customers Count",
@@ -39293,6 +39422,17 @@
               }
             ],
             "title": "Operator Shop Number"
+          },
+          "operator_mv_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Mv Number"
           },
           "referring_shop_tenant_id": {
             "anyOf": [
@@ -49562,6 +49702,104 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VanMergePreviewResponse": {
+        "properties": {
+          "shop": {
+            "$ref": "#/components/schemas/DuplicateShopMemberRead"
+          },
+          "van": {
+            "$ref": "#/components/schemas/DuplicateShopMemberRead"
+          },
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blockers"
+          },
+          "other_networks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Other Networks"
+          },
+          "preview_token": {
+            "type": "string",
+            "title": "Preview Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop",
+          "van",
+          "preview_token"
+        ],
+        "title": "VanMergePreviewResponse"
+      },
+      "VanMergeRequest": {
+        "properties": {
+          "shop_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Shop Tenant Id"
+          },
+          "van_tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Van Tenant Id"
+          },
+          "preview_token": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Preview Token"
+          },
+          "mv_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mv Number"
+          },
+          "allow_other_networks": {
+            "type": "boolean",
+            "title": "Allow Other Networks",
+            "default": false
+          },
+          "move_user_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Move User Ids"
+          },
+          "user_email_overrides": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "type": "object",
+            "title": "User Email Overrides"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shop_tenant_id",
+          "van_tenant_id",
+          "preview_token"
+        ],
+        "title": "VanMergeRequest"
       },
       "VerifyBody": {
         "properties": {

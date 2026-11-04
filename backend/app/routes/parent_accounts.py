@@ -75,6 +75,8 @@ from ..models import (
     EntitlementBackfillRequest,
     EntitlementProposalRead,
     EntitlementUsageResponse,
+    VanMergePreviewResponse,
+    VanMergeRequest,
     MvMergeResult,
     ParentAccount,
     ParentAccountCreateTenantRequest,
@@ -2499,6 +2501,56 @@ def entitlement_usage(
 
     _user, parent = _parent_for_write(session, auth)
     return EntitlementUsageResponse(usage=usage(session, parent.id))
+
+
+@router.get("/me/van-merge/preview", response_model=VanMergePreviewResponse)
+def preview_van_merge(
+    shop_number: str = Query(min_length=1, max_length=16),
+    van_number: str = Query(min_length=1, max_length=16),
+    allow_other_networks: bool = Query(default=False),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """What folding a van into its franchisee's shop would do. Changes nothing."""
+    from ..minit_mv_merge import MvMergeError
+    from ..shop_duplicates import van_preview
+
+    _user, parent = _parent_for_write(session, auth)
+    try:
+        return VanMergePreviewResponse(**van_preview(session, parent, shop_number, van_number,
+                                                     allow_other_networks=allow_other_networks))
+    except MvMergeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/me/van-merge", response_model=DuplicateShopRetireResponse)
+def run_van_merge(
+    payload: VanMergeRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Fold the van into the shop site: mobile_services (paid by the network) and MV number move across."""
+    from ..minit_mv_merge import MvMergeError
+    from ..shop_duplicates import retire_duplicate
+
+    current_user, parent = _parent_for_write(session, auth)
+    try:
+        result = retire_duplicate(
+            session, parent=parent, keep_tenant_id=payload.shop_tenant_id, retire_tenant_id=payload.van_tenant_id,
+            actor=current_user, expected_preview_token=payload.preview_token, move_user_ids=payload.move_user_ids,
+            user_email_overrides=payload.user_email_overrides, van_mode=True, mv_number=payload.mv_number,
+            allow_other_networks=payload.allow_other_networks,
+        )
+    except MvMergeError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    try:
+        _sync_extra_location_billing(session, parent.id)
+        session.commit()
+    except Exception:
+        session.rollback()
+        logging.getLogger(__name__).exception("Van merge committed; billing reconciliation failed parent=%s", parent.id)
+    return DuplicateShopRetireResponse(ok=True, message="Van folded into the shop; nothing was deleted", users_moved=result["users_moved"])
 
 
 @router.get("/me/duplicate-shops", response_model=DuplicateShopsResponse)

@@ -181,6 +181,7 @@ class OperatorKpiRow:
     active_jobs: int = 0
     outstanding_cents: int = 0
     enquiries_not_actioned: int = 0
+    operator_mv_number: str | None = None
 
     def apply_comparisons(self, prior: "OperatorKpiRow | None") -> None:
         if prior is not None:
@@ -201,6 +202,7 @@ def operator_row_from_dict(data: dict[str, Any]) -> OperatorKpiRow:
         operator_tenant_id=UUID(str(data["operator_tenant_id"])),
         operator_name=data.get("operator_name") or "Operator",
         operator_shop_number=data.get("operator_shop_number"),
+        operator_mv_number=data.get("operator_mv_number"),
         customers_count=int(data.get("customers_count") or 0),
         paid_customers_count=int(data.get("paid_customers_count") or 0),
         jobs_created=int(data.get("jobs_created") or 0),
@@ -634,9 +636,13 @@ def build_network_kpis(
                 jobs_created=jobs,
             )
 
+    from .site_entitlements import mv_numbers_by_tenant
+
+    mv_by_tenant = mv_numbers_by_tenant(session, parent.id)
     rows: list[OperatorKpiRow] = []
     for tenant in operators:
         row = current[tenant.id]
+        row.operator_mv_number = mv_by_tenant.get(tenant.id)
         row.apply_comparisons(prior_by_id.get(tenant.id))
         rows.append(row)
 

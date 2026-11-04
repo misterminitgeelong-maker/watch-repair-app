@@ -341,10 +341,12 @@ export const fillRegionTargets = (
 export const sendRegionReportNow = (regionId: string) =>
   api.post<{ sent: boolean; to: string }>(`/parent-accounts/me/regions/${regionId}/report/send-now`)
 
-export function formatTenantLabel(name: string, shopNumber?: string | null): string {
+export function formatTenantLabel(name: string, shopNumber?: string | null, mvNumber?: string | null): string {
   const base = name.trim() || 'Unknown'
   const num = shopNumber?.trim()
-  return num ? `${base} (#${num})` : base
+  const mv = mvNumber?.trim()
+  const label = num ? `${base} (#${num})` : base
+  return mv ? `${label} · MV #${mv}` : label
 }
 
 export interface ParentAccountSummary {
@@ -854,6 +856,7 @@ export interface ParentMobileJobNetwork {
   operator_tenant_id: string
   operator_name: string
   operator_shop_number?: string | null
+  operator_mv_number?: string | null
   referring_shop_tenant_id?: string | null
   referring_shop_name?: string | null
   referring_shop_number?: string | null
@@ -955,6 +958,7 @@ export interface MobileKpiOperatorRow {
   operator_tenant_id: string
   operator_name: string
   operator_shop_number?: string | null
+  operator_mv_number?: string | null
   customers_count: number
   jobs_created: number
   jobs_completed: number
@@ -4955,6 +4959,29 @@ export interface DuplicateShopGroup {
 }
 export const getDuplicateShops = (keep: string[] = []) =>
   api.get<{ groups: DuplicateShopGroup[] }>('/parent-accounts/me/duplicate-shops', { params: { keep }, paramsSerializer: { indexes: null } })
+export interface VanMergePreview {
+  shop: DuplicateShopMember
+  van: DuplicateShopMember
+  blockers: string[]
+  other_networks: string[]
+  preview_token: string
+}
+export const getVanMergePreview = (params: { shop_number: string; van_number: string; allow_other_networks: boolean }) =>
+  api.get<VanMergePreview>('/parent-accounts/me/van-merge/preview', { params })
+export const runVanMerge = (data: {
+  shop_tenant_id: string; van_tenant_id: string; preview_token: string; mv_number?: string
+  allow_other_networks: boolean; move_user_ids: string[]; user_email_overrides: Record<string, string>
+}) => api.post<{ ok: boolean; message: string; users_moved: number }>('/parent-accounts/me/van-merge', data)
+export interface EntitlementBackfillPreview {
+  rows: { site_id: string; tenant_id: string; name: string; shop_number?: string | null; kind: string; payer: string }[]
+  preview_token: string
+}
+export const getEntitlementBackfill = () =>
+  api.get<EntitlementBackfillPreview>('/parent-accounts/me/entitlements/backfill')
+export const applyEntitlementBackfill = (preview_token: string) =>
+  api.post<{ created: number }>('/parent-accounts/me/entitlements/backfill', { preview_token })
+export const getEntitlementUsage = () =>
+  api.get<{ usage: Record<string, Record<string, number>> }>('/parent-accounts/me/entitlements/usage')
 export const retireDuplicateShop = (data: {
   keep_tenant_id: string; retire_tenant_id: string; preview_token: string
   move_user_ids: string[]; user_email_overrides: Record<string, string>

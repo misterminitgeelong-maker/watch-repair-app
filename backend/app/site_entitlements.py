@@ -93,3 +93,24 @@ def usage(session: Session, parent_id: UUID) -> dict:
         out.setdefault(e.kind, {}).setdefault(e.payer, 0)
         out[e.kind][e.payer] += 1
     return out
+
+
+def mobile_services_tenant_ids(session: Session, parent_id: UUID) -> set[UUID]:
+    """Tenants whose site holds an active mobile_services entitlement."""
+    with without_scope(session):
+        rows = session.exec(
+            select(ParentAccountSite.tenant_id)
+            .join(SiteEntitlement, SiteEntitlement.site_id == ParentAccountSite.id)
+            .where(ParentAccountSite.parent_account_id == parent_id)
+            .where(SiteEntitlement.kind == "mobile_services")
+            .where(SiteEntitlement.ended_at == None)  # noqa: E711
+        ).all()
+    return set(rows)
+
+
+def mv_numbers_by_tenant(session: Session, parent_id: UUID) -> dict[UUID, str]:
+    with without_scope(session):
+        rows = session.exec(select(ParentAccountSite.tenant_id, ParentAccountSite.mv_number)
+                            .where(ParentAccountSite.parent_account_id == parent_id)
+                            .where(ParentAccountSite.mv_number != None)).all()  # noqa: E711
+    return {tid: mv for tid, mv in rows if mv}

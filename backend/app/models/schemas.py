@@ -722,6 +722,7 @@ class ParentMobileJobNetworkRead(SQLModel):
     operator_tenant_id: UUID
     operator_name: str
     operator_shop_number: Optional[str] = None
+    operator_mv_number: Optional[str] = None
     referring_shop_tenant_id: Optional[UUID] = None
     referring_shop_name: Optional[str] = None
     referring_shop_number: Optional[str] = None
@@ -798,6 +799,7 @@ class MobileKpiOperatorRowRead(SQLModel):
     operator_tenant_id: UUID
     operator_name: str
     operator_shop_number: Optional[str] = None
+    operator_mv_number: Optional[str] = None
     customers_count: int = 0
     paid_customers_count: int = 0
     jobs_created: int = 0
@@ -2332,3 +2334,21 @@ class EntitlementBackfillRequest(SQLModel):
 class EntitlementUsageResponse(SQLModel):
     #: kind -> payer -> active count
     usage: dict[str, dict[str, int]] = Field(default_factory=dict)
+
+
+class VanMergePreviewResponse(SQLModel):
+    shop: DuplicateShopMemberRead
+    van: DuplicateShopMemberRead
+    blockers: list[str] = Field(default_factory=list)
+    other_networks: list[str] = Field(default_factory=list)
+    preview_token: str
+
+
+class VanMergeRequest(SQLModel):
+    shop_tenant_id: UUID
+    van_tenant_id: UUID
+    preview_token: str = Field(min_length=64, max_length=64)
+    mv_number: Optional[str] = Field(default=None, max_length=16)
+    allow_other_networks: bool = False
+    move_user_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    user_email_overrides: dict[UUID, str] = Field(default_factory=dict)
