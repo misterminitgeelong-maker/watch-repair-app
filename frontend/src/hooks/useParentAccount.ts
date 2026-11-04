@@ -14,6 +14,8 @@ export function useParentAccount(options?: UseParentAccountOptions) {
   return useQuery({
     queryKey: [...PARENT_ACCOUNT_QUERY_KEY, includeSites] as const,
     queryFn: () => getMyParentAccount({ include_sites: includeSites }).then(r => r.data),
+    // A shop that isn't in a network gets 404; retrying that only keeps the page spinning.
+    retry: (count, error) => (error as { response?: { status?: number } })?.response?.status !== 404 && count < 2,
     staleTime: 120_000,
     gcTime: 300_000,
   })
