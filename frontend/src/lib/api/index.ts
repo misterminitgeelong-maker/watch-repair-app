@@ -4972,8 +4972,15 @@ export const runVanMerge = (data: {
   shop_tenant_id: string; van_tenant_id: string; preview_token: string; mv_number?: string
   allow_other_networks: boolean; move_user_ids: string[]; user_email_overrides: Record<string, string>
 }) => api.post<{ ok: boolean; message: string; users_moved: number }>('/parent-accounts/me/van-merge', data)
+export interface EntitlementSiteNote {
+  site_id: string; tenant_id: string; name: string; shop_number?: string | null
+  reason?: string | null; note?: string | null; plan?: string | null; network_role?: string | null
+}
 export interface EntitlementBackfillPreview {
   rows: { site_id: string; tenant_id: string; name: string; shop_number?: string | null; kind: string; payer: string }[]
+  breakdown: Record<string, Record<string, number>>
+  skipped: EntitlementSiteNote[]
+  flagged: EntitlementSiteNote[]
   preview_token: string
 }
 export const getEntitlementBackfill = () =>

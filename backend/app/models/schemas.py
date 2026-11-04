@@ -2322,8 +2322,23 @@ class EntitlementProposalRead(SQLModel):
     payer: str
 
 
+class EntitlementSiteNoteRead(SQLModel):
+    site_id: UUID
+    tenant_id: UUID
+    name: str
+    shop_number: Optional[str] = None
+    reason: Optional[str] = None
+    note: Optional[str] = None
+    plan: Optional[str] = None
+    network_role: Optional[str] = None
+
+
 class EntitlementBackfillPreview(SQLModel):
     rows: list[EntitlementProposalRead] = Field(default_factory=list)
+    #: kind -> payer -> count, for the whole proposal
+    breakdown: dict[str, dict[str, int]] = Field(default_factory=dict)
+    skipped: list[EntitlementSiteNoteRead] = Field(default_factory=list)
+    flagged: list[EntitlementSiteNoteRead] = Field(default_factory=list)
     preview_token: str
 
 

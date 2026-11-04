@@ -33,7 +33,7 @@ def kinds(rows):
 
 def test_proposal_follows_plans(network):
     db, parent, *_ = network
-    assert kinds(plan_backfill(db, parent)) == sorted([
+    assert kinds(plan_backfill(db, parent)["rows"]) == sorted([
         ("Shop", "booking", "parent"), ("Pro", "booking", "parent"), ("Pro", "pro", "tenant"),
         ("Van", "mobile_services", "parent")])
 
@@ -42,9 +42,9 @@ def test_apply_needs_matching_token_and_is_idempotent(network):
     db, parent, actor, *_ = network
     with pytest.raises(ValueError):
         apply_backfill(db, parent=parent, actor=actor, expected_token="0" * 64)
-    rows = plan_backfill(db, parent)
-    assert apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(rows)) == 4
-    assert plan_backfill(db, parent) == []
+    proposal = plan_backfill(db, parent)
+    assert apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal)) == 4
+    assert plan_backfill(db, parent)["rows"] == []
     assert usage(db, parent.id) == {"booking": {"parent": 2}, "mobile_services": {"parent": 1}, "pro": {"tenant": 1}}
 
 
@@ -55,7 +55,7 @@ def test_non_minit_network_gets_no_proposal():
         hq = Tenant(name=f"Other HQ {s}", slug=f"other-{s}", plan_code="pro")
         db.add_all([parent, hq]); db.flush()
         db.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=hq.id, network_role="hq")); db.commit()
-        assert plan_backfill(db, parent) == []
+        assert plan_backfill(db, parent)["rows"] == []
 
 
 # ── folding a van into its franchisee's shop ────────────────────────────────
@@ -123,5 +123,132 @@ def test_van_with_records_stays_blocked(pair):
     with pytest.raises(MvMergeError):
         retire_duplicate(db, parent=parent, keep_tenant_id=shop.id, retire_tenant_id=van.id, actor=actor,
                          expected_preview_token=pv["preview_token"], van_mode=True, allow_other_networks=True)
+    db.rollback(); db.refresh(van)
+    assert van.is_active
+
+
+def test_rules_by_plan_with_skips_comp_and_flags():
+    s = uuid4().hex[:8]
+    with Session(engine) as db:
+        parent = ParentAccount(name=f"Net {s}", owner_email=f"hq{s}@example.test")
+        hq = Tenant(name=f"HQ {s}", slug=f"minit-hq-{s}", plan_code="minit_hq")
+        van_as_retail = Tenant(name=f"Glendale (MV) {s}", slug=f"mv-{s}", plan_code="basic_auto_key", shop_number="2915")
+        placeholder = Tenant(name=f"Mobile Services Baldivis {s}", slug=f"minit-mobile-{s}", plan_code="basic_auto_key", shop_number="6441")
+        comped = Tenant(name=f"Baldivis {s}", slug="minit-6441", plan_code="pro", shop_number="6441")
+        ignored = Tenant(name=f"MinitR {s}", slug=f"minitr-{s}", plan_code="booking_only", shop_number="0101")
+        corporate = Tenant(name=f"Corporate (MV) {s}", slug=f"corp-{s}", plan_code="basic_auto_key", shop_number="4903")
+        db.add_all([parent, hq, van_as_retail, placeholder, ignored, corporate])
+        existing = db.exec(select(Tenant).where(Tenant.slug == "minit-6441")).first()
+        if existing is None:
+            db.add(comped)
+        db.flush()
+        comp_tenant = existing or comped
+        for t, r in [(hq, "hq"), (van_as_retail, "retail"), (placeholder, "operator"), (comp_tenant, "retail"),
+                     (ignored, "retail"), (corporate, "retail")]:
+            db.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=t.id, network_role=r))
+        db.commit()
+        plan = plan_backfill(db, parent)
+        got = sorted((r["shop_number"], r["kind"], r["payer"]) for r in plan["rows"])
+        assert ("2915", "mobile_services", "parent") in got and ("2915", "booking", "parent") not in got
+        assert ("6441", "booking", "parent") in got and ("6441", "pro", "comp") in got
+        assert ("4903", "mobile_services", "parent") in got and ("4903", "booking", "parent") not in got
+        skipped = {r["name"] for r in plan["skipped"]}
+        assert any("Mobile Services Baldivis" in n for n in skipped) and any(n.startswith("MinitR") for n in skipped)
+        assert any(f["shop_number"] == "2915" for f in plan["flagged"])  # role retail, plan operator
+
+
+
+# Regression coverage for the 4 Nov reviewed starting grants.
+def add_site(db, parent, *, number, plan, role="retail", slug=None, name=None):
+    s = uuid4().hex[:8]
+    tenant = Tenant(name=name or f"Site {s}", slug=slug or f"site-{s}",
+                    plan_code=plan, shop_number=number)
+    db.add(tenant); db.flush()
+    site = ParentAccountSite(parent_account_id=parent.id, tenant_id=tenant.id, network_role=role)
+    db.add(site); db.commit()
+    return tenant, site
+
+
+@pytest.mark.parametrize("number", ["6902", "6903", "8905", "4903", "2915", "8901"])
+@pytest.mark.parametrize("plan", ["basic_auto_key", "minit_operator"])
+def test_retail_list_vans_only_get_mobile_services(network, number, plan):
+    db, parent, *_ = network
+    tenant, _ = add_site(db, parent, number=number, plan=plan)
+    rows = [r for r in plan_backfill(db, parent)["rows"] if r["tenant_id"] == str(tenant.id)]
+    assert [(r["kind"], r["payer"]) for r in rows] == [("mobile_services", "parent")]
+
+
+@pytest.mark.parametrize("plan", ["basic_watch_auto_key", "basic_shoe_auto_key", "basic_all_tabs"])
+def test_dispatch_capable_plans_do_not_imply_mobile_billing(network, plan):
+    db, parent, *_ = network
+    tenant, _ = add_site(db, parent, number="9876", plan=plan)
+    rows = [r for r in plan_backfill(db, parent)["rows"] if r["tenant_id"] == str(tenant.id)]
+    assert [(r["kind"], r["payer"]) for r in rows] == [("booking", "parent")]
+
+
+@pytest.mark.parametrize("number", ["0101", "01111", "3904", "2300"])
+def test_ignored_and_unconfirmed_sites_never_granted(network, number):
+    db, parent, actor, *_ = network
+    tenant, site = add_site(db, parent, number=number, plan="basic_auto_key")
+    proposal = plan_backfill(db, parent)
+    assert any(r["tenant_id"] == str(tenant.id) for r in proposal["skipped"])
+    assert not any(r["tenant_id"] == str(tenant.id) for r in proposal["rows"])
+    apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal))
+    assert not db.exec(select(SiteEntitlement).where(SiteEntitlement.site_id == site.id)).all()
+
+
+@pytest.mark.parametrize("number", ["2311", "6441", "8833", "8829"])
+def test_placeholder_slugs_never_granted(network, number):
+    db, parent, *_ = network
+    tenant, _ = add_site(db, parent, number=number, plan="pro", slug=f"minit-mobile-{number}",
+                         name="Mobile Services placeholder")
+    proposal = plan_backfill(db, parent)
+    assert not any(r["tenant_id"] == str(tenant.id) for r in proposal["rows"])
+    assert any(r["tenant_id"] == str(tenant.id) for r in proposal["skipped"])
+
+
+def test_pending_review_change_invalidates_confirmation(network):
+    db, parent, actor, *_ = network
+    tenant, _ = add_site(db, parent, number="2300", plan="basic_auto_key")
+    proposal = plan_backfill(db, parent)
+    tenant.plan_code = "booking_only"
+    db.add(tenant); db.commit()
+    updated = plan_backfill(db, parent)
+    assert updated["rows"] == proposal["rows"]  # only the review context changed
+    with pytest.raises(ValueError, match="Preview changed"):
+        apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal))
+    db.rollback()
+    assert not db.exec(select(SiteEntitlement).where(SiteEntitlement.parent_account_id == parent.id)).all()
+
+
+def test_comped_pro_is_recorded_separately_from_paid_usage(network):
+    db, parent, actor, *_ = network
+    comped = db.exec(select(Tenant).where(Tenant.slug == "minit-6441")).first()
+    if comped is None:
+        comped, _ = add_site(db, parent, number="6441", plan="pro", slug="minit-6441")
+    else:
+        db.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=comped.id, network_role="retail"))
+        db.commit()
+    proposal = plan_backfill(db, parent)
+    apply_backfill(db, parent=parent, actor=actor, expected_token=backfill_token(proposal))
+    assert usage(db, parent.id)["pro"] == {"tenant": 1, "comp": 1}
+    assert usage(db, parent.id)["booking"]["parent"] == 3
+
+
+@pytest.mark.parametrize("van_mode", [False, True])
+def test_support_office_cannot_be_folded_through_either_route(pair, van_mode):
+    from app.shop_duplicates import duplicate_blockers, van_blockers
+    db, parent, shop, van, actor, *_ = pair
+    shop.shop_number = "4903"
+    van.shop_number = "4903"
+    db.add_all([shop, van]); db.commit()
+    blockers = (van_blockers(db, parent.id, shop, van, allow_other_networks=True) if van_mode
+                else duplicate_blockers(db, parent.id, shop, van))
+    assert any("Support office van" in b for b in blockers)
+    from app.minit_mv_merge import preview_token
+    with pytest.raises(MvMergeError, match="Support office van"):
+        retire_duplicate(db, parent=parent, keep_tenant_id=shop.id, retire_tenant_id=van.id, actor=actor,
+                         expected_preview_token=preview_token(db, parent.id, shop, van, blockers=blockers),
+                         van_mode=van_mode, allow_other_networks=True)
     db.rollback(); db.refresh(van)
     assert van.is_active
