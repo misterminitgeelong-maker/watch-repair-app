@@ -86,9 +86,16 @@ def _alert_count(tenant_id) -> int:
                           .where(SmsLog.event == "website_lead_alert")).all())
 
 
-def test_testing_mode_without_escalation_uses_support_office_and_sends_no_alerts(client, lead_network, monkeypatch):
+@pytest.mark.parametrize("hq_identity", ["legacy_grant", "hq_site"])
+def test_testing_mode_without_escalation_uses_support_office_and_sends_no_alerts(client, lead_network, monkeypatch, hq_identity):
     from app.models import TenantEventLog
     n = lead_network
+    if hq_identity == "hq_site":
+        from app.models import ParentAccountSite
+        with Session(engine) as db:
+            site = db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == n["hq_id"])).one()
+            site.network_role = "hq"
+            db.add(site); db.commit()
     def forbidden(*args, **kwargs):
         raise AssertionError("Testing mode must not send an SMS or email")
     monkeypatch.setattr("app.sms.notify_website_lead_alert", forbidden)
@@ -144,7 +151,7 @@ def test_testing_mode_missing_support_office_does_not_fall_back_to_operator(clie
                       json={"force_hq_dispatch": True}).status_code == 200
     with Session(engine) as db:
         site = db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == n["hq_id"])).one()
-        site.network_role = "retail"
+        site.network_role = "operator"
         db.add(site); db.commit()
     response = _post_lead(client, n["ingest_id"], _lead_body())
     assert response.status_code == 422
