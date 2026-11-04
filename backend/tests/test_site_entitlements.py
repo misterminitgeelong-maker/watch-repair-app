@@ -252,3 +252,11 @@ def test_support_office_cannot_be_folded_through_either_route(pair, van_mode):
                          van_mode=van_mode, allow_other_networks=True)
     db.rollback(); db.refresh(van)
     assert van.is_active
+
+
+def test_chadstone_owner_pro_is_complimentary(network):
+    db, parent, *_ = network
+    tenant, _ = add_site(db, parent, number="3269", plan="pro", slug="3269",
+                         name="Mister Minit Chadstone")
+    rows = [r for r in plan_backfill(db, parent)["rows"] if r["tenant_id"] == str(tenant.id)]
+    assert {(r["kind"], r["payer"]) for r in rows} == {("booking", "parent"), ("pro", "comp")}
