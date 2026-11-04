@@ -2260,3 +2260,52 @@ class MvMergeResult(SQLModel):
 
 class MvMergeResponse(SQLModel):
     results: list[MvMergeResult] = Field(default_factory=list)
+
+
+class DuplicateShopUserRead(SQLModel):
+    id: UUID
+    email: str
+    full_name: Optional[str] = None
+    role: str
+
+
+class DuplicateShopMemberRead(SQLModel):
+    tenant_id: UUID
+    name: str
+    slug: str
+    shop_number: Optional[str] = None
+    plan_code: Optional[str] = None
+    network_role: Optional[str] = None
+    is_member: bool = False
+    reporting_link: bool = False
+    placeholder: bool = False
+    record_total: int = 0
+    records: dict[str, int] = Field(default_factory=dict)
+    users: list[DuplicateShopUserRead] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    preview_token: Optional[str] = None
+
+
+class DuplicateShopGroupRead(SQLModel):
+    shop_number: str
+    suggested_keep: UUID
+    members: list[DuplicateShopMemberRead] = Field(default_factory=list)
+
+
+class DuplicateShopsResponse(SQLModel):
+    groups: list[DuplicateShopGroupRead] = Field(default_factory=list)
+
+
+class DuplicateShopRetireRequest(SQLModel):
+    keep_tenant_id: UUID
+    retire_tenant_id: UUID
+    preview_token: str = Field(min_length=64, max_length=64)
+    move_user_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    #: user id -> corrected email to use at the kept shop.
+    user_email_overrides: dict[UUID, str] = Field(default_factory=dict)
+
+
+class DuplicateShopRetireResponse(SQLModel):
+    ok: bool
+    message: str
+    users_moved: int = 0

@@ -60,5 +60,8 @@ def assert_shop_number_unique_in_parent(
         if other.shop_number == shop_number:
             raise HTTPException(
                 status_code=409,
-                detail=f"shop_number '{shop_number}' is already used by another site in this account",
+                detail=(
+                    f"shop_number '{shop_number}' is already used by '{other.name}' in this account. "
+                    "Each shop number is one site: use Duplicate shop numbers to merge the records."
+                ),
             )

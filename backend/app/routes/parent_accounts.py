@@ -67,6 +67,10 @@ from ..models import (
     MvMergePreviewResponse,
     MvMergeRequest,
     MvMergeResponse,
+    DuplicateShopGroupRead,
+    DuplicateShopRetireRequest,
+    DuplicateShopRetireResponse,
+    DuplicateShopsResponse,
     MvMergeResult,
     ParentAccount,
     ParentAccountCreateTenantRequest,
@@ -2449,6 +2453,49 @@ def run_mv_merge(
                 if result.ok:
                     result.message += "; billing reconciliation needs review"
     return MvMergeResponse(results=results)
+
+
+@router.get("/me/duplicate-shops", response_model=DuplicateShopsResponse)
+def list_duplicate_shops(
+    keep: list[UUID] = Query(default=[]),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Shop numbers held by more than one active record in this network. Changes nothing."""
+    from ..shop_duplicates import find_duplicate_groups
+
+    _current_user, parent = _parent_for_write(session, auth)
+    return DuplicateShopsResponse(groups=[DuplicateShopGroupRead(**g) for g in find_duplicate_groups(session, parent, set(keep))])
+
+
+@router.post("/me/duplicate-shops/retire", response_model=DuplicateShopRetireResponse)
+def retire_duplicate_shop(
+    payload: DuplicateShopRetireRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Retire one duplicate record into the kept one. Nothing is deleted; blocked if it holds real records."""
+    from ..minit_mv_merge import MvMergeError
+    from ..shop_duplicates import retire_duplicate
+
+    current_user, parent = _parent_for_write(session, auth)
+    try:
+        result = retire_duplicate(
+            session, parent=parent, keep_tenant_id=payload.keep_tenant_id,
+            retire_tenant_id=payload.retire_tenant_id, actor=current_user,
+            expected_preview_token=payload.preview_token, move_user_ids=payload.move_user_ids,
+            user_email_overrides=payload.user_email_overrides,
+        )
+    except MvMergeError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    try:
+        _sync_extra_location_billing(session, parent.id)
+        session.commit()
+    except Exception:
+        session.rollback()
+        logging.getLogger(__name__).exception("Duplicate retire committed; billing reconciliation failed parent=%s", parent.id)
+    return DuplicateShopRetireResponse(ok=True, message="Duplicate retired; nothing was deleted", users_moved=result["users_moved"])
 
 
 @router.post("/me/mv-operators/{tenant_id}")
