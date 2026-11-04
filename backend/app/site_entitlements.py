@@ -44,7 +44,10 @@ EXCLUDED_SHOP_NUMBERS = {
     "3904": "Mobile Operator #3904 is unidentified; Sam to confirm before anything is granted",
 }
 #: Pro that is given free (never invoiced to Minit or the shop).
-COMPED_PRO_SLUGS = {"minit-6441": "Complimentary Pro (Baldivis tester)"}
+COMPED_PRO_SLUGS = {
+    "minit-6441": "Complimentary Pro (Baldivis tester)",
+    "3269": "Complimentary Pro (Chadstone, software owner's shop)",
+}
 #: Support office's own vans: mobile services only, no booking, never folded into a shop.
 SUPPORT_OFFICE_VAN_NUMBERS = {"4903"}
 
