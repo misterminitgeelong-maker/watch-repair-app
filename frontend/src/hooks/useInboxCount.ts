@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getInboxCount, listInboundEmails } from '@/lib/api'
+import { getInboxCount, getInboundEmailCount } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { isMinitHqUi } from '@/lib/minitProduct'
 
@@ -11,19 +11,19 @@ import { isMinitHqUi } from '@/lib/minitProduct'
  * Uses GET /inbox/count (DB COUNT) instead of fetching 50 inbox rows.
  */
 export function useInboxCount() {
-  const { minitHqUi, product, planCode, tenantSlug } = useAuth()
+  const { minitHqUi, product, planCode, tenantSlug, tenantId } = useAuth()
   const hqNav = minitHqUi === true || isMinitHqUi(product, planCode, tenantSlug)
 
   const { data: inboxCount = 0 } = useQuery({
-    queryKey: ['inbox-count', hqNav ? 'hq' : 'shop'],
+    queryKey: ['inbox-count', tenantId, hqNav ? 'hq' : 'shop'],
     queryFn: () =>
       getInboxCount(hqNav ? ['inbound_email_received'] : undefined).then(r => r.data.count),
     staleTime: 60_000,
   })
 
-  const { data: emailLeads } = useQuery({
-    queryKey: ['inbound-emails'],
-    queryFn: () => listInboundEmails().then(r => r.data),
+  const { data: emailCount = 0 } = useQuery({
+    queryKey: ['inbound-emails', 'new-count', tenantId],
+    queryFn: () => getInboundEmailCount().then(r => r.data.count),
     staleTime: 60_000,
     enabled: hqNav,
   })
@@ -32,6 +32,5 @@ export function useInboxCount() {
     return inboxCount
   }
 
-  const newEmails = (emailLeads ?? []).filter(e => e.status === 'new').length
-  return newEmails + inboxCount
+  return emailCount + inboxCount
 }

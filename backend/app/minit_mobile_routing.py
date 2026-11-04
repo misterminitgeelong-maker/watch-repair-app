@@ -166,14 +166,19 @@ def resolve_mobile_operator_route(
 
     parent = session.get(ParentAccount, parent_id)
     if parent and parent.mobile_lead_force_hq_dispatch:
-        return _resolution_for_hq_manual(
-            session,
-            parent_id=parent_id,
-            suburb=suburb,
-            state_code=st,
-            suburb_normalized=sub_norm,
-            routing_rule="force_hq_testing",
-            message="Testing mode: all website leads go to HQ for manual dispatch.",
+        from .support_office_intake import testing_inbox_tenant_id
+
+        inbox_id = testing_inbox_tenant_id(session, parent_id)
+        tenant = session.get(Tenant, inbox_id) if inbox_id else None
+        return MobileRoutingResolution(
+            suburb=suburb.strip(), state_code=st, suburb_normalized=sub_norm,
+            routing_rule="force_hq_testing" if tenant else "unmapped",
+            operator_tenant_id=tenant.id if tenant else None,
+            operator_slug=tenant.slug if tenant else None,
+            operator_name=tenant.name if tenant else None,
+            operator_shop_number=tenant.shop_number if tenant else None,
+            message="Testing mode: enquiry goes to the Support office Inbox; no SMS or email alerts."
+                if tenant else "Testing mode requires exactly one active Support office site; intake is unavailable.",
         )
 
     route = lookup_mobile_suburb_route(

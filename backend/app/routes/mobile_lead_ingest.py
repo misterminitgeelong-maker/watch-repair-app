@@ -107,7 +107,8 @@ def ingest_mobile_key_lead(
     return {
         "lead_id": str(lead.id),
         "tenant_id": str(lead.tenant_id),
-        "message": "Lead added to the operator's Lead Inbox; they've been alerted by SMS and email.",
+        "message": "Enquiry received in the Support office Inbox; testing mode sends no SMS or email alerts."
+            if parent.mobile_lead_force_hq_dispatch else "Lead added to the operator's Lead Inbox; they've been alerted by SMS and email.",
     }
 
 

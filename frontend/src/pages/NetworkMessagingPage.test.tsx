@@ -102,3 +102,17 @@ describe('Network messaging workspace', () => {
   })
 })
 
+
+it('describes directory records as linked rather than online participants', async () => {
+  render('/messages?tab=directory')
+  expect(await screen.findByText(/LINKED SITES/)).toBeInTheDocument()
+  expect(screen.getByText(/does not show who is online/)).toBeInTheDocument()
+  expect(screen.getByText(/Singapore and Malaysia/)).toBeInTheDocument()
+})
+
+it('uses Support office hub wording for accounts with multiple state hubs', async () => {
+  mocks.networks.mockResolvedValue([{ ...network, allowed_states: ['VIC', 'QLD'], can_publish_network: true }])
+  render('/messages?tab=hubs')
+  expect(await screen.findByRole('heading', { name: 'Support office state hubs' })).toBeInTheDocument()
+  expect(screen.queryByText('YOUR SHOP’S HUB')).not.toBeInTheDocument()
+})

@@ -81,6 +81,7 @@ from ..parent_network import (
     sites_for_parent,
 )
 from ..shop_number import format_tenant_label
+from ..network_site_classification import display_network_role, excluded_site_reason
 from ..auto_key_status import AUTO_KEY_ACTIVE_STATUSES
 from .parent_accounts import _parent_for_read, _parent_for_write, _record_event
 from .shop_mobile_bookings import (
@@ -101,12 +102,15 @@ _UNASSIGNED_REGION = "Unassigned"
 
 
 def _retail_and_operator_tenants(session: Session, parent_id: UUID) -> tuple[list[Tenant], list[Tenant]]:
-    """Split the network by what each site *is* (its network_role), not by
-    what it is billed for — a plan change no longer moves a shop between
-    counts or drops it out of region stats."""
+    """Operational populations, with reviewed van identities and excluded records.
+
+    Reporting consent, stored roles and entitlements are unchanged.
+    """
     sites = sites_for_parent(session, parent_id)
-    role_by_tenant = {site.tenant_id: site.network_role for site in sites}
-    tenants = linked_tenants_for_parent(session, parent_id)
+    tenants = [t for t in linked_tenants_for_parent(session, parent_id) if t.is_active and not t.merged_into_tenant_id]
+    tenant_by_id = {t.id: t for t in tenants}
+    role_by_tenant = {site.tenant_id: display_network_role(parent_id, site, tenant_by_id.get(site.tenant_id))
+                      for site in sites if not excluded_site_reason(parent_id, tenant_by_id.get(site.tenant_id))}
     retail = [t for t in tenants if role_by_tenant.get(t.id) == NETWORK_ROLE_RETAIL]
     operators = [t for t in tenants if role_by_tenant.get(t.id) == NETWORK_ROLE_OPERATOR]
     return retail, operators
@@ -409,11 +413,16 @@ def _classify_linked_tenants(
     retail_ids: list[UUID] = []
     operator_ids: list[UUID] = []
     region_shops: dict[UUID | None, int] = defaultdict(int)
+    tenants = _tenants_by_ids(session, [site.tenant_id for site in sites])
     for site in sites:
-        if site.network_role == NETWORK_ROLE_RETAIL:
+        tenant = tenants.get(site.tenant_id)
+        if not tenant or not tenant.is_active or tenant.merged_into_tenant_id or excluded_site_reason(parent_id, tenant):
+            continue
+        role = display_network_role(parent_id, site, tenant)
+        if role == NETWORK_ROLE_RETAIL:
             retail_ids.append(site.tenant_id)
             region_shops[site.region_id] += 1
-        elif site.network_role == NETWORK_ROLE_OPERATOR:
+        elif role == NETWORK_ROLE_OPERATOR:
             operator_ids.append(site.tenant_id)
     missing_dispatch = 0
     if operator_ids:
@@ -735,6 +744,7 @@ def get_operations_bookings_report(
     op_ids = [r[1] for r in agg_rows]
     tenants = _tenants_by_ids(session, shop_ids + op_ids)
     retail, _operators = _retail_and_operator_tenants(session, parent.id)
+    eligible_shop_ids = {shop.id for shop in retail}
     if shop_tenant_id is None and not status:
         # Shops with no bookings still belong in the report: they are the ones under goal.
         for shop in retail:
@@ -777,7 +787,8 @@ def get_operations_bookings_report(
         under = 0
         for vol in by_shop.values():
             vol.per_week = round(vol.total / weeks, 2)
-            vol.under_weekly_goal = vol.per_week < weekly_goal
+            # Preserve historical rows/totals without targeting vans or test records.
+            vol.under_weekly_goal = vol.tenant_id in eligible_shop_ids and vol.per_week < weekly_goal
             under += 1 if vol.under_weekly_goal else 0
         totals.per_week = round(totals.total / weeks, 2)
 
@@ -808,6 +819,25 @@ def get_operations_bookings_report(
         shops_under_goal=under,
         bookings=reads,
     )
+
+
+@router.get("/me/website-enquiries/{lead_id}", response_model=dict)
+def get_support_office_website_enquiry(
+    lead_id: UUID,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Read a website enquiry received by this network's Support office, not another shop's inbox."""
+    from ..support_office_intake import testing_inbox_tenant_id
+
+    _, parent, _ = _parent_for_read(session, auth)
+    inbox_id = testing_inbox_tenant_id(session, parent.id)
+    lead = session.get(ProspectLead, lead_id)
+    if not inbox_id or not lead or lead.tenant_id != inbox_id or lead.source != "website_lead":
+        raise HTTPException(404, "Enquiry not found")
+    return {"id": str(lead.id), "name": lead.name, "phone": lead.phone,
+            "email": lead.contact_email, "suburb": lead.suburb_name, "state": lead.state_code,
+            "notes": lead.notes, "status": lead.status}
 
 
 @router.get("/me/operations/mobile-jobs", response_model=ParentMobileJobsReport)

@@ -1,6 +1,8 @@
 import axios from 'axios'
 import api, { withApiOrigin, getApiErrorMessage } from './client'
 
+export const getInboundEmailCount = () => api.get<{ count: number }>('/parent-accounts/me/inbound-email-count')
+
 export * from './client'
 export { default } from './client'
 
@@ -5069,4 +5071,3 @@ export const shopSuggestedParts = (jobId: string) => api.get<SuggestedPart[]>(`/
 export const shopJobParts = (jobId: string) => api.get<JobPartUse[]>(`/stock/jobs/${jobId}/parts`)
 export const shopUsePart = (jobId: string, data: { part_id?: string; sku?: string; quantity?: number; location_id?: string }) =>
   api.post<JobPartUse & { stock_left: number }>(`/stock/jobs/${jobId}/parts`, data)
-
