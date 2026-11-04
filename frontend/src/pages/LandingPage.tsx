@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import StickyMobileCta from '@/components/StickyMobileCta'
 import { Link, Navigate } from 'react-router-dom'
 import {
   ArrowRight,
@@ -519,6 +520,7 @@ export default function LandingPage() {
           <Link to="/login">Log in</Link>
           <Link to="/customer-portal">Track a repair</Link>
           <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
           <Link to="/delete-account">Account deletion</Link>
         </nav>
         <p className="msl-copyright">© {new Date().getFullYear()} Mainspring</p>
@@ -554,6 +556,7 @@ export default function LandingPage() {
           />
         </div>
       </dialog>
+      <StickyMobileCta />
     </div>
   )
 }

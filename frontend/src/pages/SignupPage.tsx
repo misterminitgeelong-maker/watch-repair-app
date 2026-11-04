@@ -260,7 +260,7 @@ export default function SignupPage() {
                   </div>
                 </div>
 
-                {error && <p style={{ fontSize: 13, color: MKT.vermilionDeep, margin: 0 }}>{error}</p>}
+                {error && <p role="alert" style={{ fontSize: 13, color: MKT.vermilionDeep, margin: 0 }}>{error}</p>}
 
                 <button
                   type="submit"

@@ -62,6 +62,8 @@ import { isNativeApp } from '@/lib/native'
 const LandingPage = lazyPage(() => import('@/pages/LandingPage'))
 const PricingPage = lazyPage(() => import('@/pages/PricingPage'))
 const PrivacyPolicyPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.PrivacyPolicyPage })))
+const TermsPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.TermsPage })))
+const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'))
 const AccountDeletionPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.AccountDeletionPage })))
 const AccountsPage = lazyPage(() => import('@/pages/AccountsPage'))
 const PlatformAdminUsersPage = lazyPage(() => import('@/pages/PlatformAdminUsersPage'))
@@ -222,6 +224,7 @@ export default function App() {
             <Route path="/mobile-services" element={isNativeApp ? <Navigate to="/login" replace /> : <MobileServicesLandingPage />} />
             <Route path="/pricing" element={isNativeApp ? <Navigate to="/login" replace /> : <PricingPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/delete-account" element={<AccountDeletionPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
             <Route path="/status/:token" element={<StatusPage />} />
@@ -318,7 +321,7 @@ export default function App() {
               <Route path="shoe-repairs/:id" element={<FeatureGate feature="shoe"><ShoeJobDetailPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id/intake-print" element={<FeatureGate feature="shoe"><PrintShoeIntakeTicketsPage /></FeatureGate>} />
             </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={isNativeApp ? <Navigate to="/" replace /> : <NotFoundPage />} />
               </Routes>
             </Suspense>
           </LocationBoundary>
