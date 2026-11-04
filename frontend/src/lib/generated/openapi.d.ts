@@ -5193,6 +5193,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parent-accounts/me/entitlements/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Entitlement Backfill
+         * @description Starting entitlements we would grant from today's plans. Changes nothing.
+         */
+        get: operations["preview_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_get"];
+        put?: never;
+        /** Apply Entitlement Backfill */
+        post: operations["apply_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/parent-accounts/me/entitlements/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Entitlement Usage
+         * @description Active entitlements by kind and payer: what the network is invoiced for.
+         */
+        get: operations["entitlement_usage_v1_parent_accounts_me_entitlements_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parent-accounts/me/duplicate-shops": {
         parameters: {
             query?: never;
@@ -10648,6 +10689,48 @@ export interface components {
             event: components["schemas"]["EngravingEventRead"];
             /** Orders */
             orders: components["schemas"]["EngravingOrderRead"][];
+        };
+        /** EntitlementBackfillPreview */
+        EntitlementBackfillPreview: {
+            /** Rows */
+            rows?: components["schemas"]["EntitlementProposalRead"][];
+            /** Preview Token */
+            preview_token: string;
+        };
+        /** EntitlementBackfillRequest */
+        EntitlementBackfillRequest: {
+            /** Preview Token */
+            preview_token: string;
+        };
+        /** EntitlementProposalRead */
+        EntitlementProposalRead: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Shop Number */
+            shop_number?: string | null;
+            /** Kind */
+            kind: string;
+            /** Payer */
+            payer: string;
+        };
+        /** EntitlementUsageResponse */
+        EntitlementUsageResponse: {
+            /** Usage */
+            usage?: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
         };
         /** FollowUpUpdate */
         FollowUpUpdate: {
@@ -26127,6 +26210,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementBackfillPreview"];
+                };
+            };
+        };
+    };
+    apply_entitlement_backfill_v1_parent_accounts_me_entitlements_backfill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntitlementBackfillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlement_usage_v1_parent_accounts_me_entitlements_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementUsageResponse"];
                 };
             };
         };

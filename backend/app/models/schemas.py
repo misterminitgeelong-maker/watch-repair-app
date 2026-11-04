@@ -2309,3 +2309,26 @@ class DuplicateShopRetireResponse(SQLModel):
     ok: bool
     message: str
     users_moved: int = 0
+
+
+class EntitlementProposalRead(SQLModel):
+    site_id: UUID
+    tenant_id: UUID
+    name: str
+    shop_number: Optional[str] = None
+    kind: str
+    payer: str
+
+
+class EntitlementBackfillPreview(SQLModel):
+    rows: list[EntitlementProposalRead] = Field(default_factory=list)
+    preview_token: str
+
+
+class EntitlementBackfillRequest(SQLModel):
+    preview_token: str = Field(min_length=64, max_length=64)
+
+
+class EntitlementUsageResponse(SQLModel):
+    #: kind -> payer -> active count
+    usage: dict[str, dict[str, int]] = Field(default_factory=dict)

@@ -71,6 +71,10 @@ from ..models import (
     DuplicateShopRetireRequest,
     DuplicateShopRetireResponse,
     DuplicateShopsResponse,
+    EntitlementBackfillPreview,
+    EntitlementBackfillRequest,
+    EntitlementProposalRead,
+    EntitlementUsageResponse,
     MvMergeResult,
     ParentAccount,
     ParentAccountCreateTenantRequest,
@@ -2453,6 +2457,48 @@ def run_mv_merge(
                 if result.ok:
                     result.message += "; billing reconciliation needs review"
     return MvMergeResponse(results=results)
+
+
+@router.get("/me/entitlements/backfill", response_model=EntitlementBackfillPreview)
+def preview_entitlement_backfill(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Starting entitlements we would grant from today's plans. Changes nothing."""
+    from ..site_entitlements import backfill_token, plan_backfill
+
+    _user, parent = _parent_for_write(session, auth)
+    rows = plan_backfill(session, parent)
+    return EntitlementBackfillPreview(rows=[EntitlementProposalRead(**r) for r in rows], preview_token=backfill_token(rows))
+
+
+@router.post("/me/entitlements/backfill")
+def apply_entitlement_backfill(
+    payload: EntitlementBackfillRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    from ..site_entitlements import apply_backfill
+
+    current_user, parent = _parent_for_write(session, auth)
+    try:
+        created = apply_backfill(session, parent=parent, actor=current_user, expected_token=payload.preview_token)
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"created": created}
+
+
+@router.get("/me/entitlements/usage", response_model=EntitlementUsageResponse)
+def entitlement_usage(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Active entitlements by kind and payer: what the network is invoiced for."""
+    from ..site_entitlements import usage
+
+    _user, parent = _parent_for_write(session, auth)
+    return EntitlementUsageResponse(usage=usage(session, parent.id))
 
 
 @router.get("/me/duplicate-shops", response_model=DuplicateShopsResponse)
