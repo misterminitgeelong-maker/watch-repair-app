@@ -18,7 +18,7 @@ export default function MobileRouteReview() {
   const data = query.data
   return <Card className="mt-6 p-5 space-y-3">
     <h2 className="font-semibold">Territory readiness review</h2>
-    <p className="text-sm">Read-only check. Review the exact real operator before proposing any reassignment. Matching shop numbers alone do not establish ownership.</p>
+    <p className="text-sm">Minit decides territory coverage. This read-only check reports current accounts and readiness without reassigning suburbs.</p>
     <Button variant="secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>Refresh review</Button>
     {query.isPending && <p role="status">Loading route review…</p>}
     {query.isError && <LoadError error={query.error} message="Could not review territory routes." onRetry={() => void query.refetch()} />}
@@ -31,7 +31,7 @@ export default function MobileRouteReview() {
         <tbody>{data.targets.map(t => <tr key={t.tenant_id}>
           <td className="p-2">{t.name}<div className="text-xs">{t.slug} · {t.states.join(', ')}</div></td>
           <td className="p-2">{t.route_count}<div className="text-xs">Examples: {t.sample_suburbs.join(', ')}</div></td>
-          <td className="p-2">{t.issues.length ? t.issues.map(issue => <p key={issue}>{issue}</p>) : 'No readiness issues found by this check'}<p className="text-xs">Replacement: requires a separately reviewed exact account.</p></td>
+          <td className="p-2">{t.issues.length ? t.issues.map(issue => <p key={issue}>{issue}</p>) : 'No readiness issues found by this check'}</td>
         </tr>)}</tbody>
       </table></div>
     </>}

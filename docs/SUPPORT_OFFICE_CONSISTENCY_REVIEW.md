@@ -15,19 +15,16 @@ Sam confirmed Singapore/Malaysia retain network announcements and direct message
 5. The overseas warning mismatch is intentional filtering: `messaging_hubs.intentionally_excluded` omits Singapore/Malaysia/SEA from missing-state warnings. No overseas hubs or state assignments are added. Copy now explains AU/NZ hub coverage and the overseas DM/announcement policy. Multi-state Support office views avoid the single-shop hub headings.
 6. A read-only territory review exposes current route targets, exact account IDs, route counts, states, example suburbs and readiness issues. It shows testing-mode status and the separate escalation configuration without returning passwords, webhook secrets or contact numbers. It never chooses a replacement, activates dispatch or writes routes.
 
-## Route proposals still requiring exact account confirmation
+## Territory ownership stays with Minit
 
-| Current target from browser handover | Supplied suburb count | Proposed action | Replacement |
-| --- | ---: | --- | --- |
-| minit-mobile-6441, Mobile Services Baldivis | 524 | Review and reassign only after confirming the real operator, ownership and blockers | Unconfirmed; do not infer minit-6441 or MV 6902 |
-| minit-mobile-2311, Mobile Services Queanbeyan | 275 | Same controlled review | Unconfirmed; do not infer by number/name |
+Sam confirmed that Minit decides its operators' coverage. No route reassignments, replacement-account proposals or coverage changes are part of this work.
 
-After deployment, refresh Lead routing → Territory readiness review and record current source IDs/counts. Obtain the exact approved destination IDs; verify active membership/dispatch consent, owner readiness, paused state, dispatch contact and territory ownership. Prepare the complete route before/after manifest and reversal data before seeking approval to apply any reassignment. No route mutation endpoint or bulk reassignment is introduced here.
+The browser handover observed 524 suburbs mapped to minit-mobile-6441 (Baldivis) and 275 to minit-mobile-2311 (Queanbeyan). The read-only screen reports current account identities and readiness for Minit's review. These figures do not authorize changes and are not a request for Sam to nominate replacements. Testing mode remains on.
 
 ## Browser verification after an approved deployment
 
 1. Confirm the reviewed release is live. Read testing mode ON; do not save it off. Verify existing entitlement totals remain 383 parent-paid booking, 28 parent-paid mobile services and two complimentary Pro (413 total), or investigate any intervening authorized changes. No further blanket grant.
-2. Read the territory review and export/copy exact current source records and blockers. No operator activation, account retirement, ownership/link changes or van folds.
+2. Read the territory review if useful to Minit; coverage decisions and route management remain with Minit. No operator activation, account retirement, ownership/link changes or van folds.
 3. Verify the seven exclusions are absent from the directory, the six vans show as operators, and real awaiting-invitation shops remain visible. Overseas accounts should show no state hub while retaining DM/network announcement eligibility.
 4. Compare badge counts against the new-email count plus Inbox alerts; remember the rendered lists are capped at 500 each. Verify enquiry detail is accessible only to the correct Support office.
 5. Confirm retail under-goal lists and server-side shop-message validation omit the vans/exclusions. Preserve intentional mobile report rows and compare matching report periods, rather than treating all screens as the same account population.
