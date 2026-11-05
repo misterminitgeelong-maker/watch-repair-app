@@ -59,7 +59,7 @@ export default function ParentAccountPage() {
     return () => window.clearTimeout(handle)
   }, [siteSearch])
 
-  const { data, isLoading } = useParentAccount()
+  const { data, isLoading, isError } = useParentAccount()
   const { data: retailPage } = useParentAccountSites({
     plan_kind: 'retail',
     limit: retailLimit,
@@ -220,6 +220,15 @@ export default function ParentAccountPage() {
   }
 
   if (isLoading) return <Spinner />
+
+  if (isError && !data) {
+    return (
+      <div>
+        <PageHeader title="Parent account" />
+        <EmptyState message="This shop is not linked to a network yet. Ask your head office to link it from Manage shops." />
+      </div>
+    )
+  }
 
   if (minitHqUi || isMinitHqUi(product, planCode, sessionTenantSlug)) {
     return <Navigate to="/minit/lead-routing" replace />

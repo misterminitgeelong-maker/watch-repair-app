@@ -342,13 +342,14 @@ def readiness_issues(session: Session, mv: Tenant, op: Tenant | None = None, pho
     return issues
 
 
-def merge_blockers(session: Session, parent_id: UUID, mv: Tenant, op: Tenant) -> list[str]:
+def merge_blockers(session: Session, parent_id: UUID, mv: Tenant, op: Tenant, *, require_placeholder: bool = True) -> list[str]:
     blockers = []
     work = business_record_counts(session, op.id)
     if work:
         blockers.append("Source holds records: " + ", ".join(f"{n} {t}" for t, n in sorted(work.items())))
-    if not mv.is_active or mv.merged_into_tenant_id or not is_mobile_placeholder(op):
-        blockers.append("Both shops must be active; source must be an imported Mobile Services placeholder")
+    if not mv.is_active or mv.merged_into_tenant_id or (require_placeholder and not is_mobile_placeholder(op)) \
+            or not op.is_active or op.merged_into_tenant_id:
+        blockers.append("Both shops must be active" + ("; source must be an imported Mobile Services placeholder" if require_placeholder else ""))
     other_sites = session.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == op.id)
                                .where(ParentAccountSite.parent_account_id != parent_id)).all()
     if other_sites:

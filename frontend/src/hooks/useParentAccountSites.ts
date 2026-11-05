@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { listParentAccountSites, type OwnerStage } from '@/lib/api'
 
 export const PARENT_ACCOUNT_SITES_QUERY_KEY = ['parent-account-sites'] as const
@@ -41,6 +41,8 @@ export function useParentAccountSites(params: ParentAccountSitesParams = {}) {
         plan_kind,
         owner_stage,
       }).then(r => r.data),
+    // Keep the rows on screen while the next page loads, so "Load more" doesn't flash empty.
+    placeholderData: keepPreviousData,
     staleTime: 120_000,
     gcTime: 300_000,
   })

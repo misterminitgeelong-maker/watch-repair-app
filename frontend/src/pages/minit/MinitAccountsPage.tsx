@@ -26,7 +26,9 @@ import { PARENT_ACCOUNT_SITES_QUERY_KEY, useParentAccountSites } from '@/hooks/u
 import { HqStaffCard, REGIONS_QUERY_KEY, RegionsCard, useRegions } from '@/components/minit/MinitNetworkPanels'
 import { AccountSupportModal } from '@/components/minit/AccountSupportModal'
 import { MvMergeModal } from '@/components/minit/MvMergeModal'
+import { DuplicateShopsModal } from '@/components/minit/DuplicateShopsModal'
 import { LoadError } from '@/components/minit/LoadError'
+import { HubAssignmentCard } from '@/components/minit/HubAssignmentCard'
 import { Button, Card, Input, Modal, PageHeader, Select, Spinner } from '@/components/ui'
 
 function formatAreaRegion(area?: string | null, region?: string | null) {
@@ -268,6 +270,7 @@ export default function MinitAccountsPage() {
   const { data: summary, isLoading: summaryLoading } = useParentAccount()
   const [stageFilter, setStageFilter] = useState<OwnerStage | null>(null)
   const [showMvMerge, setShowMvMerge] = useState(false)
+  const [showDuplicates, setShowDuplicates] = useState(false)
   const {
     data: retailPage,
     isLoading: retailLoading,
@@ -329,6 +332,13 @@ export default function MinitAccountsPage() {
       void qc.invalidateQueries({ queryKey: ['minit-mobile-jobs-report'] })
     },
     onError: err => setError(getApiErrorMessage(err, 'Could not change Mobile Services sharing.')),
+  })
+
+  const hubMut = useMutation({
+    mutationFn: ({ tenantId, value }: { tenantId: string; value: string }) =>
+      updateLinkedSite(tenantId, { messaging_state: value }).then(r => r.data),
+    onSuccess: () => { setError(''); qc.invalidateQueries({ queryKey: PARENT_ACCOUNT_SITES_QUERY_KEY }) },
+    onError: err => setError(getApiErrorMessage(err, 'Could not change that shop\'s messaging hub.')),
   })
 
   const regionMut = useMutation({
@@ -551,6 +561,7 @@ export default function MinitAccountsPage() {
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
         Add, link, or remove shops on the network. Use Shops to browse by region.
       </p>
+      {canEdit && <HubAssignmentCard />}
 
       {(error || enterError) && (
         <div className="mb-4 text-sm rounded-lg px-4 py-3" style={{ color: 'var(--ms-error)', backgroundColor: '#FDF0EE', border: '1px solid #E8B4AA' }}>
@@ -708,6 +719,19 @@ export default function MinitAccountsPage() {
                     ))}
                   </Select>
                 )}
+                {canEdit && (
+                  <Select
+                    value={site.messaging_state ?? ''}
+                    onChange={e => hubMut.mutate({ tenantId: site.tenant_id, value: e.target.value })}
+                    aria-label={`Messaging hub for ${site.tenant_name}`}
+                    disabled={hubMut.isPending}
+                    className="text-xs"
+                  >
+                    <option value="">Hub: auto ({site.messaging_hub ?? 'none'})</option>
+                    {['VIC', 'NSW', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT', 'NZ'].map(h => <option key={h} value={h}>Hub: {h}</option>)}
+                    <option value="NONE">Hub: none</option>
+                  </Select>
+                )}
                 {openShopButton(site)}
                 {canEdit && site.owner_invite_status !== 'completed' && (
                 <Button
@@ -778,6 +802,16 @@ export default function MinitAccountsPage() {
                 Merge MV duplicates
               </Button>
             )}
+            {canEdit && (
+              <Button
+                variant="secondary"
+                className="text-xs px-3 py-1.5"
+                onClick={() => setShowDuplicates(true)}
+                title="Find shop numbers that have more than one record"
+              >
+                Duplicate shop numbers
+              </Button>
+            )}
           </div>
           {operators.map(site => {
             const areaRegion = formatAreaRegion(site.area, site.region)
@@ -835,6 +869,7 @@ export default function MinitAccountsPage() {
       </div>
 
       {showMvMerge && <MvMergeModal onClose={() => setShowMvMerge(false)} />}
+      {showDuplicates && <DuplicateShopsModal onClose={() => setShowDuplicates(false)} />}
 
       {showAdd && (
         <Modal title="Add shop" onClose={() => setShowAdd(false)}>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import StickyMobileCta from '@/components/StickyMobileCta'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { MKT, MARKETING_CSS } from '@/lib/marketingTheme'
@@ -144,10 +145,12 @@ export default function MobileServicesLandingPage() {
           <div className="flex flex-wrap gap-5">
             <Link to="/" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>All trades</Link>
             <Link to="/privacy" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Privacy</Link>
+            <Link to="/terms" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Terms</Link>
             <a href="mailto:admin@mainspring.au" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: MKT.textBody }}>Contact</a>
           </div>
         </div>
       </div>
+      <StickyMobileCta />
     </div>
   )
 }

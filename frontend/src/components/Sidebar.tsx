@@ -1,10 +1,12 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { useTheme } from '@/context/ThemeContext'
 import { useInboxCount } from '@/hooks/useInboxCount'
+import { useMessagesUnread } from '@/hooks/useMessagesUnread'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Users,
+  MessageSquare,
   Wrench,
   Receipt,
   LayoutDashboard,
@@ -23,7 +25,9 @@ import {
   Download,
   Radio,
   Kanban,
+  Award,
   ShoppingBag,
+  Boxes,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { isDemoModeEnabled } from '@/lib/onboarding'
@@ -41,6 +45,7 @@ import MinitHqSidebar from './MinitHqSidebar'
 import ChangelogModal from './ChangelogModal'
 import { cn } from '@/lib/utils'
 import type { FeatureKey } from '@/lib/api'
+import { useShopStockEnabled } from '@/hooks/useShopStock'
 
 type NavLinkItem = {
   to: string
@@ -53,6 +58,8 @@ type NavLinkItem = {
 const bookingOnlyNav: NavLinkItem[] = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile', icon: KeyRound, feature: 'shop_mobile_booking' },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Booking updates and messages from the Support office' },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, title: 'Message other shops, operators and the Support office' },
   { to: '/accounts', label: 'Account', icon: UserCog },
 ]
 
@@ -67,7 +74,9 @@ const navBeforeMobile: NavLinkItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/shop-mobile-bookings', label: 'Book mobile services', icon: KeyRound, feature: 'shop_mobile_booking' },
   { to: '/inbox', label: 'Inbox', icon: Inbox, title: 'Quote activity and website mobile key leads' },
+  { to: '/messages', label: 'Messages', icon: MessageSquare, title: 'Message other shops, operators and the Support office' },
   { to: '/customers', label: 'Customers', icon: Users },
+  { to: '/engraving', label: 'Engraving Events', icon: Award, title: 'QR ordering and queue for on-the-spot medal engraving' },
   { to: '/jobs', label: 'Watch Repairs', icon: Wrench, feature: 'watch' },
   { to: '/shoe-repairs', label: 'Shoe Repairs', icon: Scissors, feature: 'shoe' },
   { to: '/customer-orders', label: 'Customer Orders', icon: ShoppingBag, title: 'Track items ordered in for customers' },
@@ -100,6 +109,7 @@ interface SidebarProps {
 export default function Sidebar({ className, mobile = false, onNavigate, onClose, closeIcon }: SidebarProps) {
   const { logout, role, hasFeature, planCode, product, tenantSlug, minitHqUi, platformConsole } = useAuth()
   const demoModeEnabled = isDemoModeEnabled()
+  const hasPartsStock = useShopStockEnabled()
   const hqCtx = {
     product,
     planCode,
@@ -117,6 +127,7 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
   const isMinitUi = isMinitRestrictedUi(product, planCode, tenantSlug)
   const isBookingOnly = isMinitBookingOnlyPlan(effectivePlan) && !isMinitHqUi(product, planCode, tenantSlug)
   const inboxCount = useInboxCount()
+  const messagesUnread = useMessagesUnread()
   const [showChangelog, setShowChangelog] = useState(false)
   const [showIosHint, setShowIosHint] = useState(false)
   const { pathname } = useLocation()
@@ -165,7 +176,10 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
     ? filterItems(demoNavAfterMobile)
     : isMinitUi
     ? []
-    : filterItems(navAfterMobile).filter((item) => !(autoKeyOnly && item.to === '/stocktakes'))
+    : [
+        ...filterItems(navAfterMobile).filter((item) => !(autoKeyOnly && item.to === '/stocktakes')),
+        ...(hasPartsStock ? [{ to: '/parts-stock', label: 'Parts stock', icon: Boxes } as NavLinkItem] : []),
+      ]
   const showMobile = !isMinitUi && hasFeature('auto_key')
   const insideMobile = pathname.startsWith('/auto-key')
 
@@ -281,6 +295,11 @@ export default function Sidebar({ className, mobile = false, onNavigate, onClose
                 {(item.to === '/inbox' || item.to === '/minit/inbox') && inboxCount > 0 && (
                   <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}>
                     {inboxCount > 99 ? '99+' : inboxCount}
+                  </span>
+                )}
+                {item.to === '/messages' && messagesUnread > 0 && (
+                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center" style={{ backgroundColor: 'var(--ms-danger)', color: '#fff' }}>
+                    {messagesUnread > 99 ? '99+' : messagesUnread}
                   </span>
                 )}
               </>

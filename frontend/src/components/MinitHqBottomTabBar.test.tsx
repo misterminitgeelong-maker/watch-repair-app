@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import MinitHqBottomTabBar from './MinitHqBottomTabBar'
+import { hqNavFor } from './MinitHqSidebar'
 
 const auth = vi.hoisted(() => ({ logout: vi.fn(), sessionReady: false, initializing: true, hasFeature: () => false }))
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => auth }))
@@ -23,4 +24,8 @@ describe('HQ mobile session recovery', () => {
     expect(auth.logout).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
   })
+})
+
+it('keeps Messages available when mobile services are disabled', () => {
+  expect(hqNavFor([])).toContainEqual(expect.objectContaining({ to: '/minit/messages', label: 'Messages' }))
 })

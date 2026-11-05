@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { AccountDeletionPage, PrivacyPolicyPage } from './LegalPages'
+import { AccountDeletionPage, PrivacyPolicyPage, TermsPage } from './LegalPages'
 
 describe('legal pages', () => {
   it('privacy policy names the company and contact address', () => {
@@ -14,5 +14,12 @@ describe('legal pages', () => {
     render(<AccountDeletionPage />)
     expect(screen.getByRole('heading', { name: 'Delete your Mainspring account' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'admin@mainspring.au' })).toHaveAttribute('href', expect.stringContaining('mailto:admin@mainspring.au'))
+  })
+
+  it('terms page names the company and contact address', () => {
+    render(<TermsPage />)
+    expect(screen.getByRole('heading', { name: 'Terms of Service' })).toBeInTheDocument()
+    expect(screen.getAllByText(/Unamigo Pty Ltd/).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'admin@mainspring.au' }).length).toBeGreaterThan(0)
   })
 })

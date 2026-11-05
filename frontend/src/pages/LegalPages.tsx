@@ -71,6 +71,7 @@ export function PrivacyPolicyPage() {
         <li>Push notifications: Google Firebase Cloud Messaging.</li>
         <li>Maps and address search: Google.</li>
         <li>Error monitoring: Sentry.</li>
+        <li>Website visit statistics: Cloudflare Web Analytics, which uses no cookies and does not track you across sites.</li>
         <li>Accounting: Xero, only where a shop chooses to connect it.</li>
       </ul>
       <p>
@@ -142,6 +143,65 @@ export function AccountDeletionPage() {
       <p>
         Customers of a shop who want their details removed should contact that shop. See our{' '}
         <a href="/privacy">Privacy Policy</a> for more.
+      </p>
+    </LegalLayout>
+  )
+}
+
+export function TermsPage() {
+  return (
+    <LegalLayout title="Terms of Service">
+      <p>
+        These terms apply to your use of Mainspring (mainspring.au and the Mainspring mobile app), operated by {COMPANY}
+        (ABN 41 652 728 320) (&ldquo;we&rdquo;, &ldquo;us&rdquo;). By creating an account or using Mainspring you agree to them
+        on behalf of yourself and the business you represent.
+      </p>
+
+      <h2>The service</h2>
+      <p>
+        Mainspring is business software for repair shops: job tickets, quotes, invoices, customer messages and related tools.
+        We may improve, change or retire features over time and will give reasonable notice of changes that materially
+        reduce what you pay for.
+      </p>
+
+      <h2>Accounts</h2>
+      <ul>
+        <li>You must give accurate details and keep your login secure. You are responsible for activity under your account and for the staff you add.</li>
+        <li>You must have authority to bind the business you sign up for.</li>
+      </ul>
+
+      <h2>Plans, trial and payment</h2>
+      <ul>
+        <li>New shops get a 14-day trial. A card is required to start. Unless you cancel before the trial ends, the subscription fee for your plan is charged monthly in Australian dollars. Prices are shown on the <a href="/pricing">pricing page</a>.</li>
+        <li>Payments are processed by Stripe. Fees are charged in advance and, except where the law says otherwise, are not refundable for part months.</li>
+        <li>You can cancel at any time; access continues to the end of the paid period. We may change prices with at least 30 days&rsquo; notice.</li>
+        <li>Optional features such as SMS or card payments may carry usage fees, which are shown before you use them.</li>
+      </ul>
+
+      <h2>Your data</h2>
+      <ul>
+        <li>You own the information you put into Mainspring, including your customers&rsquo; details. You give us permission to store and process it to run the service. See our <a href="/privacy">Privacy Policy</a>.</li>
+        <li>You are responsible for having the right to record and contact your customers, including for texts and emails you send through Mainspring, and for complying with the Spam Act 2003 (Cth) and the Privacy Act 1988 (Cth).</li>
+        <li>You can export your data, and ask us to delete it, at any time. See <a href="/delete-account">account deletion</a>.</li>
+      </ul>
+
+      <h2>Acceptable use</h2>
+      <p>
+        Do not misuse the service, attempt to access other shops&rsquo; data, send unlawful or unsolicited messages, or
+        interfere with the service&rsquo;s security or operation. We may suspend an account that breaches these terms.
+      </p>
+
+      <h2>Availability and liability</h2>
+      <ul>
+        <li>We aim for a reliable service but do not promise it will be uninterrupted or error-free. Keep your own records of anything critical.</li>
+        <li>Nothing in these terms excludes rights you have under the Australian Consumer Law that cannot be excluded.</li>
+        <li>Subject to that, our total liability to you for any claim is limited to the fees you paid us in the 12 months before the claim, and we are not liable for indirect or consequential loss, including lost profit.</li>
+      </ul>
+
+      <h2>General</h2>
+      <p>
+        These terms are governed by the laws of Victoria, Australia. We may update them and will post the new date above;
+        continuing to use Mainspring after a change means you accept it. Questions: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </p>
     </LegalLayout>
   )

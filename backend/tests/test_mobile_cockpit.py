@@ -429,3 +429,19 @@ def test_as_of_rejects_bad_dates():
     headers, _, _ = _tenant()
     assert client.get("/v1/reports/auto-key/cockpit", headers=headers, params={"as_of": "yesterday"}).status_code == 400
     assert client.get("/v1/reports/auto-key/cockpit", headers=headers, params={"as_of": "2026-09-01"}).status_code == 200
+
+
+@pytest.mark.parametrize("status", ["work_completed", "invoice_paid", "completed", "collected"])
+def test_done_statuses_stamp_work_completed_at(status):
+    headers, tenant_id, _ = _tenant()
+    job_id = _job(headers, _customer(headers), "Stamp me", status="on_site")
+    _set(job_id, status=status)
+    with Session(engine) as s:
+        assert s.get(AutoKeyJob, UUID(job_id)).work_completed_at is not None
+
+
+def test_open_status_does_not_stamp_work_completed_at():
+    headers, tenant_id, _ = _tenant()
+    job_id = _job(headers, _customer(headers), "Not done", status="on_site")
+    with Session(engine) as s:
+        assert s.get(AutoKeyJob, UUID(job_id)).work_completed_at is None

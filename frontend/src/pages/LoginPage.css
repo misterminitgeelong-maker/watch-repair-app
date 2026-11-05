@@ -1,0 +1,447 @@
+.ms-login {
+  --login-ink: #172c48;
+  --login-blue: #275de1;
+  --login-muted: #69768a;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100dvh;
+  background: #fff;
+  color: var(--login-ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.ms-login * {
+  box-sizing: border-box;
+}
+.ms-login a {
+  color: inherit;
+  text-decoration: none;
+}
+.ms-login button,
+.ms-login input {
+  font: inherit;
+}
+.ms-login button {
+  cursor: pointer;
+}
+.ms-login h1,
+.ms-login h2,
+.ms-login p {
+  margin: 0;
+  font-family: inherit;
+  color: inherit;
+}
+.ms-login :focus-visible {
+  outline: 3px solid #7da3ff;
+  outline-offset: 3px;
+}
+.ms-login button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.ms-login-form-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 35px 48px 24px;
+  min-width: 0;
+}
+.ms-login-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 11px;
+}
+.ms-login-back,
+.ms-login-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #61718a !important;
+}
+.ms-login-track {
+  margin-left: auto;
+}
+.ms-login-top a:hover {
+  color: var(--login-blue) !important;
+}
+.ms-login-form-wrap {
+  width: 100%;
+  max-width: 360px;
+  margin: auto;
+  padding: 65px 0;
+}
+.ms-login-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 42px;
+}
+.ms-login-brand > span {
+  font-size: 25px;
+  letter-spacing: -1px;
+  font-weight: 700;
+}
+.ms-login-brand-dot {
+  color: var(--login-blue);
+}
+.ms-login-minit {
+  max-width: 180px;
+  max-height: 70px;
+  object-fit: contain;
+}
+.ms-login h1 {
+  font-size: 35px;
+  line-height: 1.3;
+  letter-spacing: -0.045em;
+  font-weight: 600;
+}
+.ms-login-intro {
+  font-size: 13px;
+  color: var(--login-muted) !important;
+  margin-top: 10px !important;
+  line-height: 1.8;
+}
+.ms-login-form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 31px;
+}
+.ms-login-form > label:not(.ms-login-remember),
+.ms-login-shop label {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.ms-login-form input:not([type='checkbox']) {
+  width: 100%;
+  height: 49px;
+  padding: 11px 14px;
+  border: 1px solid #cfd7e3;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--login-ink);
+  font-size: 13px;
+  box-shadow: 0 1px 2px #172c4804;
+}
+.ms-login-form input::placeholder {
+  color: #8d99aa;
+}
+.ms-login-form > input {
+  margin-bottom: 21px;
+}
+.ms-login-password {
+  position: relative;
+}
+.ms-login-password input {
+  padding-right: 47px !important;
+}
+.ms-login-password button {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 39px;
+  height: 39px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #718097;
+  border-radius: 5px;
+}
+.ms-login-shop {
+  margin-top: 18px;
+}
+.ms-login-shop-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: #61718a;
+  font-size: 11px !important;
+}
+.ms-login-shop-toggle[aria-expanded='true'] > svg {
+  transform: rotate(180deg);
+}
+.ms-login-shop-toggle strong {
+  font-weight: 600;
+  color: var(--login-ink);
+}
+#login-shop-options {
+  padding: 16px;
+  margin-top: 9px;
+  background: #f7f9fc;
+  border: 1px solid #e2e7f0;
+  border-radius: 6px;
+}
+#login-shop-options label {
+  display: block;
+}
+#login-shop-options label span {
+  font-weight: 400;
+  color: var(--login-muted);
+}
+#login-shop-options p {
+  font-size: 10px;
+  color: var(--login-muted);
+  line-height: 1.6;
+  margin-top: 9px;
+}
+.ms-login-remember {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  margin-top: 20px;
+  margin-bottom: 25px;
+  color: #52637b;
+}
+.ms-login-remember input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--login-blue);
+}
+.ms-login-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  border: 1px solid var(--login-blue);
+  border-radius: 6px;
+  background: var(--login-blue);
+  color: #fff;
+  height: 49px;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.ms-login-submit:hover {
+  background: #194bc1;
+}
+.ms-login-error {
+  background: #fff3f1;
+  border: 1px solid #edc7c2;
+  border-radius: 5px;
+  color: #a1372c !important;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  margin-bottom: 18px !important;
+}
+.ms-login-signup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--login-muted) !important;
+  margin-top: 23px !important;
+}
+.ms-login-signup a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--login-blue);
+  font-weight: 600;
+}
+.ms-login-demo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 31px;
+  padding-top: 23px;
+  border-top: 1px solid #e4e9f1;
+  font-size: 11px;
+  color: var(--login-muted);
+}
+.ms-login-demo button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 5px 0;
+  background: transparent;
+  color: var(--login-ink);
+  font-size: 11px;
+}
+.ms-login-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8490a1;
+  gap: 15px;
+}
+.ms-login-product {
+  background: #182f50;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  padding: 70px 0 35px 60px;
+  position: relative;
+}
+.ms-login-product-copy {
+  padding-right: 45px;
+}
+.ms-login-eyebrow {
+  font-size: 11px;
+  color: #abc5fa !important;
+  letter-spacing: 0.02em;
+}
+.ms-login h2 {
+  font-size: clamp(35px, 3.2vw, 51px);
+  font-weight: 500;
+  line-height: 1.18;
+  letter-spacing: -0.045em;
+  margin-top: 24px;
+}
+.ms-login h2 span {
+  color: #b5cdff;
+}
+.ms-login-product-copy > p:last-child {
+  font-size: 13px;
+  line-height: 1.9;
+  color: #c4d0e2;
+  margin-top: 23px;
+}
+.ms-login-product-shot {
+  margin: 47px 0 0;
+  width: 800px;
+  max-width: none;
+  position: relative;
+}
+.ms-login-product-shot > div {
+  height: 29px;
+  background: #edf3fc;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 13px;
+  border-radius: 7px 7px 0 0;
+  position: relative;
+}
+.ms-login-product-shot i {
+  height: 6px;
+  width: 6px;
+  border-radius: 50%;
+  background: #b9c7dc;
+}
+.ms-login-product-shot > div span {
+  position: absolute;
+  left: 45%;
+  font-size: 9px;
+  color: #6b7b94;
+}
+.ms-login-product-shot img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid #dce5f2;
+  border-top: 0;
+}
+.ms-login-product-shot figcaption {
+  font-size: 9px;
+  color: #99aecb;
+  margin-top: 12px;
+}
+.ms-login-product-bottom {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+  font-size: 10px;
+  color: #b5c6df;
+  margin-top: 45px;
+}
+.ms-login-product-bottom span + span {
+  border-left: 1px solid #4b607e;
+  padding-left: 25px;
+}
+@media (min-width: 1700px) {
+  .ms-login-form-wrap {
+    max-width: 390px;
+  }
+  .ms-login-product {
+    padding-left: 85px;
+  }
+  .ms-login-product-shot {
+    width: 1000px;
+  }
+  .ms-login-product-copy > p:last-child {
+    font-size: 15px;
+  }
+}
+@media (max-width: 1050px) {
+  .ms-login-form-panel {
+    padding: 27px 30px 22px;
+  }
+  .ms-login-product {
+    padding-left: 35px;
+  }
+  .ms-login-product-bottom {
+    gap: 14px;
+  }
+  .ms-login-product-bottom span + span {
+    padding-left: 14px;
+  }
+  .ms-login-product-copy {
+    padding-right: 25px;
+  }
+  .ms-login-product-copy br {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .ms-login {
+    display: block;
+  }
+  .ms-login-product {
+    display: none;
+  }
+  .ms-login-form-panel {
+    min-height: 100dvh;
+    padding: 25px 26px 22px;
+  }
+  .ms-login-form-wrap {
+    padding: 60px 0;
+    max-width: 370px;
+  }
+  .ms-login-brand {
+    margin-bottom: 33px;
+  }
+  .ms-login h1 {
+    font-size: 32px;
+  }
+  .ms-login-top {
+    font-size: 10px;
+  }
+  .ms-login-brand > span {
+    font-size: 24px;
+  }
+}
+@media (max-width: 360px) {
+  .ms-login-form-panel {
+    padding-inline: 21px;
+  }
+  .ms-login-form-wrap {
+    padding-top: 45px;
+    padding-bottom: 45px;
+  }
+  .ms-login-top {
+    font-size: 9px;
+    gap: 10px;
+  }
+  .ms-login-demo {
+    font-size: 10px;
+  }
+  .ms-login-demo button {
+    font-size: 10px;
+  }
+  .ms-login-signup {
+    font-size: 10px;
+  }
+}

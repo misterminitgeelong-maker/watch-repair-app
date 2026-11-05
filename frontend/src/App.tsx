@@ -46,6 +46,7 @@ const CataloguePage = lazyPage(() => import('@/pages/CataloguePage'))
 const ToolkitPage = lazyPage(() => import('@/pages/ToolkitPage'))
 const ReportsPage = lazyPage(() => import('@/pages/ReportsPage'))
 const InboxPage = lazyPage(() => import('@/pages/InboxPage'))
+const MessagesPage = lazyPage(() => import('@/pages/MessagesPage'))
 const LoginPage = lazyPage(() => import('@/pages/LoginPage'))
 const TradeLandingPage = lazyPage(() => import('@/pages/TradeLandingPage'))
 const MobileServicesLandingPage = lazyPage(() => import('@/pages/MobileServicesLandingPage'))
@@ -61,9 +62,12 @@ import { isNativeApp } from '@/lib/native'
 const LandingPage = lazyPage(() => import('@/pages/LandingPage'))
 const PricingPage = lazyPage(() => import('@/pages/PricingPage'))
 const PrivacyPolicyPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.PrivacyPolicyPage })))
+const TermsPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.TermsPage })))
+const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'))
 const AccountDeletionPage = lazyPage(() => import('@/pages/LegalPages').then((m) => ({ default: m.AccountDeletionPage })))
 const AccountsPage = lazyPage(() => import('@/pages/AccountsPage'))
 const PlatformAdminUsersPage = lazyPage(() => import('@/pages/PlatformAdminUsersPage'))
+const ShopStockPage = lazyPage(() => import('@/pages/ShopStockPage'))
 const ShoeRepairsPage = lazyPage(() => import('@/pages/ShoeRepairsPage'))
 const ShoeJobDetailPage = lazyPage(() => import('@/pages/ShoeJobDetailPage'))
 const ShoeServicesPage = lazyPage(() => import('@/pages/ShoeServicesPage'))
@@ -90,11 +94,16 @@ const ShoeApprovePage = lazyPage(() => import('@/pages/ShoeApprovePage'))
 const JobPoolPage = lazyPage(() => import('@/pages/JobPoolPage'))
 const PublicIntakePage = lazyPage(() => import('@/pages/PublicIntakePage'))
 const KeyEnquiryPage = lazyPage(() => import('@/pages/KeyEnquiryPage'))
+const EngravingEventsPage = lazyPage(() => import('@/pages/engraving/EngravingEventsPage'))
+const EngravingQueuePage = lazyPage(() => import('@/pages/engraving/EngravingQueuePage'))
+const PublicEngravingOrderPage = lazyPage(() => import('@/pages/engraving/PublicEngravingOrderPage'))
+const PublicEngravingStatusPage = lazyPage(() => import('@/pages/engraving/PublicEngravingStatusPage'))
 const CustomerOrdersPage = lazyPage(() => import('@/pages/CustomerOrdersPage'))
 const ShopMobileBookingsPage = lazyPage(() => import('@/pages/ShopMobileBookingsPage'))
 const ShopOwnerInvitePage = lazyPage(() => import('@/pages/ShopOwnerInvitePage'))
 const HqOwnerInvitePage = lazyPage(() => import('@/pages/HqOwnerInvitePage'))
 const MinitOperationsPage = lazyPage(() => import('@/pages/minit/MinitOperationsPage'))
+const HqStockPage = lazyPage(() => import('@/pages/hq/HqStockPage'))
 const HqShoeRepairsPage = lazyPage(() => import('@/pages/hq/HqShoeRepairsPage'))
 const MinitShopsPage = lazyPage(() => import('@/pages/minit/MinitShopsPage'))
 const MinitShopReportsPage = lazyPage(() => import('@/pages/minit/MinitShopReportsPage'))
@@ -167,17 +176,20 @@ function LocationBoundary({ children }: { children: React.ReactNode }) {
     '/quotes',
     '/invoices',
     '/inbox',
+    '/messages',
     '/reports',
     '/stocktakes',
     '/database',
     '/accounts',
     '/auto-key',
     '/shoe-repairs',
+    '/parts-stock',
     '/parent-account',
     '/customer-accounts',
     '/customer-orders',
     '/shop-mobile-bookings',
     '/toolkit',
+    '/engraving',
     '/minit',
   ].some((prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`))
   // The key stays stable across shop routes on purpose: it stops AppShell
@@ -212,6 +224,7 @@ export default function App() {
             <Route path="/mobile-services" element={isNativeApp ? <Navigate to="/login" replace /> : <MobileServicesLandingPage />} />
             <Route path="/pricing" element={isNativeApp ? <Navigate to="/login" replace /> : <PricingPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/delete-account" element={<AccountDeletionPage />} />
             <Route path="/approve/:token" element={<ApprovePage />} />
             <Route path="/status/:token" element={<StatusPage />} />
@@ -230,6 +243,8 @@ export default function App() {
             <Route path="/hq-invite/:token" element={<HqOwnerInvitePage />} />
             <Route path="/intake" element={<PublicIntakePage />} />
             <Route path="/key-enquiry/:ingestId" element={<KeyEnquiryPage />} />
+            <Route path="/engrave/o/:statusToken" element={<PublicEngravingStatusPage />} />
+            <Route path="/engrave/:token" element={<PublicEngravingOrderPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupPage />} />
             <Route path="/signup/checkout" element={isNativeApp ? <Navigate to="/login" replace /> : <SignupCheckoutPage />} />
@@ -247,11 +262,15 @@ export default function App() {
               <Route path="invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="invoices/:id/print" element={<PrintInvoicePage />} />
               <Route path="inbox" element={<InboxPage />} />
+              <Route path="messages" element={<MessagesPage />} />
+              <Route path="minit/messages" element={<MinitHqGate><MessagesPage /></MinitHqGate>} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="stocktakes" element={<StocktakesPage />} />
               <Route path="stocktakes/:id" element={<StocktakeWorkspacePage />} />
               <Route path="stocktakes/:id/summary" element={<StocktakeSummaryPage />} />
               <Route path="database" element={<DatabasePage />} />
+              <Route path="engraving" element={<EngravingEventsPage />} />
+              <Route path="engraving/:eventId" element={<EngravingQueuePage />} />
               <Route path="subscription-required" element={<SubscriptionRequiredPage />} />
               <Route path="accounts" element={<AccountsPage />} />
               <Route
@@ -280,6 +299,7 @@ export default function App() {
               <Route path="parent-account" element={<FeatureGate feature="multi_site"><ParentAccountPage /></FeatureGate>} />
               <Route path="minit/dashboard" element={<MinitHqGate><HqLandingGate><MinitOperationsPage /></HqLandingGate></MinitHqGate>} />
               <Route path="minit/shoe-repairs" element={<MinitHqGate><HqShoeRepairsPage /></MinitHqGate>} />
+              <Route path="minit/stock" element={<MinitHqGate><HqStockPage /></MinitHqGate>} />
               <Route path="minit/operations" element={<Navigate to="/minit/dashboard" replace />} />
               <Route path="minit/inbox" element={<MinitHqGate><MinitInboxPage /></MinitHqGate>} />
               <Route path="minit/shops" element={<MinitHqGate><MinitShopsPage /></MinitHqGate>} />
@@ -296,11 +316,12 @@ export default function App() {
               <Route path="platform-admin" element={<Navigate to="/platform-admin/overview" replace />} />
               <Route path="platform-admin/:tab" element={<RequireRole role="platform_admin"><PlatformAdminUsersPage /></RequireRole>} />
               <Route path="shoe-repairs" element={<FeatureGate feature="shoe"><ShoeRepairsPage /></FeatureGate>} />
+              <Route path="parts-stock" element={<FeatureGate feature="shoe"><ShopStockPage /></FeatureGate>} />
               <Route path="shoe-repairs/services" element={<FeatureGate feature="shoe"><ShoeServicesPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id" element={<FeatureGate feature="shoe"><ShoeJobDetailPage /></FeatureGate>} />
               <Route path="shoe-repairs/:id/intake-print" element={<FeatureGate feature="shoe"><PrintShoeIntakeTicketsPage /></FeatureGate>} />
             </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={isNativeApp ? <Navigate to="/" replace /> : <NotFoundPage />} />
               </Routes>
             </Suspense>
           </LocationBoundary>

@@ -197,3 +197,37 @@ def test_shoe_job_with_phone_customer_and_extra_statuses(client: TestClient):
         res = client.post(f"/v1/shoe-repair-jobs/{job_id}/status", headers=headers, json={"status": status})
         assert res.status_code == 200, f"{status}: {res.text}"
         assert res.json()["status"] == status
+
+
+def test_shoe_model_size_purchase_and_warranty_status(client: TestClient):
+    from datetime import date, timedelta
+
+    headers = _bootstrap(client)
+    customer = client.post("/v1/customers", headers=headers, json={"full_name": "Warranty Customer"})
+    assert customer.status_code == 201, customer.text
+    cid = customer.json()["id"]
+
+    recent = (date.today() - timedelta(days=90)).isoformat()
+    res = client.post(
+        "/v1/shoe-repair-jobs/shoes",
+        headers=headers,
+        json={
+            "customer_id": cid, "brand": "Birkenstock", "model_name": "Arizona", "size": "41",
+            "purchase_date": recent, "purchase_store": "Melbourne", "purchase_ref": "R-1001",
+        },
+    )
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert (body["model_name"], body["size"], body["purchase_ref"]) == ("Arizona", "41", "R-1001")
+    assert body["warranty_status"] == "in_warranty"
+    assert body["warranty_expires_on"]
+
+    old = client.patch(
+        f"/v1/shoe-repair-jobs/shoes/{body['id']}", headers=headers,
+        json={"purchase_date": (date.today() - timedelta(days=365 * 5)).isoformat()},
+    )
+    assert old.status_code == 200, old.text
+    assert old.json()["warranty_status"] == "expired"
+
+    none = client.post("/v1/shoe-repair-jobs/shoes", headers=headers, json={"customer_id": cid, "brand": "Other"})
+    assert none.json()["warranty_status"] == "unknown"

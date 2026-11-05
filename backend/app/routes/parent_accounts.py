@@ -67,6 +67,17 @@ from ..models import (
     MvMergePreviewResponse,
     MvMergeRequest,
     MvMergeResponse,
+    DuplicateShopGroupRead,
+    DuplicateShopRetireRequest,
+    DuplicateShopRetireResponse,
+    DuplicateShopsResponse,
+    EntitlementBackfillPreview,
+    EntitlementBackfillRequest,
+    EntitlementProposalRead,
+    EntitlementSiteNoteRead,
+    EntitlementUsageResponse,
+    VanMergePreviewResponse,
+    VanMergeRequest,
     MvMergeResult,
     ParentAccount,
     ParentAccountCreateTenantRequest,
@@ -307,6 +318,9 @@ def shop_invite_phone(tenant: Tenant, owner: User | None) -> str | None:
     return phone or None
 
 
+from ..messaging_hubs import hub_for  # noqa: E402
+
+
 def _regions_by_id(session: Session, parent_id: UUID) -> dict[UUID, Region]:
     return {r.id: r for r in regions_for_parent(session, parent_id)}
 
@@ -357,6 +371,8 @@ def _site_reads_for_sites(
                 region=region.name if region else tenant.minit_region,
                 region_id=region.id if region else None,
                 region_code=region.code if region else None,
+                messaging_state=site.messaging_state,
+                messaging_hub=hub_for(site, tenant, region),
                 plan_code=normalize_plan_code(tenant.plan_code),
                 network_role=site.network_role,
                 mobile_reporting_enabled=site.mobile_reporting_enabled,
@@ -2446,6 +2462,150 @@ def run_mv_merge(
     return MvMergeResponse(results=results)
 
 
+@router.get("/me/entitlements/backfill", response_model=EntitlementBackfillPreview)
+def preview_entitlement_backfill(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Starting entitlements we would grant from today's plans. Changes nothing."""
+    from ..site_entitlements import backfill_token, plan_backfill
+
+    _user, parent = _parent_for_write(session, auth)
+    plan = plan_backfill(session, parent)
+    rows = plan["rows"]
+    breakdown: dict[str, dict[str, int]] = {}
+    for r in rows:
+        breakdown.setdefault(r["kind"], {}).setdefault(r["payer"], 0)
+        breakdown[r["kind"]][r["payer"]] += 1
+    return EntitlementBackfillPreview(
+        rows=[EntitlementProposalRead(**r) for r in rows], breakdown=breakdown,
+        skipped=[EntitlementSiteNoteRead(**r) for r in plan["skipped"]],
+        flagged=[EntitlementSiteNoteRead(**r) for r in plan["flagged"]],
+        preview_token=backfill_token(plan))
+
+
+@router.post("/me/entitlements/backfill")
+def apply_entitlement_backfill(
+    payload: EntitlementBackfillRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    from ..site_entitlements import apply_backfill
+
+    current_user, parent = _parent_for_write(session, auth)
+    try:
+        created = apply_backfill(session, parent=parent, actor=current_user, expected_token=payload.preview_token)
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"created": created}
+
+
+@router.get("/me/entitlements/usage", response_model=EntitlementUsageResponse)
+def entitlement_usage(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Active entitlements by kind and payer: what the network is invoiced for."""
+    from ..site_entitlements import usage
+
+    _user, parent = _parent_for_write(session, auth)
+    return EntitlementUsageResponse(usage=usage(session, parent.id))
+
+
+@router.get("/me/van-merge/preview", response_model=VanMergePreviewResponse)
+def preview_van_merge(
+    shop_number: str = Query(min_length=1, max_length=16),
+    van_number: str = Query(min_length=1, max_length=16),
+    allow_other_networks: bool = Query(default=False),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """What folding a van into its franchisee's shop would do. Changes nothing."""
+    from ..minit_mv_merge import MvMergeError
+    from ..shop_duplicates import van_preview
+
+    _user, parent = _parent_for_write(session, auth)
+    try:
+        return VanMergePreviewResponse(**van_preview(session, parent, shop_number, van_number,
+                                                     allow_other_networks=allow_other_networks))
+    except MvMergeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/me/van-merge", response_model=DuplicateShopRetireResponse)
+def run_van_merge(
+    payload: VanMergeRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Fold the van into the shop site: mobile_services (paid by the network) and MV number move across."""
+    from ..minit_mv_merge import MvMergeError
+    from ..shop_duplicates import retire_duplicate
+
+    current_user, parent = _parent_for_write(session, auth)
+    try:
+        result = retire_duplicate(
+            session, parent=parent, keep_tenant_id=payload.shop_tenant_id, retire_tenant_id=payload.van_tenant_id,
+            actor=current_user, expected_preview_token=payload.preview_token, move_user_ids=payload.move_user_ids,
+            user_email_overrides=payload.user_email_overrides, van_mode=True, mv_number=payload.mv_number,
+            allow_other_networks=payload.allow_other_networks,
+        )
+    except MvMergeError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    try:
+        _sync_extra_location_billing(session, parent.id)
+        session.commit()
+    except Exception:
+        session.rollback()
+        logging.getLogger(__name__).exception("Van merge committed; billing reconciliation failed parent=%s", parent.id)
+    return DuplicateShopRetireResponse(ok=True, message="Van folded into the shop; nothing was deleted", users_moved=result["users_moved"])
+
+
+@router.get("/me/duplicate-shops", response_model=DuplicateShopsResponse)
+def list_duplicate_shops(
+    keep: list[UUID] = Query(default=[]),
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Shop numbers held by more than one active record in this network. Changes nothing."""
+    from ..shop_duplicates import find_duplicate_groups
+
+    _current_user, parent = _parent_for_write(session, auth)
+    return DuplicateShopsResponse(groups=[DuplicateShopGroupRead(**g) for g in find_duplicate_groups(session, parent, set(keep))])
+
+
+@router.post("/me/duplicate-shops/retire", response_model=DuplicateShopRetireResponse)
+def retire_duplicate_shop(
+    payload: DuplicateShopRetireRequest,
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Retire one duplicate record into the kept one. Nothing is deleted; blocked if it holds real records."""
+    from ..minit_mv_merge import MvMergeError
+    from ..shop_duplicates import retire_duplicate
+
+    current_user, parent = _parent_for_write(session, auth)
+    try:
+        result = retire_duplicate(
+            session, parent=parent, keep_tenant_id=payload.keep_tenant_id,
+            retire_tenant_id=payload.retire_tenant_id, actor=current_user,
+            expected_preview_token=payload.preview_token, move_user_ids=payload.move_user_ids,
+            user_email_overrides=payload.user_email_overrides,
+        )
+    except MvMergeError as exc:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    try:
+        _sync_extra_location_billing(session, parent.id)
+        session.commit()
+    except Exception:
+        session.rollback()
+        logging.getLogger(__name__).exception("Duplicate retire committed; billing reconciliation failed parent=%s", parent.id)
+    return DuplicateShopRetireResponse(ok=True, message="Duplicate retired; nothing was deleted", users_moved=result["users_moved"])
+
+
 @router.post("/me/mv-operators/{tenant_id}")
 def update_mv_operator_status(
     tenant_id: UUID,
@@ -2464,3 +2624,4 @@ def update_mv_operator_status(
         session.rollback()
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"message": message}
+

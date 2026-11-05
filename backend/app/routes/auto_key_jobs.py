@@ -330,9 +330,6 @@ def _send_mobile_quote_email(
     job: AutoKeyJob,
     shop_name: str,
 ) -> tuple[bool, str | None, str | None]:
-    if needs_option_choice(quote):
-        # The email/PDF layout is single-total; two-outcome quotes go out as an SMS portal link.
-        return False, "two_option_quote", None
     from ..email_client import email_skip_reason, send_mobile_quote_email
     from ..pdf_invoice import build_quote_pdf
     from ..minit_branding import customer_brand_color, customer_logo_url, document_branding
@@ -344,6 +341,38 @@ def _send_mobile_quote_email(
 
     tenant = session.get(Tenant, tenant_id)
     line_items = _auto_key_quote_line_items(session, quote.id)
+    options_payload: list[dict] | None = None
+    if needs_option_choice(quote):
+        # Two-outcome quote: shared lines plus one block per option, each with its own total.
+        all_items = list(
+            session.exec(
+                select(AutoKeyQuoteLineItem)
+                .where(AutoKeyQuoteLineItem.auto_key_quote_id == quote.id)
+                .order_by(AutoKeyQuoteLineItem.created_at)
+            ).all()
+        )
+
+        def _row(i: AutoKeyQuoteLineItem) -> dict:
+            return {
+                "description": i.description,
+                "quantity": i.quantity,
+                "unit_price_cents": i.unit_price_cents,
+                "total_price_cents": i.total_price_cents,
+            }
+
+        totals = option_totals(quote, all_items)
+        line_items = [_row(i) for i in all_items if i.option_key is None]
+        options_payload = [
+            {
+                "key": key,
+                "label": option_label(quote, key),
+                "line_items": [_row(i) for i in all_items if i.option_key == key],
+                "subtotal_cents": totals[key][0],
+                "tax_cents": totals[key][1],
+                "total_cents": totals[key][2],
+            }
+            for key in OPTION_KEYS
+        ]
     first = _customer_first_name(customer)
     try:
         pdf_bytes = build_quote_pdf(
@@ -360,6 +389,7 @@ def _send_mobile_quote_email(
             tax_cents=quote.tax_cents,
             total_cents=quote.total_cents,
             currency=quote.currency or "AUD",
+            options=options_payload,
         )
     except Exception:
         logger.exception("PDF generation failed for mobile quote job %s", job.job_number)
@@ -383,6 +413,7 @@ def _send_mobile_quote_email(
         shop_logo_url=customer_logo_url(tenant),
         shop_brand_color=customer_brand_color(tenant),
         pdf_bytes=pdf_bytes,
+        options=options_payload,
         session=session,
         tenant_id=tenant_id,
     )

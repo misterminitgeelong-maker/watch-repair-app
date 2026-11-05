@@ -298,6 +298,34 @@ class ParentAccountSite(SQLModel, table=True):
     # Reporting opt-in only; never changes operator/dispatch eligibility.
     mobile_reporting_enabled: bool = Field(default=False)
     region_id: Optional[UUID] = Field(default=None, index=True, foreign_key="region.id")
+    # Messaging hub override: a state code, or NONE to leave the site out of every hub.
+    messaging_state: Optional[str] = Field(default=None, max_length=8)
+    # The franchise's mobile-service number (e.g. 2913) when it differs from the shop's own number.
+    mv_number: Optional[str] = Field(default=None, max_length=16, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SiteEntitlement(SQLModel, table=True):
+    """What a site has access to and who pays for it.
+
+    One site per franchisee shop; access is a set of entitlements on that site,
+    each with a payer. ``payer`` is ``parent`` (the network, e.g. Minit pays) or
+    ``tenant`` (the shop itself pays, e.g. a franchisee's own Pro). Billing
+    counts active entitlements, never sites.
+    """
+
+    __table_args__ = (
+        Index("ix_siteentitlement_site_kind", "site_id", "kind"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    site_id: UUID = Field(index=True, foreign_key="parentaccountsite.id", ondelete="CASCADE")
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id")
+    kind: str = Field(max_length=32)  # booking | mobile_services | pro | ...
+    payer: str = Field(default="parent", max_length=16)  # parent | tenant
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ended_at: Optional[datetime] = Field(default=None)
+    source: str = Field(default="manual", max_length=40)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -429,6 +457,10 @@ class ShopMobileBookingRequest(SQLModel, table=True):
     job_lng: Optional[float] = None
     #: Set once this moved to the pool — the claimable IntakeJob any nearby operator can take.
     pool_intake_job_id: Optional[UUID] = Field(default=None, foreign_key="intakejob.id")
+    #: How many operators this booking has been offered to (the first plus any re-offers).
+    offer_count: int = Field(default=1)
+    #: JSON list of operator tenant ids already offered, so a re-offer never repeats one.
+    offered_operator_ids_json: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ParentAccountEventLog(SQLModel, table=True):
@@ -454,6 +486,35 @@ class TenantEventLog(SQLModel, table=True):
     event_type: str = Field(index=True)  # "login", "user_created", "invoice_created", "plan_changed"
     event_summary: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class NetworkConversation(SQLModel, table=True):
+    """A direct thread between two sites (shop, operator or HQ) of one network.
+
+    The pair is stored in a fixed order (lower id first) so there is only ever one
+    thread per pair per network. HQ cannot read other sites' threads: only the two
+    participants can.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("parent_account_id", "tenant_low_id", "tenant_high_id", name="uq_networkconversation_pair"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(index=True, foreign_key="parentaccount.id", ondelete="CASCADE")
+    tenant_low_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    tenant_high_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_message_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class NetworkMessage(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    conversation_id: UUID = Field(index=True, foreign_key="networkconversation.id", ondelete="CASCADE")
+    sender_tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    sender_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", ondelete="SET NULL")
+    body: str = Field(max_length=2000)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    #: When the other site opened the thread after this was sent.
+    read_at: Optional[datetime] = None
 
 class DeviceToken(SQLModel, table=True):
     """A phone-app push (FCM) registration token for one signed-in user."""
@@ -957,6 +1018,13 @@ class Shoe(SQLModel, table=True):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    #: Manufacturer model and size (e.g. "Arizona", "41"); used for stock and warranty.
+    model_name: Optional[str] = None
+    size: Optional[str] = None
+    #: Proof of purchase: when and where it was bought and the receipt/order reference.
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = None
+    purchase_ref: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ShoeRepairJob(SQLModel, table=True):
@@ -1075,6 +1143,24 @@ class AutoKeyJob(SQLModel, table=True):
     quoted_price: Optional[float] = Field(default=None)  # AUD dollars from pricing catalogue
     callout_inclusive: Optional[bool] = Field(default=None)
     custom_fields_json: Optional[str] = None
+
+
+@event.listens_for(AutoKeyJob, "before_insert")
+@event.listens_for(AutoKeyJob, "before_update")
+def _stamp_auto_key_work_completed_at(_mapper, _connection, target: AutoKeyJob) -> None:
+    """KPI "jobs completed" counts work_completed_at, so stamp it on any route into a done status.
+
+    Covers aliases (completed, collected), jumping straight to invoice_paid, bulk status
+    changes and payment webhooks, none of which go through the single-job status endpoint.
+    """
+    from ..auto_key_status import canonical_auto_key_status
+
+    if target.work_completed_at is None and canonical_auto_key_status(target.status or "") in {
+        "work_completed",
+        "invoice_paid",
+    }:
+        target.work_completed_at = datetime.now(timezone.utc)
+
 
 class OemKeyPricing(SQLModel, table=True):
     """Global OEM key price catalogue (Supabase-managed)."""
@@ -1681,3 +1767,131 @@ class HqSettings(SQLModel, table=True):
     site_plans_json: str = Field(default="[]")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── HQ shoe catalogue and stock (Birkenstock-style HQs) ───────────────────────
+# These tables belong to an HQ (parent account), not to a shop, so they carry
+# parent_account_id instead of tenant_id and are read through an unscoped session.
+
+class StockPart(SQLModel, table=True):
+    """A repair part the HQ tracks (footbed, sole, buckle...). ``sku`` is what a scan reads."""
+    __table_args__ = (UniqueConstraint("parent_account_id", "sku", name="uq_stockpart_parent_sku"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    sku: str = Field(max_length=80, index=True)
+    name: str = Field(max_length=200)
+    part_type: Optional[str] = Field(default=None, max_length=40)  # footbed | sole | upper | buckle | liner | other
+    cost_cents: int = 0
+    reorder_level: int = 0
+    active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HqShoeModel(SQLModel, table=True):
+    """A style the HQ sells and repairs (Arizona, Boston...)."""
+    __table_args__ = (UniqueConstraint("parent_account_id", "name", name="uq_hqshoemodel_parent_name"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    name: str = Field(max_length=120)
+    category: Optional[str] = Field(default=None, max_length=40)  # sandal | clog | shoe | boot | slipper | kids | work
+    active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HqShoeModelPart(SQLModel, table=True):
+    """Parts a model uses. ``size`` empty means every size; a set size overrides for that size only."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    model_id: UUID = Field(foreign_key="hqshoemodel.id", index=True, ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id", index=True, ondelete="CASCADE")
+    size: Optional[str] = Field(default=None, max_length=40)
+    quantity: int = 1
+
+
+class StockLocation(SQLModel, table=True):
+    """A place that holds stock: a workshop, a branded shop or a warehouse. May be linked to a shop account."""
+    __table_args__ = (UniqueConstraint("parent_account_id", "name", name="uq_stocklocation_parent_name"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    name: str = Field(max_length=120)
+    kind: str = Field(default="workshop", max_length=20)  # workshop | store | warehouse
+    tenant_id: Optional[UUID] = Field(default=None, foreign_key="tenant.id", index=True, ondelete="SET NULL")
+    active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StockLevel(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("location_id", "part_id", name="uq_stocklevel_location_part"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    location_id: UUID = Field(foreign_key="stocklocation.id", index=True, ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id", index=True, ondelete="CASCADE")
+    quantity: int = 0
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StockTransfer(SQLModel, table=True):
+    """Stock moving between two locations: in_transit until the destination scans it in."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    from_location_id: UUID = Field(foreign_key="stocklocation.id", index=True)
+    to_location_id: UUID = Field(foreign_key="stocklocation.id", index=True)
+    status: str = Field(default="in_transit", max_length=20, index=True)  # in_transit | received | cancelled
+    note: Optional[str] = None
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    received_at: Optional[datetime] = None
+
+
+class StockTransferLine(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    transfer_id: UUID = Field(foreign_key="stocktransfer.id", index=True, ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id")
+    quantity: int
+    received_quantity: int = 0
+
+
+class StockMovement(SQLModel, table=True):
+    """Ledger of every stock change. ``quantity`` is signed from ``location_id``'s point of view."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    location_id: UUID = Field(foreign_key="stocklocation.id", index=True)
+    part_id: UUID = Field(foreign_key="stockpart.id", index=True)
+    quantity: int
+    kind: str = Field(max_length=20, index=True)  # receive | adjust | transfer_out | transfer_in | use | sync
+    transfer_id: Optional[UUID] = Field(default=None, foreign_key="stocktransfer.id")
+    shoe_repair_job_id: Optional[UUID] = Field(default=None, foreign_key="shoerepairjob.id", index=True)
+    note: Optional[str] = None
+    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ShoeJobPartUse(SQLModel, table=True):
+    """A part used on a shoe repair job (shop-side record; the stock deduction is in StockMovement)."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    tenant_id: UUID = Field(index=True, foreign_key="tenant.id", ondelete="CASCADE")
+    shoe_repair_job_id: UUID = Field(index=True, foreign_key="shoerepairjob.id", ondelete="CASCADE")
+    part_id: UUID = Field(foreign_key="stockpart.id")
+    location_id: UUID = Field(foreign_key="stocklocation.id")
+    quantity: int = 1
+    created_by_user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HqPurchaseRecord(SQLModel, table=True):
+    """A sale in the HQ's own shops (imported), so staff can look up a customer's purchase for warranty and repair intake."""
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_account_id: UUID = Field(foreign_key="parentaccount.id", index=True, ondelete="CASCADE")
+    purchase_ref: str = Field(max_length=120, index=True)
+    purchase_date: Optional[date] = None
+    store: Optional[str] = Field(default=None, max_length=120)
+    customer_name: Optional[str] = Field(default=None, max_length=200, index=True)
+    customer_email: Optional[str] = Field(default=None, max_length=254, index=True)
+    customer_phone: Optional[str] = Field(default=None, max_length=40, index=True)
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

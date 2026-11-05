@@ -212,7 +212,7 @@ function OperatorTable({
                       style={{ color: 'var(--ms-text)' }}
                       onClick={() => onDrill?.({ operatorId: row.operator_tenant_id })}
                     >
-                      {formatTenantLabel(row.operator_name, row.operator_shop_number)}
+                      {formatTenantLabel(row.operator_name, row.operator_shop_number, row.operator_mv_number)}
                     </button>
                     {showQueues && row.active_jobs > 0 && (
                       <span className="block text-xs" style={{ color: 'var(--ms-text-muted)' }}>
@@ -819,7 +819,7 @@ export default function MinitMobileReportsPage() {
                               <span className="font-medium" style={{ color: 'var(--ms-text)' }}>{job.job_number}</span>
                               <span className="block text-xs" style={{ color: 'var(--ms-text-muted)' }}>{job.title}</span>
                             </td>
-                            <td className="px-5 py-2">{formatTenantLabel(job.operator_name, job.operator_shop_number)}</td>
+                            <td className="px-5 py-2">{formatTenantLabel(job.operator_name, job.operator_shop_number, job.operator_mv_number)}</td>
                             <td className="px-5 py-2" style={{ color: 'var(--ms-text-muted)' }}>{job.job_type || '—'}</td>
                             <td className="px-5 py-2" style={{ color: 'var(--ms-text-muted)' }}>{(job.commission_lead_source || 'other').replace(/_/g, ' ')}</td>
                             <td className="px-5 py-2 text-right tabular-nums">{job.paid_cents != null ? formatCents(job.paid_cents) : '—'}</td>

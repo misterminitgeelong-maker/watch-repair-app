@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { Card, PageHeader, Spinner } from '@/components/ui'
-import { getApiErrorMessage, getHqShoeSummary, searchHqShoeJobs } from '@/lib/api'
+import { getApiErrorMessage, getHqShoeReport, getHqShoeSummary, searchHqShoeJobs } from '@/lib/api'
 import { formatCents } from '@/lib/money'
 import { STATUS_LABELS } from '@/lib/utils'
 
@@ -14,6 +14,46 @@ function Stat({ label, value }: { label: string; value: string | number }) {
       <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{label}</p>
       <p className="text-2xl font-semibold mt-1" style={{ color: 'var(--ms-text)' }}>{value}</p>
     </Card>
+  )
+}
+
+function ReportTable({ title, rows }: { title: string; rows: { label: string; repairs: number; billed_cents: number }[] }) {
+  return (
+    <Card className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <caption className="p-3 text-left font-semibold">{title}</caption>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.label} className="border-t" style={{ borderColor: 'var(--ms-border)' }}>
+              <td className="p-3">{r.label}</td><td className="p-3">{r.repairs}</td><td className="p-3">{formatCents(r.billed_cents)}</td>
+            </tr>
+          ))}
+          {!rows.length && <tr><td className="p-3">No repairs yet.</td></tr>}
+        </tbody>
+      </table>
+    </Card>
+  )
+}
+
+/** Repairs by shoe model and repair type, plus how many were under warranty. */
+function ShoeReport() {
+  const report = useQuery({ queryKey: ['hq-shoe-report'], queryFn: () => getHqShoeReport().then(r => r.data) })
+  if (!report.data) return null
+  const { warranty } = report.data
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold">Reports</h2>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Stat label="Under warranty" value={warranty.in_warranty} />
+        <Stat label="Paid (out of warranty)" value={warranty.expired} />
+        <Stat label="No proof of purchase" value={warranty.unknown} />
+        <Stat label="Repairs counted" value={report.data.total_repairs} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ReportTable title="By shoe model" rows={report.data.by_model.map(r => ({ label: r.model, repairs: r.repairs, billed_cents: r.billed_cents }))} />
+        <ReportTable title="By repair type" rows={report.data.by_fault.map(r => ({ label: r.fault.replace(/_/g, ' '), repairs: r.repairs, billed_cents: r.billed_cents }))} />
+      </div>
+    </section>
   )
 }
 
@@ -65,6 +105,8 @@ export default function HqShoeRepairsPage() {
           </Card>
         </>
       )}
+
+      <ShoeReport />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Find a repair</h2>

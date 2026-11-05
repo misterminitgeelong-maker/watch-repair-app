@@ -2,9 +2,10 @@
 from datetime import date, datetime, timezone
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
-from pydantic import field_serializer
+from pydantic import computed_field, field_serializer
 from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
+from .. import shoe_warranty as _shoe_warranty
 from ..datetime_utils import as_utc_for_json
 
 from .base import *  # noqa: F401,F403
@@ -220,6 +221,10 @@ class ParentAccountSiteRead(SQLModel):
     region: Optional[str] = None
     region_id: Optional[UUID] = None
     region_code: Optional[str] = None
+    #: Messaging hub override set by HQ (a state code, or NONE); null means automatic.
+    messaging_state: Optional[str] = None
+    #: The hub the site is actually in (override, else area, else region); null if none.
+    messaging_hub: Optional[str] = None
     plan_code: str
     #: hq | retail | operator — the site's place in the network, not its plan.
     network_role: str = "retail"
@@ -270,6 +275,8 @@ class ParentAccountSiteUpdateRequest(SQLModel):
     #: Set to a Region id to assign; explicit null clears. Omit to leave unchanged.
     region_id: Optional[UUID] = None
     clear_region: bool = False
+    #: State code or NONE to override the messaging hub; empty string goes back to automatic.
+    messaging_state: Optional[str] = Field(default=None, max_length=8)
     #: Shop contact email stored on the tenant (shop identity). Empty string clears.
     shop_email: Optional[str] = Field(default=None, max_length=200)
     #: Shop contact phone stored on the tenant (shop identity). Empty string clears.
@@ -680,12 +687,31 @@ class ParentShopBookingVolume(SQLModel):
     declined: int
     cancelled: int
     expired: int
+    # Operator answered (accepted or declined); average minutes from request to answer.
+    avg_response_minutes: Optional[float] = None
+    # Only filled when the report has a from_date: bookings per week over that window,
+    # and whether the shop is below the weekly goal.
+    per_week: Optional[float] = None
+    under_weekly_goal: bool = False
+
+class ParentOperatorBookingResponse(SQLModel):
+    tenant_id: UUID
+    tenant_name: str
+    shop_number: Optional[str] = None
+    offered: int
+    responded: int
+    moved_to_pool: int
+    avg_response_minutes: Optional[float] = None
 
 class ParentShopBookingsReport(SQLModel):
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
     totals: ParentShopBookingVolume
     by_shop: list[ParentShopBookingVolume] = Field(default_factory=list)
+    by_operator: list[ParentOperatorBookingResponse] = Field(default_factory=list)
+    weekly_goal: int = 1
+    weeks: Optional[float] = None
+    shops_under_goal: Optional[int] = None
     bookings: list["ShopMobileBookingRead"] = Field(default_factory=list)
 
 class ParentMobileJobNetworkRead(SQLModel):
@@ -696,6 +722,7 @@ class ParentMobileJobNetworkRead(SQLModel):
     operator_tenant_id: UUID
     operator_name: str
     operator_shop_number: Optional[str] = None
+    operator_mv_number: Optional[str] = None
     referring_shop_tenant_id: Optional[UUID] = None
     referring_shop_name: Optional[str] = None
     referring_shop_number: Optional[str] = None
@@ -772,6 +799,7 @@ class MobileKpiOperatorRowRead(SQLModel):
     operator_tenant_id: UUID
     operator_name: str
     operator_shop_number: Optional[str] = None
+    operator_mv_number: Optional[str] = None
     customers_count: int = 0
     paid_customers_count: int = 0
     jobs_created: int = 0
@@ -1414,6 +1442,11 @@ class ShoeCreate(SQLModel):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = Field(default=None, max_length=120)
+    purchase_ref: Optional[str] = Field(default=None, max_length=120)
 
 class ShoeRead(SQLModel):
     id: UUID
@@ -1423,13 +1456,33 @@ class ShoeRead(SQLModel):
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = None
+    size: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = None
+    purchase_ref: Optional[str] = None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def warranty_status(self) -> str:
+        return _shoe_warranty.warranty_status(self.purchase_date)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def warranty_expires_on(self) -> Optional[date]:
+        return _shoe_warranty.warranty_expiry(self.purchase_date)
 
 class ShoeUpdate(SQLModel):
     shoe_type: Optional[str] = None
     brand: Optional[str] = None
     color: Optional[str] = None
     description_notes: Optional[str] = None
+    model_name: Optional[str] = Field(default=None, max_length=120)
+    size: Optional[str] = Field(default=None, max_length=40)
+    purchase_date: Optional[date] = None
+    purchase_store: Optional[str] = Field(default=None, max_length=120)
+    purchase_ref: Optional[str] = Field(default=None, max_length=120)
 
 class ShoeRepairJobItemCreate(SQLModel):
     catalogue_key: str
@@ -2209,3 +2262,108 @@ class MvMergeResult(SQLModel):
 
 class MvMergeResponse(SQLModel):
     results: list[MvMergeResult] = Field(default_factory=list)
+
+
+class DuplicateShopUserRead(SQLModel):
+    id: UUID
+    email: str
+    full_name: Optional[str] = None
+    role: str
+
+
+class DuplicateShopMemberRead(SQLModel):
+    tenant_id: UUID
+    name: str
+    slug: str
+    shop_number: Optional[str] = None
+    plan_code: Optional[str] = None
+    network_role: Optional[str] = None
+    is_member: bool = False
+    reporting_link: bool = False
+    placeholder: bool = False
+    record_total: int = 0
+    records: dict[str, int] = Field(default_factory=dict)
+    users: list[DuplicateShopUserRead] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    preview_token: Optional[str] = None
+
+
+class DuplicateShopGroupRead(SQLModel):
+    shop_number: str
+    suggested_keep: UUID
+    members: list[DuplicateShopMemberRead] = Field(default_factory=list)
+
+
+class DuplicateShopsResponse(SQLModel):
+    groups: list[DuplicateShopGroupRead] = Field(default_factory=list)
+
+
+class DuplicateShopRetireRequest(SQLModel):
+    keep_tenant_id: UUID
+    retire_tenant_id: UUID
+    preview_token: str = Field(min_length=64, max_length=64)
+    move_user_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    #: user id -> corrected email to use at the kept shop.
+    user_email_overrides: dict[UUID, str] = Field(default_factory=dict)
+
+
+class DuplicateShopRetireResponse(SQLModel):
+    ok: bool
+    message: str
+    users_moved: int = 0
+
+
+class EntitlementProposalRead(SQLModel):
+    site_id: UUID
+    tenant_id: UUID
+    name: str
+    shop_number: Optional[str] = None
+    kind: str
+    payer: str
+
+
+class EntitlementSiteNoteRead(SQLModel):
+    site_id: UUID
+    tenant_id: UUID
+    name: str
+    shop_number: Optional[str] = None
+    reason: Optional[str] = None
+    note: Optional[str] = None
+    plan: Optional[str] = None
+    network_role: Optional[str] = None
+
+
+class EntitlementBackfillPreview(SQLModel):
+    rows: list[EntitlementProposalRead] = Field(default_factory=list)
+    #: kind -> payer -> count, for the whole proposal
+    breakdown: dict[str, dict[str, int]] = Field(default_factory=dict)
+    skipped: list[EntitlementSiteNoteRead] = Field(default_factory=list)
+    flagged: list[EntitlementSiteNoteRead] = Field(default_factory=list)
+    preview_token: str
+
+
+class EntitlementBackfillRequest(SQLModel):
+    preview_token: str = Field(min_length=64, max_length=64)
+
+
+class EntitlementUsageResponse(SQLModel):
+    #: kind -> payer -> active count
+    usage: dict[str, dict[str, int]] = Field(default_factory=dict)
+
+
+class VanMergePreviewResponse(SQLModel):
+    shop: DuplicateShopMemberRead
+    van: DuplicateShopMemberRead
+    blockers: list[str] = Field(default_factory=list)
+    other_networks: list[str] = Field(default_factory=list)
+    preview_token: str
+
+
+class VanMergeRequest(SQLModel):
+    shop_tenant_id: UUID
+    van_tenant_id: UUID
+    preview_token: str = Field(min_length=64, max_length=64)
+    mv_number: Optional[str] = Field(default=None, max_length=16)
+    allow_other_networks: bool = False
+    move_user_ids: list[UUID] = Field(default_factory=list, max_length=10)
+    user_email_overrides: dict[UUID, str] = Field(default_factory=dict)

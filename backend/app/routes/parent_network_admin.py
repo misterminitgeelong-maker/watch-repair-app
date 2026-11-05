@@ -60,6 +60,8 @@ from .parent_accounts import (
     normalize_shop_contact_phone,
 )
 
+from ..messaging_hubs import valid_hub_setting  # noqa: E402
+
 router = APIRouter(
     prefix="/v1/parent-accounts",
     tags=["parent-network"],
@@ -214,6 +216,15 @@ def update_linked_site(
         if site.region_id != region.id:
             changes.append(f"region -> {region.name}")
             site.region_id = region.id
+            site_changed = True
+
+    if payload.messaging_state is not None:
+        wanted = payload.messaging_state.strip().upper() or None
+        if wanted is not None and not valid_hub_setting(wanted):
+            raise HTTPException(status_code=400, detail="Choose a state hub, NONE, or leave it automatic")
+        if wanted != site.messaging_state:
+            changes.append(f"messaging hub -> {wanted or 'automatic'}")
+            site.messaging_state = wanted
             site_changed = True
 
     if payload.shop_email is not None:

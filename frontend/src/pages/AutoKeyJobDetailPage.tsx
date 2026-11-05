@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Camera, CheckCircle, ChevronLeft, Clock3, Copy, MapPin, MessageSquare, PenLine, Phone, Mail, Plus, Send, Trash2 } from 'lucide-react'
+import { Camera, CheckCircle, ChevronLeft, Clock3, Copy, MapPin, MessageSquare, PenLine, Pencil, Phone, Mail, Plus, Send, Trash2 } from 'lucide-react'
 import {
   getAutoKeyJob,
   getAutoKeyMessages,
@@ -674,6 +674,7 @@ export default function AutoKeyJobDetailPage() {
             </Button>
             </div>
             <MobileActionMenu actions={[
+              { label: 'Edit job details', icon: <Pencil size={16} />, onClick: () => setDetailTab('vehicle') },
               {
                 label: 'Duplicate job',
                 icon: <Copy size={16} />,

@@ -10,13 +10,14 @@ import {
   getCustomer, updateCustomer,
   addShoeToJob, appendShoeRepairJobItems, removeShoeFromJob, removeShoeRepairJobItem,
   formatShoePricingType,
-  getShoeJobSmsLog, getShoeJobMessages, sendShoeJobMessage, resendShoeNotification, sendShoeQuote, cloneShoeRepairJob, getApiErrorMessage,
+  getShoeJobSmsLog, getShoeJobMessages, sendShoeJobMessage, resendShoeNotification, sendShoeQuote, cloneShoeRepairJob, getApiErrorMessage, shopSuggestedParts, shopJobParts, shopUsePart, type SuggestedPart,
   getShoeJobHistory,
   type ShoeRepairJob, type ShoeRepairJobItem, type ShoePricingType, type Shoe, type CustomerAccount, type SmsLogEntry, type ShoeJobHistoryEntry,
 } from '@/lib/api'
 import { dollarsToCents } from '@/lib/money'
 import { SecureAttachmentImage, SecureAttachmentLink } from '@/components/SecureAttachment'
 import ShoeServicePicker, { buildShoeRepairJobItemsPayload, type SelectedShoeService } from '@/components/ShoeServicePicker'
+import { useShopStockEnabled } from '@/hooks/useShopStock'
 import { Card, PageHeader, Badge, Button, MobileActionMenu, Modal, Select, Spinner, Input, Textarea } from '@/components/ui'
 import { formatDate, STATUS_LABELS } from '@/lib/utils'
 import JobMessageThread from '@/components/JobMessageThread'
@@ -40,8 +41,15 @@ function itemPriceDisplay(item: ShoeRepairJobItem): string {
 
 function shoeLabel(shoe: Shoe | undefined): string {
   if (!shoe) return 'Pair'
-  const parts = [shoe.brand, shoe.shoe_type, shoe.color].filter(Boolean)
+  const parts = [shoe.brand, shoe.model_name, shoe.size ? `size ${shoe.size}` : null, shoe.shoe_type, shoe.color].filter(Boolean)
   return parts.join(' · ') || 'Pair'
+}
+
+function warrantyLabel(shoe: Shoe | undefined): string | null {
+  if (!shoe) return null
+  if (shoe.warranty_status === 'in_warranty') return `In warranty until ${shoe.warranty_expires_on ?? ''}`.trim()
+  if (shoe.warranty_status === 'expired') return `Out of warranty (ended ${shoe.warranty_expires_on ?? ''})`.trim()
+  return null
 }
 
 const SHOE_STATUSES = [
@@ -135,6 +143,11 @@ function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => 
     brand: shoe?.brand ?? '',
     color: shoe?.color ?? '',
     description_notes: shoe?.description_notes ?? '',
+    model_name: shoe?.model_name ?? '',
+    size: shoe?.size ?? '',
+    purchase_date: shoe?.purchase_date ?? '',
+    purchase_store: shoe?.purchase_store ?? '',
+    purchase_ref: shoe?.purchase_ref ?? '',
     full_name: '',
     phone: '',
     email: '',
@@ -169,6 +182,8 @@ function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => 
       if (shoe) {
         await updateShoe(shoe.id, {
           shoe_type: form.shoe_type, brand: form.brand, color: form.color, description_notes: form.description_notes,
+          model_name: form.model_name || null, size: form.size || null,
+          purchase_date: form.purchase_date || null, purchase_store: form.purchase_store || null, purchase_ref: form.purchase_ref || null,
         })
       }
       if (customer) {
@@ -215,6 +230,11 @@ function EditTicketModal({ job, onClose }: { job: ShoeRepairJob; onClose: () => 
               <Input label="Type" value={form.shoe_type} onChange={e => set('shoe_type', e.target.value)} />
               <Input label="Brand" value={form.brand} onChange={e => set('brand', e.target.value)} />
               <Input label="Colour" value={form.color} onChange={e => set('color', e.target.value)} />
+              <Input label="Model" value={form.model_name} onChange={e => set('model_name', e.target.value)} />
+              <Input label="Size" value={form.size} onChange={e => set('size', e.target.value)} />
+              <Input label="Purchase date" type="date" value={form.purchase_date} onChange={e => set('purchase_date', e.target.value)} />
+              <Input label="Bought at" value={form.purchase_store} onChange={e => set('purchase_store', e.target.value)} />
+              <Input label="Receipt / order ref" value={form.purchase_ref} onChange={e => set('purchase_ref', e.target.value)} />
             </div>
             <Textarea label="Notes" value={form.description_notes} onChange={e => set('description_notes', e.target.value)} />
           </section>
@@ -574,12 +594,51 @@ function MessagesCard({ job }: { job: ShoeRepairJob }) {
 }
 
 // ── Shoe tab content ──────────────────────────────────────────────────────────
+function PartsCard({ jobId }: { jobId: string }) {
+  const qc = useQueryClient()
+  const stockOn = useShopStockEnabled()
+  const suggested = useQuery({ queryKey: ['shop-job-suggested', jobId], queryFn: () => shopSuggestedParts(jobId).then(r => r.data), retry: false, enabled: stockOn })
+  const used = useQuery({ queryKey: ['shop-job-parts', jobId], queryFn: () => shopJobParts(jobId).then(r => r.data), retry: false, enabled: stockOn })
+  const use = useMutation({
+    mutationFn: (p: SuggestedPart) => shopUsePart(jobId, { part_id: p.part_id, quantity: p.quantity }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['shop-job-parts', jobId] })
+      qc.invalidateQueries({ queryKey: ['shop-stock-levels'] })
+    },
+  })
+  if (!stockOn || suggested.isError || used.isError) return null
+  const usedIds = new Set((used.data ?? []).map(u => u.part_id))
+  const todo = (suggested.data ?? []).filter(p => !usedIds.has(p.part_id))
+  if (todo.length === 0 && (used.data ?? []).length === 0) return null
+  return (
+    <Card className="p-5 space-y-3">
+      <h2 className="font-semibold text-xs uppercase tracking-widest" style={{ color: 'var(--ms-text-muted)' }}>Parts</h2>
+      {todo.map(p => (
+        <div key={p.part_id} className="flex items-center justify-between gap-2 text-sm">
+          <span>{p.quantity} × {p.name} <span style={{ color: 'var(--ms-text-muted)' }}>({p.in_stock} in stock)</span></span>
+          <Button size="sm" variant="secondary" disabled={use.isPending} onClick={() => use.mutate(p)}>Use</Button>
+        </div>
+      ))}
+      {(used.data ?? []).length > 0 && (
+        <p className="text-sm" style={{ color: 'var(--ms-text-muted)' }}>
+          Used: {(used.data ?? []).map(u => `${u.quantity} × ${u.name}`).join(', ')}
+        </p>
+      )}
+      {use.isError && <p role="alert" className="text-sm" style={{ color: 'var(--ms-error)' }}>{getApiErrorMessage(use.error, 'Could not use that part.')}</p>}
+    </Card>
+  )
+}
+
 function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
   if (!shoe) return <p className="text-sm italic" style={{ color: 'var(--ms-text-muted)' }}>No shoe details.</p>
   const rows = [
     ['Type', shoe.shoe_type],
     ['Brand', shoe.brand],
+    ['Model', shoe.model_name],
+    ['Size', shoe.size],
     ['Colour', shoe.color],
+    ['Bought', [shoe.purchase_date, shoe.purchase_store, shoe.purchase_ref].filter(Boolean).join(' · ')],
+    ['Warranty', warrantyLabel(shoe)],
     ['Notes', shoe.description_notes],
   ].filter(([, v]) => v)
 
@@ -589,7 +648,7 @@ function ShoeTab({ shoe }: { shoe: Shoe | undefined }) {
     <div className="space-y-2 text-sm">
       {rows.map(([label, value]) => (
         <div key={label} className="flex gap-3">
-          <span className="w-16 shrink-0 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{label}</span>
+          <span className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--ms-text-muted)' }}>{label}</span>
           <span style={{ color: 'var(--ms-text)' }}>{value}</span>
         </div>
       ))}
@@ -1017,6 +1076,8 @@ export default function ShoeJobDetailPage() {
               <ShoeTab shoe={activePair.shoe ?? undefined} />
             </div>
           </Card>
+
+          <PartsCard jobId={job.id} />
 
           {/* ── Job Info ──────────────────────────────────────────── */}
           <Card className="p-5 space-y-3">

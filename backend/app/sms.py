@@ -1275,6 +1275,34 @@ def notify_shop_mobile_booking_moved_to_pool(
     return sid is not None
 
 
+def notify_support_office_booking_unanswered(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    customer_name: str,
+    suburb: str | None,
+    offers: int,
+) -> bool:
+    """Tell the Support office a shop booking went unanswered by every operator offered
+    and was opened to the Dispatch Pool."""
+    where = f" in {suburb.title()}" if suburb else ""
+    body = (
+        f"Mainspring: {shop_name}'s booking for {customer_name.strip()}{where} wasn't picked up by "
+        f"{offers} operator(s) and is now in the Dispatch Pool. You may want to chase it."
+    )
+    sid, _status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="shop_mobile_booking_unanswered",
+    )
+    return sid is not None
+
+
 def notify_pool_jobs_waiting(
     session: Session,
     *,
@@ -1493,3 +1521,31 @@ def notify_auto_key_schedule_changed(
         body=body,
         event="auto_key_schedule_changed",
     )
+
+
+def notify_engraving_ready(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    to_phone: str,
+    shop_name: str,
+    athlete_name: str,
+    order_number: str,
+    status_token: str,
+) -> str:
+    """Tell a parent their engraved medal is ready to collect. Returns the send status
+    ("sent" | "dry_run" | "failed")."""
+    status_url = f"{settings.public_base_url}/engrave/o/{status_token}"
+    body = (
+        f"{shop_name}: {athlete_name}'s medal is engraved and ready to collect. "
+        f"Show order {order_number} at the stall. {status_url}"
+    )
+    _sid, sms_status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        to_phone=to_phone,
+        body=body,
+        event="engraving_ready",
+    )
+    return sms_status
