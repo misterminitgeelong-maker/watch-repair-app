@@ -53,7 +53,7 @@ jobs:
         if: steps.changes.outputs.release == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -64,7 +64,18 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Install, check and build web app
+      # The unit tests expect the default relative API URLs, so they run without
+      # VITE_API_BASE_URL (setting it made api.test.ts fail every weekly run).
+      - name: Install and check web app
+        if: steps.changes.outputs.release == 'true'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+
+      - name: Build web app and sync into Android
         if: steps.changes.outputs.release == 'true'
         working-directory: frontend
         env:
@@ -73,10 +84,6 @@ jobs:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
           RAILWAY_GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
-          npm ci
-          npm run lint
-          npm run typecheck
-          npm test
           npm run build
           npx cap sync android
 
@@ -119,7 +126,18 @@ jobs:
         if: steps.changes.outputs.release == 'true'
         run: |
           mkdir -p whatsnew
-          echo "Weekly update: improvements and fixes." > whatsnew/whatsnew-en-AU
+          cat > whatsnew/whatsnew-en-AU <<'NOTES'
+          Faster, cleaner phone screens and a new sign-in page.
+          - Network messages for shops: state chats, announcements and unread badges
+          - Two-option quotes (email, PDF and customer page)
+          - Track my repair: sign in with your phone number and a texted code
+          - Mobile services: nearest-van booking fallback, quotes with two outcomes
+          - Engraving events with laser file export
+          - Compact job screens and a fixed clipped menu on phones
+          - New Mainspring icon and fixes throughout
+          NOTES
+          sed -i 's/^ *//' whatsnew/whatsnew-en-AU
+          test "$(wc -c < whatsnew/whatsnew-en-AU)" -le 500
 
       - name: Upload to Play internal testing
         if: steps.changes.outputs.release == 'true'
