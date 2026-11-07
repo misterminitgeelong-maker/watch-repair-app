@@ -450,3 +450,37 @@ def test_malaysia_and_singapore_are_not_reported_as_gaps(world):
         s.commit()
     c = world["as"]("hq")
     assert c.get(world["base"] + "/state-gaps").json()["shops"] == []
+
+
+def test_reviewed_directory_eligibility_preserves_real_uninvited_and_overseas(world, monkeypatch):
+    from app import network_site_classification as classification
+    monkeypatch.setattr(classification, "MINIT_PARENT_ID", world["parent"])
+    hidden, visible = [], []
+    with Session(world["engine"]) as db:
+        entries = [(f"minit-mobile-{n}", n, None, True) for n in ("2311", "6441", "8829", "8833")]
+        entries += [(f"excluded-{n}", n, None, True) for n in ("0101", "01111", "3904")]
+        entries += [(f"van-{n}", n, None, False) for n in ("2915", "4903", "6902", "6903", "8901", "8905")]
+        entries += [("overseas-sg", "8001", "SINGAPORE", False), ("overseas-my", "8002", "MALAYSIA", False),
+                    ("real-uninvited", "9001", "VICTORIA", False)]
+        for slug, number, area, hide in entries:
+            tenant = Tenant(name=slug, slug=slug + "-" + uuid4().hex, shop_number=number, minit_area=area)
+            # Placeholder rules match the canonical account slugs.
+            if slug.startswith("minit-mobile-"):
+                tenant.slug = slug
+            db.add(tenant); db.flush()
+            db.add(User(tenant_id=tenant.id, email=f"{uuid4().hex}@example.test", full_name="Owner", password_hash="unused", role="owner"))
+            db.add(ParentAccountSite(parent_account_id=world["parent"], tenant_id=tenant.id, network_role="retail"))
+            (hidden if hide else visible).append(str(tenant.id))
+        db.commit()
+    response = world["as"]("hq").get("/v1/network-messages/contacts", params={"parent_account_id": str(world["parent"])})
+    assert response.status_code == 200
+    contacts = {r["tenant_id"]: r for r in response.json()}
+    assert not (set(hidden) & set(contacts)) and set(visible) <= set(contacts)
+    assert all(contacts[tid]["network_role"] == "operator" for tid in visible[:6])
+    assert all(contacts[tid]["state_code"] is None for tid in visible[6:8])
+    with Session(world["engine"]) as db:
+        from app.routes.network_community import _audience_sites
+        assert set(visible) <= {str(t.id) for _, t, _ in _audience_sites(db, world["parent"], None)}
+        assert not set(hidden) & {str(t.id) for _, t, _ in _audience_sites(db, world["parent"], None)}
+        assert all(db.exec(select(ParentAccountSite).where(ParentAccountSite.tenant_id == tid)).one().network_role == "retail"
+                   for tid in [UUID(tid) for tid in visible])

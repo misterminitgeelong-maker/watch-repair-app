@@ -4,6 +4,21 @@
  */
 
 export interface paths {
+    "/v1/parent-accounts/me/inbound-email-count": {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never; };
+        get: operations["count_inbound_emails_v1_parent_accounts_me_inbound_email_count_get"];
+        put?: never; post?: never; delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+    };
+    "/v1/parent-accounts/me/mobile-lead-routes/review": {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never; };
+        get: operations["review_mobile_suburb_routes_v1_parent_accounts_me_mobile_lead_routes_review_get"];
+        put?: never; post?: never; delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+    };
+    "/v1/parent-accounts/me/website-enquiries/{lead_id}": {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never; };
+        get: operations["get_support_office_website_enquiry_v1_parent_accounts_me_website_enquiries__lead_id__get"];
+        put?: never; post?: never; delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+    };
     "/v1/debug/demo-status": {
         parameters: {
             query?: never;
@@ -16550,6 +16565,21 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    count_inbound_emails_v1_parent_accounts_me_inbound_email_count_get: {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never; };
+        requestBody?: never;
+        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { [key: string]: number } } }; };
+    };
+    review_mobile_suburb_routes_v1_parent_accounts_me_mobile_lead_routes_review_get: {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never; };
+        requestBody?: never;
+        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { [key: string]: unknown } } }; };
+    };
+    get_support_office_website_enquiry_v1_parent_accounts_me_website_enquiries__lead_id__get: {
+        parameters: { query?: never; header?: never; path: { lead_id: string; }; cookie?: never; };
+        requestBody?: never;
+        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { [key: string]: unknown } } }; 422: { headers: { [name: string]: unknown }; content: { "application/json": components["schemas"]["HTTPValidationError"] } }; };
+    };
     debug_demo_status_v1_debug_demo_status_get: {
         parameters: {
             query?: never;

@@ -88,7 +88,8 @@ def ingest_mobile_key_lead(
         except ValueError:
             raise HTTPException(
                 status_code=422,
-                detail=(
+                detail="Testing mode requires exactly one active Support office site. No enquiry was created."
+                if parent.mobile_lead_force_hq_dispatch else (
                     "No operator or HQ escalation site configured for this lead. "
                     "Configure suburb routes, a fallback operator, or an HQ escalation site."
                 ),
@@ -107,7 +108,8 @@ def ingest_mobile_key_lead(
     return {
         "lead_id": str(lead.id),
         "tenant_id": str(lead.tenant_id),
-        "message": "Lead added to the operator's Lead Inbox; they've been alerted by SMS and email.",
+        "message": "Enquiry received in the Support office Inbox; testing mode sends no SMS or email alerts."
+            if parent.mobile_lead_force_hq_dispatch else "Lead added to the operator's Lead Inbox; they've been alerted by SMS and email.",
     }
 
 

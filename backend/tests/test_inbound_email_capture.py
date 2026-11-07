@@ -255,3 +255,22 @@ def test_hq3_missing_credentials_rejected():
     ctx = _setup_parent_with_ingest()
     res = client.post(f"/v1/public/inbound-email/{ctx['ingest_id']}", data={"subject": "x"})
     assert res.status_code == 401
+
+
+def test_new_email_count_is_exact_beyond_page_limit_and_parent_scoped():
+    from uuid import UUID
+    from sqlmodel import Session
+    from app.database import engine
+    from app.models import InboundEmail, ParentAccount
+    network = _setup_parent_with_ingest()
+    parent_id = UUID(client.get("/v1/parent-accounts/me", headers=network["headers"]).json()["parent_account_id"])
+    with Session(engine) as db:
+        other = ParentAccount(name="Other", owner_email=f"other-{uuid4().hex}@test.local")
+        db.add(other); db.flush()
+        db.add_all([InboundEmail(parent_account_id=parent_id, status="new") for _ in range(620)])
+        db.add(InboundEmail(parent_account_id=parent_id, status="processed"))
+        db.add(InboundEmail(parent_account_id=other.id, status="new"))
+        db.commit()
+    count = client.get("/v1/parent-accounts/me/inbound-email-count", headers=network["headers"])
+    assert count.status_code == 200 and count.json() == {"count": 620}
+    assert len(client.get("/v1/parent-accounts/me/inbound-emails", headers=network["headers"]).json()) == 50

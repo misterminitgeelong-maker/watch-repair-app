@@ -862,6 +862,59 @@ def mobile_suburb_routes_summary(
     return MobileSuburbRoutesSummary(total_routes=int(total), operators=operators)
 
 
+@router.get("/me/mobile-lead-routes/review", response_model=dict)
+def review_mobile_suburb_routes(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Read-only territory readiness review. Never selects a replacement or changes routes."""
+    from ..network_site_classification import excluded_site_reason
+    from ..parent_network import dispatch_operators_for_parent, tenant_is_live
+    from ..support_office_intake import testing_inbox_tenant_id
+    from ..sms import operator_dispatch_phone
+
+    _, parent, _ = _parent_for_read(session, auth)
+    routes = session.exec(select(MobileSuburbRoute).where(MobileSuburbRoute.parent_account_id == parent.id)).all()
+    candidates = {t.id for t in dispatch_operators_for_parent(session, parent.id)}
+    grouped = {}
+    for route in routes:
+        grouped.setdefault(route.target_tenant_id, []).append(route)
+    targets = []
+    for tenant_id, assigned in grouped.items():
+        tenant = session.get(Tenant, tenant_id)
+        reasons = []
+        if tenant is None:
+            reasons.append("Target account is missing")
+        else:
+            reason = excluded_site_reason(parent.id, tenant)
+            if reason:
+                reasons.append(reason)
+            if not tenant.is_active or tenant.merged_into_tenant_id:
+                reasons.append("Target account is inactive or merged")
+            if tenant.mobile_dispatch_paused:
+                reasons.append("Dispatch is paused; do not activate during this review")
+            if not tenant_is_live(session, tenant.id):
+                reasons.append("Owner onboarding/dispatch consent is incomplete")
+            if not operator_dispatch_phone(tenant):
+                reasons.append("No dispatch SMS number configured")
+            if tenant.id not in candidates:
+                reasons.append("Not currently an eligible dispatch candidate")
+        targets.append({
+            "tenant_id": str(tenant_id), "name": tenant.name if tenant else "Missing account",
+            "slug": tenant.slug if tenant else None, "route_count": len(assigned),
+            "states": sorted({r.state_code for r in assigned}), "issues": reasons,
+            "sample_suburbs": sorted(r.suburb_normalized for r in assigned)[:5],
+            "replacement_tenant_id": None,
+        })
+    targets.sort(key=lambda t: (-t["route_count"], t["tenant_id"]))
+    inbox_id = testing_inbox_tenant_id(session, parent.id)
+    inbox = session.get(Tenant, inbox_id) if inbox_id else None
+    return {"read_only": True, "testing_mode": bool(parent.mobile_lead_force_hq_dispatch),
+            "testing_inbox": {"tenant_id": str(inbox.id), "name": inbox.name} if inbox else None,
+            "escalation_configured": bool(parent.mobile_lead_escalation_tenant_id),
+            "total_routes": len(routes), "targets": targets}
+
+
 @router.get("/me/mobile-lead-routes", response_model=list[MobileSuburbRouteRead])
 def list_mobile_suburb_routes(
     search: str | None = Query(default=None, description="Filter by suburb name (case-insensitive)"),
@@ -2624,4 +2677,3 @@ def update_mv_operator_status(
         session.rollback()
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"message": message}
-

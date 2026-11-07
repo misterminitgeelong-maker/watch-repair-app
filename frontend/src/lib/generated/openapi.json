@@ -8954,6 +8954,37 @@
         }
       }
     },
+    "/v1/parent-accounts/me/inbound-email-count": {
+      "get": {
+        "tags": [
+          "inbound-email"
+        ],
+        "summary": "Count Inbound Emails",
+        "description": "Exact new-email count for the Support office badge, independent of pagination.",
+        "operationId": "count_inbound_emails_v1_parent_accounts_me_inbound_email_count_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Count Inbound Emails V1 Parent Accounts Me Inbound Email Count Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/inbound-emails/{inbound_email_id}": {
       "get": {
         "tags": [
@@ -15002,6 +15033,35 @@
         ]
       }
     },
+    "/v1/parent-accounts/me/mobile-lead-routes/review": {
+      "get": {
+        "tags": [
+          "parent-accounts"
+        ],
+        "summary": "Review Mobile Suburb Routes",
+        "description": "Read-only territory readiness review. Never selects a replacement or changes routes.",
+        "operationId": "review_mobile_suburb_routes_v1_parent_accounts_me_mobile_lead_routes_review_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Review Mobile Suburb Routes V1 Parent Accounts Me Mobile Lead Routes Review Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/parent-accounts/me/mobile-lead-routes": {
       "get": {
         "tags": [
@@ -19271,6 +19331,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParentShopBookingsReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parent-accounts/me/website-enquiries/{lead_id}": {
+      "get": {
+        "tags": [
+          "parent-operations"
+        ],
+        "summary": "Get Support Office Website Enquiry",
+        "description": "Read a website enquiry received by this network's Support office, not another shop's inbox.",
+        "operationId": "get_support_office_website_enquiry_v1_parent_accounts_me_website_enquiries__lead_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lead_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lead Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Support Office Website Enquiry V1 Parent Accounts Me Website Enquiries  Lead Id  Get"
                 }
               }
             }
