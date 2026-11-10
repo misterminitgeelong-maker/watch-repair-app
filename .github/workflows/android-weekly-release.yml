@@ -59,6 +59,9 @@ jobs:
       - name: Set up Android SDK
         if: steps.changes.outputs.release == 'true'
         uses: android-actions/setup-android@v3
+        with:
+          # Match CI; avoid the action's default retired `tools` package.
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Validate native app
         if: steps.changes.outputs.release == 'true'
