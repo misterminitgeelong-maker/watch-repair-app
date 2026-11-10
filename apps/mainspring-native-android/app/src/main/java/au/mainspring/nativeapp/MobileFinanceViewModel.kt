@@ -60,6 +60,10 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
   }
  }
  fun createInvoice(quoteId: String) = runAction {
+  if(mutable.value.quotes.firstOrNull { it.id == quoteId }?.needsOutcomeChoice() == true) {
+   mutable.update { it.copy(error = "Choose which quote option applies before creating an invoice.") }
+   return@runAction
+  }
   try {
    val invoice = api.createMobileInvoice(jobId, quoteId)
    mutable.update { it.copy(invoices = listOf(invoice) + it.invoices, info = "Invoice created.") }
@@ -104,7 +108,7 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
  fun markPaid(id: String, method: String) {
   val snapshot=mutable.value
   if(snapshot.loading || snapshot.busy || !snapshot.historyChecked || snapshot.paymentReviewId!=null || !TokenStore.canWorkJobs()) return
-  if(method !in listOf("cash","card","bank_transfer") || snapshot.invoices.none {it.id==id && it.status=="unpaid"}) return
+  if(method !in listOf("cash","eftpos","bank") || snapshot.invoices.none {it.id==id && it.status=="unpaid"}) return
   drafts.saveMessageDraft("$paymentOperation/request",id)
   if(!drafts.setPendingOperation(paymentOperation,true)) {mutable.update {it.copy(error="Could not save the payment checkpoint. Check device storage before continuing.")};return}
   runAction {

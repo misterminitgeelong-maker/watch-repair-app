@@ -56,7 +56,7 @@ data class JobDetailUiState(
 ) {
     /** What the customer still owes: unpaid invoice amounts when invoiced, otherwise quote less deposit. */
     fun outstandingCents(job: RepairJobRead): Int =
-        if (invoiceTotalCents > 0) (invoiceTotalCents - invoicePaidCents).coerceAtLeast(0) else (job.preQuoteCents - job.depositCents).coerceAtLeast(0)
+        if (invoiceTotalCents > 0) (invoiceTotalCents - invoicePaidCents).coerceAtLeast(0) else (watchQuoteCents(job) - job.depositCents).coerceAtLeast(0)
 }
 
 /** Body for `PATCH repair-jobs/{id}` that sets both the job cost and the pre-quote (web `updateJob`). */
@@ -184,6 +184,25 @@ class JobDetailViewModel(
                 }
                 _state.update { it.copy(noteBusy = false, error = e.userMessage()) }
             }
+        }
+    }
+
+    /** Replaces the editable internal-notes field. Activity notes remain append-only and separate. */
+    fun saveInternalNotes(text: String, original: String?, onSaved: () -> Unit) {
+        if(_state.value.noteBusy || _state.value.loading || !TokenStore.canWorkJobs()) return
+        _state.update { it.copy(noteBusy = true, error = null) }
+        viewModelScope.launch {
+            try {
+                val latest = fetchJob()
+                if(latest.internalNotes.orEmpty() != original.orEmpty()) {
+                    _state.update { it.copy(noteBusy = false, job = latest, error = "Shop notes changed while you were editing. Copy your changes, close this editor, and reopen the latest notes before saving.") }
+                    return@launch
+                }
+                api.updateCounterWatch(jobId, JsonObject().apply { addProperty("internal_notes", text.trim().ifBlank { null }) })
+                _state.update { it.copy(noteBusy = false, job = fetchJob(), resendInfo = "Shop notes saved.") }
+                onSaved()
+            } catch(e: CancellationException) { throw e }
+            catch(e: Exception) { _state.update { it.copy(noteBusy = false, error = "Could not save shop notes. Refresh the job to check the result before retrying. ${e.userMessage()}") } }
         }
     }
 

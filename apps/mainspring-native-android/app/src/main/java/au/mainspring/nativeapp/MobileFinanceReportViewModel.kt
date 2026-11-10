@@ -14,7 +14,7 @@ val mobileFinancePeriods = linkedMapOf(
 data class MobileFinanceReportState(
     val mode: String = "operations", val period: String = "week", val customFrom: String? = null, val customTo: String? = null, val rangeError: String? = null,
     val cockpit: MobileCockpitResponse? = null, val finance: MobileFinanceResponse? = null,
-    val loading: Boolean = false, val error: String? = null,
+    val loading: Boolean = false, val error: String? = null, val targetBusy: Boolean = false, val targetInfo: String? = null,
 )
 
 class MobileFinanceReportViewModel : ViewModel() {
@@ -23,6 +23,15 @@ class MobileFinanceReportViewModel : ViewModel() {
     val state = mutable.asStateFlow()
     private var request: Job? = null
     init { refresh() }
+    fun setTarget(dollars: String) {
+        if(!TokenStore.canManageTeam() || mutable.value.targetBusy) return
+        val amount = try { dollars.trim().takeIf(String::isNotBlank)?.let(::dollarsToCentsChecked) } catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) }; return }
+        mutable.update { it.copy(targetBusy = true, targetInfo = null, error = null) }
+        viewModelScope.launch { try {
+            api.setTarget(com.google.gson.JsonObject().apply { if(amount == null) add("weekly_target_cents", com.google.gson.JsonNull.INSTANCE) else addProperty("weekly_target_cents", amount) })
+            mutable.update { it.copy(targetBusy = false, targetInfo = if(amount == null) "Weekly target cleared." else "Weekly target saved.") }; refresh()
+        } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(targetBusy = false, error = e.userMessage()) } } }
+    }
 
     fun mode(value: String) { if(value != state.value.mode) { mutable.update { it.copy(mode = value) }; refresh() } }
     /** Applies a custom inclusive date range (YYYY-MM-DD) to the finance report; invalid ranges are reported, not sent. */

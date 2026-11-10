@@ -8,20 +8,23 @@ fun validateQuoteAmountRange(lines: List<MobileQuoteLine>) {
  require(lines.isNotEmpty() && lines.size <= 30) { "Add between one and thirty quote lines." }
  val subtotal = lines.fold(BigDecimal.ZERO) { total,line ->
   require(line.quantity.isFinite() && line.quantity > 0 && line.quantity <= 10000 && line.unitCents in 0..100_000_000) { "Check each line's quantity and unit price." }
-  total + BigDecimal.valueOf(line.quantity).multiply(BigDecimal.valueOf(line.unitCents.toLong())).setScale(0, RoundingMode.HALF_UP)
+  val amount = BigDecimal.valueOf(line.quantity).multiply(BigDecimal.valueOf(line.unitCents.toLong())).setScale(0, RoundingMode.HALF_UP)
+  total + if(line.itemType == "discount") -amount else amount
  }
+ require(subtotal >= BigDecimal.ZERO) { "Discount lines cannot exceed the quote's charges." }
  require(subtotal.multiply(BigDecimal("1.15")).setScale(0,RoundingMode.HALF_UP) <= BigDecimal.valueOf(Int.MAX_VALUE.toLong())) { "This quote exceeds the amount supported by the native app. Reduce the quantity or split the work into separate quotes." }
 }
 
 data class QuoteLineDraft(val description: String = "", val quantity: String = "1", val price: String = "", val discountType: String = "none", val discount: String = "",
-    /** Two-outcome quotes: "A" or "B" when the line belongs to one outcome, null when it applies to both. */ val option: String? = null)
+    /** Two-outcome quotes: "A" or "B" when the line belongs to one outcome, null when it applies to both. */ val option: String? = null,
+    val itemType: String? = "labor")
 data class QuoteComposerDraft(val lines: List<QuoteLineDraft> = listOf(QuoteLineDraft()), val gst: Boolean = true, val inclusive: Boolean = true, val gstChoiceMade: Boolean = false, val lastResetVersion: String? = null,
     val twoOutcome: Boolean = false, val labelA: String? = null, val labelB: String? = null)
 
 data class QuotePreview(val subtotal: Long,val tax: Long,val total: Long)
 fun quotePreview(draft: QuoteComposerDraft,currency: String): QuotePreview {
  val lines=quoteLinesFromDraft(draft.lines)
- val sum=lines.fold(BigDecimal.ZERO) {total,line ->total+BigDecimal.valueOf(line.quantity).multiply(BigDecimal.valueOf(line.unitCents.toLong())).setScale(0,RoundingMode.HALF_UP)}
+ val sum=lines.fold(BigDecimal.ZERO) {total,line -> val amount=BigDecimal.valueOf(line.quantity).multiply(BigDecimal.valueOf(line.unitCents.toLong())).setScale(0,RoundingMode.HALF_UP); total + if(line.itemType == "discount") -amount else amount}
  val rate=when(currency) {"AUD"->BigDecimal("0.10");"NZD"->BigDecimal("0.15");else->throw IllegalArgumentException("The shop's GST rate is unavailable.")}
  val tax=if(!draft.gst) BigDecimal.ZERO else if(draft.inclusive) sum.multiply(rate).divide(BigDecimal.ONE+rate,0,RoundingMode.HALF_UP) else sum.multiply(rate).setScale(0,RoundingMode.HALF_UP)
  return if(draft.gst && draft.inclusive) QuotePreview((sum-tax).longValueExact(),tax.longValueExact(),sum.longValueExact()) else QuotePreview(sum.longValueExact(),tax.longValueExact(),(sum+tax).longValueExact())
@@ -49,9 +52,13 @@ fun quoteLinesFromDraft(draft: List<QuoteLineDraft>): List<MobileQuoteLine> {
    val discountLabel = if(line.discountType == "percent") "${BigDecimal(line.discount).stripTrailingZeros().toPlainString()}% discount" else "$${BigDecimal(price - discounted).movePointLeft(2).setScale(2)} discount per item"
    "${line.description.trim()} ($discountLabel; was $${BigDecimal(price).movePointLeft(2).setScale(2)} each)"
   }
-  MobileQuoteLine(description, quantity, discounted)
+  val type = line.itemType.orEmpty().ifBlank { "labor" }
+  require(type in WATCH_QUOTE_ITEM_TYPES) { "Choose a valid line type for line ${index+1}." }
+  MobileQuoteLine(description, quantity, discounted, itemType = type)
  }.also(::validateQuoteAmountRange)
 }
+
+val WATCH_QUOTE_ITEM_TYPES = listOf("labor", "part", "fee", "discount")
 
 /** A two-outcome quote split the way the web POS sends it: shared lines plus exactly two named options. */
 data class QuoteOutcomeSplit(val shared: List<MobileQuoteLine>, val options: List<au.mainspring.nativeapp.api.MobileQuoteOptionCreate>)

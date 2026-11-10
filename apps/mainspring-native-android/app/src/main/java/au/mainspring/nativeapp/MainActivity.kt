@@ -47,6 +47,8 @@ class MainActivity : FragmentActivity() {
                 Surface(Modifier.fillMaxSize()) {
                     val authVm: AuthViewModel = viewModel(factory = AuthViewModelFactory(application))
                     val authState by authVm.state.collectAsStateWithLifecycle()
+                    val updateVm: ClientUpdateViewModel = viewModel()
+                    val clientConfig by updateVm.state.collectAsStateWithLifecycle()
                     val appLocked by AppLock.locked.collectAsStateWithLifecycle()
                     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     if (authState.loggedIn) {
@@ -74,6 +76,7 @@ class MainActivity : FragmentActivity() {
                             subscriptionStatus = authState.subscriptionStatus,
                             trialEnd = authState.trialEnd,
                             sessionRole = authState.role,
+                            onRefreshSession = authVm::refreshSession,
                         )
                         }
                         if(authState.loading) androidx.compose.material3.AlertDialog(onDismissRequest = {}, title = { Text("Switching shop…") },
@@ -86,6 +89,7 @@ class MainActivity : FragmentActivity() {
                         )
                     }
                     if(authState.loggedIn && appLocked) au.mainspring.nativeapp.ui.screens.AppLockOverlay(onUnlock = AppLock::unlocked, onSignOut = { AppLock.unlocked(); authVm.logout() })
+                    au.mainspring.nativeapp.ui.NativeUpdateEffect(clientConfig, updateVm::refresh)
                     }
                 }
             }

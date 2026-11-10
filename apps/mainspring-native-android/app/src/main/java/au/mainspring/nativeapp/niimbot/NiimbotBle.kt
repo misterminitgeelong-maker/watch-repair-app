@@ -142,7 +142,7 @@ class NiimbotBleTransport private constructor(private val gatt: BluetoothGatt, p
             while (true) {
                 val ack = if (withResponse) CompletableDeferred<Int>().also { handler.pendingWrite = it } else null
                 val started = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    gatt.writeCharacteristic(ch, chunk, type) == BluetoothGatt.GATT_SUCCESS
+                    gatt.writeCharacteristic(ch, chunk, type) == android.bluetooth.BluetoothStatusCodes.SUCCESS
                 } else {
                     @Suppress("DEPRECATION") run { ch.writeType = type; ch.value = chunk; gatt.writeCharacteristic(ch) }
                 }

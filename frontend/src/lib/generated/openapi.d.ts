@@ -1913,6 +1913,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/client-config/android": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Android Client Config */
+        get: operations["android_client_config_v1_client_config_android_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sms/usage": {
         parameters: {
             query?: never;
@@ -8666,6 +8683,17 @@ export interface components {
             tenant_id: string;
             /** Tenant Slug */
             tenant_slug: string;
+            /**
+             * Default Currency
+             * @default AUD
+             */
+            default_currency: string;
+            /** Tenant Name */
+            tenant_name?: string | null;
+            /** Tenant Abn */
+            tenant_abn?: string | null;
+            /** Tenant Shop Phone */
+            tenant_shop_phone?: string | null;
             /**
              * Product
              * @default mainspring
@@ -15507,6 +15535,11 @@ export interface components {
             schedule_conflict_warning?: string | null;
             /** Offer Expires At */
             offer_expires_at?: string | null;
+            /**
+             * Offer Count
+             * @default 1
+             */
+            offer_count: number;
             /** Pool Intake Job Id */
             pool_intake_job_id?: string | null;
             /** Created At */
@@ -20183,6 +20216,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    android_client_config_v1_client_config_android_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

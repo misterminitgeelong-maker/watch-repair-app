@@ -34,6 +34,7 @@ private fun limit(n: Int) = if(n <= 0 || n >= 1_000_000) "Unlimited" else n.toSt
             state.error?.let { item { ErrorBanner(it, onRetry = viewModel::refresh) } }
             item {
                 SectionLabel("Signed in")
+                DetailRow("App version", "${au.mainspring.nativeapp.BuildConfig.VERSION_NAME} (${au.mainspring.nativeapp.BuildConfig.VERSION_CODE})")
                 FlatPanel {
                     DetailRow("Name", session?.user?.fullName.orEmpty())
                     DetailRow("Email", session?.user?.email.orEmpty())

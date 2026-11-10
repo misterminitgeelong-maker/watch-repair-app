@@ -30,7 +30,7 @@ import au.mainspring.nativeapp.ui.formatCents
  var printError by remember { mutableStateOf<String?>(null) }
  var composing by rememberSaveable { mutableStateOf(false) }
  LaunchedEffect(state.lastCreatedQuoteId,state.unknownQuote) { if(state.lastCreatedQuoteId != null || state.unknownQuote) composing=false }
- var confirm by remember { mutableStateOf<Pair<String, String>?>(null) }; var method by rememberSaveable { mutableStateOf("card") }
+ var confirm by remember { mutableStateOf<Pair<String, String>?>(null) }; var method by rememberSaveable { mutableStateOf("eftpos") }
  var channel by rememberSaveable { mutableStateOf("both") }
  var editInvoiceId by remember { mutableStateOf<String?>(null) }
  var editSubtotal by remember { mutableStateOf("") }; var editTax by remember { mutableStateOf("") }; var editTotal by remember { mutableStateOf("") }
@@ -59,7 +59,8 @@ import au.mainspring.nativeapp.ui.formatCents
       state.unknownQuote -> Text("Refresh and review saved quotes before creating another.",color=MaterialTheme.colorScheme.error)
       due!=null -> Button({confirm="paid" to due.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Record payment")}
       draftQuote!=null -> Button({confirm="quote" to draftQuote.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Send quote for review")}
-      uninvoiced?.status=="approved" -> Button({confirm="invoice" to uninvoiced.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Create invoice from quote")}
+      uninvoiced?.needsOutcomeChoice()==true -> Text("Choose which quote option applies below before creating an invoice.", modifier=Modifier.testTag("mobile-outcome-required"), color=MaterialTheme.colorScheme.onSurfaceVariant)
+      uninvoiced?.status=="approved" -> Button({confirm="invoice" to uninvoiced.id},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp).testTag("mobile-primary-invoice"),shape=MaterialTheme.shapes.small) {Text("Create invoice from quote")}
       state.quotes.isNotEmpty() && state.invoices.isEmpty() -> TextButton(vm::refresh,enabled=enabled) {Text("Check customer response")}
       state.quotes.isEmpty() && state.invoices.isEmpty() -> Button({composing=true},enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),shape=MaterialTheme.shapes.small) {Text("Create quote")}
      }
@@ -91,7 +92,10 @@ import au.mainspring.nativeapp.ui.formatCents
     q.signedAt?.let { Text("Signed ${au.mainspring.nativeapp.ui.formatShopDate(it)}") }
     if(q.hasSignature) OutlinedButton({ onSignature(q.id) }, enabled = !state.loading && !state.busy && TokenStore.canWorkJobs()) { Text("View customer signature") }
     if(q.status == "draft") OutlinedButton(onClick = { confirm = "quote" to q.id }, enabled = enabled) { Text("Send quote") }
-    if(state.invoices.none { it.quoteId == q.id }) OutlinedButton(onClick = { confirm = "invoice" to q.id }, enabled = enabled) { Text("Create invoice") }
+    if(state.invoices.none { it.quoteId == q.id }) {
+     OutlinedButton(onClick = { confirm = "invoice" to q.id }, enabled = enabled && !q.needsOutcomeChoice(), modifier=Modifier.testTag("mobile-quote-invoice-${q.id}")) { Text("Create invoice") }
+     if(q.needsOutcomeChoice()) Text("Confirm an outcome before invoicing this quote.", style=MaterialTheme.typography.bodySmall)
+    }
    } } }
    au.mainspring.nativeapp.ui.SectionLabel("Invoices")
    if(state.invoices.isEmpty() && !state.loading) Text("No invoices yet.",style=MaterialTheme.typography.bodySmall)
@@ -134,7 +138,7 @@ import au.mainspring.nativeapp.ui.formatCents
     Text("Record payment",style=MaterialTheme.typography.titleLarge)
     invoice?.let {Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(it.number);Text(formatCents(it.total,it.currency),style=MaterialTheme.typography.titleLarge)}}
     Text("Record this only after receiving the full invoice amount.",style=MaterialTheme.typography.bodySmall)
-    Column {listOf("card","cash","bank_transfer").forEach {option->au.mainspring.nativeapp.ui.LabeledRadio(method==option,{method=option},enabled=enabled) {Text(au.mainspring.nativeapp.ui.statusLabel(option).replaceFirstChar {it.uppercase()})}}}
+    Column {listOf("eftpos","cash","bank").forEach {option->au.mainspring.nativeapp.ui.LabeledRadio(method==option,{method=option},enabled=enabled) {Text(au.mainspring.nativeapp.ui.statusLabel(option).replaceFirstChar {it.uppercase()})}}}
     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
      OutlinedButton({confirm=null},modifier=Modifier.weight(1f)) {Text("Cancel")}
      Button({confirm=null;vm.markPaid(action.second,method)},enabled=enabled && invoice!=null && state.paymentReviewId==null,modifier=Modifier.weight(1f)) {Text("Record payment")}
@@ -146,7 +150,7 @@ import au.mainspring.nativeapp.ui.formatCents
  confirm?.takeIf {it.first!="paid"}?.let { action -> AlertDialog(onDismissRequest = { confirm = null }, title = { Text(when(action.first) { "quote" -> "Send quote?"; "invoice" -> "Create invoice?"; "paid" -> "Confirm payment received"; else -> "Send invoice?" }) },
   text = { Column { if(action.first == "paid") {
    Text("Record this only after receiving the full invoice amount.")
-   listOf("cash", "card", "bank_transfer").forEach { option -> au.mainspring.nativeapp.ui.LabeledRadio(method == option, { method = option }) { Text(au.mainspring.nativeapp.ui.statusLabel(option)) } }
+   listOf("cash", "eftpos", "bank").forEach { option -> au.mainspring.nativeapp.ui.LabeledRadio(method == option, { method = option }) { Text(au.mainspring.nativeapp.ui.statusLabel(option)) } }
   } else if(action.first == "sendInvoice") {
    Text("Choose how to send this invoice using the customer's saved contact details.")
    INVOICE_CHANNELS.forEach { (key, label) -> au.mainspring.nativeapp.ui.LabeledRadio(channel == key, { channel = key }) { Text(label) } }

@@ -22,8 +22,10 @@ class TwoOutcomeQuoteFlowTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var server: MockWebServer
     private val selectBodies = ConcurrentLinkedQueue<String>()
+    private var quoteStatus = "sent"
+    private val invoiceWrites = java.util.concurrent.atomic.AtomicInteger(0)
     private val options = """"options":[{"key":"A","label":"CAS3","subtotal_cents":36364,"tax_cents":3636,"total_cents":40000},{"key":"B","label":"CAS3++","subtotal_cents":54545,"tax_cents":5455,"total_cents":60000}]"""
-    private fun quote(selected: String?) = """{"id":"q1","status":"sent","subtotal_cents":54545,"tax_cents":5455,"total_cents":60000,"currency":"AUD","line_items":[
+    private fun quote(selected: String?) = """{"id":"q1","status":"$quoteStatus","subtotal_cents":54545,"tax_cents":5455,"total_cents":60000,"currency":"AUD","line_items":[
         {"description":"Call-out","quantity":1,"unit_price_cents":10000,"option_key":null},
         {"description":"CAS3 programming","quantity":1,"unit_price_cents":30000,"option_key":"A"},
         {"description":"CAS3++ programming","quantity":1,"unit_price_cents":50000,"option_key":"B"}],$options,"selected_option":${if(selected == null) "null" else "\"$selected\""}}"""
@@ -38,6 +40,7 @@ class TwoOutcomeQuoteFlowTest {
                     path == "/v1/auto-key-jobs/job-1/quotes" -> json.setBody("[${quote(null)}]")
                     path == "/v1/auto-key-jobs/job-1/invoices" -> json.setBody("[]")
                     path == "/v1/auto-key-jobs/quotes/q1/select-option" -> { selectBodies.add(request.body.readUtf8()); json.setBody(quote("B")) }
+                    path == "/v1/auto-key-jobs/job-1/invoices/from-quote/q1" -> { invoiceWrites.incrementAndGet(); json.setBody("""{"id":"invoice-1","invoice_number":"I-1","status":"unpaid","auto_key_quote_id":"q1","total_cents":60000,"currency":"AUD"}""") }
                     else -> MockResponse().setResponseCode(404)
                 }
             }
@@ -45,6 +48,37 @@ class TwoOutcomeQuoteFlowTest {
         server.start(); TokenStore.saveApiBaseUrl(server.url("/").toString()); TokenStore.setDraftScope("quotes", "owner"); TokenStore.setSessionRole("owner")
     }
     @After fun cleanup() { TokenStore.clear(); server.shutdown() }
+
+    @Test fun approvedTwoOutcomeQuoteCannotInvoiceUntilOutcomeIsConfirmed() {
+        quoteStatus = "approved"
+        compose.setContent { MainspringTheme { MobileFinanceScreen("job-1", onBack = {}, embedded = true) } }
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("quote-apply-B").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("mobile-outcome-required").assertExists()
+        compose.onNodeWithTag("mobile-quote-invoice-q1").assertIsNotEnabled()
+        compose.onAllNodesWithTag("mobile-primary-invoice").assertCountEquals(0)
+        Assert.assertEquals(0, invoiceWrites.get())
+        compose.onNodeWithTag("quote-apply-B").performScrollTo().performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("mobile-primary-invoice").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("mobile-quote-invoice-q1").assertIsEnabled()
+        compose.onNodeWithTag("mobile-primary-invoice").performScrollTo().performClick()
+        compose.onNodeWithText("Confirm").performClick()
+        compose.waitUntil(10_000) { invoiceWrites.get() == 1 }
+    }
+
+    @Test fun viewModelAlsoRejectsUnresolvedOutcomeWithoutSendingAnInvoiceRequest() {
+        quoteStatus = "approved"
+        val vm = MobileFinanceViewModel("job-1")
+        compose.waitUntil(10_000) { vm.state.value.historyChecked }
+        vm.createInvoice("q1")
+        compose.waitUntil(10_000) { !vm.state.value.busy }
+        Assert.assertEquals("Choose which quote option applies before creating an invoice.", vm.state.value.error)
+        Assert.assertEquals(0, invoiceWrites.get())
+        vm.selectOption("q1", "B")
+        compose.waitUntil(10_000) { vm.state.value.quotes.single().selectedOption == "B" && !vm.state.value.busy }
+        vm.createInvoice("q1")
+        compose.waitUntil(10_000) { vm.state.value.invoices.isNotEmpty() }
+        Assert.assertEquals(1, invoiceWrites.get())
+    }
 
     @Test fun technicianConfirmsWhichOutcomeAppliesAndTheCardShowsIt() {
         compose.setContent { MainspringTheme { MobileFinanceScreen("job-1", onBack = {}, embedded = true) } }

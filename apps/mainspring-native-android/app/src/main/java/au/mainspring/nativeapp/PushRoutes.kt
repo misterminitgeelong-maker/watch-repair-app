@@ -16,13 +16,21 @@ object PushRoutes {
         val clean = path.trim().substringBefore('?').trimEnd('/')
         val wantsMessages = path.substringAfter('?', "").split('&').any { it == "tab=messages" }
         val parts = clean.split('/').filter { it.isNotEmpty() }
+        if(clean == "/messages") {
+            val query = path.substringAfter('?', "").split('&').mapNotNull { part ->
+                val key = part.substringBefore('='); val value = part.substringAfter('=', "")
+                val nativeKey = when(key) { "c" -> "conversation"; "network" -> "network"; "hub" -> "hub"; "tab" -> "tab"; else -> return@mapNotNull null }
+                if(!ID.matches(value)) null else "$nativeKey=$value"
+            }
+            return "networkMessages" + if(query.isEmpty()) "" else "?" + query.joinToString("&")
+        }
         return when {
             parts.size == 1 && parts[0] == "inbox" -> "inbox"
             parts.size == 1 && parts[0] == "invoices" -> "invoices"
             parts.size == 2 && ID.matches(parts[1]) -> when(parts[0]) {
                 "jobs" -> "watchJob/${parts[1]}" + if(wantsMessages) "?tab=messages" else ""
                 "shoe-repairs" -> "shoeJob/${parts[1]}" + if(wantsMessages) "?tab=messages" else ""
-                "auto-key" -> "autoKeyJob/${parts[1]}"
+                "auto-key" -> if(wantsMessages) "messages/auto-key-jobs/${parts[1]}" else "autoKeyJob/${parts[1]}"
                 else -> null
             }
             else -> null

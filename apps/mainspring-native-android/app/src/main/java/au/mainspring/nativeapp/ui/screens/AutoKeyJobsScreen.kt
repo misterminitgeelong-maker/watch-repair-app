@@ -56,8 +56,10 @@ fun AutoKeyJobsScreen(
     viewModel: AutoKeyJobsViewModel = viewModel(factory = AutoKeyJobsViewModel.listFactory()),
     embedded: Boolean = false,
     onOpenBookingRequests: (() -> Unit)? = null,
+    initialFocus: String? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(initialFocus) { if(initialFocus != null && initialFocus in au.mainspring.nativeapp.MOBILE_FOCUS_OPTIONS) viewModel.focus(initialFocus) }
     var dateOpen by remember { mutableStateOf(false) }
     var filtersOpen by remember { mutableStateOf(false) }
     var bulkStatus by rememberSaveable { mutableStateOf("booking_confirmed") }
@@ -75,7 +77,7 @@ fun AutoKeyJobsScreen(
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SandSegmented(listOf(ToggleOption("active", "Active", "segment-active"), ToggleOption("completed", "Completed", "segment-completed")),
                         if(state.focus == null) state.directory else "", { viewModel.directory(it) })
-                    SearchFiltersRow(state.query, viewModel::query, "Search jobs…", { filtersOpen = true }, (if(state.focus != null) 1 else 0) + (if(state.focus == null && state.directory == "all") 1 else 0))
+                    SearchFiltersRow(state.query, viewModel::query, "Search jobs…", { filtersOpen = true }, listOf(state.focus, state.statusFilter, state.technicianFilter, state.categoryFilter).count { it != null } + (if(state.focus == null && state.directory == "all") 1 else 0))
                     au.mainspring.nativeapp.ui.SavedViewsRow(state.savedViews, viewModel::currentView, viewModel::applyView, viewModel::saveView, viewModel::deleteView,
                         Modifier.testTag("mobile-saved-views"), horizontalPadding = 0.dp)
                     state.bulkMessage?.let { Text(it, Modifier.testTag("bulk-message"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
@@ -145,13 +147,25 @@ fun AutoKeyJobsScreen(
         confirmButton = { Button(onClick = { confirmBulk = false; viewModel.bulkSetStatus(bulkStatus) }, modifier = Modifier.heightIn(min = 48.dp).testTag("bulk-confirm")) { Text("Set status") } },
         dismissButton = { TextButton(onClick = { confirmBulk = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") } })
     if(filtersOpen) {
-        FiltersSheet(onDismiss = { filtersOpen = false }, onReset = { viewModel.focus(null); viewModel.directory("active") }) {
+        FiltersSheet(onDismiss = { filtersOpen = false }, onReset = viewModel::resetFilters) {
             FilterSection("Directory") {
                 listOf("active" to "Active", "completed" to "Completed", "all" to "All").forEach { (k, v) -> SheetChip(v, state.focus == null && state.directory == k, { viewModel.directory(k) }) }
             }
             FilterSection("Focus") {
-                listOf("today" to "Today", "unscheduled" to "Unscheduled", "unassigned" to "Unassigned", "needs_quote" to "Needs quote", "completed_unpaid" to "Completed, unpaid")
+                au.mainspring.nativeapp.MOBILE_FOCUS_OPTIONS.toList()
                     .forEach { (k, v) -> SheetChip(v, state.focus == k, { viewModel.focus(if(state.focus == k) null else k) }) }
+            }
+            FilterSection("Status") {
+                SheetChip("All statuses", state.statusFilter == null, { viewModel.status(null) })
+                au.mainspring.nativeapp.api.MOBILE_STATUS_PICKER.forEach { (key, label) -> SheetChip(label, state.statusFilter == key, { viewModel.status(key) }) }
+            }
+            FilterSection("Technician") {
+                SheetChip("All technicians", state.technicianFilter == null, { viewModel.technician(null) })
+                state.technicians.forEach { user -> SheetChip(user.name, state.technicianFilter == user.id, { viewModel.technician(user.id) }) }
+            }
+            FilterSection("Category") {
+                SheetChip("All categories", state.categoryFilter == null, { viewModel.category(null) })
+                au.mainspring.nativeapp.MOBILE_REPORT_CATEGORIES.forEach { (key, label) -> SheetChip(label, state.categoryFilter == key, { viewModel.category(key) }) }
             }
         }
     }

@@ -30,7 +30,7 @@ export default function ShopStockPage() {
     qc.invalidateQueries({ queryKey: ['shop-stock-transfers'] })
   }
 
-  const [adj, setAdj] = useState({ location: '', sku: '', qty: '1', kind: 'receive' as 'receive' | 'adjust' })
+  const [adj, setAdj] = useState({ location: '', sku: '', qty: '1', kind: 'receive' as 'receive' | 'set_count' })
   const adjust = useMutation({
     mutationFn: () => shopAdjustStock({ location_id: adj.location || mine[0]?.id, sku: adj.sku.trim(), quantity: Number(adj.qty), kind: adj.kind }),
     onSuccess: () => { setAdj({ ...adj, sku: '', qty: '1' }); refresh() },
@@ -95,9 +95,9 @@ export default function ShopStockPage() {
                 {mine.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </Select>
             )}
-            <Select label="Action" value={adj.kind} onChange={e => setAdj({ ...adj, kind: e.target.value as 'receive' | 'adjust' })}>
+            <Select label="Action" value={adj.kind} onChange={e => setAdj({ ...adj, kind: e.target.value as 'receive' | 'set_count' })}>
               <option value="receive">Add to stock</option>
-              <option value="adjust">Set count to</option>
+              <option value="set_count">Set count to</option>
             </Select>
             <Input label="Scan or type SKU" value={adj.sku} onChange={e => setAdj({ ...adj, sku: e.target.value })} />
             <Input label="Qty" type="number" min="0" value={adj.qty} onChange={e => setAdj({ ...adj, qty: e.target.value })} />

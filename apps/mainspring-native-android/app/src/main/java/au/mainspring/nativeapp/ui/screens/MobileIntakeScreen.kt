@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.testTag
     val state by vm.state.collectAsStateWithLifecycle()
     val locked = state.busy || vm.field("uncertain").isNotBlank() || vm.field("jobId").isNotBlank() || vm.field("hasAcknowledgement") == "true"
     var leave by remember {mutableStateOf(false)};var discard by remember {mutableStateOf(false)};var reconcile by remember {mutableStateOf(false)}
+    var pricingOpen by remember { mutableStateOf(false) }
     BackHandler {if(!state.busy) leave=true}
     LaunchedEffect(Unit) {if(preselectedCustomerId!=null && state.fields.isEmpty()) {vm.set("customerId",preselectedCustomerId);vm.set("customerMode","existing")};vm.search()}
     Scaffold(topBar = { au.mainspring.nativeapp.ui.IntakeHeader("auto_key", { leave = true }, !state.busy, { discard = true }, !state.busy && vm.field("uncertain").isBlank() && vm.field("jobId").isBlank(), services, onSwitchService) },
@@ -147,13 +148,17 @@ import androidx.compose.ui.platform.testTag
                     if(quote.estimated) Text("Estimate only: shop pricing could not be loaded. The shop's own prices are applied when the job is created.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("applyQuote")!="false",{vm.set("applyQuote",it.toString())},modifier=Modifier.testTag("intake-apply-quote"),enabled=!locked) {Text("Apply suggested quote to this job")}
+            au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("applyQuote")!="false",vm::applySuggested,modifier=Modifier.testTag("intake-apply-quote"),enabled=!locked) {Text("Apply suggested quote to this job")}
+            OutlinedTextField(vm.field("manualPrice"), vm::manualPrice, label = { Text("Customer price ($, including GST)") }, enabled = !locked, modifier = Modifier.fillMaxWidth().testTag("intake-manual-price"))
+            vm.field("pricingLabel").takeIf(String::isNotBlank)?.let { Text("Catalogue: $it${if(vm.field("callout") == "true") " · Callout included" else " · Plus callout"}") }
+            OutlinedButton({ pricingOpen = true }, enabled = !locked) { Text("Browse pricing catalogue") }
             SectionLabel("Initial status")
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("awaiting_quote","go_ahead","pending_booking","booked").forEach {value->au.mainspring.nativeapp.ui.AtelierChip(vm.field("status").ifBlank {"awaiting_quote"}==value,{vm.set("status",value)},enabled=!locked,label={Text(au.mainspring.nativeapp.ui.statusLabel(value))})}}
             au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("bookingSms")=="true",{vm.set("bookingSms",it.toString())},enabled=!locked) {Text("Send booking SMS to customer")}
             Text("Creation may also send the customer's tracking message according to shop settings.",style=MaterialTheme.typography.bodySmall)
         }
     }
+    if(pricingOpen) MobileIntakePricingDialog({ pricingOpen = false }, { row, category, price -> vm.selectPricing(row, category, price); pricingOpen = false })
     if(leave) AlertDialog(onDismissRequest = { leave = false }, title = { Text("Leave intake?") }, text = { Text("Your draft stays on this device.") },
         confirmButton = { TextButton(onClick = onBack) { Text("Save and leave") } }, dismissButton = { TextButton(onClick = { leave = false }) { Text("Keep editing") } })
     if(discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text("Discard draft?") }, text = { Text("Clear device details without deleting any shop records.") },

@@ -25,6 +25,7 @@ import au.mainspring.nativeapp.ui.formatCents
 @Composable fun QuoteComposer(draftKey: String, businessAccount: Boolean, enabled: Boolean, catalogue: Boolean,
  resetVersion: String? = null, quickSale: Boolean = false, currency: String? = TokenStore.shopValue("currency"), buttonLabel: String = "Save draft quote", modifier: Modifier = Modifier, sheetLayout: Boolean = false, secondaryLabel: String? = null, onSecondary: ((List<MobileQuoteLine>, Boolean, Boolean) -> Unit)? = null,
  allowTwoOutcome: Boolean = false, onSaveOutcomes: ((List<MobileQuoteLine>, List<au.mainspring.nativeapp.api.MobileQuoteOptionCreate>, Boolean, Boolean) -> Unit)? = null,
+ showLineTypes: Boolean = false,
  onSave: (List<MobileQuoteLine>, Boolean, Boolean) -> Unit) {
   @Suppress("NAME_SHADOWING") val currency = currency ?: "AUD" // the app is AUD-first; an unset shop currency must not hide the total
  val drafts = remember(draftKey) { TokenStore.bindDrafts() }
@@ -130,6 +131,11 @@ import au.mainspring.nativeapp.ui.formatCents
    }
    if(expanded==index) {
    au.mainspring.nativeapp.ui.AtelierTextField(line.description, { change(index, line.copy(description = it)) }, label = { Text("Description") }, enabled = enabled, modifier = Modifier.fillMaxWidth())
+   if(showLineTypes) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    WATCH_QUOTE_ITEM_TYPES.forEach { type -> au.mainspring.nativeapp.ui.AtelierChip((line.itemType ?: "labor") == type, { change(index, line.copy(itemType = type)) }, enabled = enabled,
+      modifier = Modifier.testTag("quote-line-type-$type"), label = { Text(if(type == "labor") "Labour" else type.replaceFirstChar { it.uppercase() }) }) }
+   }
+   if(showLineTypes && line.itemType == "discount") Text("Enter the discount as a positive amount; it is subtracted from the subtotal.", style = MaterialTheme.typography.bodySmall)
    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     au.mainspring.nativeapp.ui.AtelierTextField(line.quantity, { change(index, line.copy(quantity = it)) }, label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)
     au.mainspring.nativeapp.ui.AtelierTextField(line.price, { change(index, line.copy(price = it)) }, label = { Text("Unit price ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), enabled = enabled, modifier = Modifier.weight(1f), singleLine = true)

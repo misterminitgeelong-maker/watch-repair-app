@@ -156,20 +156,33 @@ fun WatchIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (S
                     }
                     if (vm.field("$prefix.id").isBlank()) {
                         au.mainspring.nativeapp.ui.BrandSuggestField("Brand", vm.field("$prefix.brand"), { vm.setField("$prefix.brand", it) }, !locked, placeholders["$prefix.brand"]); field("$prefix.model", "Model"); field("$prefix.serial", "Serial Number")
-                        field("$prefix.movement", "Movement"); field("$prefix.condition", "Condition on Intake", true)
+                        au.mainspring.nativeapp.ui.MovementSuggestField(vm.field("$prefix.movement"), { vm.setField("$prefix.movement", it) }, !locked, Modifier.fillMaxWidth())
+                        field("$prefix.condition", "Condition on Intake", true)
+                        FieldCaption("Condition checklist")
+                        val checked = vm.field("$prefix.checklist").split('|').toSet()
+                        au.mainspring.nativeapp.WATCH_CONDITION_CHECKLIST.forEach { condition ->
+                            au.mainspring.nativeapp.ui.LabeledCheckbox(condition in checked, { vm.toggleCondition(activeWatch, condition) }, enabled = !locked,
+                                modifier = Modifier.testTag("watch-condition-${condition.replace(' ', '-') }")) { Text(condition.replaceFirstChar { it.uppercase() }) }
+                        }
                     }
                     au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("quickJob") == "true", { vm.setField("quickJob", it.toString()) }, enabled = !locked) {
                         Text("Quick counter job (photos optional)")
                     }
                 }
                 2 -> {
+                    if(state.templates.isNotEmpty()) {
+                        FieldCaption("Job template")
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            state.templates.forEach { template -> au.mainspring.nativeapp.ui.AtelierChip(vm.field("template") == template.id, { vm.applyTemplate(template.id) }, enabled = !locked, label = { Text(template.label) }, modifier = Modifier.testTag("watch-template-${template.id}")) }
+                        }
+                    }
                     field("title", "Job Title *"); field("description", "Instructions / Fault Description", true)
                     val quoteRequired = state.catalogue.any { it.key in vm.selectedServices() && it.pricingType == "quote" }
                     FieldCaption("Initial status")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on").forEach { status ->
                             au.mainspring.nativeapp.ui.AtelierChip(selected = vm.field("status").ifBlank { "awaiting_quote" } == status, onClick = { vm.setField("status", status) }, enabled = !locked && !quoteRequired,
-                                label = { Text(au.mainspring.nativeapp.ui.statusLabel(status)) })
+                                label = { Text(au.mainspring.nativeapp.watchStatusLabel(status)) })
                         }
                     }
                     FieldCaption("Priority")

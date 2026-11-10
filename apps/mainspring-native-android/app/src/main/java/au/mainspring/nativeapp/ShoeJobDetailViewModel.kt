@@ -239,6 +239,10 @@ class ShoeJobDetailViewModel(
     fun editShoe(shoeId: String, type: String, brand: String, colour: String, notes: String) {
         edit { api.updateShoe(shoeId, shoeUpdateBody(type, brand, colour, notes)); api.getShoeRepairJob(jobId) }
     }
+    fun editShoe(shoeId: String, type: String, brand: String, colour: String, notes: String, purchase: ShoePurchaseDetails) {
+        val fields = try { shoeUpdateBody(type, brand, colour, notes, purchase) } catch(e: Exception) { _state.update { it.copy(error = e.userMessage()) }; return }
+        edit { api.updateShoe(shoeId, fields); api.getShoeRepairJob(jobId) }
+    }
 
     private val admin get() = ApiClient.service(au.mainspring.nativeapp.api.JobAdminApi::class.java)
 

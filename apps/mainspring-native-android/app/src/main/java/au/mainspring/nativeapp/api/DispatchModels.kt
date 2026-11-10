@@ -4,8 +4,12 @@ import com.google.gson.annotations.SerializedName
 
 data class DispatchPoolJob(
     val id: String,
-    @SerializedName("customer_name") val customerName: String,
-    @SerializedName("job_address") val address: String,
+    @SerializedName("customer_name") val customerName: String? = null,
+    @SerializedName("job_address") val address: String? = null,
+    @SerializedName("job_type") val jobType: String? = null,
+    val suburb: String? = null,
+    val state: String? = null,
+    val postcode: String? = null,
     @SerializedName("vehicle_make") val make: String? = null,
     @SerializedName("vehicle_model") val model: String? = null,
     @SerializedName("vehicle_year") val year: String? = null,

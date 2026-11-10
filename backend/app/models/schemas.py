@@ -160,6 +160,10 @@ class AuthSessionResponse(SQLModel):
     user: PublicUser
     tenant_id: UUID
     tenant_slug: str
+    default_currency: str = "AUD"
+    tenant_name: Optional[str] = None
+    tenant_abn: Optional[str] = None
+    tenant_shop_phone: Optional[str] = None
     #: ``minit`` for Mister Minit network tenants; ``mainspring`` for standard shops.
     product: str = "mainspring"
     #: When true, the SPA renders the six-item Minit HQ navigation (authoritative server signal).
@@ -1652,6 +1656,7 @@ class ShopMobileBookingRead(SQLModel):
     schedule_conflict_warning: Optional[str] = None
     #: Deadline for the target operator to accept before this falls into the shared Dispatch Pool.
     offer_expires_at: Optional[datetime] = None
+    offer_count: int = 1
     #: Set once this moved to the pool — the claimable IntakeJob any nearby operator can take.
     pool_intake_job_id: Optional[UUID] = None
     created_at: datetime

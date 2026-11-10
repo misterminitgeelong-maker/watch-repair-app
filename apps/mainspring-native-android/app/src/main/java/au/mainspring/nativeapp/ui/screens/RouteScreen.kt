@@ -77,13 +77,7 @@ import java.util.Locale
     Scaffold(topBar={au.mainspring.nativeapp.ui.AtelierTopAppBar(title={Text("Today's route")},navigationIcon={au.mainspring.nativeapp.ui.BackButton(onBack)},actions={TextButton(refreshAll,enabled=!loading) { Text("Refresh") }})}) {padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if(BuildConfig.MAPS_CONFIGURED) NativeStopMap(stops.map {it.jobAddress.orEmpty()},Modifier.fillMaxWidth().height(240.dp))
-            else Surface(Modifier.fillMaxWidth().heightIn(min=150.dp),color=if(LocalCalibre.current) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.secondaryContainer) {
-                Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    FieldIcon("Map");Text("Your route, stop by stop",style=MaterialTheme.typography.headlineSmall)
-                    Text("The in-app map is unavailable in this build. Navigate to each stop using your maps app.",style=MaterialTheme.typography.bodySmall)
-                    if(LocalCalibre.current) MonoLabel("Illustrative area diagram")
-                }
-            }
+            else OpenStreetStopMap(stops, Modifier.fillMaxWidth().height(260.dp), geocode = deviceGeocode, onJob = onJob, onNavigate = ::navigate)
             PullToRefreshBox(isRefreshing=loading,onRefresh=refreshAll,modifier=Modifier.weight(1f)) {
             LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 item {if(LocalCalibre.current) {MonoLabel("Where to go");Text("${stops.size} stops",style=MaterialTheme.typography.headlineMedium)} else SectionLabel("Where to go · ${stops.size} stops");Text("Stops follow saved visit order, then booking time.",style=MaterialTheme.typography.bodySmall)}

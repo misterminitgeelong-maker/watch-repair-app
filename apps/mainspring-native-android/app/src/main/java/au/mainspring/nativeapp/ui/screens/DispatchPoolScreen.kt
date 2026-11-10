@@ -58,15 +58,15 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
                 if(index == 0 || state.jobs[index - 1].ring != job.ring) au.mainspring.nativeapp.ui.SectionLabel("Ring ${job.ring} jobs")
                 au.mainspring.nativeapp.ui.FlatPanel {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Text(job.customerName, style = MaterialTheme.typography.titleMedium)
+                        Text(job.jobType ?: "Mobile key job", style = MaterialTheme.typography.titleMedium)
                         Text("Ring ${job.ring}", style = if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.Calibre.label else MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     }
                     listOfNotNull(job.make, job.model, job.year?.toString(), job.plate).filter { it.isNotBlank() }.joinToString(" Â· ").let { vehicle ->
                         if(au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.MonoLabel(vehicle)
                         else Text(vehicle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Text(job.address, style = MaterialTheme.typography.bodyMedium)
-                    job.description?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                    Text(listOfNotNull(job.suburb, job.state, job.postcode).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Area unavailable" }, style = MaterialTheme.typography.bodyMedium)
+                    Text("Customer details and street address are available after claiming.", style = MaterialTheme.typography.bodySmall)
                     Button(onClick = { confirmingId = job.id }, enabled = !state.busy && !state.loading && state.unresolvedId.isBlank() && state.claimed == null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Claim job") }
                 }
             }

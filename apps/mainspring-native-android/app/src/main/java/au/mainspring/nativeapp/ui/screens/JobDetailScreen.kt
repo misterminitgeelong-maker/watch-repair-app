@@ -53,6 +53,9 @@ fun JobDetailScreen(
     val scope = rememberCoroutineScope()
     var statusPicker by remember { mutableStateOf(false) }
     var addNoteOpen by remember { mutableStateOf(false) }
+    var editNotesOpen by remember { mutableStateOf(false) }
+    var editingNotes by remember { mutableStateOf("") }
+    var originalNotes by remember { mutableStateOf<String?>(null) }
     var statusChangeNote by remember { mutableStateOf("") }
     var newNoteDraft by remember { mutableStateOf("") }
     var attachmentOpenError by remember { mutableStateOf<String?>(null) }
@@ -91,7 +94,7 @@ fun JobDetailScreen(
         backLabel = "Jobs", title = (if (job.jobNumber.startsWith("#")) job.jobNumber else "#" + job.jobNumber) + " \u00b7 " + job.title,
         facts = run {
             val days = au.mainspring.nativeapp.daysInShop(job.createdAt)
-            val quote = (if (state.invoiceTotalCents > 0) state.invoiceTotalCents else job.preQuoteCents).takeIf { it > 0 }
+            val quote = (if (state.invoiceTotalCents > 0) state.invoiceTotalCents else au.mainspring.nativeapp.watchQuoteCents(job)).takeIf { it > 0 }
             listOfNotNull(
                 DetailFact("Status", watchStatusLabel(job.status), pillStatus = job.status),
                 DetailFact("Priority", job.priority.replace('_', ' ').replaceFirstChar { it.uppercase() }),
@@ -129,23 +132,17 @@ fun JobDetailScreen(
             },
             DetailAction("Set quote from movement", !state.movementBusy && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) { vm.loadMovements(); movementPicker = true },
             DetailAction("Assign technician", !state.assignBusy && !state.loading && !state.statusBusy && TokenStore.canWorkJobs()) { vm.loadUsers(); assignPicker = true },
-            DetailAction("Add shop note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
+            DetailAction("Add activity note", !state.noteBusy) { newNoteDraft = ""; addNoteOpen = true },
             DetailAction("Print intake ticket", job.statusToken != null) {
                 try {
-                    au.mainspring.nativeapp.ui.printIntakeTicket(context, au.mainspring.nativeapp.ui.IntakeTicket(
-                        jobNumber = job.jobNumber, customerName = job.customerName, customerPhone = job.customerPhone,
-                        itemSummary = listOfNotNull(job.watchBrand, job.watchModel).joinToString(" ").ifBlank { "Watch" },
-                        workSummary = listOfNotNull(job.title.takeIf { it.isNotBlank() }, job.description?.takeIf { it.isNotBlank() }).joinToString("\n").ifBlank { null },
-                        dueDate = job.collectionDate?.takeIf { it.isNotBlank() }?.let { formatShopDate(it) },
-                        deposit = job.depositCents.takeIf { it > 0 }?.let { formatCents(it, currency) },
-                        statusUrl = au.mainspring.nativeapp.ui.intakeStatusUrl(apiBaseUrl, au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH, job.statusToken.orEmpty()),
-                        shopName = TokenStore.shopValue("name"), shopPhone = TokenStore.shopValue("phone"),
-                        kind = au.mainspring.nativeapp.ui.IntakeTicketKind.WATCH))
+                    val bundle = watchJobBundle(job, JobPrintContext(apiBaseUrl, TokenStore.shopValue("name"), TokenStore.shopValue("phone"), { formatCents(it, currency) }, { formatShopDate(it) }), state.watch)
+                    requireNotNull(bundle) { "This job has no tracking token yet." }
+                    printIntakeTicket(context, bundle.ticket)
                 } catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "Could not print", android.widget.Toast.LENGTH_LONG).show() }
             },
             DetailAction("Print label (Niimbot)", job.statusToken != null) {
                 niimbotLabels = au.mainspring.nativeapp.ui.watchJobBundle(job, au.mainspring.nativeapp.ui.JobPrintContext(
-                    apiBaseUrl, TokenStore.shopValue("name"), TokenStore.shopValue("phone"), { formatCents(it, currency) }, { formatShopDate(it) }))?.labels
+                    apiBaseUrl, TokenStore.shopValue("name"), TokenStore.shopValue("phone"), { formatCents(it, currency) }, { formatShopDate(it) }), state.watch)?.labels
             },
             DetailAction("Edit customer", adminReady && state.watch != null) { state.watch?.customerId?.let(onEditCustomer) },
             DetailAction("Edit watch details", adminReady && state.watch != null) { state.watch?.let { onEditWatch(it.customerId, it.id) } },
@@ -189,7 +186,8 @@ fun JobDetailScreen(
                     val notes = job.internalNotes?.takeIf { it.isNotBlank() }
                     if (notes != null) Text(notes, style = MaterialTheme.typography.bodyMedium)
                     else Text("No internal notes yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SecondaryAction(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add shop note") }
+                    SecondaryAction(onClick = { originalNotes = job.internalNotes; editingNotes = job.internalNotes.orEmpty(); editNotesOpen = true }, enabled = !state.noteBusy && TokenStore.canWorkJobs(), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("edit-shop-notes")) { Text("Edit shop notes") }
+                    TextButton(onClick = { newNoteDraft = ""; addNoteOpen = true }, enabled = !state.noteBusy) { Text("Add activity note") }
                 }
             }
             "attachments" -> {
@@ -280,7 +278,7 @@ fun JobDetailScreen(
                     val paid = outstandingCents == 0
                     FlatPanel {
                         CardHeading(if(paid) "Payment recorded" else "Check before handing over")
-                        CalibreCheckRow(true, "Service complete", "Repair has reached ${statusLabel(job.status).lowercase()}")
+                        CalibreCheckRow(true, "Service complete", "Repair has reached ${watchStatusLabel(job.status).lowercase()}")
                         CalibreCheckRow(state.smsLog.isNotEmpty(), if(state.smsLog.isNotEmpty()) "Customer notified" else "Customer not yet notified",
                             if(state.smsLog.isNotEmpty()) "${state.smsLog.size} ${if(state.smsLog.size == 1) "message" else "messages"} sent" else "No message logged for this job")
                         CalibreCheckRow(paid, if(paid) "Payment verified" else "Payment not yet verified", if(paid) null else "Balance outstanding")
@@ -341,7 +339,7 @@ fun JobDetailScreen(
                     CardHeading("Repair activity")
                     if (state.history.isEmpty() && state.smsLog.isEmpty()) Text("No activity recorded yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     state.history.forEach { h ->
-                        ActivityCard(statusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${statusLabel(it)}" }, formatShopDate(h.createdAt))
+                        ActivityCard(watchStatusLabel(h.newStatus), h.changeNote?.takeIf { it.isNotBlank() } ?: h.oldStatus?.let { "From ${watchStatusLabel(it)}" }, formatShopDate(h.createdAt))
                     }
                     state.smsLog.forEach { log -> ActivityCard(statusLabel(log.event), "${statusLabel(log.status)} · ${log.body}", "${log.toPhone} · ${formatShopDate(log.createdAt)}") }
                     Text("Activity includes status changes, approvals, photos and private workshop notes. Customer-visible conversations are in Messages.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -419,7 +417,7 @@ fun JobDetailScreen(
 
     if (movementPicker) {
         var movementQuery by remember { mutableStateOf("") }
-        val shown = state.movements.filter { movementQuery.isBlank() || it.name.contains(movementQuery.trim(), ignoreCase = true) }.take(40)
+        val shown = state.movements.filter { movementQuery.isBlank() || it.name.contains(movementQuery.trim(), ignoreCase = true) || it.key.contains(movementQuery.trim(), ignoreCase = true) }.take(40)
         AlertDialog(
             onDismissRequest = { movementPicker = false },
             title = { Text("Set quote from movement") },
@@ -442,10 +440,18 @@ fun JobDetailScreen(
         )
     }
 
+    if(editNotesOpen) AlertDialog(onDismissRequest = { if(!state.noteBusy) editNotesOpen = false }, title = { Text("Edit shop notes") }, text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Private to the workshop. Replaces the current shop notes.", style = MaterialTheme.typography.bodySmall)
+            state.error?.let { ErrorBanner(it) }
+            AtelierTextField(editingNotes, { editingNotes = it }, modifier = Modifier.fillMaxWidth().testTag("internal-notes-editor"), minLines = 4, enabled = !state.noteBusy, label = { Text("Shop notes") })
+        }
+    }, confirmButton = { TextButton({ vm.saveInternalNotes(editingNotes, originalNotes) { editNotesOpen = false } }, enabled = !state.noteBusy && editingNotes != originalNotes.orEmpty()) { Text("Save notes") } }, dismissButton = { TextButton({ editNotesOpen = false }, enabled = !state.noteBusy) { Text("Cancel") } })
+
     if (addNoteOpen) {
         AlertDialog(
             onDismissRequest = { addNoteOpen = false },
-            title = { Text("Add shop note") },
+            title = { Text("Add activity note") },
             text = {
                 au.mainspring.nativeapp.ui.AtelierTextField(
                     value = newNoteDraft,

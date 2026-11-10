@@ -90,6 +90,8 @@ data class SavedJobView(
     val query: String? = null,
     val costOutliers: Boolean = false,
     val pastCollection: Boolean = false,
+    val mobileStatus: String? = null,
+    val mobileCategory: String? = null,
 )
 
 /** Minimal string storage so the store is JVM-testable. */

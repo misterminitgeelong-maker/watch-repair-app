@@ -54,7 +54,7 @@ data class JobsUiState(
 }
 
 /** Statuses that belong on the Completed tab; everything else is Active. */
-val WATCH_COMPLETED_STATUSES: Set<String> = setOf("collected", "invoice_paid", "failed_job", "no_go")
+val WATCH_COMPLETED_STATUSES: Set<String> = setOf("collected")
 fun isWatchCompleted(status: String): Boolean = status in WATCH_COMPLETED_STATUSES
 
 enum class JobSort(val label: String) {
@@ -131,9 +131,9 @@ class JobsViewModel : ViewModel() {
         request = viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
             try {
-                val list = _state.value.let { st -> api.listRepairJobs(sortBy = st.sort.apiField, sortDir = sortDirParam(st.sort, st.sortDescending),
+                val list = _state.value.let { st -> api.listRepairJobs(limit = 500, sortBy = st.sort.apiField, sortDir = sortDirParam(st.sort, st.sortDescending),
                     q = st.query.trim().ifBlank { null }, status = st.statusFilter, assignedUserId = st.technicianId, costOutlier = if (st.costOutliersOnly) true else null) }
-                _state.update { it.copy(loading = false, jobs = list, error = null, canLoadMore = list.size == 100) }
+                _state.update { it.copy(loading = false, jobs = list, error = null, canLoadMore = list.size == 500) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 _state.update {
@@ -150,11 +150,11 @@ class JobsViewModel : ViewModel() {
         _state.update { it.copy(loading = true, error = null) }
         request = viewModelScope.launch {
             try {
-                val page = api.listRepairJobs(offset = snapshot.jobs.size,
+                val page = api.listRepairJobs(limit = 500, offset = snapshot.jobs.size,
                     sortBy = snapshot.sort.apiField, sortDir = sortDirParam(snapshot.sort, snapshot.sortDescending),
                     q = snapshot.query.trim().ifBlank { null }, status = snapshot.statusFilter, assignedUserId = snapshot.technicianId,
                     costOutlier = if (snapshot.costOutliersOnly) true else null)
-                _state.update { it.copy(jobs = (it.jobs + page).distinctBy { job -> job.id }, loading = false, canLoadMore = page.size == 100) }
+                _state.update { it.copy(jobs = (it.jobs + page).distinctBy { job -> job.id }, loading = false, canLoadMore = page.size == 500) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) { _state.update { it.copy(loading = false, error = "Could not load more repairs. Try again.") } }
         }

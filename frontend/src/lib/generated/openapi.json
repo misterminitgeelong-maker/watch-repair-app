@@ -6369,6 +6369,25 @@
         }
       }
     },
+    "/v1/client-config/android": {
+      "get": {
+        "tags": [
+          "client-config"
+        ],
+        "summary": "Android Client Config",
+        "operationId": "android_client_config_v1_client_config_android_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sms/usage": {
       "get": {
         "tags": [
@@ -27248,6 +27267,44 @@
             "type": "string",
             "title": "Tenant Slug"
           },
+          "default_currency": {
+            "type": "string",
+            "title": "Default Currency",
+            "default": "AUD"
+          },
+          "tenant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Name"
+          },
+          "tenant_abn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Abn"
+          },
+          "tenant_shop_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Shop Phone"
+          },
           "product": {
             "type": "string",
             "title": "Product",
@@ -47757,6 +47814,11 @@
               }
             ],
             "title": "Offer Expires At"
+          },
+          "offer_count": {
+            "type": "integer",
+            "title": "Offer Count",
+            "default": 1
           },
           "pool_intake_job_id": {
             "anyOf": [

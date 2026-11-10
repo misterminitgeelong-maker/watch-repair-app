@@ -161,3 +161,19 @@ jobs:
         run: |
           cd frontend
           npm run build
+
+  native-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: jetbrains
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Check native Android
+        working-directory: apps/mainspring-native-android
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest lintDebug assembleDebugAndroidTest --no-daemon

@@ -21,7 +21,7 @@ import au.mainspring.nativeapp.api.ShoeRead
 import au.mainspring.nativeapp.ui.*
 
 private fun ShoeRead.summary(): String =
-    listOfNotNull(shoeType, brand, color).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Shoe details not recorded" }
+    listOfNotNull(shoeType, brand, modelName, size?.let { "Size $it" }, color).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Shoe details not recorded" }
 
 /** One pair: type, brand, colour and condition notes. [onRemove] is null for the job's primary pair. */
 @Composable
@@ -32,6 +32,10 @@ fun ShoePairCard(index: Int, shoe: ShoeRead?, onRemove: (() -> Unit)?, enabled: 
                 Text(if(index == 1) "PRIMARY PAIR" else "PAIR $index", style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(shoe?.summary() ?: "Shoe details not recorded", style = MaterialTheme.typography.bodyLarge)
                 shoe?.notes?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                shoe?.let { pair ->
+                    listOfNotNull(pair.purchaseDate?.let { formatShopDate(it) }, pair.purchaseStore, pair.purchaseRef).joinToString(" · ").takeIf { it.isNotBlank() }?.let { Text("Bought: $it", style = MaterialTheme.typography.bodySmall) }
+                    au.mainspring.nativeapp.shoeWarrantyLabel(pair)?.let { Text(it, style = MaterialTheme.typography.labelLarge) }
+                }
             }
             if(onEdit != null && shoe != null) TextButton(onClick = onEdit, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp).testTag("edit-pair-$index")) { Text("Edit") }
             if(onRemove != null) TextButton(onClick = onRemove, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove") }

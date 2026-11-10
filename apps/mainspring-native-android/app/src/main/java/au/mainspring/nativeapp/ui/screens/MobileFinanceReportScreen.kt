@@ -30,7 +30,7 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
     else -> Math.round(value).toString()
 }
 
-@Composable fun MobileFinanceReportScreen(onBack: () -> Unit, viewModel: MobileFinanceReportViewModel = viewModel()) {
+@Composable fun MobileFinanceReportScreen(onBack: () -> Unit, viewModel: MobileFinanceReportViewModel = viewModel(), onOpenFocus: ((String) -> Unit)? = null) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currency = TokenStore.shopValue("currency") ?: "AUD"
     val context = LocalContext.current
@@ -42,6 +42,8 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
     var rangeOpen by remember { mutableStateOf(false) }
     var exportFrom by remember { mutableStateOf<String?>(null) }; var exportTo by remember { mutableStateOf<String?>(null) }
     var exportInfo by remember { mutableStateOf<String?>(null) }
+    var targetOpen by remember { mutableStateOf(false) }
+    var targetInput by rememberSaveable { mutableStateOf("") }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if(uri != null) scope.launch {
             exportBusy = true; exportInfo = null
@@ -80,8 +82,16 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
             }
             if(state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             state.error?.let { message -> item { ErrorBanner(message, onRetry = viewModel::refresh) } }
+            if(TokenStore.canManageTeam()) item {
+                TextButton({ targetInput = state.cockpit?.weeklyTargetCents?.let { "%.2f".format(java.util.Locale.US, it / 100.0) }.orEmpty(); targetOpen = true }, enabled = !state.loading && !state.targetBusy) { Text("Edit weekly cash target") }
+                state.targetInfo?.let { Text(it) }
+            }
             if(state.mode == "operations") state.cockpit?.let { operations(it, currency) }
             else state.finance?.let { finance(it, currency) }
+            if(state.mode == "operations" && onOpenFocus != null) item {
+                SectionLabel("Browse jobs")
+                Column { MOBILE_FOCUS_OPTIONS.forEach { (key, label) -> TextButton({ onOpenFocus(key) }) { Text(label) } } }
+            }
             if(state.mode == "finance" && state.finance != null) {
                 item {
                     SectionLabel("Export")
@@ -98,6 +108,9 @@ private fun amount(value: Double?, unit: String, currency: String): String = whe
             }
         }
     }
+    if(targetOpen) AlertDialog(onDismissRequest = { if(!state.targetBusy) targetOpen = false }, title = { Text("Weekly cash target") }, text = {
+        Column { Text("Cash collected per week. Leave blank to clear the target."); OutlinedTextField(targetInput, { targetInput = it }, label = { Text("Target ($)") }); state.error?.let { ErrorBanner(it) } }
+    }, confirmButton = { TextButton({ viewModel.setTarget(targetInput); targetOpen = false }, enabled = !state.targetBusy) { Text("Save target") } }, dismissButton = { TextButton({ targetOpen = false }, enabled = !state.targetBusy) { Text("Cancel") } })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

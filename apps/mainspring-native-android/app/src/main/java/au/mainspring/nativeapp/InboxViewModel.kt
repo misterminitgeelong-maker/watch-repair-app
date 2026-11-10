@@ -27,6 +27,9 @@ data class InboxUiState(
 
 /** Where a tapped inbox row goes; mirrors InboxPage.tsx. Returns null when the row has no destination. */
 fun inboxRoute(ev: TenantEventLogRead): String? {
+    if(ev.eventType == "network_announcement") return "networkMessages?tab=announcements"
+    if(ev.eventType == "network_message") return ev.entityId?.takeIf { it.matches(Regex("[A-Za-z0-9-]{1,64}")) }?.let { "networkMessages?conversation=$it" } ?: "networkMessages"
+    if(ev.eventType == "hq_message") return "hqAlert/${ev.id}"
     val id = ev.entityId?.takeIf { it.isNotBlank() } ?: return null
     val reply = ev.eventType == "customer_sms_reply" || ev.eventType == "portal_customer_message"
     return when (ev.entityType) {

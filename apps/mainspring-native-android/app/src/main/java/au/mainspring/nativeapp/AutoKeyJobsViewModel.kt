@@ -8,32 +8,34 @@ data class AutoKeyJobsUiState(val loading: Boolean = false, val error: String? =
  val query: String = "", val directory: String = "active", val focus: String? = null, val total: Int = 0, val day: String? = null,
  val movingId: String? = null, val moveToast: au.mainspring.nativeapp.ui.screens.BoardMoveToast? = null,
  val savedViews: List<SavedJobView> = emptyList(), val selecting: Boolean = false, val selected: Set<String> = emptySet(),
- val bulkBusy: Boolean = false, val bulkMessage: String? = null, val bulkError: String? = null)
+ val bulkBusy: Boolean = false, val bulkMessage: String? = null, val bulkError: String? = null,
+ val statusFilter: String? = null, val technicianFilter: String? = null, val categoryFilter: String? = null,
+ val technicians: List<TeamUser> = emptyList())
 
 /** Saved-view encoding for mobile jobs on the shared [SavedJobView]: statusFilter = focus key, sort = directory, query = search text. */
 fun mobileViewOf(directory: String, focus: String?, query: String, name: String = "") =
  SavedJobView(name, statusFilter = focus, sort = directory, query = query.ifBlank { null })
-fun mobileViewToSaved(v: SavedJobView): MobileSavedView = sanitizeSavedView(MobileSavedView(v.sort ?: "active", v.statusFilter))
+fun mobileViewToSaved(v: SavedJobView): MobileSavedView = sanitizeSavedView(MobileSavedView(v.sort ?: "active", v.statusFilter, v.mobileStatus, v.technicianId, v.mobileCategory))
 class AutoKeyJobsViewModel(private val persistView: Boolean = false): ViewModel() {
  companion object { fun listFactory() = object: androidx.lifecycle.ViewModelProvider.Factory {
   @Suppress("UNCHECKED_CAST") override fun <T: ViewModel> create(modelClass: Class<T>): T = AutoKeyJobsViewModel(true) as T
  } }
     private val api = au.mainspring.nativeapp.api.ApiClient.api
  private val restored = restoreLastView()
- private val mutable = MutableStateFlow(AutoKeyJobsUiState(directory = restored.directory, focus = restored.focus, savedViews = appSavedViews.load("mobile"))); val state = mutable.asStateFlow(); private var request: Job? = null
- init { refresh() }
+ private val mutable = MutableStateFlow(AutoKeyJobsUiState(directory = restored.directory, focus = restored.focus, statusFilter = restored.status, technicianFilter = restored.technician, categoryFilter = restored.category, savedViews = appSavedViews.load("mobile"))); val state = mutable.asStateFlow(); private var request: Job? = null
+ init { refresh(); viewModelScope.launch { try { val users = api.teamUsers(); mutable.update { it.copy(technicians = users.filter { u -> u.active }) } } catch(e: CancellationException) { throw e } catch(_: Exception) {} } }
  private fun lastViewKey() = TokenStore.offlineScope()?.let { "mobile_jobs_last_view:$it" }
  /** Reopen the list on the directory and focus the user last used, like the web's remembered auto-key view. */
  private fun restoreLastView(): MobileSavedView = if(!persistView) MobileSavedView() else try {
   lastViewKey()?.let { TokenStore.loadScopedString(it) }?.let { sanitizeSavedView(com.google.gson.Gson().fromJson(it, MobileSavedView::class.java)) } ?: MobileSavedView()
  } catch(_: Exception) { MobileSavedView() }
- private fun rememberView() { if(!persistView) return; val s = mutable.value; lastViewKey()?.let { TokenStore.saveScopedString(it, com.google.gson.Gson().toJson(MobileSavedView(s.directory, s.focus))) } }
- fun currentView() = mutable.value.let { mobileViewOf(it.directory, it.focus, it.query) }
+ private fun rememberView() { if(!persistView) return; val s = mutable.value; lastViewKey()?.let { TokenStore.saveScopedString(it, com.google.gson.Gson().toJson(MobileSavedView(s.directory, s.focus, s.statusFilter, s.technicianFilter, s.categoryFilter))) } }
+ fun currentView() = mutable.value.let { mobileViewOf(it.directory, it.focus, it.query).copy(mobileStatus = it.statusFilter, technicianId = it.technicianFilter, mobileCategory = it.categoryFilter) }
  fun saveView(view: SavedJobView) { mutable.update { it.copy(savedViews = appSavedViews.save("mobile", view)) } }
  fun deleteView(name: String) { mutable.update { it.copy(savedViews = appSavedViews.delete("mobile", name)) } }
  fun applyView(v: SavedJobView) {
   val saved = mobileViewToSaved(v)
-  mutable.update { it.copy(directory = saved.directory, focus = saved.focus, query = v.query.orEmpty().take(200), day = null, selected = emptySet()) }
+  mutable.update { it.copy(directory = saved.directory, focus = saved.focus, statusFilter = saved.status, technicianFilter = saved.technician, categoryFilter = saved.category, query = v.query.orEmpty().take(200), day = null, selected = emptySet()) }
   rememberView(); fetch(false)
  }
  fun startSelecting() { mutable.update { it.copy(selecting = true, selected = emptySet(), bulkMessage = null, bulkError = null) } }
@@ -64,7 +66,11 @@ class AutoKeyJobsViewModel(private val persistView: Boolean = false): ViewModel(
  }
  fun query(text: String) { mutable.update { it.copy(query = text.take(200)) }; fetch(false, true) }
  fun directory(value: String) { require(value in listOf("active", "completed", "all")); mutable.update { it.copy(directory = value, focus = null) }; rememberView(); fetch(false) }
- fun focus(value: String?) { mutable.update { it.copy(focus = value, day = null) }; rememberView(); fetch(false) }
+ fun focus(value: String?) { require(value == null || value in MOBILE_FOCUS_OPTIONS); mutable.update { it.copy(focus = value, day = null) }; rememberView(); fetch(false) }
+ fun status(value: String?) { mutable.update { it.copy(statusFilter = value) }; rememberView(); fetch(false) }
+ fun technician(value: String?) { mutable.update { it.copy(technicianFilter = value) }; rememberView(); fetch(false) }
+ fun category(value: String?) { require(value == null || value in MOBILE_REPORT_CATEGORIES); mutable.update { it.copy(categoryFilter = value) }; rememberView(); fetch(false) }
+ fun resetFilters() { mutable.update { it.copy(statusFilter = null, technicianFilter = null, categoryFilter = null, focus = null, day = null, directory = "active") }; rememberView(); fetch(false) }
  fun day(value: String?) {
   if(value != null) try { java.time.LocalDate.parse(value) } catch(_: Exception) { mutable.update { it.copy(error = "Choose a valid schedule date.") }; return }
   mutable.update { it.copy(day = value, focus = null, directory = if(value != null) "all" else it.directory) }; fetch(false)
@@ -99,7 +105,8 @@ class AutoKeyJobsViewModel(private val persistView: Boolean = false): ViewModel(
   request?.cancel(); val snapshot = mutable.value; mutable.update { it.copy(loading = true, error = null) }
   request = viewModelScope.launch { try {
    if(debounce) delay(300)
-   val page = api.mobileJobPage(snapshot.query.trim().ifBlank { null }, snapshot.directory, offset = if(append) snapshot.jobs.size else 0, focus = snapshot.focus,
+   val page = ApiClient.service(MobileDirectoryApi::class.java).page(snapshot.query.trim().ifBlank { null }, snapshot.directory, offset = if(append) snapshot.jobs.size else 0, focus = snapshot.focus,
+    status = snapshot.statusFilter, technician = snapshot.technicianFilter, category = snapshot.categoryFilter,
     dateField = "scheduled".takeIf { snapshot.day != null }, dateFrom = snapshot.day, dateTo = snapshot.day)
    val rows = if(append) (snapshot.jobs + page.items).distinctBy { row -> row.id } else page.items
    val ordered = if(snapshot.day == null) rows else rows.sortedBy { job ->

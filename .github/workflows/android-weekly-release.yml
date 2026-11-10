@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: "Release even if nothing in frontend/ changed since the last release"
+        description: "Release even if no native Android code changed since the last release"
         type: boolean
         default: false
 
@@ -38,54 +38,34 @@ jobs:
           last_tag=$(git tag --list 'android-v*' --sort=-creatordate | head -n1)
           range=${last_tag:+$last_tag..HEAD}
           echo "last_tag=$last_tag" >> "$GITHUB_OUTPUT"
-          # Anything under frontend/ changes the app's bundled web code or native shell.
-          count=$(git rev-list --count ${range:-HEAD} -- frontend)
-          echo "frontend_commits=$count" >> "$GITHUB_OUTPUT"
+          # Native Android replaces the Capacitor package; future releases must keep building this app.
+          count=$(git rev-list --count ${range:-HEAD} -- apps/mainspring-native-android)
+          echo "native_commits=$count" >> "$GITHUB_OUTPUT"
           git log --no-merges --pretty='- %s (%h)' ${range:-HEAD} > "$RUNNER_TEMP/notes.md"
           if [ "$count" = "0" ] && [ "$FORCE" != "true" ]; then
             echo "release=false" >> "$GITHUB_OUTPUT"
-            echo "No frontend changes since ${last_tag:-the beginning}; skipping."
+            echo "No native Android changes since ${last_tag:-the beginning}; skipping."
           else
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set up Node
-        if: steps.changes.outputs.release == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
       - name: Set up JDK
         if: steps.changes.outputs.release == 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
-          distribution: temurin
+          distribution: jetbrains
           java-version: "21"
 
-      # The unit tests expect the default relative API URLs, so they run without
-      # VITE_API_BASE_URL (setting it made api.test.ts fail every weekly run).
-      - name: Install and check web app
+      - name: Set up Android SDK
         if: steps.changes.outputs.release == 'true'
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run lint
-          npm run typecheck
-          npm test
+        uses: android-actions/setup-android@v3
 
-      - name: Build web app and sync into Android
+      - name: Validate native app
         if: steps.changes.outputs.release == 'true'
-        working-directory: frontend
-        env:
-          VITE_API_BASE_URL: https://mainspring.au
-          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
-          RAILWAY_GIT_COMMIT_SHA: ${{ github.sha }}
+        working-directory: apps/mainspring-native-android
         run: |
-          npm run build
-          npx cap sync android
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest lintDebug --no-daemon
 
       - name: Restore signing key and Firebase config
         if: steps.changes.outputs.release == 'true'
@@ -97,6 +77,8 @@ jobs:
           GOOGLE_SERVICES_B64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
           umask 077
+          test -n "$KEYSTORE_B64" && test -n "$KEYSTORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD" || { echo "Android signing secrets must be configured."; exit 1; }
+          test -n "$GOOGLE_SERVICES_B64" || { echo "Native Play releases require Firebase config."; exit 1; }
           dir="$HOME/.mainspring-signing"
           mkdir -p "$dir"
           echo "$KEYSTORE_B64" | base64 -d > "$dir/upload.keystore"
@@ -108,33 +90,33 @@ jobs:
           PROPS
           sed -i 's/^ *//' "$dir/keystore.properties"
           if [ -n "$GOOGLE_SERVICES_B64" ]; then
-            echo "$GOOGLE_SERVICES_B64" | base64 -d > frontend/android/app/google-services.json
+            echo "$GOOGLE_SERVICES_B64" | base64 -d > apps/mainspring-native-android/app/google-services.json
           fi
 
       - name: Build signed bundle
         if: steps.changes.outputs.release == 'true'
         id: build
-        working-directory: frontend/android
+        working-directory: apps/mainspring-native-android
         run: |
           code=$(( $(date +%s) / 60 ))
           name="$(date -u +%Y.%m.%d)"
           echo "name=$name" >> "$GITHUB_OUTPUT"
           chmod +x gradlew
-          ./gradlew bundleRelease -PversionCode="$code" -PversionName="$name"
+          ./gradlew bundleRelease -PversionCode="$code" -PversionName="$name" -PplayRelease=true
 
       - name: Write Play "what's new"
         if: steps.changes.outputs.release == 'true'
         run: |
           mkdir -p whatsnew
           cat > whatsnew/whatsnew-en-AU <<'NOTES'
-          Faster, cleaner phone screens and a new sign-in page.
-          - Network messages for shops: state chats, announcements and unread badges
-          - Two-option quotes (email, PDF and customer page)
-          - Track my repair: sign in with your phone number and a texted code
-          - Mobile services: nearest-van booking fallback, quotes with two outcomes
-          - Engraving events with laser file export
-          - Compact job screens and a fixed clipped menu on phones
-          - New Mainspring icon and fixes throughout
+          Native Android update for shop and mobile workflows.
+          - State hubs, direct messages, announcements and unread badges
+          - Medal engraving events, live queue, tickets and laser exports
+          - Birkenstock purchase/warranty details and shop parts stock
+          - Mobile filters, reports, booking coverage and My Shops
+          - Watch notes, templates, condition checklist and complete tickets
+          - Two-option quotes and consistent payment methods
+          - Reliability and update checks
           NOTES
           sed -i 's/^ *//' whatsnew/whatsnew-en-AU
           test "$(wc -c < whatsnew/whatsnew-en-AU)" -le 500
@@ -145,7 +127,7 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: au.mainspring.app
-          releaseFiles: frontend/android/app/build/outputs/bundle/release/app-release.aab
+          releaseFiles: apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
           whatsNewDirectory: whatsnew
@@ -162,4 +144,4 @@ jobs:
           gh release create "$tag" \
             --title "Android $NAME" \
             --notes-file "$RUNNER_TEMP/notes.md" \
-            frontend/android/app/build/outputs/bundle/release/app-release.aab
+            apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab

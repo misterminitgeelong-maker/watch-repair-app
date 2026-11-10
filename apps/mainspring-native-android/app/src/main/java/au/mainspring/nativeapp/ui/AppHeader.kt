@@ -42,7 +42,7 @@ internal fun serviceTabKeys(features: Set<String>): List<String> = buildList {
 
 /** Bottom-bar tabs as (key, label): Home, Inbox, the service tabs, More. */
 internal fun navTabs(features: Set<String>): List<Pair<String, String>> =
-    listOf(TAB_TODAY to "Home", TAB_INBOX to "Inbox") +
+    if(au.mainspring.nativeapp.isBookingOnly(features)) au.mainspring.nativeapp.bookingOnlyNavigation() else listOf(TAB_TODAY to "Home", TAB_INBOX to "Inbox") +
         serviceTabKeys(features).map { it to when(it) { TAB_WATCH -> "Watch"; TAB_MOBILE -> "Mobile"; else -> "Shoe" } } +
         listOf(TAB_MORE to "More")
 
@@ -51,6 +51,7 @@ internal fun tabRoute(key: String) = when(key) { TAB_WATCH -> "watch_jobs"; TAB_
 
 /** Which tab a route belongs to; routes whose service has no tab (and everything else) belong to More. */
 internal fun tabFor(route: String?, features: Set<String>): String {
+    if(au.mainspring.nativeapp.isBookingOnly(features)) return when(route?.substringBefore('?')) { "today", "home" -> TAB_TODAY; "bookingRequests", "newBookingRequest" -> "bookingRequests"; "networkMessages" -> "networkMessages"; "inbox" -> TAB_INBOX; else -> TAB_MORE }
     val key = when(route) {
         "today", "home", "dispatch", "mobileToday", "route", "dispatchPool", "new_intake" -> TAB_TODAY
         "watch_jobs" -> TAB_WATCH

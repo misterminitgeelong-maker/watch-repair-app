@@ -12,7 +12,7 @@ class IntakeTicketTest {
     private fun ticket(kind: IntakeTicketKind = IntakeTicketKind.WATCH) = IntakeTicket("W-12", "Sam", "0400", "Seiko 5", "Service", null, "50.00 AUD", "https://x.test/status/abc", "Shop", "02", kind)
 
     @Test fun statusUrlUsesOriginAndKindPath() {
-        assertEquals("https://app.test/status/tok", intakeStatusUrl("https://app.test/api/v1/", IntakeTicketKind.WATCH, "tok"))
+        assertEquals("https://app.test/customer-portal/job/watch/tok", intakeStatusUrl("https://app.test/api/v1/", IntakeTicketKind.WATCH, "tok"))
         assertEquals("http://10.0.2.2:8000/shoe-status/tok", intakeStatusUrl("http://10.0.2.2:8000/api", IntakeTicketKind.SHOE, "tok"))
     }
 

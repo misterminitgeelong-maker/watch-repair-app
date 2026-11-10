@@ -46,9 +46,13 @@ val WATCH_PICKER_STATUSES: List<String> = listOf(
 )
 
 private val WATCH_STATUS_LABEL_OVERRIDES = mapOf(
-    "at_third_party_for_quoting" to "At 3rd party repairer for quoting",
-    "third_party_quote_approved" to "3rd party repairer approved quote",
-    "at_third_party_repairer" to "At 3rd party repairer",
+    "awaiting_quote" to "Awaiting Quote", "awaiting_customer_details" to "Awaiting customer details",
+    "awaiting_go_ahead" to "Awaiting Go Ahead", "go_ahead" to "Go Ahead Given", "no_go" to "No Go",
+    "working_on" to "Started Work", "awaiting_parts" to "Awaiting Parts", "parts_to_order" to "Parts Ordered",
+    "sent_to_labanda" to "Sent to Labanda", "quoted_by_labanda" to "Quoted by Labanda",
+    "at_third_party_for_quoting" to "At 3rd Party Repairer for Quoting",
+    "third_party_quote_approved" to "3rd Party Repairer Approved Quote", "at_third_party_repairer" to "At 3rd Party Repairer",
+    "service" to "Service", "completed" to "Work Completed", "awaiting_collection" to "Ready for Collection", "collected" to "Collected",
 )
 
 /** Label for a watch status; the third-party stages use the web wording. */

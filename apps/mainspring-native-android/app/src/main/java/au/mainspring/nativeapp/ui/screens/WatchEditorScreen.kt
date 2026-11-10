@@ -38,6 +38,8 @@ fun WatchEditorScreen(customerId: String, id: String, onBack: () -> Unit, onCust
                 TextButton({ review = true }, enabled = state.reviewed && !state.loading) { Text("Reviewed watches; creation did not save") }
             }
             listOf("brand" to "Brand", "model" to "Model", "serial_number" to "Serial number", "movement_type" to "Movement type", "condition_notes" to "Condition notes").forEach { (key,label) ->
+                if(key == "movement_type") au.mainspring.nativeapp.ui.MovementSuggestField(state.fields[key].orEmpty(), { model.set(key, it) }, !state.loading && !state.busy && !state.uncertain && state.createdId == null, Modifier.fillMaxWidth())
+                else
                 au.mainspring.nativeapp.ui.AtelierTextField(state.fields[key].orEmpty(), { model.set(key,it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = !state.loading && !state.busy && !state.uncertain && state.createdId == null)
             }
             if(id.isNotBlank()) OutlinedButton({ model.load(discard = true) }, enabled = !state.loading && !state.busy) { Text("Discard edits and load latest watch") }

@@ -25,13 +25,14 @@ object InboxCountStore {
 
     fun start() {
         if (job?.isActive == true) return
-        job = scope.launch { while (true) { refreshNow(); delay(intervalMs) } }
+        job = scope.launch { while (true) { refreshNow(); NetworkUnreadStore.refresh(); delay(intervalMs) } }
     }
 
-    fun stop() { job?.cancel(); job = null }
+    fun stop() { job?.cancel(); job = null; _count.value = 0; NetworkUnreadStore.clear() }
 
     /** Fetch immediately (also called after deleting/resolving events). */
     suspend fun refreshNow() {
-        try { _count.value = ApiClient.service(InboxExtrasApi::class.java).inboxCount().count } catch (_: Exception) {}
+        val generation = au.mainspring.nativeapp.TokenStore.sessionGeneration()
+        try { val total = ApiClient.service(InboxExtrasApi::class.java).inboxCount().count; if(generation == au.mainspring.nativeapp.TokenStore.sessionGeneration()) _count.value = total } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) {}
     }
 }

@@ -67,7 +67,7 @@ class DesignWorkspaceTest {
                     }
                     path=="/v1/auto-key-jobs/invoices/invoice-one" && request.method=="PATCH" -> {
                         writes.incrementAndGet();val body=com.google.gson.JsonParser.parseString(request.body.readUtf8()).asJsonObject
-                        Assert.assertEquals("paid",body["status"].asString);Assert.assertEquals("card",body["payment_method"].asString)
+                        Assert.assertEquals("paid",body["status"].asString);Assert.assertEquals("eftpos",body["payment_method"].asString)
                         invoicePaid=true;if(lostPaymentResponse) return MockResponse().setResponseCode(503);invoice()
                     }
                     path.endsWith("/attachments") -> "[]"
@@ -292,12 +292,12 @@ class DesignWorkspaceTest {
     @Test fun lostPaymentResponseSurvivesRecreationAndRequiresReviewBeforeRetry() {
         financeJourney=true;status="work_completed";lostPaymentResponse=true
         val first=MobileFinanceViewModel("first");compose.waitUntil(10_000) {!first.state.value.loading}
-        first.markPaid("invoice-one","card");compose.waitUntil(10_000) {!first.state.value.busy}
+        first.markPaid("invoice-one","eftpos");compose.waitUntil(10_000) {!first.state.value.busy}
         Assert.assertEquals("invoice-one",first.state.value.paymentReviewId)
         val restored=MobileFinanceViewModel("first");compose.waitUntil(10_000) {!restored.state.value.loading}
         Assert.assertEquals("paid",restored.state.value.invoices.single().status)
-        restored.markPaid("invoice-one","card");Assert.assertEquals(1,writes.get())
-        restored.checkedPayment();restored.markPaid("invoice-one","card")
+        restored.markPaid("invoice-one","eftpos");Assert.assertEquals(1,writes.get())
+        restored.checkedPayment();restored.markPaid("invoice-one","eftpos")
         Assert.assertNull(restored.state.value.paymentReviewId);Assert.assertEquals(1,writes.get())
     }
     @Test fun jobNextActionRemainsVisibleWithLargeText() {

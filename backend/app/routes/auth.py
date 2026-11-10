@@ -318,6 +318,10 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         user=_build_public_user(user),
         tenant_id=tenant.id,
         tenant_slug=tenant.slug,
+        default_currency=tenant.default_currency,
+        tenant_name=tenant.name,
+        tenant_abn=tenant.abn,
+        tenant_shop_phone=tenant.shop_phone,
         product=product,
         is_minit_hq_ui=is_minit_hq_ui(tenant),
         is_platform_console=(

@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from ..payment_methods import normalise_payment_method
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field as PydanticField
 from fastapi.responses import StreamingResponse
@@ -2025,7 +2026,7 @@ def export_auto_key_finance(
                     "paid_on": as_utc(inv.paid_at).astimezone(tz).date().isoformat() if inv.paid_at else None,
                     "age_days": (now - as_utc(inv.created_at)).days if inv.created_at else 0,
                     "total_cents": inv.total_cents,
-                    "payment_method": inv.payment_method,
+                    "payment_method": normalise_payment_method(inv.payment_method),
                 }
             )
         rows.sort(key=lambda r: (r["raised_on"], r["invoice_number"]))

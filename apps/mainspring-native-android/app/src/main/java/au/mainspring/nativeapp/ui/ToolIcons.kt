@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
             "dispatchPool" -> { poly(12f, 4f, 21f, 9f, 12f, 14f, 3f, 9f, close = true); poly(3f, 13f, 12f, 18f, 21f, 13f); poly(3f, 16.5f, 12f, 21.5f, 21f, 16.5f) }
             "counterSale" -> { rect(3f, 8f, 18f, 12f); poly(5f, 8f, 7f, 4f, 17f, 4f, 19f, 8f); circle(12f, 14f, 2.4f) }
             "sendBookingRequest" -> { poly(21f, 3f, 3f, 10.5f, 10f, 13.5f, 13f, 21f, close = true); ln(10f, 13.5f, 21f, 3f) }
-            "leads", "inbox" -> { poly(3f, 13f, 6f, 5f, 18f, 5f, 21f, 13f, 21f, 19f, 3f, 19f, close = true); poly(3f, 13f, 8f, 13f, 9.5f, 15.5f, 14.5f, 15.5f, 16f, 13f, 21f, 13f) }
+            "leads", "inbox", "networkMessages" -> { poly(3f, 13f, 6f, 5f, 18f, 5f, 21f, 13f, 21f, 19f, 3f, 19f, close = true); poly(3f, 13f, 8f, 13f, 9.5f, 15.5f, 14.5f, 15.5f, 16f, 13f, 21f, 13f) }
             "prospects" -> { circle(12f, 12f, 8f); circle(12f, 12f, 4f) }
             "toolkit" -> { rect(3f, 8f, 18f, 12f); poly(9f, 8f, 9f, 5f, 15f, 5f, 15f, 8f); ln(3f, 13f, 21f, 13f) }
             "money" -> { circle(12f, 12f, 8.5f); poly(14.5f, 9f, 11f, 9f, 9.5f, 10.5f, 11f, 12f, 13f, 12f, 14.5f, 13.5f, 13f, 15f, 9.5f, 15f); ln(12f, 7f, 12f, 9f); ln(12f, 15f, 12f, 17f) }

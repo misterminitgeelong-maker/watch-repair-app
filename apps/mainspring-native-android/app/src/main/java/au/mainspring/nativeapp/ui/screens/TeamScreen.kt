@@ -38,10 +38,13 @@ import com.google.gson.JsonParser
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf("week" to "This week","month" to "This month","90" to "Last 90 days").forEach {(key,label)->au.mainspring.nativeapp.ui.TabChip(state.period==key,{model.period(key)},label={Text(label)})}
                 }
-                if(au.mainspring.nativeapp.ui.LocalCalibre.current) MonoLabel("${state.users.count {it.active}} active accounts · ${state.users.size} total") else
-                Text("${state.users.count {it.active}} active accounts · ${state.users.size} total",style=MaterialTheme.typography.labelSmall)
+                if(au.mainspring.nativeapp.ui.LocalCalibre.current) {
+                    MonoLabel("${state.users.count {it.active}} active accounts · ${state.users.size} total")
+                } else {
+                    Text("${state.users.count {it.active}} active accounts · ${state.users.size} total",style=MaterialTheme.typography.labelSmall)
+                }
                 androidx.compose.material3.TextButton(model::refresh,enabled=!state.busy && !state.loading) { Text("Refresh") }
-                if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if(state.loading || state.busy) { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                 state.error?.let {au.mainspring.nativeapp.ui.ErrorBanner(it)};state.info?.let {Text(it)}
                 if(state.uncertain) OutlinedButton(model::reviewedWrite,enabled=state.reviewed && !state.loading && !state.busy) {Text("I have reviewed the account records")}
                 SectionLabel("Accounts")

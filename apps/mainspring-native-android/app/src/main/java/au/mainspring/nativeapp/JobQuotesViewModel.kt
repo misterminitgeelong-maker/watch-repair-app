@@ -48,7 +48,7 @@ class JobQuotesViewModel(private val jobId: String) : ViewModel() {
         viewModelScope.launch {
             try {
                 val quote = api.createQuote(QuoteCreate(jobId, gst, inclusive,
-                    lines.map { QuoteLineItemRead(description = it.description, quantity = it.quantity, unitPriceCents = it.unitCents, itemType = "labor") }))
+                    lines.map { QuoteLineItemRead(description = it.description, quantity = it.quantity, unitPriceCents = it.unitCents, itemType = it.itemType ?: "labor") }))
                 QuoteNavCache.put(quote,generation)
                 drafts.saveMessageDraft("quote-composer/watch/$jobId", "")
                 drafts.setPendingOperation(operationKey, false)

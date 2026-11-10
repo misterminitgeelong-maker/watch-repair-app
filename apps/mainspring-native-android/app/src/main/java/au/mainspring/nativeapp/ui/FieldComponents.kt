@@ -598,9 +598,9 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 
 /** Tab icon with the alert-count badge on Inbox. */
 @Composable fun NavIcon(route: String, label: String, tint: Color) {
-    val count = if(route == "inbox") au.mainspring.nativeapp.InboxCountStore.count.collectAsState().value else 0
+    val count = when(route) { "inbox" -> au.mainspring.nativeapp.InboxCountStore.count.collectAsState().value; "networkMessages" -> au.mainspring.nativeapp.NetworkUnreadStore.count.collectAsState().value; else -> 0 }
     Box {
-        AtelierIcon(when(route) { "today" -> "Today"; "watch", "jobs" -> "Jobs"; "mobile" -> "Mobile"; "shoe" -> "Shoe"; "inbox" -> "Inbox"; "more" -> "More"; "people" -> "People"; else -> label }, tint)
+        AtelierIcon(when(route) { "today" -> "Today"; "watch", "jobs" -> "Jobs"; "mobile" -> "Mobile"; "shoe" -> "Shoe"; "inbox", "networkMessages" -> "Inbox"; "bookingRequests" -> "Today"; "more" -> "More"; "people" -> "People"; else -> label }, tint)
         if(count > 0) Box(Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-4).dp).defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
             .background(MaterialTheme.colorScheme.error, androidx.compose.foundation.shape.CircleShape).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
             Text(if(count > 99) "99+" else count.toString(), Modifier.semantics { contentDescription = "$count unread" }, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = MaterialTheme.colorScheme.onError)

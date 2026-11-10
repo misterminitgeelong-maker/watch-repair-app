@@ -5056,7 +5056,7 @@ export const shopStockModels = () => api.get<StockModel[]>('/stock/models')
 export const shopStockLocations = () => api.get<StockLocation[]>('/stock/locations')
 export const shopStockParts = () => api.get<StockPart[]>('/stock/parts')
 export const shopStockLevels = () => api.get<StockLevelRow[]>('/stock/levels')
-export const shopAdjustStock = (data: { location_id: string; sku?: string; part_id?: string; quantity: number; kind?: 'receive' | 'adjust'; note?: string }) =>
+export const shopAdjustStock = (data: { location_id: string; sku?: string; part_id?: string; quantity: number; kind?: 'receive' | 'adjust' | 'set_count'; note?: string }) =>
   api.post('/stock/adjust', data)
 export const shopListTransfers = () => api.get<StockTransferRow[]>('/stock/transfers')
 export const shopCreateTransfer = (data: { from_location_id: string; to_location_id: string; lines: StockLineInput[]; note?: string }) =>

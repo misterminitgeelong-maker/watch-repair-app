@@ -28,7 +28,7 @@ data class MobileIntakeState(val fields: Map<String,String> = emptyMap(), val cu
     val lastJob: AutoKeyJobRead? = null, val lastJobDismissed: Boolean = false, val addressSuggestions: List<String> = emptyList())
 class MobileIntakeViewModel(private val saved: SavedStateHandle): ViewModel() {
     /** Replaceable so tests can run without the platform geocoder. */
-    var addressSuggester: AddressSuggester = ServerAddressSuggester()
+    var addressSuggester: AddressSuggester = DeviceAddressSuggester
     private var suggestionJob: Job? = null; private var specJob: Job? = null; private var lastJobJob: Job? = null; private var addressJob: Job? = null
     private var suppressAddressLookup = false
     private val api = au.mainspring.nativeapp.api.ApiClient.api
@@ -125,6 +125,13 @@ class MobileIntakeViewModel(private val saved: SavedStateHandle): ViewModel() {
         catch(e: CancellationException) {throw e} catch(_: Exception) { }
     } }
     fun finish() { saved["draft"] = "{}"; drafts.clearMobileDraft() }
+    fun manualPrice(value: String) { set("manualPrice", value); set("pricingRef", ""); set("pricingType", ""); set("pricingLabel", ""); set("callout", ""); if(value.isNotBlank()) set("applyQuote", "false") }
+    fun applySuggested(value: Boolean) { if(value) { manualPrice("") }; set("applyQuote", value.toString()) }
+    fun selectPricing(row: PricingRow, category: String, dollars: String) {
+        try { dollarsToCentsChecked(dollars) } catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) }; return }
+        set("pricingRef", row.id); set("pricingType", when(category) { "vehicle_key" -> "oem_key"; "garage_door" -> "garage"; else -> "service" })
+        set("pricingLabel", row.label()); set("callout", row.callout.toString()); set("manualPrice", dollars); set("applyQuote", "false")
+    }
     fun discard() { if(!mutable.value.busy) { finish(); mutable.update { it.copy(fields = emptyMap(), error = null, specMatches = emptyList(), lastJob = null, lastJobDismissed = false, addressSuggestions = emptyList()) }; refreshSuggestion() } }
     fun search() { viewModelScope.launch {
         try { val customers = api.listCustomers(q = field("query").ifBlank { null }); mutable.update { it.copy(customers = customers) } }
@@ -153,8 +160,10 @@ class MobileIntakeViewModel(private val saved: SavedStateHandle): ViewModel() {
                 f("make").ifBlank { null }, f("model").ifBlank { null }, year, f("plate").ifBlank { null }, f("vin").ifBlank { null },
                 f("keyType").ifBlank { null }, quantity, f("notes").ifBlank { null }, dollarsToCentsChecked(f("deposit")), f("bookingSms") == "true", customerAccountId = f("accountId").ifBlank { null }, assignedUserId = f("technician").ifBlank {null},
                 bladeCode = f("blade").ifBlank { null }, chipType = f("chip").ifBlank { null }, salesperson = f("salesperson").ifBlank { null },
-                costCents = if(applyQuote) mutable.value.suggestion?.takeIf { !it.estimated }?.totalCents else null, applySuggestedQuote = applyQuote,
-                additionalServices = extraServicesPayload(extras()).ifEmpty { null }, commissionLeadSource = f("commission").ifBlank { DEFAULT_COMMISSION_SOURCE })
+                costCents = if(f("manualPrice").isNotBlank()) dollarsToCentsChecked(f("manualPrice")) else if(applyQuote) mutable.value.suggestion?.takeIf { !it.estimated }?.totalCents else null, applySuggestedQuote = applyQuote && f("manualPrice").isBlank(),
+                additionalServices = extraServicesPayload(extras()).ifEmpty { null }, commissionLeadSource = f("commission").ifBlank { DEFAULT_COMMISSION_SOURCE },
+                pricingRefId = f("pricingRef").ifBlank { null }, pricingType = f("pricingType").ifBlank { null },
+                quotedPrice = f("manualPrice").takeIf { it.isNotBlank() && f("pricingRef").isNotBlank() }?.let { dollarsToCentsChecked(it) / 100.0 }, calloutInclusive = f("callout").takeIf(String::isNotBlank)?.toBoolean())
         } catch(e: Exception) { mutable.update { it.copy(error = e.userMessage()) }; return }
         mutable.update { it.copy(busy = true, error = null) }
         viewModelScope.launch {

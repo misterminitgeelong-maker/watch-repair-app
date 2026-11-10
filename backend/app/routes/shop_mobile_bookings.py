@@ -701,6 +701,7 @@ def _to_read(
         job_scheduled_at=job_scheduled_at,
         schedule_conflict_warning=schedule_conflict_warning,
         offer_expires_at=row.offer_expires_at,
+        offer_count=row.offer_count,
         pool_intake_job_id=row.pool_intake_job_id,
         created_at=row.created_at,
     )

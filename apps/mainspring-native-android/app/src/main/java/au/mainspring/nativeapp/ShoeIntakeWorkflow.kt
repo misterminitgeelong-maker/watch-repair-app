@@ -18,6 +18,8 @@ suspend fun createShoeIntake(fields: MutableMap<String, String>, catalogue: List
     require(count in 1..15) { "Choose between 1 and 15 pairs." }
     require(f("customerId").isNotBlank() || f("name").isNotBlank()) { "Select a customer or enter their name." }
     val deposit = dollarsToCentsChecked(f("deposit")); val date = collectionDateIso(f("collection"))
+    // Validate each purchase date before creating any customer, pair or job.
+    val purchaseDates = (0 until count).map { collectionDateIso(f("pair.$it.purchaseDate")) }
     val priority = f("priority").ifBlank { "normal" }; val status = f("status").ifBlank { "awaiting_go_ahead" }
     require(priority in listOf("low", "normal", "high", "urgent")) { "Invalid priority." }
     require(status in listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on")) { "Invalid initial status." }
@@ -43,7 +45,9 @@ suspend fun createShoeIntake(fields: MutableMap<String, String>, catalogue: List
         gateway.customer(CustomerCreate(f("name"), f("phone").ifBlank { null }, f("email").ifBlank { null })) } }
     val shoes = (0 until count).map { i -> f("pair.$i.id").ifBlank { acknowledged("pair.$i.id") {
         gateway.shoe(ShoeCreate(customer, f("pair.$i.type").ifBlank { null }, f("pair.$i.brand").ifBlank { null },
-            f("pair.$i.color").ifBlank { null }, f("pair.$i.condition").ifBlank { null })) } } }
+            f("pair.$i.color").ifBlank { null }, f("pair.$i.condition").ifBlank { null },
+            f("pair.$i.model").ifBlank { null }, f("pair.$i.size").ifBlank { null }, purchaseDates[i],
+            f("pair.$i.purchaseStore").ifBlank { null }, f("pair.$i.purchaseRef").ifBlank { null })) } } }
     val title = f("title").ifBlank { allItems.flatten().map { it.name }.distinct().joinToString(", ").ifBlank { "Shoe repair ($count pairs)" } }
     val job = f("jobId").ifBlank { acknowledged("jobId") {
         gateway.job(ShoeJobCreate(shoes.first(), title, f("description").ifBlank { null },

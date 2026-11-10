@@ -2,6 +2,7 @@ package au.mainspring.nativeapp
 
 import au.mainspring.nativeapp.api.ApiClient
 import au.mainspring.nativeapp.api.PlacesApi
+import au.mainspring.nativeapp.api.PlaceDetails
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,6 +16,8 @@ interface AddressSuggester {
     suspend fun suggest(query: String): List<String>
     /** Upgrades a picked suggestion to its full address (suburb, state, postcode). Unchanged when there is nothing better. */
     suspend fun resolve(picked: String): String = picked
+    /** Structured fields when the platform geocoder can resolve a selected address. */
+    suspend fun resolvePlace(picked: String): PlaceDetails? = null
 }
 
 /** Builds an [AddressSuggester] from a lambda; resolving keeps the picked text as it is. */
@@ -35,6 +38,23 @@ object DeviceAddressSuggester : AddressSuggester {
                 .mapNotNull { a -> a.getAddressLine(0)?.trim()?.takeIf(String::isNotEmpty) }.distinct()
         } catch(_: Exception) { emptyList() }
     }
+    @Suppress("DEPRECATION")
+    override suspend fun resolvePlace(picked: String): PlaceDetails? = withContext(Dispatchers.IO) {
+        val context = TokenStore.context() ?: return@withContext null
+        if(!android.location.Geocoder.isPresent()) return@withContext null
+        try {
+            android.location.Geocoder(context, java.util.Locale("en", "AU")).getFromLocationName(picked, 1, SOUTH, WEST, NORTH, EAST)?.firstOrNull()?.let { address ->
+                PlaceDetails(address.getAddressLine(0) ?: picked, address.locality ?: address.subLocality, australianStateCode(address.adminArea), address.postalCode, address.latitude, address.longitude)
+            }
+        } catch(e: CancellationException) { throw e } catch(_: Exception) { null }
+    }
+}
+
+/** Android geocoders may return either a state name or its two/three-letter abbreviation. */
+fun australianStateCode(value: String?): String? = when(value?.trim()?.uppercase(java.util.Locale.ROOT)) {
+    "ACT", "AUSTRALIAN CAPITAL TERRITORY" -> "ACT"; "NSW", "NEW SOUTH WALES" -> "NSW"; "NT", "NORTHERN TERRITORY" -> "NT"
+    "QLD", "QUEENSLAND" -> "QLD"; "SA", "SOUTH AUSTRALIA" -> "SA"; "TAS", "TASMANIA" -> "TAS"
+    "VIC", "VICTORIA" -> "VIC"; "WA", "WESTERN AUSTRALIA" -> "WA"; else -> null
 }
 
 /**

@@ -109,7 +109,7 @@ class CommercialUiTest {
   compose.runOnIdle { vm.createInvoice("mobile-quote") }
   compose.waitUntil(10_000) { !vm.state.value.busy && vm.state.value.info != null }
   Assert.assertNull(vm.state.value.error); Assert.assertEquals(1, vm.state.value.invoices.size)
-  compose.runOnIdle { vm.markPaid("mobile-invoice", "card") }; compose.waitUntil(10_000) { vm.state.value.invoices.single().status == "paid" }
+  compose.runOnIdle { vm.markPaid("mobile-invoice", "eftpos") }; compose.waitUntil(10_000) { vm.state.value.invoices.single().status == "paid" }
  }
  @Test fun mobileEditingRestoresDraftAndSendsExplicitBookingClearWithVersion() {
   val first = MobileEditorViewModel("job-1"); compose.waitUntil(10_000) { !first.state.value.loading }
