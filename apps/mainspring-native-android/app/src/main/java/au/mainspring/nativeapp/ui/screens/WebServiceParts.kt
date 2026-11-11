@@ -79,12 +79,12 @@ private fun Modifier.tagged(tag: String?): Modifier = if(tag != null) testTag(ta
     val scheme = MaterialTheme.colorScheme
     val container = when { primary -> scheme.primary; tint -> scheme.primaryContainer; else -> scheme.surface }
     val content = when { primary -> scheme.onPrimary; tint -> scheme.primary; else -> scheme.onSurface }
-    Surface(onClick, modifier.heightIn(min = 48.dp).tagged(tag).semantics { role = Role.Button; if(description != null) contentDescription = description },
+    Surface(onClick, modifier.heightIn(min = 40.dp).tagged(tag).semantics { role = Role.Button; if(description != null) contentDescription = description },
         enabled = enabled, shape = RoundedCornerShape(6.dp), color = container, contentColor = content.copy(alpha = if(enabled) 1f else 0.5f),
         border = if(primary || tint) null else BorderStroke(1.dp, scheme.outlineVariant)) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-            if(icon != null) GlyphIcon(icon, size = 18.dp, color = content.copy(alpha = if(enabled) 1f else 0.5f))
-            if(label != null) Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = if(primary) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+            if(icon != null) GlyphIcon(icon, size = 16.dp, color = content.copy(alpha = if(enabled) 1f else 0.5f))
+            if(label != null) Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = if(primary) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
         }
     }
 }
@@ -240,11 +240,11 @@ private fun Modifier.tagged(tag: String?): Modifier = if(tag != null) testTag(ta
         Row(Modifier.fillMaxWidth().horizontalScroll(scroll), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { o ->
                 val on = o.key == selected
-                Surface({ onSelect(o.key) }, Modifier.heightIn(min = 48.dp).tagged(o.tag).semantics { role = Role.Tab }, shape = RoundedCornerShape(6.dp),
+                Surface({ onSelect(o.key) }, Modifier.heightIn(min = 36.dp).tagged(o.tag).semantics { role = Role.Tab }, shape = RoundedCornerShape(6.dp),
                     color = if(on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                     contentColor = if(on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant) {
-                    Box(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-                        Text(o.label, style = MaterialTheme.typography.titleSmall, fontWeight = if(on) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+                    Box(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+                        Text(o.label, style = MaterialTheme.typography.labelLarge, fontWeight = if(on) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
                     }
                 }
             }

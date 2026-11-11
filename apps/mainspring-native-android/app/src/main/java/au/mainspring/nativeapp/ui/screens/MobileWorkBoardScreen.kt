@@ -32,7 +32,7 @@ import java.time.*
     var mode by rememberSaveable {mutableStateOf(if(wide) "list" else "board")}
     var selected by rememberSaveable {mutableStateOf<String?>(null)}
     Scaffold(contentWindowInsets=WindowInsets(0,0,0,0),containerColor=androidx.compose.ui.graphics.Color.Transparent,
-        floatingActionButton={if(TokenStore.canWorkJobs()) NewJobFab(onNewJob)}) {padding->
+        ) {padding->
     Column(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             ServiceTitle("Mobile Services",Modifier.padding(top=8.dp))
@@ -46,7 +46,7 @@ import java.time.*
                     }
                 }
                 if(TokenStore.canWorkJobs()) WebButton("New Job",onNewJob,primary=true,icon="plus",tag="new-job-ticket")
-                WebButton("Send request",{onNavigate("sendBookingRequest")},icon="phone",tag="send-request")
+                WebButton("Text booking link",{onNavigate("sendBookingRequest")},icon="phone",tag="send-request")
             }
             ChipTabs(listOf(ToggleOption("jobs","Jobs & dispatch","tab-jobs"),ToggleOption("revenue","Revenue control","tab-revenue"),ToggleOption("team","Team","tab-team"),ToggleOption("finance","Finance report","tab-finance")),"jobs",
                 {when(it) {"revenue"->onNavigate("revenueControl");"team"->onNavigate("team");"finance"->onNavigate("financeReport")}})
