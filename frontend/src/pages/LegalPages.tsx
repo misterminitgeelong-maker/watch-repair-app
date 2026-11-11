@@ -69,7 +69,9 @@ export function PrivacyPolicyPage() {
         <li>Payments: Stripe.</li>
         <li>Email and text messages: SendGrid and Twilio.</li>
         <li>Push notifications: Google Firebase Cloud Messaging.</li>
-        <li>Maps and address search: Google.</li>
+        <li>Maps and address search: Google. The native Android fallback map uses the OpenStreetMap tile service,
+          which receives your connection&rsquo;s IP address and requests for the map area on screen. These tile
+          requests do not contain customer names or address text.</li>
         <li>Error monitoring: Sentry.</li>
         <li>Website visit statistics: Cloudflare Web Analytics, which uses no cookies and does not track you across sites.</li>
         <li>Accounting: Xero, only where a shop chooses to connect it.</li>
