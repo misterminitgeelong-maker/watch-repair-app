@@ -97,6 +97,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun refreshSession() { if(!_state.value.loading) viewModelScope.launch { loadSessionOrClear() } }
+
     private suspend fun loadSessionOrClear() {
         val generation = TokenStore.sessionGeneration()
         val token = TokenStore.getAccessToken() ?: run {
@@ -110,9 +112,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             TokenStore.setCalendarTimezone(s.calendarTimezone)
             TokenStore.setShopIdentity(s.currency,s.shopName,s.shopAbn,s.shopPhone,s.shopAddress)
             TokenStore.setSessionRole(s.user.role)
+            TokenStore.setIntegrationManagementAllowed(s.canManageIntegrations)
             au.mainspring.nativeapp.offline.OfflineSync.queue.reload(); au.mainspring.nativeapp.offline.OfflineSync.requestReplay()
-            _state.update {
-                it.copy(
+            val loaded = _state.value.copy(
                     loading = false,
                     error = null,
                     loggedIn = true,
@@ -127,10 +129,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     trialEnd = s.trialEnd,
                     role = s.user.role,
                     offline = false,
+                    sessionEnded = false,
                 )
-            }
+            // Publish a ready session only after its offline snapshot is available. Observers may
+            // recreate the app immediately after loading ends (including a cold start with no signal).
+            TokenStore.saveSessionCache(com.google.gson.Gson().toJson(loaded.copy(sessionEnded = false)))
             retry?.cancel()
-            TokenStore.saveSessionCache(com.google.gson.Gson().toJson(_state.value.copy(loading = false, error = null, offline = false, sessionEnded = false)))
+            _state.value = loaded
+        } catch(e: CancellationException) { throw e
         } catch (e: Exception) {
             if(TokenStore.sessionGeneration() != generation) return
             val expired = e is retrofit2.HttpException && e.code() == 401

@@ -48,7 +48,7 @@ suspend fun createIntakeTickets(fields: MutableMap<String, String>, gateway: Int
         val watchId = field("watch.$i.id").ifBlank {
             write("watch.$i.id") { gateway.watch(WatchCreate(customer,
                 field("watch.$i.brand").ifBlank { null }, field("watch.$i.model").ifBlank { null },
-                field("watch.$i.serial").ifBlank { null }, field("watch.$i.condition").ifBlank { null },
+                field("watch.$i.serial").ifBlank { null }, watchConditionNotes(field("watch.$i.condition"), field("watch.$i.checklist")),
                 field("watch.$i.movement").ifBlank { null })) }
         }
         field("job.$i.id").ifBlank {

@@ -152,6 +152,7 @@ fun ShoeJobDetailScreen(
             "messages" -> MessageThreadScreen("shoe-repair-jobs", shownId, { tab = "overview" }, embedded = true)
             "work" -> {
                 val canEdit = TokenStore.canWorkJobs() && !state.editBusy && !state.loading
+                ShoeJobPartsCard(shownId, j.shoe.toString())
                 FlatPanel {
                     CardHeading("Services")
                     if(j.items.isEmpty()) Text("No services added yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -208,6 +209,7 @@ fun ShoeJobDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
+                ShoeJobPartsCard(shownId, j.shoe.toString())
                 WebCard(padding = 0.dp) {
                     val pairs = 1 + j.extraShoes.orEmpty().size
                     WebCardTitle("Shoes", icon = "shoe", count = if (pairs == 1) "1 pair" else "$pairs pairs", modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp)) {
@@ -285,7 +287,7 @@ fun ShoeJobDetailScreen(
     if(pickServices) ShoeServicePickerDialog(state.catalogue, currency, state.editBusy, { pickServices = false }) { vm.addServices(it); pickServices = false }
     if(addPair) AddPairDialog(state.editBusy, au.mainspring.nativeapp.availableCustomerShoes(state.customerShoes, j), state.customerShoesLoading, { addPair = false }, { vm.addExistingPair(it) }) { type, brand, colour, notes -> vm.addPair(type, brand, colour, notes) }
     editShoeId?.let { id -> val target = (listOfNotNull(j?.shoe) + j?.extraShoes.orEmpty().mapNotNull { it.shoe }).firstOrNull { it.id == id }
-        if(target != null) EditShoeDialog(target, state.editBusy, { editShoeId = null }) { type, brand, colour, notes -> vm.editShoe(id, type, brand, colour, notes) } }
+        if(target != null) EditShoeDetailsDialog(target, state.editBusy, { editShoeId = null }) { type, brand, colour, notes, purchase -> vm.editShoe(id, type, brand, colour, notes, purchase) } }
     removeItem?.let { id -> AlertDialog(onDismissRequest = { removeItem = null }, title = { Text("Remove service?") },
         text = { Text("This removes ${j?.items?.firstOrNull { it.id == id }?.name ?: "the service"} from the job and its quote.") },
         confirmButton = { TextButton(onClick = { removeItem = null; vm.removeService(id) }) { Text("Remove") } },

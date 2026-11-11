@@ -31,13 +31,15 @@ fun bulkProblem(selected: Set<String>, status: String): String? = when {
 }
 
 /** Remembered list view (directory + focus), restored per user and shop like the web's saved auto-key view. */
-data class MobileSavedView(val directory: String = "active", val focus: String? = null)
+data class MobileSavedView(val directory: String = "active", val focus: String? = null,
+    val status: String? = null, val technician: String? = null, val category: String? = null)
 
 private val VALID_DIRECTORIES = setOf("active", "completed", "all")
-private val VALID_FOCUS = setOf("today", "unscheduled", "unassigned", "needs_quote", "completed_unpaid")
+private val VALID_FOCUS get() = MOBILE_FOCUS_OPTIONS.keys
 
 /** Drops anything the list no longer understands so a stale saved view can never break the list. */
 fun sanitizeSavedView(view: MobileSavedView?): MobileSavedView {
     val v = view ?: return MobileSavedView()
-    return MobileSavedView(directory = v.directory.takeIf { it in VALID_DIRECTORIES } ?: "active", focus = v.focus?.takeIf { it in VALID_FOCUS })
+    return MobileSavedView(directory = v.directory.takeIf { it in VALID_DIRECTORIES } ?: "active", focus = v.focus?.takeIf { it in VALID_FOCUS },
+        status = v.status?.takeIf { value -> MOBILE_STATUS_PICKER.any { it.first == value } }, technician = v.technician?.takeIf { it.matches(Regex("[A-Za-z0-9-]{1,64}")) }, category = v.category?.takeIf { it in MOBILE_REPORT_CATEGORIES })
 }

@@ -107,6 +107,14 @@ fun ShoeIntakeScreen(onBack: () -> Unit, apiBaseUrl: String = "", onOpenJob: (St
                         (0 until vm.count()).forEach { i -> au.mainspring.nativeapp.ui.AtelierChip(selected = pair == i, onClick = { pair = i }, label = { Text("Pair ${i + 1}") }) }
                     }
                     field("pair.$pair.type", "Shoe type"); field("pair.$pair.brand", "Brand"); field("pair.$pair.color", "Colour"); field("pair.$pair.condition", "Condition notes")
+                    field("pair.$pair.model", "Model"); field("pair.$pair.size", "Size")
+                    key(pair) { ShoePurchaseLookup(!locked, { h ->
+                        vm.set("pair.$pair.model", h.model.orEmpty()); vm.set("pair.$pair.size", h.size.orEmpty())
+                        vm.set("pair.$pair.purchaseDate", h.date?.let { au.mainspring.nativeapp.ui.formatShopDate(it) }.orEmpty())
+                        vm.set("pair.$pair.purchaseStore", h.store.orEmpty()); vm.set("pair.$pair.purchaseRef", h.reference)
+                    }, vm.field("pair.$pair.model"), { vm.set("pair.$pair.model", it) }) }
+                    field("pair.$pair.purchaseDate", "Purchase date (DD/MM/YYYY)")
+                    field("pair.$pair.purchaseStore", "Bought at"); field("pair.$pair.purchaseRef", "Receipt / order reference")
                     val selected = vm.field("pair.$pair.services").split('|').filter(String::isNotBlank).toSet()
                     val picked = state.catalogue.filter { it.key in selected }
                     au.mainspring.nativeapp.ui.RepairMultiSelect(

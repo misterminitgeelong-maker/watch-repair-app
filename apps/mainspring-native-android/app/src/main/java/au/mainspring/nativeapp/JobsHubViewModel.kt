@@ -18,7 +18,7 @@ data class HubJob(
     val status: String, val urgent: Boolean, val dueDate: String?, val assignedToMe: Boolean, val sortKey: String, val createdAt: String = "",
 ) {
     val ready get() = status in READY_STATUSES
-    val active get() = status !in DONE_STATUSES
+    val active get() = when(service) { "watch" -> !isWatchCompleted(status); "shoe" -> status !in SHOE_CLOSED_STATUSES; else -> status !in DONE_STATUSES }
     val needsAttention get() = status in ATTENTION_STATUSES
     companion object {
         val READY_STATUSES = setOf("awaiting_collection", "work_completed", "completed")

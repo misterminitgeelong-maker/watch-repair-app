@@ -75,6 +75,34 @@ def test_bootstrap_and_login_flow():
     assert token
 
 
+def test_session_print_identity_comes_from_authenticated_shop():
+    from sqlmodel import Session, select
+    from app.database import engine
+    from app.models import Tenant
+
+    suffix = uuid4().hex[:8]
+    tokens = []
+    for index in range(2):
+        slug = f"identity-{suffix}-{index}"
+        tokens.append(_bootstrap_and_login(slug, f"owner@{slug}.test", "identity-pass123"))
+        with Session(engine) as db:
+            tenant = db.exec(select(Tenant).where(Tenant.slug == slug)).one()
+            tenant.name = f"Printed shop {index}"
+            tenant.default_currency = "NZD" if index else "AUD"
+            tenant.abn = f"ABN-{index}"
+            tenant.shop_phone = f"03 0000 000{index}"
+            db.add(tenant)
+            db.commit()
+    for index, token in enumerate(tokens):
+        response = client.get("/v1/auth/session", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 200
+        identity = response.json()
+        assert identity["tenant_name"] == f"Printed shop {index}"
+        assert identity["default_currency"] == ("NZD" if index else "AUD")
+        assert identity["tenant_abn"] == f"ABN-{index}"
+        assert identity["tenant_shop_phone"] == f"03 0000 000{index}"
+
+
 def test_customer_and_watch_tenant_isolation():
     suffix_a = uuid4().hex[:8]
     suffix_b = uuid4().hex[:8]

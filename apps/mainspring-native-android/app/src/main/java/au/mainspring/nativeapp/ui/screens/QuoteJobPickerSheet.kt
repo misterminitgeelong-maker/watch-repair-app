@@ -47,9 +47,10 @@ fun QuoteJobPickerSheet(onDismiss: () -> Unit, onPick: (String) -> Unit, viewMod
             if(!state.loading && state.error == null && shown.isEmpty()) FinEmptyCard(if(state.query.isBlank()) "No open jobs to quote." else "No jobs match your search.")
             LazyColumn(Modifier.heightIn(max = 420.dp).testTag("quote-job-results"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(shown, key = { it.id }) { job ->
-                    ServiceJobCard({ onPick(job.id) }, "#${job.jobNumber}", job.title, job.customerName, statusLabel(job.status), job.status,
+                    ServiceJobCard({ onPick(job.id) }, "#${job.jobNumber}", job.title, job.customerName, au.mainspring.nativeapp.watchStatusLabel(job.status), job.status,
                         shortDaysInShop(daysInShop(job.createdAt)), null, modifier = Modifier.testTag("quote-job-${job.id}"))
                 }
+                if(state.canLoadMore) item { androidx.compose.material3.TextButton(viewModel::loadMore, enabled = !state.loading, modifier = Modifier.fillMaxWidth().testTag("quote-jobs-load-more")) { Text("Load more jobs") } }
             }
         }
     }

@@ -12,6 +12,7 @@ object ApiClient {
  private val gson = GsonBuilder().setLenient().create()
  private var cached: MainspringApi? = null; private var cachedGeneration = -1L; private var cachedUrl = ""
  fun getEffectiveBaseUrl(): String {
+  if(!BuildConfig.DEBUG) return BuildConfig.API_BASE_URL
   val raw = (TokenStore.getApiBaseUrl() ?: BuildConfig.API_BASE_URL).trim()
   return if(raw.endsWith('/')) raw else "$raw/"
  }

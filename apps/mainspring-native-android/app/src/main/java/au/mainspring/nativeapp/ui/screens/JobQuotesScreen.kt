@@ -47,7 +47,7 @@ fun JobQuotesScreen(jobId: String, onBack: () -> Unit, onOpenQuote: (String) -> 
             if (state.created != null) { val savedMsg = if(state.sentToCustomer) "Quote saved and sent to the customer for approval." else "Quote saved as a draft. Open it to review totals and send it to the customer."; if(au.mainspring.nativeapp.ui.LocalCalibre.current) CalibreNotice(savedMsg) else Text(savedMsg);OutlinedButton(onClick = vm::startAnotherQuote) { Text("Create another quote") } }
             else if (!state.unknownSave && state.job != null) {
                 au.mainspring.nativeapp.ui.SectionLabel("Create a new quote")
-                QuoteComposer("quote-composer/watch/$jobId", state.job?.customerAccountId != null, !state.busy && !state.loading, catalogue = false,
+                QuoteComposer("quote-composer/watch/$jobId", state.job?.customerAccountId != null, !state.busy && !state.loading, catalogue = false, showLineTypes = true,
                     secondaryLabel = "Create and send", onSecondary = { lines, gst, inclusive -> pendingSend = Triple(lines, gst, inclusive) }, onSave = vm::createLines)
             }
         }

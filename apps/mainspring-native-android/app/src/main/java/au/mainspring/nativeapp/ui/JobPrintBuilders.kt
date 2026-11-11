@@ -2,6 +2,7 @@ package au.mainspring.nativeapp.ui
 
 import au.mainspring.nativeapp.api.RepairJobRead
 import au.mainspring.nativeapp.api.ShoeRepairJobRead
+import au.mainspring.nativeapp.api.WatchRead
 import au.mainspring.nativeapp.niimbot.NiimbotLabelData
 import au.mainspring.nativeapp.niimbot.niimbotBalanceCents
 import au.mainspring.nativeapp.niimbot.niimbotJobLabels
@@ -18,23 +19,29 @@ data class JobPrintContext(
     val date: (String) -> String,
 )
 
-fun watchJobBundle(job: RepairJobRead, ctx: JobPrintContext): JobPrintBundle? {
+fun watchJobBundle(job: RepairJobRead, ctx: JobPrintContext, watch: WatchRead? = null): JobPrintBundle? {
     val token = job.statusToken ?: return null
-    val item = listOfNotNull(job.watchBrand, job.watchModel).joinToString(" ").ifBlank { "Watch" }
+    val item = listOfNotNull(watch?.brand ?: job.watchBrand, watch?.model ?: job.watchModel).joinToString(" ").ifBlank { "Watch" }
     val url = intakeStatusUrl(ctx.apiBaseUrl, IntakeTicketKind.WATCH, token)
+    val workshopUrl = java.net.URI(ctx.apiBaseUrl).let { "${it.scheme}://${it.rawAuthority}/jobs/${job.id}" }
+    val quote = au.mainspring.nativeapp.watchQuoteCents(job)
     val ticket = IntakeTicket(
         jobNumber = job.jobNumber, customerName = job.customerName, customerPhone = job.customerPhone, itemSummary = item,
-        workSummary = listOfNotNull(job.title.takeIf { it.isNotBlank() }, job.description?.takeIf { it.isNotBlank() }).joinToString("\n").ifBlank { null },
+        workSummary = job.description,
         dueDate = job.collectionDate?.takeIf { it.isNotBlank() }?.let(ctx.date),
         deposit = job.depositCents.takeIf { it > 0 }?.let(ctx.money),
         statusUrl = url, shopName = ctx.shopName, shopPhone = ctx.shopPhone, kind = IntakeTicketKind.WATCH,
+        workshopUrl = workshopUrl, dateIn = ctx.date(job.createdAt), status = au.mainspring.nativeapp.watchStatusLabel(job.status),
+        priority = job.priority, salesperson = job.salesperson, customerEmail = job.customerEmail,
+        serial = watch?.serialNumber, movement = watch?.movementType, condition = watch?.conditionNotes,
+        services = job.title, estimate = ctx.money(quote), balance = ctx.money((quote - job.depositCents).coerceAtLeast(0)),
     )
     val base = NiimbotLabelData(
         jobNumber = job.jobNumber, customerName = job.customerName, customerPhone = job.customerPhone, itemTitle = item,
         services = job.title.takeIf { it.isNotBlank() }, dateIn = job.createdAt.takeIf { it.isNotBlank() }?.let(ctx.date), qrText = url,
     )
     val balance = niimbotBalanceCents(job.costCents, job.preQuoteCents, job.depositCents)
-    return JobPrintBundle(ticket, niimbotJobLabels(base, ctx.money(job.depositCents), ctx.money(balance)))
+    return JobPrintBundle(ticket, niimbotJobLabels(base, ctx.money(job.depositCents), ctx.money(balance)).mapIndexed { index, label -> label.copy(qrText = if(index == 0) workshopUrl else url, qrCaption = if(index == 0) "Open internal ticket" else "Track this repair") })
 }
 
 fun shoeJobBundle(j: ShoeRepairJobRead, customerName: String?, customerPhone: String?, ctx: JobPrintContext): JobPrintBundle {

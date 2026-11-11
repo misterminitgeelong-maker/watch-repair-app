@@ -98,13 +98,14 @@ fun MainspringAppShell(
     subscriptionStatus: String? = null,
     trialEnd: String? = null,
     sessionRole: String? = null,
+    onRefreshSession: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute in bottomDestinations
+    val showBottomBar = currentRoute in bottomDestinations || (au.mainspring.nativeapp.isBookingOnly(features) && currentRoute?.substringBefore('?') in setOf("bookingRequests", "networkMessages"))
     androidx.compose.runtime.DisposableEffect(Unit) { au.mainspring.nativeapp.InboxCountStore.start(); onDispose { au.mainspring.nativeapp.InboxCountStore.stop() } }
     au.mainspring.nativeapp.ui.PushSetupEffect { route -> navController.navigate(route) { launchSingleTop = true } }
     val routeArgId = navBackStackEntry?.arguments?.getString("jobId")
@@ -119,7 +120,8 @@ fun MainspringAppShell(
     var switchOpen by remember { mutableStateOf(false) }
     val selectedSite = sites.firstOrNull { it.tenantId == activeSiteId }
     val todayContent: @Composable () -> Unit = {
-        au.mainspring.nativeapp.ui.screens.TodayHubScreen(features, selectedSite?.name, planName = sessionSummary?.substringAfterLast(" · ", "")?.removeSuffix(" plan")?.takeIf { it.isNotBlank() }, siteCount = sites.size.coerceAtLeast(1),
+        if(au.mainspring.nativeapp.isBookingOnly(features)) au.mainspring.nativeapp.ui.screens.BookingOnlyHomeScreen(onNavigate = { navController.navigate(it) }, shopName = selectedSite?.name)
+        else au.mainspring.nativeapp.ui.screens.TodayHubScreen(features, selectedSite?.name, planName = sessionSummary?.substringAfterLast(" · ", "")?.removeSuffix(" plan")?.takeIf { it.isNotBlank() }, siteCount = sites.size.coerceAtLeast(1),
             onNewIntake = { navController.navigate("new_intake") },
             onOpenJob = { navController.navigate(au.mainspring.nativeapp.ui.screens.hubJobRoute(it)) },
             onViewAll = { navController.navigate("jobs") { launchSingleTop = true } },
@@ -170,7 +172,8 @@ fun MainspringAppShell(
             contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
-                if (showBottomBar && !wide) AppHeader({ navController.navigate("search") { launchSingleTop = true } })
+                if (showBottomBar && !wide) AppHeader({ navController.navigate("search") { launchSingleTop = true } }, shopName = selectedSite?.name,
+                    onSwitchShop = if(sites.map { it.tenantId }.distinct().size > 1) ({ switchOpen = true }) else null)
                 else if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
@@ -178,6 +181,7 @@ fun MainspringAppShell(
                             au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute, features) == key, { navController.navigate(tabRoute(key)) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$key"))
                         }
                         SearchIconButton({ navController.navigate("search") { launchSingleTop = true } })
+                        if(sites.map { it.tenantId }.distinct().size > 1) ShopSwitchButton(selectedSite?.name, { switchOpen = true })
                     }
                     androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
@@ -205,6 +209,7 @@ fun MainspringAppShell(
             var bannerShowing by remember { mutableStateOf(false) }
             au.mainspring.nativeapp.ui.ConnectivityBanner(onOpenQueue = { navController.navigate("queuedChanges") }, onVisibleChange = { bannerShowing = it })
             au.mainspring.nativeapp.ui.SubscriptionBanner(subscriptionStatus, trialEnd, sessionRole)
+            au.mainspring.nativeapp.ui.LegacyRecoveryNotice(onOpen = { navController.navigate("previousAppWork") { launchSingleTop = true } })
             sessionError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxWidth().then(if(bannerShowing) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
             au.mainspring.nativeapp.ui.screens.AcceptBookingLinkEffect { route -> navController.navigate(route) }
@@ -361,13 +366,30 @@ fun MainspringAppShell(
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
                 composable("revenueControl") { au.mainspring.nativeapp.ui.screens.RevenueControlScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
                 composable("queuedChanges") { au.mainspring.nativeapp.ui.screens.QueuedChangesScreen { navController.popBackStack() } }
+                composable("integrations") {
+                    if(au.mainspring.nativeapp.TokenStore.canManageIntegrations()) au.mainspring.nativeapp.ui.screens.IntegrationsScreen(onBack = { navController.popBackStack() })
+                    else au.mainspring.nativeapp.ui.screens.HqIntegrationAccessRequiredScreen(onBack = { navController.popBackStack() })
+                }
+                composable("engraving") { au.mainspring.nativeapp.ui.screens.EngravingScreen(onBack = { navController.popBackStack() }) }
+                composable("partsStock") { au.mainspring.nativeapp.ui.screens.PartsStockScreen(onBack = { navController.popBackStack() }) }
+                composable("myShops") { au.mainspring.nativeapp.ui.screens.MyShopsScreen(onBack = { navController.popBackStack() }, onSwitchSite = onSwitchSite, onMembershipChanged = onRefreshSession) }
+                composable("previousAppWork") { au.mainspring.nativeapp.ui.screens.LegacyRecoveryScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate(it) }) }
+                composable("networkMessages?conversation={conversation}&tab={tab}&network={network}&hub={hub}", arguments = listOf("conversation", "tab", "network", "hub").map { name -> navArgument(name) { type = NavType.StringType; nullable = true; defaultValue = null } }) { entry ->
+                    au.mainspring.nativeapp.ui.screens.NetworkMessagesScreen(onBack = { navController.popBackStack() }, conversation = entry.arguments?.getString("conversation"), initialTab = entry.arguments?.getString("tab"), network = entry.arguments?.getString("network"), hub = entry.arguments?.getString("hub"))
+                }
+                composable("hqAlert/{id}") { entry ->
+                    au.mainspring.nativeapp.ui.screens.HqAlertScreen(entry.arguments?.getString("id").orEmpty(), onBack = { navController.popBackStack() })
+                }
                 composable("shopSettings") { au.mainspring.nativeapp.ui.screens.OwnerSettingsScreen(onBack = { navController.popBackStack() }) }
                 composable("reportExtras") { au.mainspring.nativeapp.ui.screens.ReportExtrasScreen(onBack = { navController.popBackStack() }) }
                 composable("repairQueue") { au.mainspring.nativeapp.ui.screens.RepairQueueScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("watchJob/$it") }, onOpenShoeJob = { navController.navigate("shoeJob/$it") }) }
                 composable(au.mainspring.nativeapp.BookingDeepLink.ROUTE_PATTERN) { e -> au.mainspring.nativeapp.ui.screens.AcceptBookingScreen(bookingId = e.arguments?.getString("id").orEmpty(), onBack = { navController.popBackStack() }, onOpenJob = { id -> navController.navigate("autoKeyJob/$id") }, onOpenRequests = { navController.navigate("bookingRequests") }) }
                 composable("search") { au.mainspring.nativeapp.ui.screens.SearchScreen(onBack = { navController.popBackStack() }, onOpenRoute = { navController.navigate(it) }) }
                 composable("sendBookingRequest") { au.mainspring.nativeapp.ui.screens.SendBookingRequestScreen(onBack = { navController.popBackStack() }) }
-                composable("financeReport") { au.mainspring.nativeapp.ui.screens.MobileFinanceReportScreen(onBack = { navController.popBackStack() }) }
+                composable("financeReport") { au.mainspring.nativeapp.ui.screens.MobileFinanceReportScreen(onBack = { navController.popBackStack() }, onOpenFocus = { key -> navController.navigate("mobileFocus/$key") }) }
+                composable("mobileFocus/{focus}") { entry ->
+                    au.mainspring.nativeapp.ui.screens.AutoKeyJobsScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }, onNewJob = { navController.navigate("mobile_intake") }, onOpenBookingRequests = { navController.navigate("bookingRequests") }, initialFocus = entry.arguments?.getString("focus"))
+                }
                 composable("database") { au.mainspring.nativeapp.ui.screens.DatabaseScreen(onBack = { navController.popBackStack() }) }
                 composable("catalogue") { au.mainspring.nativeapp.ui.screens.CatalogueScreen(onBack = { navController.popBackStack() }) }
                 composable("shoeServices") { au.mainspring.nativeapp.ui.screens.ShoeServicesScreen(onBack = { navController.popBackStack() }) }
@@ -375,6 +397,8 @@ fun MainspringAppShell(
                 composable("customerOrders") { au.mainspring.nativeapp.ui.screens.CustomerOrdersScreen(onBack = { navController.popBackStack() }) }
                 composable("bookingRequests") { BookingRequestsScreen(canRequest = "shop_mobile_booking" in features,
                     onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
+                composable("newBookingRequest") { BookingRequestsScreen(canRequest = "shop_mobile_booking" in features,
+                    onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }, initialCreate = true) }
                 composable("messages/{resource}/{id}", arguments = listOf(navArgument("resource") { type = NavType.StringType }, navArgument("id") { type = NavType.StringType })) { entry ->
                     MessageThreadScreen(entry.arguments?.getString("resource") ?: return@composable,
                         entry.arguments?.getString("id") ?: return@composable, onBack = { navController.popBackStack() })

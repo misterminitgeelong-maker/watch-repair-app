@@ -1,6 +1,6 @@
 # Mainspring Native Android
 
-Kotlin/Jetpack Compose implementation of the existing Mainspring shop and mobile workflows. This remains a separate development app; it has not replaced the live Capacitor release.
+Kotlin/Jetpack Compose implementation of the existing Mainspring shop and mobile workflows. This is the native replacement release candidate for the existing Play app. See [the 11 November parity and release record](../../docs/NATIVE_ANDROID_PARITY_RELEASE_2026-11-11.md) for validation and submission status.
 
 ## Implementation
 
@@ -17,7 +17,7 @@ The [implementation record](../../docs/NATIVE_ANDROID_WORKFLOW.md) lists tested 
 
 ## Build and run
 
-Open this directory as an Android Studio project. The build uses Java 17 language compatibility, Android SDK 35 and min SDK 26. The project has been built with Android Studio's bundled JBR and the supplied Gradle wrapper.
+Open this directory as an Android Studio project. The build uses Java 17 language compatibility, Android SDK 36 and min SDK 24 (with core library desugaring). The project has been built with Android Studio's bundled JBR and the supplied Gradle wrapper.
 
 Set `ANDROID_HOME` to your SDK and `JAVA_HOME` to the compatible JDK, then run:
 
@@ -36,7 +36,7 @@ api.base.url=http://10.0.2.2:8000/
 
 Debug builds allow local HTTP for emulator development; release builds require HTTPS. Login also exposes validated server settings. Do not put credentials in source or local configuration.
 
-Debug package: `au.mainspring.nativeapp.debug`. Prototype release package: `au.mainspring.nativeapp`. APK: `app/build/outputs/apk/debug/app-debug.apk`. Both remain separate from the live `au.mainspring.app` package.
+Debug package: `au.mainspring.nativeapp.debug`. Play release package: `au.mainspring.app`. APK: `app/build/outputs/apk/debug/app-debug.apk`. Debug remains separate; the signed release updates the existing Play listing using its upload key.
 
 Instrumentation checks use MockWebServer and the debug package, clear its test token/draft state, and must run in an isolated emulator/device profile. They create no production customers, invoices or messages. Reports are under `app/build/reports/`.
 
@@ -71,11 +71,24 @@ Stop the QA server and remove the ADB reverse mapping afterward. The test reject
 
 See `../../docs/NATIVE_ANDROID_DESIGN_REFERENCE.md` for the implemented screen map, tested adaptations and remaining API/device limits. The default Refined Warmth theme follows the user's 21-page Android reference; More contains the other themes and field-navigation preference.
 
-For the native map, put `maps.api.key=<Android-restricted key>` in ignored `local.properties`. Enable Maps SDK for Android on the existing Maps project and restrict the key to the package and signing certificate for this build. Debug uses `au.mainspring.nativeapp.debug`; the prototype release bundle uses `au.mainspring.nativeapp`. Do not reuse the web key without checking its API/application restrictions. Instructions: https://developers.google.com/maps/documentation/android-sdk/start . Without a configured key the app provides the real stop list and external navigation, with an explicit map-unavailable state.
+The route screen works without a Maps key: bundled Leaflet renders interactive OpenStreetMap tiles with real device-geocoded stops, numbered markers, fit-to-stops, stop-order lines, job popups and explicit navigation. Unlocated addresses are reported honestly and remain in the stop list; no fabricated coordinates are shown. Customer text stays in the local renderer, which allows remote raster tiles only. Leaflet’s BSD licence is included in `app/src/main/assets/route-map/LEAFLET-LICENSE.txt`; OpenStreetMap attribution remains visible on the map.
 
-The companion session API source update exposes verified shop currency/details and fixes its calendar zone to match per-shop mobile scheduling. Deployment, production package/version/signing migration and physical-device QA remain release tasks. The generated prototype AAB is unsigned.
+Google Maps is optional. Put `maps.api.key=<Android-restricted key>` in ignored `local.properties`, enable Maps SDK for Android on the existing Maps project, and restrict the key to the package and signing certificate. Debug uses `au.mainspring.nativeapp.debug` and its debug certificate. The published replacement uses `au.mainspring.app` and the **Play app-signing certificate** shown in Play Console for installed Play builds; the upload certificate is different. Keep the web key’s restrictions separate. Setup: [Maps SDK for Android](https://developers.google.com/maps/documentation/android-sdk/start).
+
+Address autocomplete uses Android’s available device geocoder, including suburb/state/postcode on booking requests. It does not call an unimplemented `/v1/places` proxy. Typed addresses and coverage lookup remain available when the device geocoder cannot supply suggestions.
+
+The companion session API source update exposes verified shop currency/details and fixes its calendar zone to match per-shop mobile scheduling. Deployment, production package/version/signing migration and physical-device QA remain release tasks. Play builds require the existing signing configuration outside Git and the Firebase config for `au.mainspring.app` (`-PplayRelease=true`).
 
 
 ## Field experience redesign
 
 The 9 October pass focuses on Today and the complete mobile job journey: preparation, confirmed departure/arrival, quote review, completion and full-payment recording. Read-only encrypted snapshots support viewing today’s schedule and the last 50 opened jobs during connection outages. Updates remain blocked until a successful refresh. Unconfirmed payments require invoice review before retrying. See [the shared field experience document](../../docs/NATIVE_FIELD_EXPERIENCE.md) for scope and release limitations.
+
+
+## Native replacement release
+
+The release API origin is pinned to `https://mainspring.au/`. Firebase JSON and upload signing credentials stay outside Git. `-PplayRelease=true` fails if signing or the published Firebase package is missing. The weekly release workflow now builds this native module, so it cannot replace the new native client with a later Capacitor internal build.
+
+The app checks the public `/v1/client-config/android` policy and Google Play for updates. Server settings `ANDROID_MINIMUM_VERSION_CODE` (default 0) and `ANDROID_UPDATE_MESSAGE` control the minimum supported client. Crash diagnostics use an optional build `NATIVE_SENTRY_DSN`/local `sentry.dsn`, or the public, secret-free DSN from the existing backend Sentry configuration; no authentication data or customer text is attached.
+
+Previous Capacitor drafts and queued writes are read from their original local WebView origin, preserved in a separate encrypted archive, and available through **Previous app work**. Nothing is automatically replayed or deleted. Queued changes matched by signed-in user and a live tenant-scoped read can be inspected/exported and finished manually in the current job. Recovery never replays an earlier write; original outcomes may be uncertain.

@@ -14,7 +14,7 @@ import { MOBILE_ACTIVE_STATUSES, MOBILE_CLOSED_STATUSES } from '@/lib/mobileStat
 
 export const WATCH_CLOSED_STATUSES: readonly string[] = CLOSED_DIRECTORY_STATUSES
 
-export const SHOE_ACTIVE_STATUSES: readonly string[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on']
+export const SHOE_ACTIVE_STATUSES: readonly string[] = ['awaiting_quote', 'awaiting_go_ahead', 'go_ahead', 'working_on', 'awaiting_parts', 'quote_sent', 'awaiting_customer_details', 'parts_to_order']
 export const SHOE_CLOSED_STATUSES: readonly string[] = ['completed', 'awaiting_collection', 'collected', 'no_go']
 
 export { MOBILE_ACTIVE_STATUSES, MOBILE_CLOSED_STATUSES }

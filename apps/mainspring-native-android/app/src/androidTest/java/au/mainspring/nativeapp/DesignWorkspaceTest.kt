@@ -67,7 +67,7 @@ class DesignWorkspaceTest {
                     }
                     path=="/v1/auto-key-jobs/invoices/invoice-one" && request.method=="PATCH" -> {
                         writes.incrementAndGet();val body=com.google.gson.JsonParser.parseString(request.body.readUtf8()).asJsonObject
-                        Assert.assertEquals("paid",body["status"].asString);Assert.assertEquals("card",body["payment_method"].asString)
+                        Assert.assertEquals("paid",body["status"].asString);Assert.assertEquals("eftpos",body["payment_method"].asString)
                         invoicePaid=true;if(lostPaymentResponse) return MockResponse().setResponseCode(503);invoice()
                     }
                     path.endsWith("/attachments") -> "[]"
@@ -89,13 +89,15 @@ class DesignWorkspaceTest {
         compose.onNodeWithText("Next up",ignoreCase=true).assertExists()
         saveNativeQaImage(compose.onRoot(),"design-today.png")
     }
-    @Test fun nativeJobTabsShowVehicleAndFinancialWithoutLeavingJob() {
+    @Test fun nativeJobTabsShowVehicleAndQuotesWithoutLeavingJob() {
         var exits=0
         compose.setContent {MainspringTheme {AutoKeyJobDetailScreen("first",server.url("/").toString(),{exits++},{},{},{})}}
         compose.waitUntil(10_000) {compose.onAllNodesWithText("Vehicle & Key").fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithText("Vehicle & Key").performClick();compose.onNodeWithText("Toyota Hilux").assertExists()
         saveNativeQaImage(compose.onRoot(),"design-vehicle-key.png")
-        compose.onNodeWithText("Financial").performClick()
+        compose.onAllNodesWithText("Financial").assertCountEquals(0)
+        compose.onNodeWithTag("tab-finance").assertExists()
+        compose.onNodeWithText("Quotes").performClick()
         compose.waitUntil(10_000) {compose.onAllNodes(hasText("Create quote") and isEnabled()).fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithText("Create quote").performScrollTo().performClick()
         compose.waitUntil(10_000) {compose.onAllNodesWithText("New quote").fetchSemanticsNodes().isNotEmpty()}
@@ -207,6 +209,32 @@ class DesignWorkspaceTest {
         Assert.assertEquals("${day}T11:00+11:00",com.google.gson.JsonParser.parseString(patch).asJsonObject["scheduled_at"].asString)
     }
 
+    @Test fun plannerZoomsOutToTheWholeWeekAndInAgainWithMovingFingersAndStillMoves() {
+        compose.setContent {MainspringTheme {MobileWorkBoardScreen(server.url("/").toString(),{},{},{},{})}}
+        compose.onNodeWithTag("view-select").performClick(); compose.onNodeWithText("Planner").performClick()
+        compose.waitUntil(10_000) {compose.onAllNodesWithTag("planner-move-first").fetchSemanticsNodes().isNotEmpty()}
+        fun pillPercent(): Int {
+            val text=compose.onNodeWithTag("zoom-reset").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("") {it.text}
+            return Regex("(\\d+)%").find(text)!!.groupValues[1].toInt()
+        }
+        fun pinch(startGap: Float,endGap: Float) = compose.onNodeWithTag("zoom-board-planner").performTouchInput {
+            pinch(androidx.compose.ui.geometry.Offset(center.x-startGap/2,center.y),androidx.compose.ui.geometry.Offset(center.x-endGap/2,center.y),
+                androidx.compose.ui.geometry.Offset(center.x+startGap/2,center.y),androidx.compose.ui.geometry.Offset(center.x+endGap/2,center.y),durationMillis=600)
+        }
+        pinch(400f,40f); compose.waitForIdle()
+        val fit=pillPercent()
+        Assert.assertTrue("zoomed out to fit the week (was $fit%)",fit in 20..75)
+        Thread.sleep(400); Assert.assertEquals(fit,pillPercent())
+        compose.onNodeWithTag("zoom-reset").performClick(); compose.waitForIdle()
+        pinch(60f,500f); compose.waitForIdle()
+        val zoomed=pillPercent()
+        Assert.assertTrue("zoomed in to about 2x (was $zoomed%)",zoomed in 150..200)
+        compose.onNodeWithTag("zoom-reset").performClick(); compose.waitForIdle()
+        compose.onNodeWithTag("planner-move-first").performSemanticsAction(SemanticsActions.OnClick) {it()}   // moving still works at normal size
+        val day=LocalDate.now(ZoneId.of("Australia/Sydney"))
+        compose.onNodeWithTag("planner-slot-$day-11-0").assertExists()
+    }
+
     @Test fun fieldJourneyConfirmsTravelArrivalCompletionAndPaymentInOneJob() {
         financeJourney=true
         compose.setContent {MainspringTheme {AutoKeyJobDetailScreen("first",server.url("/").toString(),{},{},{},{})}}
@@ -266,12 +294,12 @@ class DesignWorkspaceTest {
     @Test fun lostPaymentResponseSurvivesRecreationAndRequiresReviewBeforeRetry() {
         financeJourney=true;status="work_completed";lostPaymentResponse=true
         val first=MobileFinanceViewModel("first");compose.waitUntil(10_000) {!first.state.value.loading}
-        first.markPaid("invoice-one","card");compose.waitUntil(10_000) {!first.state.value.busy}
+        first.markPaid("invoice-one","eftpos");compose.waitUntil(10_000) {!first.state.value.busy}
         Assert.assertEquals("invoice-one",first.state.value.paymentReviewId)
         val restored=MobileFinanceViewModel("first");compose.waitUntil(10_000) {!restored.state.value.loading}
         Assert.assertEquals("paid",restored.state.value.invoices.single().status)
-        restored.markPaid("invoice-one","card");Assert.assertEquals(1,writes.get())
-        restored.checkedPayment();restored.markPaid("invoice-one","card")
+        restored.markPaid("invoice-one","eftpos");Assert.assertEquals(1,writes.get())
+        restored.checkedPayment();restored.markPaid("invoice-one","eftpos")
         Assert.assertNull(restored.state.value.paymentReviewId);Assert.assertEquals(1,writes.get())
     }
     @Test fun jobNextActionRemainsVisibleWithLargeText() {

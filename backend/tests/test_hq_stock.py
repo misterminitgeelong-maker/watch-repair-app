@@ -89,6 +89,27 @@ def test_catalogue_transfer_and_use_on_job_flow():
     assert summary["parts_used_30d"] == [{"sku": "FB-ARI-41", "name": "Arizona footbed 41", "quantity": 1}]
 
 
+def test_shop_absolute_count_does_not_change_legacy_adjustment_semantics():
+    s = _setup()
+    location = s["melb"]["id"]
+    payload = {"location_id": location, "sku": "BK-01"}
+    first = client.post(f"{SHOP}/adjust", headers=s["sh"], json={**payload, "quantity": 3, "kind": "receive"})
+    assert first.status_code == 200 and first.json()["quantity"] == 3
+    set_eight = client.post(f"{SHOP}/adjust", headers=s["sh"], json={**payload, "quantity": 8, "kind": "set_count"})
+    assert set_eight.status_code == 200 and set_eight.json()["quantity"] == 8
+    set_zero = client.post(f"{SHOP}/adjust", headers=s["sh"], json={**payload, "quantity": 0, "kind": "set_count"})
+    assert set_zero.status_code == 200 and set_zero.json()["quantity"] == 0
+    negative = client.post(f"{SHOP}/adjust", headers=s["sh"], json={**payload, "quantity": -1, "kind": "set_count"})
+    assert negative.status_code == 422
+    received = client.post(f"{SHOP}/adjust", headers=s["sh"], json={**payload, "quantity": 5, "kind": "receive"})
+    assert received.json()["quantity"] == 5
+    # HQ's pre-existing adjust remains a signed delta, never an absolute count.
+    adjusted = client.post(f"{HQ}/adjust", headers=s["h"], json={**payload, "quantity": -2, "kind": "adjust"})
+    assert adjusted.status_code == 200 and adjusted.json()["quantity"] == 3
+    levels = client.get(f"{SHOP}/levels", headers=s["sh"]).json()
+    assert next(row for row in levels if row["sku"] == "BK-01")["quantity"] == 3
+
+
 def test_size_specific_parts_and_sync():
     s = _setup()
     h, sh = s["h"], s["sh"]

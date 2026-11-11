@@ -48,6 +48,7 @@ data class SessionResponse(
     @SerializedName("available_sites") val sites: List<SessionSite> = emptyList(),
     @SerializedName("is_minit_hq_ui") val hqConsole: Boolean = false,
     @SerializedName("is_platform_console") val platformConsole: Boolean = false,
+    @SerializedName("can_manage_integrations") val canManageIntegrations: Boolean = false,
     @SerializedName("signup_payment_pending") val signupPaymentPending: Boolean = false,
     /** Stripe status: trialing, active, past_due, canceled, or null. */
     @SerializedName("subscription_status") val subscriptionStatus: String? = null,
@@ -195,11 +196,21 @@ data class InvoiceFromQuoteResponse(val invoice: InvoiceRead)
 
 data class ShoeCreate(@SerializedName("customer_id") val customerId: String,
     @SerializedName("shoe_type") val shoeType: String?, val brand: String?, val color: String?,
-    @SerializedName("description_notes") val notes: String?)
+    @SerializedName("description_notes") val notes: String?,
+    @SerializedName("model_name") val modelName: String? = null, val size: String? = null,
+    @SerializedName("purchase_date") val purchaseDate: String? = null,
+    @SerializedName("purchase_store") val purchaseStore: String? = null,
+    @SerializedName("purchase_ref") val purchaseRef: String? = null)
 data class ShoeRead(val id: String,
     @SerializedName("customer_id") val customerId: String? = null,
     @SerializedName("shoe_type") val shoeType: String? = null, val brand: String? = null, val color: String? = null,
-    @SerializedName("description_notes") val notes: String? = null)
+    @SerializedName("description_notes") val notes: String? = null,
+    @SerializedName("model_name") val modelName: String? = null, val size: String? = null,
+    @SerializedName("purchase_date") val purchaseDate: String? = null,
+    @SerializedName("purchase_store") val purchaseStore: String? = null,
+    @SerializedName("purchase_ref") val purchaseRef: String? = null,
+    @SerializedName("warranty_status") val warrantyStatus: String? = null,
+    @SerializedName("warranty_expires_on") val warrantyExpiresOn: String? = null)
 data class ShoeJobShoeEntry(val id: String, @SerializedName("shoe_id") val shoeId: String, val shoe: ShoeRead? = null,
     @SerializedName("sort_order") val sortOrder: Int = 0)
 data class ShoeStatusUpdate(val status: String, val note: String? = null,
@@ -237,7 +248,11 @@ data class MobileJobCreate(@SerializedName("customer_id") val customerId: String
     val salesperson: String? = null, @SerializedName("cost_cents") val costCents: Int? = null,
     @SerializedName("apply_suggested_quote") val applySuggestedQuote: Boolean? = null,
     @SerializedName("additional_services") val additionalServices: List<AdditionalServiceDto>? = null,
-    @SerializedName("commission_lead_source") val commissionLeadSource: String? = null)
+    @SerializedName("commission_lead_source") val commissionLeadSource: String? = null,
+    @SerializedName("pricing_ref_id") val pricingRefId: String? = null,
+    @SerializedName("pricing_type") val pricingType: String? = null,
+    @SerializedName("quoted_price") val quotedPrice: Double? = null,
+    @SerializedName("callout_inclusive") val calloutInclusive: Boolean? = null)
 
 data class AdditionalServiceDto(val preset: String? = null, val custom: String? = null)
 data class QuoteSuggestionLineRead(val description: String = "", val quantity: Double = 1.0, @SerializedName("unit_price_cents") val unitPriceCents: Int = 0, @SerializedName("total_price_cents") val totalPriceCents: Int = 0)
@@ -533,12 +548,23 @@ data class InvoiceSendResponse(
     @SerializedName("email_error_detail") val errorDetail: String?,
 )
 
-data class MobileQuoteCreate(@SerializedName("line_items") val lines: List<MobileQuoteLine>, @SerializedName("gst_enabled") val gst: Boolean, @SerializedName("gst_inclusive") val inclusive: Boolean)
-data class MobileQuoteLine(val description: String, val quantity: Double = 1.0, @SerializedName("unit_price_cents") val unitCents: Int)
+data class MobileQuoteCreate(@SerializedName("line_items") val lines: List<MobileQuoteLine>, @SerializedName("gst_enabled") val gst: Boolean, @SerializedName("gst_inclusive") val inclusive: Boolean,
+    /** Two-outcome quote: exactly two entries (A then B); `lines` are then the lines shared by both (web `AutoKeyQuoteCreate.options`). */
+    val options: List<MobileQuoteOptionCreate>? = null)
+data class MobileQuoteLine(val description: String, val quantity: Double = 1.0, @SerializedName("unit_price_cents") val unitCents: Int,
+    /** Read side only: "A" or "B" for a line that belongs to one outcome, null when it applies to both. */
+    @SerializedName("option_key") val optionKey: String? = null,
+    /** Watch quote accounting classification; mobile endpoints may ignore this optional field. */
+    @SerializedName("item_type") val itemType: String? = null)
+data class MobileQuoteOptionCreate(val label: String, @SerializedName("line_items") val lines: List<MobileQuoteLine>)
+data class MobileQuoteOption(val key: String, val label: String, @SerializedName("subtotal_cents") val subtotal: Int = 0,
+    @SerializedName("tax_cents") val tax: Int = 0, @SerializedName("total_cents") val total: Int = 0)
+data class MobileQuoteSelectOption(val option: String)
 data class MobileQuote(val id: String, val status: String, @SerializedName("subtotal_cents") val subtotal: Int,
     @SerializedName("tax_cents") val tax: Int, @SerializedName("total_cents") val total: Int, val currency: String,
     @SerializedName("line_items") val lines: List<MobileQuoteLine> = emptyList(), @SerializedName("signer_name") val signer: String? = null,
-    @SerializedName("signed_at") val signedAt: String? = null, @SerializedName("has_signature") val hasSignature: Boolean = false)
+    @SerializedName("signed_at") val signedAt: String? = null, @SerializedName("has_signature") val hasSignature: Boolean = false,
+    val options: List<MobileQuoteOption>? = null, @SerializedName("selected_option") val selectedOption: String? = null)
 data class MobileInvoice(val id: String, @SerializedName("invoice_number") val number: String, val status: String,
     @SerializedName("auto_key_quote_id") val quoteId: String?, @SerializedName("total_cents") val total: Int,
     val currency: String, @SerializedName("payment_method") val paymentMethod: String? = null,
@@ -588,7 +614,10 @@ data class BookingRequest(val id: String, val status: String, @SerializedName("c
     @SerializedName("requesting_shop_name") val shop: String, @SerializedName("target_operator_name") val operator: String,
     @SerializedName("job_address") val address: String, @SerializedName("preferred_scheduled_at") val schedule: String?, val notes: String?,
     @SerializedName("decline_reason") val declineReason: String?, @SerializedName("schedule_conflict_warning") val conflict: String?,
-    @SerializedName("resulting_auto_key_job_id") val jobId: String?)
+    @SerializedName("resulting_auto_key_job_id") val jobId: String?,
+    @SerializedName("offer_count") val offerCount: Int = 1,
+    @SerializedName("offer_expires_at") val offerExpiresAt: String? = null,
+    @SerializedName("pool_intake_job_id") val poolId: String? = null)
 
 data class WorkLogCreate(@SerializedName("repair_job_id") val jobId: String, val note: String?, @SerializedName("minutes_spent") val minutes: Int)
 data class WorkLogRead(val id: String, val note: String?, @SerializedName("minutes_spent") val minutes: Int, @SerializedName("created_at") val createdAt: String)

@@ -1,4 +1,5 @@
 import os
+import pytest
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -38,6 +39,51 @@ def _auth_and_customer():
     c = client.post("/v1/customers", headers=h, json={"full_name": "Pat", "phone": "0411999888"})
     assert c.status_code == 201
     return h, c.json()["id"]
+
+
+@pytest.mark.parametrize(
+    "scheduled,utc,changed,changed_utc,local_day",
+    [
+        ("2026-11-11T09:30:00+11:00", "2026-11-10T22:30:00+00:00", "2026-11-11T14:15:00+11:00", "2026-11-11T03:15:00+00:00", "2026-11-11"),
+        ("2026-07-15T09:30:00+10:00", "2026-07-14T23:30:00+00:00", "2026-07-15T14:15:00+10:00", "2026-07-15T04:15:00+00:00", "2026-07-15"),
+    ],
+)
+def test_local_offset_schedule_survives_create_patch_and_shop_day_filter(scheduled, utc, changed, changed_utc, local_day):
+    headers, customer = _auth_and_customer()
+    response = client.post("/v1/auto-key-jobs", headers=headers, json={
+        "customer_id": customer, "title": "Offset scheduling regression", "scheduled_at": scheduled,
+    })
+    assert response.status_code == 201, response.text
+    job = response.json()
+    assert datetime.fromisoformat(job["scheduled_at"].replace("Z", "+00:00")) == datetime.fromisoformat(utc)
+    fetched = client.get(f"/v1/auto-key-jobs/{job['id']}", headers=headers)
+    assert datetime.fromisoformat(fetched.json()["scheduled_at"].replace("Z", "+00:00")) == datetime.fromisoformat(utc)
+    page = client.get("/v1/auto-key-jobs/page", headers=headers, params={
+        "directory": "all", "date_field": "scheduled", "date_from": local_day, "date_to": local_day,
+    })
+    assert page.status_code == 200, page.text
+    assert job["id"] in {row["id"] for row in page.json()["items"]}
+    updated = client.patch(f"/v1/auto-key-jobs/{job['id']}", headers=headers, json={"scheduled_at": changed})
+    assert updated.status_code == 200, updated.text
+    assert datetime.fromisoformat(updated.json()["scheduled_at"].replace("Z", "+00:00")) == datetime.fromisoformat(changed_utc)
+    fetched = client.get(f"/v1/auto-key-jobs/{job['id']}", headers=headers)
+    assert datetime.fromisoformat(fetched.json()["scheduled_at"].replace("Z", "+00:00")) == datetime.fromisoformat(changed_utc)
+
+
+def test_naive_schedule_remains_utc_and_explicit_null_still_clears_it():
+    headers, customer = _auth_and_customer()
+    response = client.post("/v1/auto-key-jobs", headers=headers, json={
+        "customer_id": customer, "title": "UTC scheduling contract", "scheduled_at": "2026-11-10T22:30:00",
+    })
+    assert response.status_code == 201, response.text
+    job = response.json()
+    assert job["scheduled_at"] == "2026-11-10T22:30:00Z"
+    changed = client.patch(f"/v1/auto-key-jobs/{job['id']}", headers=headers, json={"scheduled_at": "2026-11-11T01:00:00"})
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["scheduled_at"] == "2026-11-11T01:00:00Z"
+    cleared = client.patch(f"/v1/auto-key-jobs/{job['id']}", headers=headers, json={"scheduled_at": None})
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["scheduled_at"] is None
 
 
 def test_create_job_with_booking_sms_creates_quote_and_pending_status():

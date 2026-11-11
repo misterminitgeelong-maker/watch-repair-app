@@ -124,7 +124,7 @@ import au.mainspring.nativeapp.api.*
                     }
                     if(!j.customerPhone.isNullOrBlank()) OutlinedButton({open(Uri.fromParts("tel",j.customerPhone,null),true)},Modifier.heightIn(min=48.dp)) {Text("Call ${j.customerPhone}")}
                 }
-                val sections=listOf("info" to "Info","vehicle" to "Vehicle & Key","finance" to "Financial","photos" to "Photos","messages" to "Messages","activity" to "Activity")
+                val sections=listOf("info" to "Info","vehicle" to "Vehicle & Key","finance" to "Quotes","photos" to "Photos","messages" to "Messages","activity" to "Activity")
                 au.mainspring.nativeapp.ui.UnderlineTabs(sections,tab,{tab=it},Modifier.padding(horizontal=16.dp))
                 AnimatedContent(targetState=tab,modifier=Modifier.weight(1f).testTag("job-detail-body"),label="job-section") { activeTab ->
                     if(state.offlineSnapshot && activeTab in listOf("finance","photos","messages","activity")) Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {

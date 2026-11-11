@@ -13,7 +13,7 @@ class DispatchWorkflowTest {
     private lateinit var server: MockWebServer
     private var claimCode = 200
     private var writes = 0
-    private val pool = """[{"id":"pool-1","customer_name":"Avery","job_address":"10 Test Street","vehicle_make":"Toyota","ring":1,"created_at":"2026-10-07T00:00:00Z"}]"""
+    private val pool = """[{"id":"pool-1","job_type":"Mobile Key","suburb":"Geelong","state":"VIC","postcode":"3220","vehicle_make":"Toyota","ring":1,"created_at":"2026-10-07T00:00:00Z"}]"""
     @Before fun setup() {
         TokenStore.init(InstrumentationRegistry.getInstrumentation().targetContext); TokenStore.clear()
         server = MockWebServer()

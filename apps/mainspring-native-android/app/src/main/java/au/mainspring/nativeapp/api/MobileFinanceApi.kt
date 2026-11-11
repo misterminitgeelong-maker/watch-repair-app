@@ -7,6 +7,7 @@ import retrofit2.http.Query
 
 /** Mobile services operations cockpit and finance report (read-only). Obtain via ApiClient.service(MobileFinanceApi::class.java). */
 interface MobileFinanceApi {
+    @retrofit2.http.PATCH("v1/reports/auto-key/cockpit/target") suspend fun setTarget(@retrofit2.http.Body body: com.google.gson.JsonObject): com.google.gson.JsonObject
     @GET("v1/reports/auto-key/cockpit") suspend fun cockpit(@Query("items") items: Int = 5): MobileCockpitResponse
     @GET("v1/reports/auto-key/finance") suspend fun finance(@Query("period") period: String, @Query("date_from") dateFrom: String? = null, @Query("date_to") dateTo: String? = null): MobileFinanceResponse
     @retrofit2.http.Streaming @GET("v1/reports/auto-key/finance/export")

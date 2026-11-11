@@ -21,6 +21,7 @@ data class WatchIntakeState(
     val accounts: List<CustomerAccountRead> = emptyList(),
     val catalogue: List<WatchCatalogueItem> = emptyList(),
     val combos: List<WatchRepairsCombo> = emptyList(),
+    val templates: List<JobTemplate> = emptyList(),
     val loading: Boolean = false, val busy: Boolean = false, val error: String? = null,
     val savedJobIds: List<String> = emptyList(), val complete: Boolean = false,
     val uploadFailures: List<String> = emptyList(), val progress: String? = null,
@@ -65,7 +66,23 @@ class WatchIntakeViewModel(private val saved: SavedStateHandle) : ViewModel() {
     fun photo(i: Int, side: String) = field("photo.$i.$side")
     fun setPhoto(i: Int, side: String, uri: String) = setField("photo.$i.$side", uri)
     fun changeCount(count: Int) { if (!mutable.value.busy) setField("watchCount", count.coerceIn(1,5).toString()) }
+    fun applyTemplate(id: String) {
+        if(mutable.value.busy || field("hasAcknowledgement") == "true") return
+        val template = mutable.value.templates.firstOrNull { it.id == id && it.module == "watch" } ?: return
+        setField("title", template.title); setField("preQuote", java.math.BigDecimal.valueOf(template.preQuoteCents.toLong(), 2).toPlainString())
+        setField("services", ""); setField("template", id)
+    }
+    fun toggleCondition(index: Int, condition: String) {
+        if(condition !in WATCH_CONDITION_CHECKLIST || mutable.value.busy) return
+        val key = "watch.$index.checklist"
+        val checked = field(key).split('|').filter(String::isNotBlank).toMutableSet().apply { if(!add(condition)) remove(condition) }
+        setField(key, checked.joinToString("|"))
+    }
     init {
+        viewModelScope.launch {
+            try { val templates = ApiClient.service(WatchWorkflowApi::class.java).templates().filter { it.module == "watch" }; mutable.update { it.copy(templates = templates) } }
+            catch(e: CancellationException) { throw e } catch(_: Exception) { /* Manual intake remains available if the optional template list is unavailable. */ }
+        }
         viewModelScope.launch {
             try { val items = api.watchCatalogue(); val config = api.watchRepairsConfig()
                 mutable.update { it.copy(catalogue = items, combos = config.combos) } }

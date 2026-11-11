@@ -39,6 +39,8 @@ class FieldWorkflowTest {
      path == "/v1/work-logs" && request.method == "GET" -> "[]"
      path == "/v1/work-logs" -> { workLogBody = request.body.readUtf8(); """{"id":"work-1","note":"Replaced battery and tested seal","minutes_spent":15,"created_at":"2026-10-07T00:00:00Z"}""" }
      path == "/v1/shop-mobile-bookings/operators" -> "[]"
+     path == "/v1/shop-mobile-bookings/suggest-operator" -> """{"tenant_id":"operator-1","tenant_name":"Mobile team","routing_rule":"territory"}"""
+     path == "/v1/shop-mobile-bookings/coverage-contact" -> """{"hq_contact":null}"""
      path == "/v1/shop-mobile-bookings" && request.method == "GET" -> """{"items":[],"total":0}"""
      path == "/v1/shop-mobile-bookings" -> {
       bookingBody = request.body.readUtf8(); if(failBooking) return MockResponse().setResponseCode(503)
@@ -84,6 +86,7 @@ class FieldWorkflowTest {
   TokenStore.setCalendarTimezone("Australia/Sydney")
   val vm = BookingViewModel(); compose.waitUntil(10_000) { !vm.state.value.loading }
   compose.runOnIdle { vm.set("customer_name", "Avery"); vm.set("suburb", "Geelong"); vm.set("state_code", "VIC"); vm.set("job_address", "10 Test Street"); vm.set("preferred_scheduled_at", "09/10/2026 09:30") }
+  compose.waitUntil(10_000) { vm.state.value.route != null && !vm.state.value.routeLoading }
   compose.setContent { MainspringTheme { BookingRequestsScreen(true, {}, {}, vm) } }
   compose.onNodeWithText("New request").performClick()
   compose.onNodeWithText("Review and send request").performScrollTo().performClick()
@@ -96,7 +99,9 @@ class FieldWorkflowTest {
  }
  @Test fun unknownBookingRequestRestoresDraftAndBlocksBlindRetry() {
   failBooking = true; val vm = BookingViewModel(); compose.waitUntil(10_000) { !vm.state.value.loading }
-  compose.runOnIdle { vm.set("customer_name", "Avery"); vm.set("suburb", "Geelong"); vm.set("state_code", "VIC"); vm.set("job_address", "10 Test Street"); vm.create {} }
+  compose.runOnIdle { vm.set("customer_name", "Avery"); vm.set("suburb", "Geelong"); vm.set("state_code", "VIC"); vm.set("job_address", "10 Test Street") }
+  compose.waitUntil(10_000) { vm.state.value.route != null && !vm.state.value.routeLoading }
+  compose.runOnIdle { vm.create {} }
   compose.waitUntil(10_000) { vm.state.value.uncertain }
   val restored = BookingViewModel(); compose.waitUntil(10_000) { !restored.state.value.loading }
   Assert.assertTrue(restored.state.value.uncertain); Assert.assertEquals("Avery", restored.state.value.fields["customer_name"])

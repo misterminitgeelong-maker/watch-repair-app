@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 from uuid import UUID, uuid4
 
+from ..payment_methods import normalise_payment_method
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import or_
@@ -239,7 +240,7 @@ def _to_invoice_read(invoice: AutoKeyInvoice) -> AutoKeyInvoiceRead:
         gst_inclusive=invoice.gst_inclusive,
         total_cents=invoice.total_cents,
         currency=invoice.currency,
-        payment_method=invoice.payment_method,
+        payment_method=normalise_payment_method(invoice.payment_method),
         paid_at=invoice.paid_at,
         created_at=invoice.created_at,
         xero_invoice_id=invoice.xero_invoice_id,
@@ -555,6 +556,10 @@ def create_auto_key_job(
         customer_account_id = inferred.customer_account_id if inferred else None
 
     data = payload.model_dump()
+    # The DB column stores UTC without a timezone. SQLite drops tzinfo on write,
+    # so convert the instant before persistence rather than losing its offset.
+    if data.get("scheduled_at") is not None and data["scheduled_at"].tzinfo is not None:
+        data["scheduled_at"] = data["scheduled_at"].astimezone(timezone.utc).replace(tzinfo=None)
     data["key_quantity"] = max(1, int(data.get("key_quantity", 1)))
     data["customer_account_id"] = customer_account_id
 
@@ -1010,7 +1015,7 @@ def update_auto_key_invoice(
         invoice.status = next_status
         invoice.paid_at = datetime.now(timezone.utc) if next_status == "paid" else None
     if payment_method is not None:
-        invoice.payment_method = payment_method.strip() or None
+        invoice.payment_method = normalise_payment_method(payment_method)
     if subtotal_cents is not None:
         invoice.subtotal_cents = max(0, subtotal_cents)
     if tax_cents is not None:
@@ -1263,6 +1268,8 @@ def update_auto_key_job_fields(
 
     reject_stale_write(job.updated_at, request)
     update_data = payload.model_dump(exclude_unset=True)
+    if update_data.get("scheduled_at") is not None and update_data["scheduled_at"].tzinfo is not None:
+        update_data["scheduled_at"] = update_data["scheduled_at"].astimezone(timezone.utc).replace(tzinfo=None)
     if "customer_account_id" in update_data and update_data["customer_account_id"] is not None:
         account = session.get(CustomerAccount, update_data["customer_account_id"])
         if not account or account.tenant_id != auth.tenant_id:

@@ -74,7 +74,9 @@ class NiimbotLabelPairTest {
     @Test fun watchBundleBuildsTicketAndTwoLabels() {
         val ctx = JobPrintContext("https://app.test/api", "Shop", "02", { "$%.2f".format(it / 100.0) }, { it })
         val bundle = watchJobBundle(job(), ctx)!!
-        assertEquals("https://app.test/status/tok", bundle.ticket.statusUrl)
+        assertEquals("https://app.test/customer-portal/job/watch/tok", bundle.ticket.statusUrl)
+        assertEquals("https://app.test/jobs/j1", bundle.labels[0].qrText)
+        assertEquals(bundle.ticket.statusUrl, bundle.labels[1].qrText)
         assertEquals(2, bundle.labels.size)
         assertEquals("Dep: $20.00  Bal: $80.00", niimbotDepBalText(bundle.labels[0]))
         assertEquals("Seiko 5", bundle.labels[1].itemTitle)

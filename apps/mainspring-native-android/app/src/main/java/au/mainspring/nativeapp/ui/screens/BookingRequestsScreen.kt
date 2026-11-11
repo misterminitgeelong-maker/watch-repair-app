@@ -13,11 +13,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.*
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun BookingRequestsScreen(canRequest: Boolean, onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: BookingViewModel = viewModel()) {
- val state by vm.state.collectAsStateWithLifecycle(); var creating by rememberSaveable { mutableStateOf(false) }
+@Composable fun BookingRequestsScreen(canRequest: Boolean, onBack: () -> Unit, onOpenJob: (String) -> Unit, vm: BookingViewModel = viewModel(), initialCreate: Boolean = false) {
+ val state by vm.state.collectAsStateWithLifecycle(); var creating by rememberSaveable { mutableStateOf(initialCreate) }
+ val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+ LaunchedEffect(lifecycleOwner) { lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { while(true) { kotlinx.coroutines.delay(30_000); vm.refresh() } } }
  var confirm by remember { mutableStateOf<Pair<String,String>?>(null) }; var reason by rememberSaveable { mutableStateOf("") }
  val enabled = !state.loading && !state.busy
  val tenant = TokenStore.currentTenantId()
@@ -39,6 +42,7 @@ import au.mainspring.nativeapp.*
       "vehicle_make" to "Vehicle make", "vehicle_model" to "Vehicle model", "registration_plate" to "Registration plate", "job_type" to "Requested service",
       "preferred_scheduled_at" to "Preferred time (DD/MM/YYYY HH:mm)", "notes" to "Notes").forEach { (key, label) ->
       au.mainspring.nativeapp.ui.AtelierTextField(state.fields[key].orEmpty(), { vm.set(key, it) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), enabled = enabled)
+      if(key == "job_address") state.suggestions.forEach { option -> TextButton({ vm.pickAddress(option) }, enabled = enabled) { Text(option.description) } }
      }
      Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
       listOf("ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA").forEach { value -> au.mainspring.nativeapp.ui.AtelierChip(state.fields["state_code"] == value, { vm.set("state_code", value) }, label = { Text(value) }, enabled = enabled) }
@@ -48,6 +52,11 @@ import au.mainspring.nativeapp.*
      Text("Operator")
      au.mainspring.nativeapp.ui.LabeledRadio(state.fields["target_operator_tenant_id"].isNullOrBlank(), { vm.set("target_operator_tenant_id", "") }, enabled = enabled) { Text("Route by service area") }
      state.operators.forEach { option -> au.mainspring.nativeapp.ui.LabeledRadio(state.fields["target_operator_tenant_id"] == option.id, { vm.set("target_operator_tenant_id", option.id) }, enabled = enabled) { Text(option.name) } }
+     if(state.fields["target_operator_tenant_id"].isNullOrBlank()) {
+      if(state.routeLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+      state.route?.let { Text("Routes to ${it.name}${it.rule?.let { rule -> " · ${rule.replace('_', ' ')}" }.orEmpty()}") }
+      state.routeError?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::previewRouting); state.hqContact?.let { contact -> Text("Support Office: $contact") } }
+     }
      Text("Preferred times use ${TokenStore.calendarTimezone()}. The operator confirms the booking.")
      Button(onClick = { confirm = "create" to "" }, enabled = enabled && !state.uncertain) { Text("Review and send request") }
      OutlinedButton(onClick = vm::discard, enabled = enabled) { Text("Discard request draft") }
@@ -55,7 +64,10 @@ import au.mainspring.nativeapp.*
    }
    if(!creating && state.rows.isEmpty() && enabled) item { Text("No booking requests yet") }
    items(state.rows, key = { it.id }) { row -> CardOrFlat { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-    Text("${row.customer} · ${row.status}", style = MaterialTheme.typography.titleMedium)
+    Text("${row.customer} · ${bookingStatusLabel(row.status)}", style = MaterialTheme.typography.titleMedium)
+    if(row.offerCount > 1) Text("Re-offered to another operator · offer ${row.offerCount}")
+    row.offerExpiresAt?.takeIf { row.status == "pending" }?.let { Text("Response due ${au.mainspring.nativeapp.ui.formatShopDate(it)}") }
+    if(row.status == "moved_to_pool") Text("Nearby operators can now claim this request from the dispatch pool.")
     Text("${row.shop} → ${row.operator}"); Text(row.address)
     row.schedule?.let { Text("Preferred ${au.mainspring.nativeapp.ui.formatShopDate(it, TokenStore.calendarTimezone())}") }
     row.notes?.let { Text(it) }; row.declineReason?.let { Text("Declined: $it") }; row.conflict?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
@@ -76,4 +88,8 @@ import au.mainspring.nativeapp.*
    if(action.first == "decline") au.mainspring.nativeapp.ui.AtelierTextField(reason, { reason = it }, label = { Text("Reason (optional)") })
   } }, confirmButton = { Button(onClick = { confirm = null; if(action.first == "create") vm.create { creating = false } else vm.action(action.second, action.first, reason) }) { Text("Confirm") } },
   dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } }) }
+}
+
+fun bookingStatusLabel(status: String): String = when(status) {
+ "pending" -> "Awaiting operator response"; "accepted" -> "Accepted"; "declined" -> "Declined"; "cancelled" -> "Cancelled"; "expired" -> "Expired"; "moved_to_pool" -> "Moved to Dispatch Pool"; else -> au.mainspring.nativeapp.ui.statusLabel(status)
 }

@@ -57,7 +57,7 @@ class QuoteJobPickerAndMergeFlowTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("quote-job-j2").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("quote-job-j1").assertExists()
         compose.onNodeWithTag("quote-job-search").performTextInput("bob")
-        compose.waitUntil(10_000) { compose.onAllNodesWithTag("quote-job-j1").fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(10_000) { paths.any { it.contains("q=bob") } && compose.onAllNodesWithTag("quote-job-j1").fetchSemanticsNodes().isEmpty() }
         Assert.assertTrue(paths.any { it.contains("q=bob") })
         compose.onNodeWithTag("quote-job-j2").performClick()
         compose.waitUntil(10_000) { picked.isNotEmpty() }  // the sheet closes with an animation before it reports the pick

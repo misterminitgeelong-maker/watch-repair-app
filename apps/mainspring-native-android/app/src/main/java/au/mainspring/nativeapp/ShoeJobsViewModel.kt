@@ -45,7 +45,7 @@ data class ShoeJobsUiState(
     }
 }
 
-val SHOE_ACTIVE_STATUSES: List<String> = listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on")
+val SHOE_ACTIVE_STATUSES: List<String> = listOf("awaiting_quote", "awaiting_go_ahead", "go_ahead", "working_on", "awaiting_parts", "quote_sent", "awaiting_customer_details", "parts_to_order")
 val SHOE_CLOSED_STATUSES: List<String> = listOf("completed", "awaiting_collection", "collected", "no_go")
 
 class ShoeJobsViewModel : ViewModel() {

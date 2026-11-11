@@ -15,6 +15,29 @@ if (localFile.exists()) {
     localFile.withInputStream { localProperties.load(it) }
 }
 def mapsKey = (localProperties.getProperty('maps.api.key') ?: '').trim()
+def sentryDsn = (System.getenv('NATIVE_SENTRY_DSN') ?: localProperties.getProperty('sentry.dsn') ?: '').trim()
+
+// Release signing: the Play upload key lives OUTSIDE the repo (the same file the Capacitor app uses). Without it the release build is simply unsigned.
+def keystoreProps = new Properties()
+def keystoreFile = file("${System.getProperty('user.home')}/.mainspring-signing/keystore.properties")
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProps.load(it) }
+}
+// Same scheme as the Capacitor weekly release (minutes since the epoch), so every upload is higher than the last one Play has seen.
+def releaseVersionCode = (project.findProperty('versionCode') ?: ((long) (System.currentTimeMillis() / 60000L)).toString()).toInteger()
+def releaseVersionName = (project.findProperty('versionName') ?: new Date().format('yyyy.MM.dd', TimeZone.getTimeZone('UTC'))) as String
+if ((project.findProperty('playRelease') ?: 'false').toBoolean()) {
+    if (!keystoreFile.exists() || ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'].any { !keystoreProps[it] }) {
+        throw new GradleException('Play release requires the existing upload signing configuration outside the repository.')
+    }
+    if (!file('google-services.json').exists()) {
+        throw new GradleException('Play release requires the Firebase config for au.mainspring.app.')
+    }
+    def firebase = new groovy.json.JsonSlurper().parse(file('google-services.json'))
+    if (!firebase.client.any { it.client_info?.android_client_info?.package_name == 'au.mainspring.app' }) {
+        throw new GradleException('Firebase config must include the published au.mainspring.app client.')
+    }
+}
 
 def apiBaseUrl = (localProperties.getProperty('api.base.url') ?: 'https://mainspring.au/').trim()
 if (!apiBaseUrl.endsWith('/')) {
@@ -23,22 +46,40 @@ if (!apiBaseUrl.endsWith('/')) {
 
 android {
     namespace 'au.mainspring.nativeapp'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'au.mainspring.nativeapp'
         manifestPlaceholders = [mapsApiKey: mapsKey]
         buildConfigField 'boolean', 'MAPS_CONFIGURED', mapsKey.isEmpty() ? 'false' : 'true'
-        minSdk 26
-        targetSdk 35
-        versionCode 1
-        versionName '0.3.0-native'
+        minSdk 24
+        targetSdk 36
+        versionCode releaseVersionCode
+        versionName releaseVersionName
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField 'String', 'API_BASE_URL', "\"${apiBaseUrl.replace('"', '\\"')}\""
+        buildConfigField 'String', 'SENTRY_DSN', "\"${sentryDsn.replace('"', '\\"')}\""
+    }
+
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
     }
 
     buildTypes {
         release {
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+            // A store build always talks to the live site; a developer's local.properties override (emulator or test server) must never leak into it.
+            buildConfigField 'String', 'API_BASE_URL', "\"https://mainspring.au/\""
+            // Shrinking stays off: the app reads JSON with reflection (Gson) and the debug test suite cannot exercise an R8 build, so it is not safe to turn on blind.
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -48,6 +89,7 @@ android {
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -60,7 +102,18 @@ android {
     }
 }
 
+// The release build replaces the existing Play app (au.mainspring.app, signed with the same upload key); debug and test builds keep their own IDs.
+androidComponents {
+    onVariants(selector().withBuildType('release')) { variant ->
+        variant.applicationId.set('au.mainspring.app')
+    }
+}
+
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
+    implementation 'io.sentry:sentry-android:8.63.0'
+    implementation 'com.google.android.play:app-update:2.1.0'
+    implementation 'com.google.android.play:app-update-ktx:2.1.0'
     implementation 'com.google.android.gms:play-services-maps:19.2.0'
     androidTestImplementation platform('androidx.compose:compose-bom:2024.10.01')
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'

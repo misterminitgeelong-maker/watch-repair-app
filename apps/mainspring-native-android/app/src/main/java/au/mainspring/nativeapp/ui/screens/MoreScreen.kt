@@ -32,13 +32,16 @@ import au.mainspring.nativeapp.ui.*
 internal data class MoreItem(val label: String, val route: String, val children: List<MoreItem> = emptyList())
 
 /** The More grid: a handful of main tools plus three group tiles that open a smaller grid of their own. */
-internal fun moreTools(features: Set<String>, owner: Boolean): List<MoreItem> {
+internal fun moreTools(features: Set<String>, owner: Boolean, teamOwner: Boolean = owner, integrationsAllowed: Boolean = false): List<MoreItem> {
+    if(au.mainspring.nativeapp.isBookingOnly(features)) return au.mainspring.nativeapp.bookingOnlyDestinations(teamOwner).map { (route, label) -> MoreItem(label, route) } + MoreItem("Previous app work", "previousAppWork")
     val mobile = "auto_key" in features
     val workshop = buildList {
         if("watch" in features) add(MoreItem("Repair queue", "repairQueue"))
         add(MoreItem("Customer Orders", "customerOrders"))
+        add(MoreItem("Medal engraving", "engraving"))
         if("watch" in features) add(MoreItem("Catalogue", "catalogue"))
         if("shoe" in features) add(MoreItem("Shoe services", "shoeServices"))
+        if("shoe" in features) add(MoreItem("Parts stock", "partsStock"))
         if(!mobile && "shop_mobile_booking" in features) add(MoreItem("Book mobile services", "bookingRequests"))
     }
     val mobileTools = if(!mobile) emptyList() else buildList {
@@ -49,11 +52,15 @@ internal fun moreTools(features: Set<String>, owner: Boolean): List<MoreItem> {
         add(MoreItem("Revenue control", "revenueControl"))
     }
     val shop = buildList {
-        if(owner) { add(MoreItem("Sales & activity", "reportExtras")); add(MoreItem("Database", "database")); add(MoreItem("Team", "team")); add(MoreItem("Shop settings", "shopSettings")) }
+        if(owner) { add(MoreItem("Sales & activity", "reportExtras")); add(MoreItem("Database", "database")) }
+        if(teamOwner) { add(MoreItem("Team", "team")); add(MoreItem("Shop settings", "shopSettings")); add(MoreItem("My Shops", "myShops")) }
+        if(integrationsAllowed) add(MoreItem("API keys & webhooks", "integrations"))
         add(MoreItem("Queued changes", "queuedChanges")); add(MoreItem("Accounts", "accounts"))
+        add(MoreItem("Previous app work", "previousAppWork"))
     }
     return buildList {
         add(MoreItem("All jobs", "jobs"))
+        add(MoreItem("Messages", "networkMessages"))
         // A third service line does not fit in the bar, so it lives here.
         if("shoe" in features && TAB_SHOE !in serviceTabKeys(features)) add(MoreItem("Shoe", "shoe_jobs"))
         add(MoreItem("Customers", "customers")); add(MoreItem("Quotes", "quotes")); add(MoreItem("Invoices", "invoices"))
@@ -67,11 +74,11 @@ internal fun moreTools(features: Set<String>, owner: Boolean): List<MoreItem> {
 }
 
 /** Title and tiles of one group tile, or null for an unknown key. */
-internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean): MoreItem? = moreTools(features, owner).firstOrNull { it.route == route && it.children.isNotEmpty() }
+internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean, teamOwner: Boolean = owner, integrationsAllowed: Boolean = false): MoreItem? = moreTools(features, owner, teamOwner, integrationsAllowed).firstOrNull { it.route == route && it.children.isNotEmpty() }
 
 /** The smaller grid a group tile opens. */
 @Composable fun ToolsGridScreen(route: String, features: Set<String>, onBack: () -> Unit, onNavigate: (String) -> Unit) {
-    val group = moreToolGroup(route, features, TokenStore.canManageInvoices())
+    val group = moreToolGroup(route, features, TokenStore.canManageInvoices(), TokenStore.canManageTeam(), TokenStore.canManageIntegrations())
     val cols = moreColumns()
     LazyColumn(Modifier.fillMaxSize().testTag("tools-grid"), contentPadding = PaddingValues(bottom = 112.dp)) {
         item { TextButton(onBack, Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp)) { Text("\u2039 More") } }
@@ -103,7 +110,10 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean)
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     val owner = TokenStore.canManageInvoices()
-    val items = remember(features, owner) { moreTools(features, owner) }
+    val networkUnread by au.mainspring.nativeapp.NetworkUnreadStore.count.collectAsState()
+    val teamOwner = TokenStore.canManageTeam()
+    val integrationsAllowed = TokenStore.canManageIntegrations()
+    val items = remember(features, owner, teamOwner, integrationsAllowed) { moreTools(features, owner, teamOwner, integrationsAllowed) }
     val everyTool = remember(items) { (items.flatMap { if(it.children.isEmpty()) listOf(it) else it.children } + MoreItem("Settings", "settings")).distinctBy { it.route } }
     val q = query.trim()
     val shown = if(q.isEmpty()) items + MoreItem("Settings", "settings") else everyTool.filter { it.label.contains(q, true) }
@@ -125,7 +135,7 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean)
                     Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
                         row.forEach { tool ->
                             val tag = if(tool.route == "settings") Modifier.testTag("more-group-settings") else Modifier
-                            MoreTile(tool.label, tool.route, Modifier.weight(1f).then(tag), plain = true) { if(tool.route == "settings") settingsOpen = true else onNavigate(tool.route) }
+                            MoreTile(if(tool.route == "networkMessages" && networkUnread > 0) "Messages ($networkUnread)" else tool.label, tool.route, Modifier.weight(1f).then(tag), plain = true) { if(tool.route == "settings") settingsOpen = true else onNavigate(tool.route) }
                         }
                         repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                     }

@@ -353,13 +353,13 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
             "watch".takeIf { it in features }?.let { "Watch: ${by[it] ?: 0}" }, "shoe".takeIf { it in features }?.let { "Shoe: ${by[it] ?: 0}" },
             "auto_key".takeIf { "auto_key" in features }?.let { "Mobile: ${by.entries.filter { e -> e.key != "watch" && e.key != "shoe" }.sumOf { e -> e.value }}" },
         ).joinToString(" \u00b7 ").ifBlank { "On the bench" }
-        val revenue = financials?.let { String.format(Locale.US, "$%,.0f", it.revenueCents / 100.0) }
+        val revenue = financials?.let { String.format(Locale.US, "$%,.0f", it.outstandingCents / 100.0) }
         val tiles = buildList<@Composable (Modifier) -> Unit> {
             add { m -> HomeTile("Active jobs", hub.activeCount.toString(), caption, "jobs", m, onViewAll) }
             add { m -> HomeTile("Customers", "All", "Directory and history", "customers", m) { onOpenRoute("people") } }
             add { m -> HomeTile("Quotes", (widgets?.quotesPending7dCount ?: 0).toString(), "waiting 7+ days", "quotes", m, onOpenQuotes) }
             add { m -> HomeTile("Invoices", (widgets?.overdueInvoicesCount ?: 0).toString(), "overdue", "invoices", m, onOpenInvoices) }
-            if(canMoney) add { m -> HomeTile("Work value", revenue ?: "Reports", "Revenue this period", "money", m) { onOpenRoute("reports") } }
+            if(canMoney) add { m -> HomeTile("Work value", revenue ?: "Reports", "Outstanding work", "money", m) { onOpenRoute("reports") } }
             if(isOwner) add { m -> HomeTile("Team", "Manage", "Staff and roles", "team", m) { onOpenRoute("team") } }
         }
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

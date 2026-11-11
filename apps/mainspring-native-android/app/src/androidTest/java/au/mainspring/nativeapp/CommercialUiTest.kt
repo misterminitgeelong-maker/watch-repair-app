@@ -13,6 +13,7 @@ class CommercialUiTest {
  private lateinit var server: MockWebServer
  private val payments = AtomicInteger(); private val messages = AtomicInteger()
  private var failPayment = false; private var failMessage = false; private var paymentAmount = 0
+ @Volatile private var customerHistory = "[]"
  private var mobileQuoteBody = ""; private var mobileInvoiceStatus = "unpaid"
  private var mobilePatch = ""; private var expectedUpdated = ""
  private var assignedTech: String? = null
@@ -47,7 +48,7 @@ class CommercialUiTest {
      path.endsWith("/line-items") -> "[]"
      path.endsWith("/payments") -> { payments.incrementAndGet(); if(failPayment) return MockResponse().setResponseCode(503)
       paymentAmount = com.google.gson.JsonParser.parseString(request.body.readUtf8()).asJsonObject["amount_cents"].asInt; payment() }
-     path.endsWith("/messages") && request.method == "GET" -> "[]"
+     path.endsWith("/messages") && request.method == "GET" -> customerHistory
      path.endsWith("/messages") -> { messages.incrementAndGet(); if(failMessage) return MockResponse().setResponseCode(503)
       """{"id":"msg-1","direction":"outbound","body":"Your repair is ready","created_at":"2026-10-07T00:00:00Z"}""" }
      path.endsWith("/send") -> """{"invoice_id":"invoice-1","email_sent":false,"email_skipped_reason":"email_disabled"}"""
@@ -81,9 +82,35 @@ class CommercialUiTest {
  @Test fun customerMessageSentFromNativeComposerClearsDraft() {
   val vm = MessageThreadViewModel("repair-jobs", "job-1")
   compose.setContent { MainspringTheme { MessageThreadScreen("repair-jobs", "job-1", {}, vm) } }
-  compose.onNodeWithText("Message to customer").performTextInput("Your repair is ready"); compose.onNodeWithText("Send to customer").performClick()
+  compose.onNodeWithTag("customer-chat-draft").performTextInput("Your repair is ready"); compose.onNodeWithTag("customer-chat-send").performClick()
   compose.waitUntil(10_000) { vm.state.value.messages.isNotEmpty() }
   Assert.assertEquals(1, messages.get()); Assert.assertEquals("", TokenStore.loadMessageDraft("repair-jobs/job-1")); compose.onNodeWithText("Your repair is ready").assertExists()
+ }
+ @Test fun customerConversationOrdersHistoryWithIncomingLeftOutgoingRightAndComposerBelow() {
+  // Deliberately unordered server history also exercises the view model's sort.
+  customerHistory = """[
+   {"id":"latest","direction":"inbound","body":"Thanks, I can collect today.","created_at":"2026-10-08T00:02:00Z"},
+   {"id":"first","direction":"inbound","body":"Is my repair ready?","created_at":"2026-10-07T00:00:00Z"},
+   {"id":"reply","direction":"outbound","body":"Your repair is ready.","status":"delivered","created_at":"2026-10-08T00:01:00Z"}
+  ]"""
+  val vm = MessageThreadViewModel("repair-jobs", "job-1")
+  compose.setContent { MainspringTheme { MessageThreadScreen("repair-jobs", "job-1", {}, vm) } }
+  compose.waitUntil(10_000) { compose.onAllNodesWithTag("customer-message-latest").fetchSemanticsNodes().isNotEmpty() }
+  compose.onNodeWithTag("customer-chat-history").assertIsDisplayed()
+  compose.onNodeWithTag("customer-message-first").assertIsDisplayed()
+  compose.onNodeWithTag("customer-message-reply").assertIsDisplayed()
+  compose.onNodeWithTag("customer-message-latest").assertIsDisplayed()
+  val first = compose.onNodeWithTag("customer-message-first").fetchSemanticsNode().boundsInRoot
+  val reply = compose.onNodeWithTag("customer-message-reply").fetchSemanticsNode().boundsInRoot
+  val latest = compose.onNodeWithTag("customer-message-latest").fetchSemanticsNode().boundsInRoot
+  val composer = compose.onNodeWithTag("customer-chat-draft").fetchSemanticsNode().boundsInRoot
+  Assert.assertEquals(listOf("first", "reply", "latest"), vm.state.value.messages.map { it.id })
+  Assert.assertTrue("History reads from oldest at top to newest at bottom", first.bottom < reply.top && reply.bottom < latest.top)
+  Assert.assertTrue("Incoming customer bubbles align left of outgoing shop bubbles", first.center.x < reply.center.x && latest.center.x < reply.center.x)
+  Assert.assertTrue("Composer is anchored below the conversation history", composer.top > latest.bottom)
+  compose.onNodeWithText("delivered", substring = true).assertExists()
+  compose.onNodeWithTag("customer-chat-draft").assertIsEnabled()
+  compose.onNodeWithTag("customer-chat-send").assertIsNotEnabled()
  }
  @Test fun unknownMessageSurvivesRestartAndRequiresFreshHistory() {
   failMessage = true; val first = MessageThreadViewModel("auto-key-jobs", "job-1")
@@ -109,7 +136,7 @@ class CommercialUiTest {
   compose.runOnIdle { vm.createInvoice("mobile-quote") }
   compose.waitUntil(10_000) { !vm.state.value.busy && vm.state.value.info != null }
   Assert.assertNull(vm.state.value.error); Assert.assertEquals(1, vm.state.value.invoices.size)
-  compose.runOnIdle { vm.markPaid("mobile-invoice", "card") }; compose.waitUntil(10_000) { vm.state.value.invoices.single().status == "paid" }
+  compose.runOnIdle { vm.markPaid("mobile-invoice", "eftpos") }; compose.waitUntil(10_000) { vm.state.value.invoices.single().status == "paid" }
  }
  @Test fun mobileEditingRestoresDraftAndSendsExplicitBookingClearWithVersion() {
   val first = MobileEditorViewModel("job-1"); compose.waitUntil(10_000) { !first.state.value.loading }

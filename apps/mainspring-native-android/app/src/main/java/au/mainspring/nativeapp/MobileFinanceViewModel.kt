@@ -27,15 +27,19 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
   } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(loading = false, error = "Could not refresh documents. ${e.userMessage()}") } } }
  }
  fun checkedQuotes() { if(!mutable.value.historyChecked) return; drafts.setPendingOperation(operation, false); mutable.update { it.copy(unknownQuote = false) } }
- fun createQuote(lines: List<MobileQuoteLine>, gst: Boolean, inclusive: Boolean) {
+ fun createQuote(lines: List<MobileQuoteLine>, gst: Boolean, inclusive: Boolean, options: List<MobileQuoteOptionCreate>? = null) {
   if(mutable.value.busy || mutable.value.loading || !mutable.value.historyChecked || mutable.value.unknownQuote || !TokenStore.canWorkJobs()) return
-  if(lines.isEmpty() || lines.any { it.description.isBlank() || !it.quantity.isFinite() || it.quantity <= 0 || it.quantity > 10000 || it.unitCents < 0 }) {
+  val outcomes = options?.takeIf { it.isNotEmpty() }
+  if(outcomes != null && (outcomes.size != 2 || outcomes.any { it.label.isBlank() || it.lines.isEmpty() })) {
+   mutable.update { it.copy(error = "Give both options a name and at least one item each.") }; return
+  }
+  if((outcomes == null && lines.isEmpty()) || (lines + outcomes.orEmpty().flatMap { it.lines }).any { it.description.isBlank() || !it.quantity.isFinite() || it.quantity <= 0 || it.quantity > 10000 || it.unitCents < 0 }) {
    mutable.update { it.copy(error = "Enter a description, valid quantity and price for each line.") }; return
   }
-  try { validateQuoteAmountRange(lines) } catch(e: IllegalArgumentException) { mutable.update { it.copy(error = e.userMessage()) }; return }
+  try { (outcomes?.map { lines + it.lines } ?: listOf(lines)).forEach(::validateQuoteAmountRange) } catch(e: IllegalArgumentException) { mutable.update { it.copy(error = e.userMessage()) }; return }
   if(!drafts.setPendingOperation(operation, true)) { mutable.update { it.copy(error = "Could not save the quote checkpoint. Check device storage and sign in before continuing.") }; return }
   runAction { try {
-   val q = api.createMobileQuote(jobId, MobileQuoteCreate(lines, gst, inclusive))
+   val q = api.createMobileQuote(jobId, MobileQuoteCreate(lines, gst, inclusive, outcomes))
    drafts.saveMessageDraft("quote-composer/mobile/$jobId", ""); drafts.setPendingOperation(operation, false)
    mutable.update { it.copy(quotes = listOf(q) + it.quotes, info = "Draft quote saved. Review the totals before sending.", lastCreatedQuoteId = q.id) }
   } catch(e: Exception) {
@@ -47,7 +51,19 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
   val result = api.sendMobileQuote(id)
   mutable.update { it.copy(quotes = it.quotes.map { q -> if(q.id == id) result.quote else q }, info = if(result.sent) "Quote emailed to customer." else "Quote saved, but it was not sent: ${sendFailureText(result.reason)}") }
  }
+ /** Records which outcome applies on site; fixes the quote total and what the invoice will contain. */
+ fun selectOption(quoteId: String, option: String) {
+  if(option !in listOf("A", "B") || !TokenStore.canWorkJobs()) return
+  runAction {
+   val quote = api.selectMobileQuoteOption(quoteId, MobileQuoteSelectOption(option))
+   mutable.update { it.copy(quotes = it.quotes.map { q -> if(q.id == quoteId) quote else q }, info = "Outcome confirmed.") }
+  }
+ }
  fun createInvoice(quoteId: String) = runAction {
+  if(mutable.value.quotes.firstOrNull { it.id == quoteId }?.needsOutcomeChoice() == true) {
+   mutable.update { it.copy(error = "Choose which quote option applies before creating an invoice.") }
+   return@runAction
+  }
   try {
    val invoice = api.createMobileInvoice(jobId, quoteId)
    mutable.update { it.copy(invoices = listOf(invoice) + it.invoices, info = "Invoice created.") }
@@ -92,7 +108,7 @@ class MobileFinanceViewModel(private val jobId: String): ViewModel() {
  fun markPaid(id: String, method: String) {
   val snapshot=mutable.value
   if(snapshot.loading || snapshot.busy || !snapshot.historyChecked || snapshot.paymentReviewId!=null || !TokenStore.canWorkJobs()) return
-  if(method !in listOf("cash","card","bank_transfer") || snapshot.invoices.none {it.id==id && it.status=="unpaid"}) return
+  if(method !in listOf("cash","eftpos","bank") || snapshot.invoices.none {it.id==id && it.status=="unpaid"}) return
   drafts.saveMessageDraft("$paymentOperation/request",id)
   if(!drafts.setPendingOperation(paymentOperation,true)) {mutable.update {it.copy(error="Could not save the payment checkpoint. Check device storage before continuing.")};return}
   runAction {

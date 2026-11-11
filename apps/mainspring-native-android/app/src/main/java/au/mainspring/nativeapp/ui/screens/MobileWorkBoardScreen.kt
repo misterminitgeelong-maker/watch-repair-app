@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -156,18 +157,19 @@ Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCor
             } }
             val jobs=state.jobs.filter {technician.isBlank() || if(technician=="unassigned") it.assignedUserId==null else it.assignedUserId==technician}
             val unscheduled=state.unscheduled.filter {technician.isBlank() || if(technician=="unassigned") it.assignedUserId==null else it.assignedUserId==technician}
-            Column(Modifier.weight(1f).horizontalScroll(rememberScrollState()).verticalScroll(vertical).padding(12.dp)) {
+            ZoomableBoard("planner", 7, 120.dp, Modifier.weight(1f), fillHeight = true, extraWidth = 36.dp) {
+            Column(Modifier.fillMaxSize().horizontalScroll(rememberScrollState()).verticalScroll(vertical).padding(8.dp)) {
                 Row {
-                    Spacer(Modifier.width(52.dp))
-                    (0L..6L).forEach {offset->SectionLabel(state.start.plusDays(offset).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM")),Modifier.width(230.dp).padding(horizontal=8.dp))}
+                    Spacer(Modifier.width(36.dp))
+                    (0L..6L).forEach {offset->Text(state.start.plusDays(offset).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM")),Modifier.width(120.dp).padding(horizontal=4.dp),style=MaterialTheme.typography.labelMedium,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold,maxLines=1)}
                 }
                 val hours=((8..17).toList()+jobs.mapNotNull {bookingInstant(it.scheduledAt)?.atZone(zone)?.hour}).distinct().sorted()
                 hours.forEach {hour->Row(Modifier.height(IntrinsicSize.Min)) {
-                    Text("%02d:00".format(hour),Modifier.width(52.dp).padding(top=10.dp),style=MaterialTheme.typography.labelSmall)
+                    Text("%02d:00".format(hour),Modifier.width(36.dp).padding(top=4.dp),style=MaterialTheme.typography.labelSmall.copy(fontSize=10.sp))
                     (0L..6L).forEach {offset->
                         val day=state.start.plusDays(offset)
                         val rows=jobs.filter {bookingInstant(it.scheduledAt)?.atZone(zone)?.let {booking->booking.toLocalDate()==day && booking.hour==hour}==true}.sortedBy {bookingInstant(it.scheduledAt)}
-                        Column(Modifier.width(230.dp).fillMaxHeight().background(if(day==LocalDate.now(zone)) MaterialTheme.colorScheme.primaryContainer.copy(alpha=0.3f) else MaterialTheme.colorScheme.surface).padding(8.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.width(120.dp).fillMaxHeight().background(if(day==LocalDate.now(zone)) MaterialTheme.colorScheme.primaryContainer.copy(alpha=0.3f) else MaterialTheme.colorScheme.surface).padding(4.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                             if(selecting!=null) Row(horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                                 listOf(0,30).forEach {minute->OutlinedButton({
                                     moving=selecting
@@ -175,24 +177,25 @@ Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCor
                                 },enabled=!state.busy && !state.uncertain,modifier=Modifier.weight(1f).testTag("planner-slot-$day-$hour-$minute"),contentPadding=PaddingValues(4.dp),shape=MaterialTheme.shapes.small) {Text("%02d:%02d".format(hour,minute),style=MaterialTheme.typography.labelSmall)}}
                             }
                             rows.forEach {job->FlatPanel {
-                                Text(bookingInstant(job.scheduledAt)?.atZone(zone)?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")).orEmpty(),style=MaterialTheme.typography.labelLarge)
-                                Text(job.title,style=MaterialTheme.typography.titleSmall)
-                                Text(state.technicians.firstOrNull {it.id==job.assignedUserId}?.name ?: "Unassigned",style=MaterialTheme.typography.bodySmall)
+                                Text(bookingInstant(job.scheduledAt)?.atZone(zone)?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")).orEmpty(),style=MaterialTheme.typography.labelSmall.copy(fontSize=11.sp),fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(job.title,style=MaterialTheme.typography.bodySmall.copy(fontSize=11.sp),maxLines=2,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                Text(state.technicians.firstOrNull {it.id==job.assignedUserId}?.name ?: "Unassigned",style=MaterialTheme.typography.labelSmall.copy(fontSize=10.sp),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                 StatusPill(job.status)
-                                Row(horizontalArrangement=if(LocalCalibre.current) Arrangement.spacedBy(16.dp) else Arrangement.Start) {TextButton({onJob(job.id)}) {Text("Open")};if(TokenStore.canWorkJobs()) TextButton({selecting=job},enabled=!state.busy && !state.uncertain,modifier=Modifier.testTag("planner-move-${job.id}")) {Text("Move")}}
+                                Row(horizontalArrangement=Arrangement.spacedBy(2.dp)) {TextButton({onJob(job.id)},Modifier.heightIn(min=32.dp),contentPadding=PaddingValues(horizontal=6.dp,vertical=0.dp)) {Text("Open",style=MaterialTheme.typography.labelMedium)};if(TokenStore.canWorkJobs()) TextButton({selecting=job},Modifier.heightIn(min=32.dp).testTag("planner-move-${job.id}"),enabled=!state.busy && !state.uncertain,contentPadding=PaddingValues(horizontal=6.dp,vertical=0.dp)) {Text("Move",style=MaterialTheme.typography.labelMedium)}}
                             } }
-                            if(rows.isEmpty() && selecting==null) Spacer(Modifier.height(64.dp))
+                            if(rows.isEmpty() && selecting==null) Spacer(Modifier.height(28.dp))
                             HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
                 } }
                 SectionLabel("Unscheduled · ${unscheduled.size} loaded")
                 Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                    unscheduled.forEach {job->Box(Modifier.width(230.dp)) {FlatPanel {
+                    unscheduled.forEach {job->Box(Modifier.width(150.dp)) {FlatPanel {
                         Text(job.title,style=MaterialTheme.typography.titleSmall);StatusPill(job.status)
                         Row {TextButton({onJob(job.id)}) {Text("Open")};if(TokenStore.canWorkJobs()) TextButton({selecting=job;scope.launch {vertical.animateScrollTo(0)}},enabled=!state.busy && !state.uncertain) {Text("Move")}}
                     } } }
                 }
+            }
             }
         }
     }

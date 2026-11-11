@@ -49,7 +49,7 @@ import au.mainspring.nativeapp.watchStatusLabel
 internal fun watchJobsCsv(jobs: List<au.mainspring.nativeapp.api.RepairJobRead>, currency: String): String {
     fun q(v: String?): String = "\"" + (v ?: "").replace("\"", "\"\"") + "\""
     val rows = jobs.map { j -> listOf(j.jobNumber, j.title, j.customerName, j.customerPhone, j.customerEmail, listOfNotNull(j.watchBrand, j.watchModel).joinToString(" "),
-        watchStatusLabel(j.status), j.priority, j.preQuoteCents.takeIf { it > 0 }?.let { formatCents(it, currency) }, j.createdAt).joinToString(",") { q(it) } }
+        watchStatusLabel(j.status), j.priority, au.mainspring.nativeapp.watchQuoteCents(j).takeIf { it > 0 }?.let { formatCents(it, currency) }, j.createdAt).joinToString(",") { q(it) } }
     return (listOf(listOf("Job", "Title", "Customer", "Phone", "Email", "Watch", "Status", "Priority", "Quote", "Created").joinToString(",") { q(it) }) + rows).joinToString("\r\n") + "\r\n"
 }
 
@@ -142,12 +142,13 @@ fun JobsScreen(
                     val cards = state.visibleJobs.map { j -> BoardCard(j.id, j.title, listOfNotNull(j.jobNumber, j.customerName?.takeIf { n -> n.isNotBlank() }).joinToString(" · "), j.status,
                         number = j.jobNumber, brand = listOfNotNull(j.watchBrand, j.watchModel).joinToString(" "), days = "${au.mainspring.nativeapp.daysInShop(j.createdAt)}d",
                         description = j.description, customerLine = listOfNotNull(j.customerName?.takeIf { n -> n.isNotBlank() }, j.customerPhone?.takeIf { n -> n.isNotBlank() }).joinToString(" "),
-                        assignee = state.users.firstOrNull { u -> u.id == j.assignedUserId }?.name ?: j.claimedByName, price = j.preQuoteCents.takeIf { c -> c > 0 }?.let { c -> formatCents(c, currency) }, phone = j.customerPhone) }
+                        assignee = state.users.firstOrNull { u -> u.id == j.assignedUserId }?.name ?: j.claimedByName, price = au.mainspring.nativeapp.watchQuoteCents(j).takeIf { c -> c > 0 }?.let { c -> formatCents(c, currency) }, phone = j.customerPhone) }
                     ZoomableBoard("watch", order.size, 158.dp) {
                         JobsBoard(buildBoardColumns(cards, order, ::watchStatusLabel), WATCH_PICKER_STATUSES.map { it to watchStatusLabel(it) },
                         canMove = TokenStore.canWorkJobs() && state.movingId == null, onOpen = onOpenJob, onMove = viewModel::moveJob, onMoveReason = { id, st, why -> viewModel.moveJob(id, st, why) }, fillHeight = false, web = true,
                         onLogWork = if (TokenStore.canWorkJobs()) onLogWork else null)
 }
+                    if(state.canLoadMore) SecondaryAction(viewModel::loadMore, Modifier.padding(horizontal = 16.dp).fillMaxWidth(), enabled = !state.loading) { Text("Load more repairs") }
                 }
             }
         } else {
@@ -155,9 +156,9 @@ fun JobsScreen(
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item { header() }
                     items(state.visibleJobs, key = { it.id }) { job ->
-                        ServiceJobCard({ onOpenJob(job.id) }, "#${job.jobNumber}", job.title, job.customerName, au.mainspring.nativeapp.ui.statusLabel(job.status), job.status,
+                        ServiceJobCard({ onOpenJob(job.id) }, "#${job.jobNumber}", job.title, job.customerName, watchStatusLabel(job.status), job.status,
                             shortDaysInShop(au.mainspring.nativeapp.daysInShop(job.createdAt)),
-                            job.preQuoteCents.takeIf { it > 0 }?.let { "Quote ${formatCents(it, currency)}" },
+                            au.mainspring.nativeapp.watchQuoteCents(job).takeIf { it > 0 }?.let { "Quote ${formatCents(it, currency)}" },
                             thumb = { JobThumb("watch", job.id, size = 56.dp) }, urgent = job.status in URGENT_STATUSES,
                             modifier = Modifier.padding(horizontal = 16.dp), onDelete = if (canDelete) ({ deleting = job }) else null)
                     }

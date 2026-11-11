@@ -103,7 +103,10 @@ private suspend fun loadJobBundles(kind: IntakeTicketKind, jobIds: List<String>,
         { formatCents(it, TokenStore.shopValue("currency") ?: "AUD") }, { formatShopDate(it) })
     return jobIds.mapNotNull { id ->
         when (kind) {
-            IntakeTicketKind.WATCH -> watchJobBundle(api.getRepairJob(id), ctx)
+            IntakeTicketKind.WATCH -> {
+                val job = api.getRepairJob(id)
+                watchJobBundle(job, ctx, api.getWatch(job.watchId))
+            }
             IntakeTicketKind.SHOE -> {
                 val job = api.getShoeRepairJob(id)
                 val customer = job.shoe?.customerId?.let { try { api.getCustomer(it) } catch (e: CancellationException) { throw e } catch (_: Exception) { null } }

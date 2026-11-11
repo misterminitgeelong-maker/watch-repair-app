@@ -129,6 +129,9 @@ class Settings(BaseSettings):
 
     # Sentry (leave blank to disable)
     sentry_dsn: str = ""
+    # Native Android force-update policy. Zero leaves existing clients usable.
+    android_minimum_version_code: int = 0
+    android_update_message: str = "Update Mainspring to keep using the latest shop workflows."
     # Release to tag Sentry events with, so a new error can be traced to the
     # deploy that introduced it. Blank → RAILWAY_GIT_COMMIT_SHA (set by Railway
     # at build and run time); see sentry_release().

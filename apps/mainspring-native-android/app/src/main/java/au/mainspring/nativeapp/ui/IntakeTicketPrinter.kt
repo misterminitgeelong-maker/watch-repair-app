@@ -17,7 +17,7 @@ import android.print.PrintManager
 import java.io.FileOutputStream
 
 enum class IntakeTicketKind(val label: String, val statusPath: String) {
-    WATCH("Repair", "status"),
+    WATCH("Repair", "customer-portal/job/watch"),
     SHOE("Shoe repair", "shoe-status"),
 }
 
@@ -33,6 +33,18 @@ data class IntakeTicket(
     val shopName: String?,
     val shopPhone: String?,
     val kind: IntakeTicketKind,
+    val workshopUrl: String? = null,
+    val dateIn: String? = null,
+    val status: String? = null,
+    val priority: String? = null,
+    val salesperson: String? = null,
+    val customerEmail: String? = null,
+    val serial: String? = null,
+    val movement: String? = null,
+    val condition: String? = null,
+    val services: String? = null,
+    val estimate: String? = null,
+    val balance: String? = null,
 )
 
 /** Public customer status link: `<api origin>/status/<token>` (watch) or `/shoe-status/<token>` (shoe). */
@@ -47,17 +59,21 @@ data class IntakeTicketCopy(val title: String, val subtitle: String, val rows: L
 
 fun intakeTicketCopies(t: IntakeTicket): List<IntakeTicketCopy> {
     fun dash(v: String?) = v?.takeIf { it.isNotBlank() } ?: "—"
-    val shared = listOf("Ticket #" to t.jobNumber, "Item" to t.itemSummary.ifBlank { "—" })
+    val shared = listOf("Ticket #" to t.jobNumber, "Item" to t.itemSummary.ifBlank { "—" }) + listOfNotNull(t.dateIn?.let { "Date in" to it })
     val workshop = IntakeTicketCopy(
         "${t.kind.label} intake ticket", "Internal copy for workshop",
-        shared + listOf("Customer" to dash(t.customerName), "Phone" to dash(t.customerPhone), "Work requested" to dash(t.workSummary),
-            "Due" to dash(t.dueDate), "Deposit" to dash(t.deposit)),
-        "Scan for repair status",
+        shared + (if(t.kind == IntakeTicketKind.WATCH) listOf("Status" to dash(t.status), "Priority" to dash(t.priority), "Salesperson" to dash(t.salesperson)) else emptyList()) +
+            listOf("Customer" to dash(t.customerName), "Phone" to dash(t.customerPhone)) +
+            (if(t.kind == IntakeTicketKind.WATCH) listOf("Email" to dash(t.customerEmail), "Serial" to dash(t.serial), "Movement" to dash(t.movement), "Condition notes" to dash(t.condition)) else emptyList()) + listOfNotNull(t.services?.let { "Services" to it }) +
+            listOf("Work requested" to dash(t.workSummary), "Due" to dash(t.dueDate), "Deposit" to dash(t.deposit)) + listOfNotNull(t.estimate?.let { "Estimate" to it }),
+        if(t.workshopUrl != null) "Open internal ticket" else "Scan for repair status",
     )
     val customer = IntakeTicketCopy(
         "Customer intake copy", "Keep this ticket for pickup and updates",
-        shared + listOfNotNull("Work requested" to dash(t.workSummary), "Due" to (t.dueDate?.takeIf { it.isNotBlank() } ?: "TBC"),
+        shared + listOfNotNull("Work requested" to dash(t.services ?: t.workSummary), "Due" to (t.dueDate?.takeIf { it.isNotBlank() } ?: "TBC"),
+            t.estimate?.let { "Estimated repair" to it },
             t.deposit?.takeIf { it.isNotBlank() }?.let { "Deposit paid" to it },
+            t.balance?.let { "Estimated balance" to it },
             listOfNotNull(t.shopName, t.shopPhone).joinToString(" · ").takeIf { it.isNotBlank() }?.let { "Shop" to it }),
         "Scan for live repair updates",
     )
@@ -74,7 +90,9 @@ fun printIntakeTickets(context: Context, tickets: List<IntakeTicket>) {
 }
 
 private class IntakeTicketAdapter(private val tickets: List<IntakeTicket>) : PrintDocumentAdapter() {
-    private val sheets = tickets.flatMap { t -> intakeTicketCopies(t).map { it to t.statusUrl } }
+    private val sheets = tickets.flatMap { t -> intakeTicketCopies(t).flatMapIndexed { index, copy ->
+        paginateIntakeCopy(copy).map { it to if(index == 0) t.workshopUrl ?: t.statusUrl else t.statusUrl }
+    } }
 
 
     override fun onLayout(oldAttributes: PrintAttributes?, newAttributes: PrintAttributes, cancellationSignal: CancellationSignal, callback: LayoutResultCallback, extras: Bundle?) {
@@ -87,16 +105,38 @@ private class IntakeTicketAdapter(private val tickets: List<IntakeTicket>) : Pri
         try {
             sheets.forEachIndexed { i, (copy, url) ->
                 if (cancellationSignal.isCanceled) { callback.onWriteCancelled(); return }
+                if(pages.none { i in it.start..it.end }) return@forEachIndexed
                 val page = pdf.startPage(PdfDocument.PageInfo.Builder(595, 842, i + 1).create())
                 drawIntakeCopy(page.canvas, copy, QrCode.encode(url))
                 pdf.finishPage(page)
             }
             FileOutputStream(destination.fileDescriptor).use { pdf.writeTo(it) }
-            callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
+            callback.onWriteFinished(pages)
         } catch (e: Exception) {
             callback.onWriteFailed(e.message)
         } finally { pdf.close() }
     }
+}
+
+/** Keep all intake detail, splitting long notes over continuation sheets before they reach the QR area. */
+internal fun paginateIntakeCopy(copy: IntakeTicketCopy): List<IntakeTicketCopy> {
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 13f }
+    val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 24f; typeface = Typeface.DEFAULT_BOLD }
+    val subtitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 11f }
+    // Reserve space for the longest continuation subtitle as well as the QR and lower margin.
+    val header = 62 + wrapText(copy.title, titlePaint, 515f).size * 28 + wrapText(copy.subtitle + " · continued 9999", subtitlePaint, 515f).size * 16 + 26
+    val budget = minOf(450, 800 - 180 - 20 - header).coerceAtLeast(100)
+    val rows = copy.rows.flatMap { (label, value) ->
+        wrapText(value, paint, 385f).chunked(12).mapIndexed { index, lines -> (if(index == 0) label else "$label (cont.)") to lines.joinToString("\n") }
+    }
+    val groups = mutableListOf<MutableList<Pair<String, String>>>()
+    var height = 0
+    for(row in rows) {
+        val next = maxOf(1, wrapText(row.second, paint, 385f).size) * 17 + 10
+        if(groups.isEmpty() || height + next > budget) { groups.add(mutableListOf()); height = 0 }
+        groups.last().add(row); height += next
+    }
+    return groups.mapIndexed { index, page -> copy.copy(subtitle = copy.subtitle + if(index == 0) "" else " · continued ${index + 1}", rows = page) }
 }
 
 internal fun drawIntakeCopy(canvas: Canvas, copy: IntakeTicketCopy, qr: Array<BooleanArray>) {
@@ -107,9 +147,10 @@ internal fun drawIntakeCopy(canvas: Canvas, copy: IntakeTicketCopy, qr: Array<Bo
     val label = Paint(ink).apply { textSize = 11f; typeface = Typeface.DEFAULT_BOLD }
     val value = Paint(ink).apply { textSize = 13f }
     val rule = Paint().apply { color = Color.LTGRAY; strokeWidth = 1f }
-    var y = 70f
-    canvas.drawText(copy.title, left, y, title); y += 20f
-    canvas.drawText(copy.subtitle, left, y, muted); y += 16f
+    var y = 62f
+    wrapText(copy.title, title, right - left).forEach { canvas.drawText(it, left, y, title); y += 28f }
+    wrapText(copy.subtitle, muted, right - left).forEach { canvas.drawText(it, left, y, muted); y += 16f }
+    y += 4f
     canvas.drawLine(left, y, right, y, rule); y += 22f
     for ((k, v) in copy.rows) {
         canvas.drawText(k.uppercase(), left, y, label)
@@ -119,8 +160,9 @@ internal fun drawIntakeCopy(canvas: Canvas, copy: IntakeTicketCopy, qr: Array<Bo
         canvas.drawLine(left, y - 12f, right, y - 12f, rule)
     }
     y += 20f
-    val cell = 4f; val quiet = 4
-    val side = (qr.size + quiet * 2) * cell
+    val quiet = 4
+    val side = 180f
+    val cell = side / (qr.size + quiet * 2)
     canvas.drawRect(left, y, left + side, y + side, Paint().apply { color = Color.WHITE })
     val dark = Paint().apply { color = Color.BLACK }
     for (r in qr.indices) for (c in qr.indices) if (qr[r][c]) {
@@ -135,6 +177,16 @@ internal fun wrapText(text: String, paint: Paint, width: Float): List<String> {
     for (para in text.split('\n')) {
         var line = ""
         for (word in para.split(' ')) {
+            if(paint.measureText(word) > width) {
+                if(line.isNotEmpty()) { out.add(line); line = "" }
+                var remaining = word
+                while(remaining.isNotEmpty()) {
+                    val count = paint.breakText(remaining, true, width, null).coerceAtLeast(1)
+                    if(count == remaining.length) { line = remaining; break }
+                    out.add(remaining.take(count)); remaining = remaining.drop(count)
+                }
+                continue
+            }
             val candidate = if (line.isEmpty()) word else "$line $word"
             if (line.isNotEmpty() && paint.measureText(candidate) > width) { out.add(line); line = word } else line = candidate
         }

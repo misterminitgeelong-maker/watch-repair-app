@@ -18,7 +18,7 @@ class DispatchExtrasTest {
     private val poolGets = AtomicInteger()
     private val baseBodies = ConcurrentLinkedQueue<String>()
     @Volatile private var reminderCode = 200
-    @Volatile private var pool = """[{"id":"p1","customer_name":"Avery","job_address":"1 A St","ring":1,"created_at":"2026-10-07T00:00:00Z"}]"""
+    @Volatile private var pool = """[{"id":"p1","job_type":"Mobile Key","suburb":"Geelong","state":"VIC","postcode":"3220","ring":1,"created_at":"2026-10-07T00:00:00Z"}]"""
 
     @Before fun setup() {
         TokenStore.init(InstrumentationRegistry.getInstrumentation().targetContext); TokenStore.clear()
@@ -77,10 +77,10 @@ class DispatchExtrasTest {
         compose.setContent { MainspringTheme { DispatchPoolScreen({}, {}, {}, vm, DispatchExtrasViewModel(), pollMs = 150) } }
         compose.waitUntil(10_000) { vm.state.value.jobs.size == 1 }
         compose.onNodeWithText("Ring 1 jobs", ignoreCase = true).assertExists()
-        pool = """[{"id":"p1","customer_name":"Avery","job_address":"1 A St","ring":1,"created_at":"2026-10-07T00:00:00Z"},
-            {"id":"p2","customer_name":"Blake","job_address":"2 B St","ring":2,"created_at":"2026-10-08T00:00:00Z"}]"""
+        pool = """[{"id":"p1","job_type":"Mobile Key","suburb":"Geelong","state":"VIC","postcode":"3220","ring":1,"created_at":"2026-10-07T00:00:00Z"},
+            {"id":"p2","job_type":"Mobile Key","suburb":"Werribee","state":"VIC","postcode":"3030","ring":2,"created_at":"2026-10-08T00:00:00Z"}]"""
         compose.waitUntil(10_000) { vm.state.value.jobs.size == 2 }
-        compose.onNodeWithText("Blake").assertExists(); compose.onNodeWithText("Ring 2 jobs", ignoreCase = true).assertExists()
+        compose.onNodeWithText("Werribee VIC 3030").assertExists(); compose.onNodeWithText("Blake").assertDoesNotExist(); compose.onNodeWithText("Ring 2 jobs", ignoreCase = true).assertExists()
         Assert.assertTrue(poolGets.get() >= 2)
     }
 }

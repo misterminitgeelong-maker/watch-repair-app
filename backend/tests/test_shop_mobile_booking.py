@@ -747,6 +747,12 @@ def test_decline_reoffers_to_next_nearest_operator():
     body = declined.json()
     assert body["status"] == "pending"
     assert body["target_operator_tenant_id"] == op2_tid
+    # The native request list must be able to distinguish a new offer from the original one.
+    assert body["offer_count"] == 2
+    assert body["offer_expires_at"] is not None
+    shop_view = client.get(f"/v1/shop-mobile-bookings/{bid}", headers=shop_h)
+    assert shop_view.status_code == 200
+    assert shop_view.json()["offer_count"] == 2
 
     # The next operator can accept; the first no longer can.
     assert client.post(f"/v1/shop-mobile-bookings/{bid}/accept", headers=op_h).status_code in (400, 403)

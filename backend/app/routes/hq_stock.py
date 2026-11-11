@@ -364,13 +364,20 @@ def _receive_transfer(session: Session, a: Access, transfer_id: UUID, payload: R
 
 
 def _adjust(session: Session, a: Access, payload: AdjustIn) -> dict:
-    if payload.kind not in ("receive", "adjust"):
-        raise HTTPException(status_code=422, detail="kind must be receive or adjust")
+    if payload.kind not in ("receive", "adjust", "set_count"):
+        raise HTTPException(status_code=422, detail="kind must be receive, adjust or set_count")
     loc = _check_location(session, a, payload.location_id, mine=True)
     part = _find_part(session, a.parent_id, part_id=payload.part_id, sku=payload.sku)
     if payload.kind == "receive" and payload.quantity < 0:
         raise HTTPException(status_code=422, detail="Receiving cannot be negative; use adjust")
-    level = _move(session, a, loc.id, part.id, payload.quantity, payload.kind, note=payload.note)
+    if payload.kind == "set_count" and payload.quantity < 0:
+        raise HTTPException(status_code=422, detail="A stock count cannot be negative")
+    # `adjust` is the existing signed-delta API (also used by HQ). The shop's
+    # "Set count to" control needs explicit absolute-count semantics instead.
+    delta = payload.quantity
+    if payload.kind == "set_count":
+        delta -= _level(session, a.parent_id, loc.id, part.id).quantity
+    level = _move(session, a, loc.id, part.id, delta, payload.kind, note=payload.note)
     session.commit()
     return {"location_id": str(loc.id), "part_id": str(part.id), "sku": part.sku, "name": part.name, "quantity": level.quantity}
 

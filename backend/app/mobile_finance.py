@@ -18,6 +18,7 @@ Honesty rules baked in here:
 """
 from __future__ import annotations
 
+from .payment_methods import normalise_payment_method
 import csv
 import io
 import statistics
@@ -590,7 +591,7 @@ def invoices_csv(rows: list[dict[str, Any]]) -> str:
     w = csv.writer(buf)
     w.writerow(["invoice_number", "job_number", "customer", "technician", "job_status", "invoice_status", "raised_on", "paid_on", "age_days", "total", "payment_method"])
     for r in rows:
-        w.writerow([r["invoice_number"], r["job_number"], r["customer_name"] or "", r["technician"] or "", r["job_status"], r["invoice_status"], r["raised_on"], r["paid_on"] or "", r["age_days"], f"{r['total_cents'] / 100:.2f}", r["payment_method"] or ""])
+        w.writerow([r["invoice_number"], r["job_number"], r["customer_name"] or "", r["technician"] or "", r["job_status"], r["invoice_status"], r["raised_on"], r["paid_on"] or "", r["age_days"], f"{r['total_cents'] / 100:.2f}", normalise_payment_method(r["payment_method"]) or ""])
     return buf.getvalue()
 
 

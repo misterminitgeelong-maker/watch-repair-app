@@ -56,6 +56,12 @@ object TokenStore {
         prefs.edit()
             .putLong(K_GENERATION, sessionGeneration() + 1)
             .putString(K_ACCESS, access)
+            // An exchanged token is not yet a verified workspace. Never open the
+            // previous shop's cached UI or draft scope if its session lookup fails.
+            .remove("session_cache").remove("draft_scope").remove("tenant_id")
+            .remove("session_role").remove("manage_integrations")
+            .remove("shop_currency").remove("shop_name").remove("shop_phone")
+            .remove("shop_address").remove("shop_abn").remove("calendar_zone")
             .apply {
                 if (refresh != null) putString(K_REFRESH, refresh)
                 else remove(K_REFRESH)
@@ -124,6 +130,8 @@ object TokenStore {
     fun saveDeviceToken(token: String?) { prefs.edit().apply { if(token.isNullOrBlank()) remove("device_push_token") else putString("device_push_token", token) }.apply() }
     fun isOwner(): Boolean = prefs.getString("session_role", null) == "owner"
     fun setSessionRole(role: String) { prefs.edit().putString("session_role", role).apply() }
+    fun setIntegrationManagementAllowed(allowed: Boolean) { prefs.edit().putBoolean("manage_integrations", allowed).apply() }
+    fun canManageIntegrations(): Boolean = ::prefs.isInitialized && getAccessToken() != null && prefs.getBoolean("manage_integrations", false)
     fun canManageTeam(): Boolean = prefs.getString("session_role", null) in listOf("owner", "platform_admin")
     fun canManageInvoices(): Boolean = prefs.getString("session_role", null) in listOf("owner", "manager", "platform_admin")
     fun canWorkJobs(): Boolean = prefs.getString("session_role", null) in listOf("owner", "manager", "tech", "platform_admin")

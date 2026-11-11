@@ -19,4 +19,9 @@ describe('active job definition', () => {
     expect(isActiveShoeStatus('no_go')).toBe(false)
     expect(isActiveShoeStatus('awaiting_collection')).toBe(false)
   })
+
+  it('keeps waiting-for-parts, quote and customer-detail shoe jobs visible as active', () => {
+    const rows = ['awaiting_parts', 'quote_sent', 'awaiting_customer_details', 'parts_to_order', 'collected']
+    expect(rows.filter(isActiveShoeStatus)).toEqual(rows.slice(0, 4))
+  })
 })

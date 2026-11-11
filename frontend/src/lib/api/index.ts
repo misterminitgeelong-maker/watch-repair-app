@@ -61,6 +61,7 @@ export interface AuthSession {
   product?: 'minit' | 'mainspring'
   /** When true, render the six-item Minit HQ sidebar (authoritative server signal). */
   is_minit_hq_ui?: boolean
+  can_manage_integrations?: boolean
   /** Platform admin in their own workspace: show only the admin console. */
   is_platform_console?: boolean
   plan_code: PlanCode
@@ -5056,7 +5057,7 @@ export const shopStockModels = () => api.get<StockModel[]>('/stock/models')
 export const shopStockLocations = () => api.get<StockLocation[]>('/stock/locations')
 export const shopStockParts = () => api.get<StockPart[]>('/stock/parts')
 export const shopStockLevels = () => api.get<StockLevelRow[]>('/stock/levels')
-export const shopAdjustStock = (data: { location_id: string; sku?: string; part_id?: string; quantity: number; kind?: 'receive' | 'adjust'; note?: string }) =>
+export const shopAdjustStock = (data: { location_id: string; sku?: string; part_id?: string; quantity: number; kind?: 'receive' | 'adjust' | 'set_count'; note?: string }) =>
   api.post('/stock/adjust', data)
 export const shopListTransfers = () => api.get<StockTransferRow[]>('/stock/transfers')
 export const shopCreateTransfer = (data: { from_location_id: string; to_location_id: string; lines: StockLineInput[]; note?: string }) =>
