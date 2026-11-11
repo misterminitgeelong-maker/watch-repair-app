@@ -1,6 +1,13 @@
 /* All content is bundled. Only raster tiles are requested remotely; job text stays in this local document. */
 (function () {
   'use strict';
+  // Android WebView can resolve percentage and vh heights to zero while its
+  // native viewport is already measured. Use the actual CSS-pixel viewport.
+  function sizeMap() {
+    var height = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+    [document.documentElement, document.body, document.getElementById('map')].forEach(function (element) { element.style.height = height + 'px'; });
+  }
+  sizeMap();
   var map = L.map('map', { zoomControl: true, scrollWheelZoom: true, attributionControl: true }).setView([-37.8136, 144.9631], 5);
   var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     minZoom: 0, maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
@@ -14,6 +21,7 @@
     else if (positions.length > 1) map.fitBounds(positions, { padding: [34, 34], maxZoom: 15 });
     else map.setView([-37.8136, 144.9631], 5);
   }
+  window.addEventListener('resize', function () { sizeMap(); map.invalidateSize({ pan: false }); if (positions && positions.length) fit(); });
   var Fit = L.Control.extend({ onAdd: function () {
     var box = L.DomUtil.create('div', '');
     var button = document.createElement('button'); button.type = 'button'; button.className = 'map-fit'; button.textContent = 'Fit stops'; button.setAttribute('aria-label', 'Fit all route stops');
@@ -37,8 +45,9 @@
     });
     if (positions.length > 1) L.polyline(positions, { color: '#a4592d', weight: 3, dashArray: '7 7', opacity: 0.75, interactive: false }).addTo(layers);
     var next = pins.map(function (p) { return p.id + ':' + p.lat + ':' + p.lng; }).join('|');
+    sizeMap(); map.invalidateSize({ pan: false });
     if (next !== signature) { signature = next; fit(); }
-    map.invalidateSize(); document.documentElement.setAttribute('data-stops', String(pins.length));
+    document.documentElement.setAttribute('data-stops', String(pins.length));
     if (window.MainspringMap) window.MainspringMap.ready(pins.length);
   };
 })();

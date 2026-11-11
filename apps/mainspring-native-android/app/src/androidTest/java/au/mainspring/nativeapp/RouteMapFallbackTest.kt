@@ -34,6 +34,8 @@ class RouteMapFallbackTest {
         val jobs = listOf(job("job-1", "<img src=x onerror=window.bad=true>", "1 Test Street"), job("job-2", "Second stop", "2 Test Street"))
         compose.setContent { MainspringTheme { OpenStreetStopMap(jobs, Modifier.fillMaxWidth().height(300.dp), { if(it.startsWith("1")) -37.8 to 145.0 else -37.81 to 145.02 }, { opened = it }, { directions = it }, allowTileNetwork = false, onWebView = { web = it }) } }
         compose.waitUntil(15_000) { evaluate("document.documentElement.getAttribute('data-stops')") == "\"2\"" }
+        Assert.assertEquals("true", evaluate("document.getElementById('map').getBoundingClientRect().height > 100"))
+        Assert.assertEquals("true", evaluate("(function(){var r=document.querySelector('.leaflet-marker-icon').getBoundingClientRect(),m=document.getElementById('map').getBoundingClientRect();return r.width>0&&r.height>0&&r.bottom>m.top&&r.top<m.bottom&&r.right>m.left&&r.left<m.right})()"))
         compose.onNodeWithTag("osm-map-location-count").assertTextContains("2 of 2 stops located", substring = true)
         evaluate("document.querySelector('.leaflet-marker-icon').click(); true")
         Assert.assertEquals("0", evaluate("document.querySelectorAll('.leaflet-popup-content img').length"))

@@ -1,9 +1,10 @@
 """Public native-client settings; contains only values safe to embed in an app."""
 from urllib.parse import urlsplit, urlunsplit
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from ..config import settings, sentry_dsn_looks_valid
+from ..limiter import limiter, public_read_limit
 
 router = APIRouter(prefix="/v1/client-config", tags=["client-config"])
 
@@ -29,7 +30,8 @@ def public_sentry_dsn(value: str) -> str | None:
 
 
 @router.get("/android")
-def android_client_config():
+@limiter.limit(public_read_limit)
+def android_client_config(request: Request):
     return {
         "minimum_version_code": settings.android_minimum_version_code,
         "update_message": settings.android_update_message,

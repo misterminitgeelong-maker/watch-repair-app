@@ -67,3 +67,15 @@ Do not describe this as fully validated, shipped or live until combined tests, s
 ## Deployment and submission
 
 Pending: CI, backend deployment, production health/config verification and Google Play submission. Deploy all additive backend contracts before rollout, including `set_count`, session identity, booking offer count and public client config. Do not infer store approval from an upload or submission.
+
+## Screenshot review hold
+
+Sam requested screenshots of each screen before any Google Play update, then instructed work to continue. **Publication is held until he reviews the screenshots.**
+
+- Prepared 195 labelled phone-simulator screenshots across 10 sections, including main screens, major tabs, dialogs/forms and selected lower sections of long pages. Actual native composables use a disposable localhost shop with synthetic records. No production messages, payments or destructive changes were submitted.
+- Central gallery: [screen review](native-screen-review-2026-11-11/index.html), with individual full-resolution PNGs, an image manifest and a 195-page bookmarked PDF in the same folder. A ZIP sits beside the folder.
+- The default Mainspring appearance is shown. The login screenshot notes its developer-only Connection settings row; the Play build hides that row. Demo signature artwork and map coordinates are explicitly labelled samples.
+- Visual QA caught a real WebView map-height bug: native viewport 1080x683px, but HTML/body/map computed height was zero despite loaded tiles/markers. The bundled renderer now sizes to actual CSS-pixel viewport height before initialisation/rendering and on resize. Both native map regressions pass, including positive container height and a marker within its bounds. The replacement map screenshot visibly shows OSM tiles, all four stops and controls; no image compositing was used.
+- Rebuilt signed AAB and release APK after the map fix. Current AAB SHA256 is `10FEF8D8F0C15F1A0AAED7F1FEA0B21BDB6780EB79F3D7DFD3202E2B1C4F857E`; the earlier `58142642...` artifact is superseded. Version remains **1.1.0 (29905800)**, package `au.mainspring.app`. JarFile verification and unchanged upload-certificate fingerprint confirmed.
+- CI native/frontend checks pass. Full Postgres/SQLite suites exposed the same missing public-read rate limit on client config; its minimal fix and actual HTTP429 tests pass (29 passed, 2 skipped), but that fix still needs committing and CI rerun before deployment.
+- No Play release was uploaded, submitted or published. Resume release work only after visual feedback/approval, then complete CI, backend deployment and production verification before submission.

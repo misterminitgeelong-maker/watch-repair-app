@@ -25,3 +25,5 @@ Chat histories remain separate. This index records the existing related chats; i
 The same [Compare app update history](codex://threads/01a18ebd-4c43-7303-af9a-9fbdca9cf32d) chat also contains the [31 October landing page refresh](LANDING_PAGE_REFRESH_2026-10-31.md): selected clean software direction, actual demo screenshots and an isolated review preview.
 
 - [Native Android parity implementation](codex://threads/01a1c74b-3e56-7173-8977-7e86da449bed) — review of the 10 November native/web discrepancy summary, complete parity work, simulator validation and Play replacement; [implementation and release record](NATIVE_ANDROID_PARITY_RELEASE_2026-11-11.md).
+
+  Sam requested screenshot review before Play: [195-view native screen gallery](native-screen-review-2026-11-11/index.html) and [review pack index](native-screen-review-2026-11-11/README.md). Publication is held pending his review. The screenshot pass caught and fixed the route-map zero-height layout issue.
