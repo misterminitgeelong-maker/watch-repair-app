@@ -89,13 +89,15 @@ class DesignWorkspaceTest {
         compose.onNodeWithText("Next up",ignoreCase=true).assertExists()
         saveNativeQaImage(compose.onRoot(),"design-today.png")
     }
-    @Test fun nativeJobTabsShowVehicleAndFinancialWithoutLeavingJob() {
+    @Test fun nativeJobTabsShowVehicleAndQuotesWithoutLeavingJob() {
         var exits=0
         compose.setContent {MainspringTheme {AutoKeyJobDetailScreen("first",server.url("/").toString(),{exits++},{},{},{})}}
         compose.waitUntil(10_000) {compose.onAllNodesWithText("Vehicle & Key").fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithText("Vehicle & Key").performClick();compose.onNodeWithText("Toyota Hilux").assertExists()
         saveNativeQaImage(compose.onRoot(),"design-vehicle-key.png")
-        compose.onNodeWithText("Financial").performClick()
+        compose.onAllNodesWithText("Financial").assertCountEquals(0)
+        compose.onNodeWithTag("tab-finance").assertExists()
+        compose.onNodeWithText("Quotes").performClick()
         compose.waitUntil(10_000) {compose.onAllNodes(hasText("Create quote") and isEnabled()).fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithText("Create quote").performScrollTo().performClick()
         compose.waitUntil(10_000) {compose.onAllNodesWithText("New quote").fetchSemanticsNodes().isNotEmpty()}

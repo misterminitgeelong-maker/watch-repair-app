@@ -149,23 +149,29 @@ fun AutoKeyJobsScreen(
     if(filtersOpen) {
         FiltersSheet(onDismiss = { filtersOpen = false }, onReset = viewModel::resetFilters) {
             FilterSection("Directory") {
-                listOf("active" to "Active", "completed" to "Completed", "all" to "All").forEach { (k, v) -> SheetChip(v, state.focus == null && state.directory == k, { viewModel.directory(k) }) }
+                val options = listOf("active" to "Active", "completed" to "Completed", "all" to "All")
+                WebSelect(if(state.focus != null) "Focus view" else options.first { it.first == state.directory }.second,
+                    options, viewModel::directory, tag = "mobile-filter-directory", description = "Filter directory")
             }
             FilterSection("Focus") {
-                au.mainspring.nativeapp.MOBILE_FOCUS_OPTIONS.toList()
-                    .forEach { (k, v) -> SheetChip(v, state.focus == k, { viewModel.focus(if(state.focus == k) null else k) }) }
+                WebSelect(au.mainspring.nativeapp.MOBILE_FOCUS_OPTIONS[state.focus] ?: "All focus areas",
+                    listOf("" to "All focus areas") + au.mainspring.nativeapp.MOBILE_FOCUS_OPTIONS.toList(),
+                    { viewModel.focus(it.ifBlank { null }) }, tag = "mobile-filter-focus", description = "Filter focus")
             }
             FilterSection("Status") {
-                SheetChip("All statuses", state.statusFilter == null, { viewModel.status(null) })
-                au.mainspring.nativeapp.api.MOBILE_STATUS_PICKER.forEach { (key, label) -> SheetChip(label, state.statusFilter == key, { viewModel.status(key) }) }
+                val options = listOf("" to "All statuses") + au.mainspring.nativeapp.api.MOBILE_STATUS_PICKER
+                WebSelect(options.firstOrNull { it.first == state.statusFilter.orEmpty() }?.second ?: au.mainspring.nativeapp.ui.statusLabel(state.statusFilter.orEmpty()),
+                    options, { viewModel.status(it.ifBlank { null }) }, tag = "mobile-filter-status", description = "Filter status")
             }
             FilterSection("Technician") {
-                SheetChip("All technicians", state.technicianFilter == null, { viewModel.technician(null) })
-                state.technicians.forEach { user -> SheetChip(user.name, state.technicianFilter == user.id, { viewModel.technician(user.id) }) }
+                val options = listOf("" to "All technicians") + state.technicians.map { it.id to it.name }
+                WebSelect(options.firstOrNull { it.first == state.technicianFilter.orEmpty() }?.second ?: "Selected technician",
+                    options, { viewModel.technician(it.ifBlank { null }) }, tag = "mobile-filter-technician", description = "Filter technician")
             }
             FilterSection("Category") {
-                SheetChip("All categories", state.categoryFilter == null, { viewModel.category(null) })
-                au.mainspring.nativeapp.MOBILE_REPORT_CATEGORIES.forEach { (key, label) -> SheetChip(label, state.categoryFilter == key, { viewModel.category(key) }) }
+                WebSelect(au.mainspring.nativeapp.MOBILE_REPORT_CATEGORIES[state.categoryFilter] ?: "All categories",
+                    listOf("" to "All categories") + au.mainspring.nativeapp.MOBILE_REPORT_CATEGORIES.toList(),
+                    { viewModel.category(it.ifBlank { null }) }, tag = "mobile-filter-category", description = "Filter category")
             }
         }
     }

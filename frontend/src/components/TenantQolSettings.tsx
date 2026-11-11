@@ -7,6 +7,7 @@ import {
   deleteTenantWebhook,
   getApiErrorMessage,
   getIntegrationHealth,
+  getAuthSession,
   getNotificationPreferences,
   listTenantApiKeys,
   listTenantWebhooks,
@@ -16,12 +17,19 @@ import {
 } from '@/lib/api'
 import { useToast } from '@/lib/toast'
 import { Button, Card, Input, Spinner } from '@/components/ui'
+import { useAuth } from '@/context/AuthContext'
 
 export default function TenantQolSettings() {
   const qc = useQueryClient()
   const toast = useToast()
+  const { tenantId } = useAuth()
+  const { data: integrationsAllowed = false } = useQuery({
+    queryKey: ['integration-management-access', tenantId],
+    queryFn: () => getAuthSession().then(r => r.data.tenant_id === tenantId && r.data.can_manage_integrations === true),
+    enabled: !!tenantId,
+  })
   const [newKeyName, setNewKeyName] = useState('')
-  const [createdKey, setCreatedKey] = useState<string | null>(null)
+  const [createdKey, setCreatedKey] = useState<{ tenant: string | null; value: string } | null>(null)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [webhookEvents, setWebhookEvents] = useState('quote_approved,job_created')
 
@@ -34,12 +42,14 @@ export default function TenantQolSettings() {
     queryFn: () => getIntegrationHealth().then(r => r.data),
   })
   const { data: apiKeys = [] } = useQuery({
-    queryKey: ['tenant-api-keys'],
+    queryKey: ['tenant-api-keys', tenantId],
     queryFn: () => listTenantApiKeys().then(r => r.data),
+    enabled: integrationsAllowed,
   })
   const { data: webhooks = [] } = useQuery({
-    queryKey: ['tenant-webhooks'],
+    queryKey: ['tenant-webhooks', tenantId],
     queryFn: () => listTenantWebhooks().then(r => r.data),
+    enabled: integrationsAllowed,
   })
 
   const patchPrefsMut = useMutation({
@@ -54,7 +64,7 @@ export default function TenantQolSettings() {
   const createKeyMut = useMutation({
     mutationFn: () => createTenantApiKey(newKeyName.trim()),
     onSuccess: (res) => {
-      setCreatedKey(res.data.api_key)
+      setCreatedKey({ tenant: tenantId, value: res.data.api_key })
       setNewKeyName('')
       toast.success('API key created — copy it now')
       void qc.invalidateQueries({ queryKey: ['tenant-api-keys'] })
@@ -122,7 +132,7 @@ export default function TenantQolSettings() {
 
       {health && <IntegrationHealthCard health={health} />}
 
-      <Card className="p-5 space-y-3">
+      {integrationsAllowed && <Card className="p-5 space-y-3">
         <h3 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>API keys</h3>
         <div className="flex gap-2">
           <Input value={newKeyName} onChange={e => setNewKeyName(e.target.value)} placeholder="Key name" />
@@ -130,9 +140,9 @@ export default function TenantQolSettings() {
             Create
           </Button>
         </div>
-        {createdKey && (
+        {createdKey && createdKey.tenant === tenantId && (
           <p className="text-xs font-mono break-all p-2 rounded" style={{ backgroundColor: 'var(--ms-bg)' }}>
-            {createdKey}
+            {createdKey.value}
           </p>
         )}
         <ul className="text-xs space-y-1" style={{ color: 'var(--ms-text-muted)' }}>
@@ -145,9 +155,9 @@ export default function TenantQolSettings() {
             </li>
           ))}
         </ul>
-      </Card>
+      </Card>}
 
-      <Card className="p-5 space-y-3">
+      {integrationsAllowed && <Card className="p-5 space-y-3">
         <h3 className="text-sm font-semibold" style={{ color: 'var(--ms-text)' }}>Outbound webhooks</h3>
         <Input value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://…" />
         <Input value={webhookEvents} onChange={e => setWebhookEvents(e.target.value)} placeholder="quote_approved,job_created" />
@@ -164,7 +174,7 @@ export default function TenantQolSettings() {
             </li>
           ))}
         </ul>
-      </Card>
+      </Card>}
     </div>
   )
 }

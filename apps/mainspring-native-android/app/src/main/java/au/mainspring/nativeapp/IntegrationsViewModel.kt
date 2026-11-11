@@ -23,17 +23,21 @@ const val DEFAULT_WEBHOOK_EVENTS = "quote_approved,job_created"
 /** Splits the comma-separated event field the way the web form does: trimmed, blanks dropped. */
 fun parseWebhookEvents(text: String): List<String> = text.split(',').map { it.trim() }.filter { it.isNotEmpty() }
 
-/** Shop API keys and outbound webhooks (web `TenantQolSettings`). Manager and above can create and remove. */
+/** API keys and outbound webhooks for the signed-in HQ workspace only. */
 class IntegrationsViewModel(private val api: IntegrationsApi = ApiClient.service(IntegrationsApi::class.java)) : ViewModel() {
-    private val mutable = MutableStateFlow(IntegrationsState(allowed = TokenStore.canManageInvoices()))
+    private val generation = TokenStore.sessionGeneration()
+    private fun allowed() = generation == TokenStore.sessionGeneration() && TokenStore.canManageIntegrations()
+    private val mutable = MutableStateFlow(IntegrationsState(allowed = allowed()))
     val state = mutable.asStateFlow()
     init { refresh() }
 
     fun refresh() {
+        if(!allowed()) { mutable.value = IntegrationsState(loading = false, allowed = false); return }
         mutable.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             try {
                 val keys = api.apiKeys(); val hooks = api.webhooks()
+                if(!allowed()) return@launch
                 mutable.update { it.copy(loading = false, keys = keys, webhooks = hooks) }
             } catch(e: CancellationException) { throw e }
             catch(e: Exception) { mutable.update { it.copy(loading = false, error = "Could not load integrations. ${e.userMessage()}") } }
@@ -41,7 +45,7 @@ class IntegrationsViewModel(private val api: IntegrationsApi = ApiClient.service
     }
 
     private fun act(failure: String, block: suspend () -> Unit) {
-        if(mutable.value.busy || !mutable.value.allowed) return
+        if(mutable.value.busy || !allowed()) return
         mutable.update { it.copy(busy = true, info = null, error = null) }
         viewModelScope.launch {
             try { block() }

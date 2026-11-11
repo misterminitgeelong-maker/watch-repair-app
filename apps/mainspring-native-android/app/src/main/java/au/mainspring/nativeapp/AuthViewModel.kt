@@ -112,6 +112,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             TokenStore.setCalendarTimezone(s.calendarTimezone)
             TokenStore.setShopIdentity(s.currency,s.shopName,s.shopAbn,s.shopPhone,s.shopAddress)
             TokenStore.setSessionRole(s.user.role)
+            TokenStore.setIntegrationManagementAllowed(s.canManageIntegrations)
             au.mainspring.nativeapp.offline.OfflineSync.queue.reload(); au.mainspring.nativeapp.offline.OfflineSync.requestReplay()
             val loaded = _state.value.copy(
                     loading = false,

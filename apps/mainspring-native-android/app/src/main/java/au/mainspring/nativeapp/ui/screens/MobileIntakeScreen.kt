@@ -48,21 +48,20 @@ import androidx.compose.ui.platform.testTag
                 au.mainspring.nativeapp.ui.WizardField(label,vm.field(key),{vm.set(key,it)},modifier=modifier,enabled=!locked,placeholder=when(key) {"name"->"Jane Smith";"phone"->"0412 345 678";"email"->"jane@example.com";else->null})
             }
             SectionLabel("Job type")
-            FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                MOBILE_JOB_TYPES.forEach {type ->
-                    au.mainspring.nativeapp.ui.AtelierChip(vm.field("jobType")==type,{
-                        val old=vm.field("jobType");vm.set("jobType",type)
-                        if(vm.field("title").isBlank() || vm.field("title")==old) vm.set("title",type)
-                    },enabled=!locked,label={Text(type)})
-                }
-            }
+            val currentType = vm.field("jobType")
+            val jobTypes = (MOBILE_JOB_TYPES + listOfNotNull(currentType.takeIf { it.isNotBlank() })).distinct()
+            WebSelect(currentType.ifBlank { "Choose job type" }, listOf("" to "No preset") + jobTypes.map { it to it }, { type ->
+                val old=vm.field("jobType");vm.set("jobType",type)
+                if(vm.field("title").isBlank() || vm.field("title")==old) vm.set("title",type)
+            }, tag="intake-job-type", description="Job type", enabled=!locked)
             SectionLabel("Additional services (optional)")
             val extras = vm.extras()
             extras.forEachIndexed {idx,row ->
                 FlatPanel(Modifier.testTag("intake-extra-$idx")) {
-                    Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                        MOBILE_JOB_TYPES.forEach {type -> au.mainspring.nativeapp.ui.AtelierChip(row.preset==type,{vm.setExtras(extras.toMutableList().also {it[idx]=row.copy(preset=if(row.preset==type) "" else type)})},enabled=!locked,label={Text(type)})}
-                    }
+                    WebSelect(row.preset.ifBlank { "Choose service or enter a custom note" },
+                        listOf("" to "Custom note only") + (MOBILE_JOB_TYPES + listOfNotNull(row.preset.takeIf { it.isNotBlank() })).distinct().map { it to it },
+                        { type -> vm.setExtras(extras.toMutableList().also { it[idx]=row.copy(preset=type) }) },
+                        tag="intake-extra-type-$idx", description="Additional service ${idx+1}", enabled=!locked)
                     au.mainspring.nativeapp.ui.WizardField("Or custom note",row.custom,{text -> vm.setExtras(extras.toMutableList().also {it[idx]=row.copy(custom=text)})},modifier=Modifier.fillMaxWidth().testTag("intake-extra-$idx-custom"),enabled=!locked,placeholder="Custom work\u2026")
                     TextButton({vm.setExtras(extras.filterIndexed {i,_ -> i!=idx})},enabled=!locked,modifier=Modifier.heightIn(min=48.dp).testTag("intake-extra-$idx-remove")) {Text("Remove line")}
                 }

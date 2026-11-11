@@ -16,6 +16,7 @@ class IntegrationsScreenTest {
     private lateinit var server: MockWebServer
     private val calls = ConcurrentLinkedQueue<String>()
     private val bodies = ConcurrentLinkedQueue<String>()
+    private val requests = ConcurrentLinkedQueue<String>()
     private val keys = java.util.concurrent.CopyOnWriteArrayList<String>()
     private val hooks = java.util.concurrent.CopyOnWriteArrayList<String>()
     @Volatile private var createStatus = 201
@@ -29,6 +30,7 @@ class IntegrationsScreenTest {
         server = MockWebServer(); server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.requestUrl!!.encodedPath; val key = "${request.method} $path"
+                requests.add(key)
                 val json = MockResponse().setHeader("Content-Type", "application/json")
                 return when {
                     key == "GET /v1/tenant/api-keys" -> json.setBody("[${keys.joinToString(",")}]")
@@ -43,14 +45,15 @@ class IntegrationsScreenTest {
                 }
             }
         }
-        server.start(); TokenStore.saveApiBaseUrl(server.url("/").toString()); TokenStore.setDraftScope("integrations", "owner")
+        server.start(); TokenStore.saveApiBaseUrl(server.url("/").toString()); TokenStore.saveTokens("hq-test-access", "hq-test-refresh"); TokenStore.setDraftScope("integrations", "owner")
     }
     @After fun cleanup() { TokenStore.clear(); server.shutdown() }
 
-    private fun open(role: String) {
+    private fun open(role: String, allowed: Boolean = true) {
         TokenStore.setSessionRole(role)
+        TokenStore.setIntegrationManagementAllowed(allowed)
         compose.setContent { MainspringTheme { IntegrationsScreen(onBack = {}) } }
-        compose.waitUntil(10_000) { compose.onAllNodesWithTag("api-key-k1").fetchSemanticsNodes().isNotEmpty() }
+        if(allowed) compose.waitUntil(10_000) { compose.onAllNodesWithTag("api-key-k1").fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test fun listsExistingKeysAndWebhooks() {
@@ -112,12 +115,28 @@ class IntegrationsScreenTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("webhook-h1").fetchSemanticsNodes().isEmpty() }
     }
 
-    @Test fun techniciansCanSeeButNotChangeAnything() {
-        open("tech")
-        compose.onNodeWithText("Zapier").assertExists()
+    @Test fun directRouteDoesNotExposeIntegrationsToShopTechnicians() {
+        open("tech", allowed = false)
+        compose.onNodeWithText("HQ account required").assertExists()
+        compose.onNodeWithText("Zapier").assertDoesNotExist()
         compose.onAllNodesWithTag("api-key-create").assertCountEquals(0)
         compose.onAllNodesWithTag("api-key-revoke-k1").assertCountEquals(0)
         compose.onAllNodesWithTag("webhook-add").assertCountEquals(0)
         compose.onAllNodesWithTag("webhook-remove-h1").assertCountEquals(0)
+        Assert.assertTrue(requests.isEmpty())
+    }
+    @Test fun shopOwnersCannotBypassTheHqCapabilityWithTheirShopRole() {
+        open("owner", allowed = false)
+        compose.onNodeWithText("HQ account required").assertExists()
+        Assert.assertTrue(requests.isEmpty())
+    }
+    @Test fun oldHqViewModelCannotManageTheNextShopAfterTokenExchange() {
+        TokenStore.setSessionRole("owner"); TokenStore.setIntegrationManagementAllowed(true)
+        val model = IntegrationsViewModel()
+        compose.waitUntil(10_000) { !model.state.value.loading }
+        TokenStore.saveTokens("shop-access", "shop-refresh"); TokenStore.setDraftScope("shop", "shop-owner"); TokenStore.setSessionRole("owner")
+        model.createKey("Should not create"); model.addWebhook("https://hooks.example.test/new", "*"); model.refresh()
+        Assert.assertFalse(model.state.value.allowed); Assert.assertTrue(calls.isEmpty())
+        Assert.assertNull(model.state.value.createdKey); Assert.assertTrue(model.state.value.keys.isEmpty())
     }
 }

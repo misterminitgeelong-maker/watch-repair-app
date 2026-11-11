@@ -171,6 +171,8 @@ class AuthSessionResponse(SQLModel):
     #: Platform admin in their own "platform" workspace (not inside a shop):
     #: the SPA shows only the platform admin console, not an empty shop.
     is_platform_console: bool = False
+    #: Active workspace is an HQ site and the directly signed-in user is its HQ admin.
+    can_manage_integrations: bool = False
     plan_code: PlanCode
     enabled_features: list[str]
     active_site_tenant_id: UUID

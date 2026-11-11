@@ -27320,6 +27320,11 @@
             "title": "Is Platform Console",
             "default": false
           },
+          "can_manage_integrations": {
+            "type": "boolean",
+            "title": "Can Manage Integrations",
+            "default": false
+          },
           "plan_code": {
             "type": "string",
             "enum": [

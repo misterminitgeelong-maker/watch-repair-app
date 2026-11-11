@@ -8710,6 +8710,11 @@ export interface components {
              */
             is_platform_console: boolean;
             /**
+             * Can Manage Integrations
+             * @default false
+             */
+            can_manage_integrations: boolean;
+            /**
              * Plan Code
              * @enum {string}
              */

@@ -21,12 +21,14 @@ class ShopSessionWorkflowTest {
     private var loginPath = ""
     private var oldHq = false
     private var oldPlatform = false
+    private var failNewSession = false
     private val sites = """[{"tenant_id":"old-shop","tenant_name":"Old Shop","tenant_slug":"old","user_id":"user-1","role":"manager"},{"tenant_id":"new-shop","tenant_name":"New Shop","tenant_slug":"new","user_id":"user-2","role":"tech"}]"""
     @Before fun setup() {
         androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("more_usage", 0).edit().clear().commit()
         TokenStore.init(InstrumentationRegistry.getInstrumentation().targetContext); TokenStore.clear()
         server = MockWebServer(); server.dispatcher = object: Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
+                if(request.path == "/v1/auth/session" && site == "new-shop" && failNewSession) return MockResponse().setResponseCode(503)
                 val body = when(request.path.orEmpty()) {
                     "/v1/auth/login", "/v1/auth/multi-site-login" -> {
                         loginPath = request.path!!
@@ -56,20 +58,45 @@ class ShopSessionWorkflowTest {
         compose.waitUntil(10_000) { model.state.value.loggedIn }
         Assert.assertEquals("/v1/auth/multi-site-login",loginPath); Assert.assertEquals(2,model.state.value.sites.size)
     }
-    @Test fun drawerShopSwitchResetsSessionKeyAndKeepsDraftsInTheirOriginalShop() {
+    @Test fun visibleHeaderShopSwitchResetsSessionKeyAndKeepsDraftsInTheirOriginalShop() {
         val model = signedIn(); val oldKey = model.state.value.sessionKey
         TokenStore.bindDrafts().saveMessageDraft("unfinished","Old shop's draft")
         compose.setContent { val state by model.state.collectAsState(); MainspringTheme {
             key(state.sessionKey) { MainspringAppShell(state.sessionSummary,server.url("/").toString(),{},state.features,
                 sites = state.sites,activeSiteId = state.activeSiteId,onSwitchSite = model::switchSite) }
         } }
-        compose.onNodeWithTag("nav-more").performClick(); compose.onNodeWithTag("more-list").performScrollToNode(hasTestTag("more-group-settings"));compose.onNodeWithTag("more-group-settings").performClick(); compose.onNodeWithTag("settings-list").performScrollToNode(androidx.compose.ui.test.hasText("Switch shop")); compose.onAllNodesWithText("Switch shop").onFirst().performClick()
+        compose.onNodeWithTag("app-switch-shop").assertIsDisplayed().performClick()
         compose.onNodeWithText("New Shop").performClick()
         compose.waitUntil(10_000) { model.state.value.activeSiteId == "new-shop" && !model.state.value.loading }
         Assert.assertNotEquals(oldKey,model.state.value.sessionKey); Assert.assertEquals("",TokenStore.bindDrafts().loadMessageDraft("unfinished"))
         Assert.assertFalse(TokenStore.canManageInvoices()); Assert.assertEquals(1,switches)
         model.switchSite("old-shop"); compose.waitUntil(10_000) { model.state.value.activeSiteId == "old-shop" && !model.state.value.loading }
         Assert.assertEquals("Old shop's draft",TokenStore.bindDrafts().loadMessageDraft("unfinished")); Assert.assertEquals(2,switches)
+    }
+    @Test fun coldStartUsesThePersistedLoginWithoutRequestingCredentialsAgain() {
+        val original = signedIn(); val access = TokenStore.getAccessToken()
+        val restored = auth(); compose.waitUntil(10_000) { restored.state.value.loggedIn && !restored.state.value.loading }
+        Assert.assertEquals(access, TokenStore.getAccessToken())
+        Assert.assertEquals(original.state.value.activeSiteId, restored.state.value.activeSiteId)
+        Assert.assertEquals(original.state.value.sites, restored.state.value.sites)
+    }
+    @Test fun failedNewShopSessionNeverReusesThePreviousShopCacheOrCapability() {
+        val model = signedIn()
+        val draft = TokenStore.bindDrafts(); draft.saveMessageDraft("unfinished", "Old shop only")
+        TokenStore.setIntegrationManagementAllowed(true)
+        failNewSession = true; model.switchSite("new-shop")
+        compose.waitUntil(10_000) { !model.state.value.loading }
+        Assert.assertFalse(model.state.value.loggedIn)
+        Assert.assertNull(TokenStore.sessionCache()); Assert.assertNull(TokenStore.offlineScope())
+        Assert.assertEquals("", TokenStore.currentTenantId()); Assert.assertFalse(TokenStore.canManageIntegrations())
+        Assert.assertFalse(TokenStore.canManageInvoices()); Assert.assertEquals("new-shop-access", TokenStore.getAccessToken())
+        Assert.assertEquals("", draft.loadMessageDraft("unfinished"))
+        failNewSession = false
+        val recovered = auth(); compose.waitUntil(10_000) { recovered.state.value.loggedIn }
+        Assert.assertEquals("new-shop", recovered.state.value.activeSiteId)
+        Assert.assertEquals("", TokenStore.bindDrafts().loadMessageDraft("unfinished"))
+        recovered.switchSite("old-shop"); compose.waitUntil(10_000) { recovered.state.value.activeSiteId == "old-shop" && !recovered.state.value.loading }
+        Assert.assertEquals("Old shop only", TokenStore.bindDrafts().loadMessageDraft("unfinished"))
     }
     @Test fun unlistedShopCannotTriggerAnExchangeRequest() {
         val model = signedIn(); model.switchSite("unlisted-shop")

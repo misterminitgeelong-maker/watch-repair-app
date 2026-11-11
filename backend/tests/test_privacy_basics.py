@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 
 from app.database import engine
 from app.log_redaction import mask_email, mask_phone, redact_path, redact_text
-from app.models import AutoKeyJob, AutoKeyQuote, Customer, Tenant, TenantEventLog
+from app.models import AutoKeyJob, AutoKeyQuote, Customer, Tenant, TenantEventLog, ParentAccount, ParentAccountSite, ParentAccountUser, User
 from app.services import webhook_url_guard as guard
 from app.services.webhook_url_guard import WebhookUrlError, validate_webhook_url
 
@@ -45,6 +45,17 @@ def _user_headers(client, slug, owner_h, role):
         "email": email, "full_name": role, "password": PW, "role": role})
     assert r.status_code == 201, r.text
     return _login(client, slug, email)
+
+
+def _make_hq(slug):
+    with Session(engine) as session:
+        tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).one()
+        owner = session.exec(select(User).where(User.tenant_id == tenant.id, User.role == "owner")).one()
+        parent = ParentAccount(name=f"HQ {slug}", owner_email=owner.email)
+        session.add(parent); session.flush()
+        session.add(ParentAccountSite(parent_account_id=parent.id, tenant_id=tenant.id, network_role="hq"))
+        session.commit()
+        return parent.id
 
 
 # ── 1. repo hygiene ───────────────────────────────────────────────────────────
@@ -139,7 +150,7 @@ def test_export_my_data_owner_only_and_logged(client):
 
 # ── 4. API keys and webhooks ──────────────────────────────────────────────────
 
-def test_api_key_and_webhook_creation_requires_manager(client, monkeypatch):
+def test_api_key_and_webhook_management_requires_own_hq_admin(client, monkeypatch):
     monkeypatch.setenv("WEBHOOK_ALLOWED_HOSTS", "hooks.example.test")
     slug, email = _tenant(client, "k")
     owner_h = _login(client, slug, email)
@@ -147,8 +158,25 @@ def test_api_key_and_webhook_creation_requires_manager(client, monkeypatch):
     mgr_h = _user_headers(client, slug, owner_h, "manager")
     hook = {"url": "https://hooks.example.test/in", "event_types": ["*"]}
 
+    for headers in (owner_h, tech_h, mgr_h):
+        assert client.get("/v1/tenant/api-keys", headers=headers).status_code == 403
+        assert client.get("/v1/tenant/webhooks", headers=headers).status_code == 403
+        assert client.post("/v1/tenant/api-keys", headers=headers, json={"name": "shop"}).status_code == 403
+        assert client.post("/v1/tenant/webhooks", headers=headers, json=hook).status_code == 403
+        assert client.get("/v1/auth/session", headers=headers).json()["can_manage_integrations"] is False
+
+    parent_id = _make_hq(slug)
+
     assert client.post("/v1/tenant/api-keys", headers=tech_h, json={"name": "k"}).status_code == 403
     assert client.post("/v1/tenant/webhooks", headers=tech_h, json=hook).status_code == 403
+    # A manager in HQ is a viewer unless explicitly granted the network admin role.
+    assert client.post("/v1/tenant/api-keys", headers=mgr_h, json={"name": "k"}).status_code == 403
+    with Session(engine) as session:
+        tenant = session.exec(select(Tenant).where(Tenant.slug == slug)).one()
+        manager = session.exec(select(User).where(User.tenant_id == tenant.id, User.role == "manager")).one()
+        session.add(ParentAccountUser(parent_account_id=parent_id, user_id=manager.id, role="hq_admin")); session.commit()
+    assert client.get("/v1/auth/session", headers=mgr_h).json()["can_manage_integrations"] is True
+    assert client.get("/v1/auth/session", headers=owner_h).json()["can_manage_integrations"] is True
     assert client.post("/v1/tenant/api-keys", headers=mgr_h, json={"name": "k"}).status_code == 201
     r = client.post("/v1/tenant/webhooks", headers=mgr_h, json=hook)
     assert r.status_code == 201, r.text
@@ -195,6 +223,7 @@ def test_webhook_url_accepts_public_and_allowlist(monkeypatch):
 def test_webhook_create_endpoint_rejects_private(client):
     slug, email = _tenant(client, "w")
     h = _login(client, slug, email)
+    _make_hq(slug)
     r = client.post("/v1/tenant/webhooks", headers=h, json={
         "url": "https://169.254.169.254/x", "event_types": ["*"]})
     assert r.status_code == 422

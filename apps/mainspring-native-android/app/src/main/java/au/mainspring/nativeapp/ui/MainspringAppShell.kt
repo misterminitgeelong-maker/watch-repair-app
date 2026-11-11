@@ -172,7 +172,8 @@ fun MainspringAppShell(
             contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
-                if (showBottomBar && !wide) AppHeader({ navController.navigate("search") { launchSingleTop = true } })
+                if (showBottomBar && !wide) AppHeader({ navController.navigate("search") { launchSingleTop = true } }, shopName = selectedSite?.name,
+                    onSwitchShop = if(sites.map { it.tenantId }.distinct().size > 1) ({ switchOpen = true }) else null)
                 else if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
@@ -180,6 +181,7 @@ fun MainspringAppShell(
                             au.mainspring.nativeapp.ui.PillChip(label, tabFor(currentRoute, features) == key, { navController.navigate(tabRoute(key)) { popUpTo(startRoute) { saveState = true }; launchSingleTop = true; restoreState = true } }, Modifier.testTag("nav-$key"))
                         }
                         SearchIconButton({ navController.navigate("search") { launchSingleTop = true } })
+                        if(sites.map { it.tenantId }.distinct().size > 1) ShopSwitchButton(selectedSite?.name, { switchOpen = true })
                     }
                     androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
@@ -364,7 +366,10 @@ fun MainspringAppShell(
                 composable("prospects") { ProspectsScreen(onBack = { navController.popBackStack() }) }
                 composable("revenueControl") { au.mainspring.nativeapp.ui.screens.RevenueControlScreen(onBack = { navController.popBackStack() }, onOpenJob = { navController.navigate("autoKeyJob/$it") }) }
                 composable("queuedChanges") { au.mainspring.nativeapp.ui.screens.QueuedChangesScreen { navController.popBackStack() } }
-                composable("integrations") { au.mainspring.nativeapp.ui.screens.IntegrationsScreen(onBack = { navController.popBackStack() }) }
+                composable("integrations") {
+                    if(au.mainspring.nativeapp.TokenStore.canManageIntegrations()) au.mainspring.nativeapp.ui.screens.IntegrationsScreen(onBack = { navController.popBackStack() })
+                    else au.mainspring.nativeapp.ui.screens.HqIntegrationAccessRequiredScreen(onBack = { navController.popBackStack() })
+                }
                 composable("engraving") { au.mainspring.nativeapp.ui.screens.EngravingScreen(onBack = { navController.popBackStack() }) }
                 composable("partsStock") { au.mainspring.nativeapp.ui.screens.PartsStockScreen(onBack = { navController.popBackStack() }) }
                 composable("myShops") { au.mainspring.nativeapp.ui.screens.MyShopsScreen(onBack = { navController.popBackStack() }, onSwitchSite = onSwitchSite, onMembershipChanged = onRefreshSession) }

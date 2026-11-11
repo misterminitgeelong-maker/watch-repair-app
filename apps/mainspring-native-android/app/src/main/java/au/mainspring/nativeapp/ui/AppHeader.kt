@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -71,13 +72,24 @@ internal fun tabFor(route: String?, features: Set<String>): String {
 }
 
 /** Persistent top app bar for the main tab screens: wordmark left, search right, hairline below. */
-@Composable fun AppHeader(onSearch: () -> Unit, modifier: Modifier = Modifier) {
+@Composable fun AppHeader(onSearch: () -> Unit, modifier: Modifier = Modifier, shopName: String? = null, onSwitchShop: (() -> Unit)? = null) {
     Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("app-header")) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { CalibreWordmark(null, Modifier.padding(bottom = 8.dp)) }
+            if(onSwitchShop != null) ShopSwitchButton(shopName, onSwitchShop, Modifier.statusBarsPadding().padding(top = 6.dp))
             SearchIconButton(onSearch, Modifier.statusBarsPadding().padding(end = 8.dp, top = 6.dp))
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+/** The active shop is an explicit chooser whenever this sign-in can reach multiple shops. */
+@Composable fun ShopSwitchButton(shopName: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    androidx.compose.material3.TextButton(onClick, modifier.widthIn(max = 156.dp).testTag("app-switch-shop")) {
+        Column {
+            Text("Switch shop ▾", style = MaterialTheme.typography.labelMedium)
+            shopName?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+        }
     }
 }
 

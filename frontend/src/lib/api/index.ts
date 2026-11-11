@@ -61,6 +61,7 @@ export interface AuthSession {
   product?: 'minit' | 'mainspring'
   /** When true, render the six-item Minit HQ sidebar (authoritative server signal). */
   is_minit_hq_ui?: boolean
+  can_manage_integrations?: boolean
   /** Platform admin in their own workspace: show only the admin console. */
   is_platform_console?: boolean
   plan_code: PlanCode

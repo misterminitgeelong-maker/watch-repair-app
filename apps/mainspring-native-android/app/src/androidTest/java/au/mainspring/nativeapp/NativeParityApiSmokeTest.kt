@@ -72,11 +72,11 @@ class NativeParityApiSmokeTest {
             assertEquals("collected", engraving.updateOrder(order.id, JsonObject().apply { addProperty("status", "collected"); addProperty("paid", true) }).status)
 
             val integrations = ApiClient.service(IntegrationsApi::class.java)
-            val key = integrations.createApiKey(ApiKeyCreateBody("Native QA key"))
-            assertFalse(key.apiKey.isNullOrBlank())
-            assertTrue(integrations.apiKeys().any { it.id == key.id })
-            assertTrue(integrations.revokeApiKey(key.id).isSuccessful)
-            assertTrue(integrations.apiKeys().none { it.id == key.id && it.isActive })
+            assertFalse("A retail shop cannot manage HQ integrations", session.canManageIntegrations)
+            try { integrations.apiKeys(); fail("Retail API-key management must be refused") }
+            catch(e: retrofit2.HttpException) { assertEquals(403, e.code()) }
+            try { integrations.webhooks(); fail("Retail webhook management must be refused") }
+            catch(e: retrofit2.HttpException) { assertEquals(403, e.code()) }
             val config = ApiClient.service(ClientConfigApi::class.java).config()
             assertEquals(0, config.minimum); assertNull(config.sentryDsn)
         } finally { TokenStore.clear() }

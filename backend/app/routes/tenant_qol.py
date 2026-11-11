@@ -32,6 +32,7 @@ from ..models import (
     Watch,
 )
 from ..security import hash_password
+from ..integration_access import require_tenant_integration_management
 
 router = APIRouter(prefix="/v1", tags=["tenant-qol"])
 
@@ -279,9 +280,10 @@ class ApiKeyRead(BaseModel):
 
 @router.get("/tenant/api-keys", response_model=list[ApiKeyRead])
 def list_api_keys(
-    auth: AuthContext = Depends(require_tech_or_above),
+    auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    require_tenant_integration_management(session, auth)
     rows = session.exec(
         select(TenantApiKey).where(TenantApiKey.tenant_id == auth.tenant_id).order_by(TenantApiKey.created_at.desc())
     ).all()
@@ -291,9 +293,10 @@ def list_api_keys(
 @router.post("/tenant/api-keys", response_model=ApiKeyCreateResponse, status_code=201)
 def create_api_key(
     payload: ApiKeyCreateRequest,
-    auth: AuthContext = Depends(require_manager_or_above),
+    auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    require_tenant_integration_management(session, auth)
     raw = f"msk_{secrets.token_urlsafe(32)}"
     prefix = raw[:12]
     row = TenantApiKey(
@@ -311,9 +314,10 @@ def create_api_key(
 @router.delete("/tenant/api-keys/{key_id}", status_code=204)
 def revoke_api_key(
     key_id: UUID,
-    auth: AuthContext = Depends(require_manager_or_above),
+    auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    require_tenant_integration_management(session, auth)
     row = session.get(TenantApiKey, key_id)
     if not row or row.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="API key not found")
@@ -339,9 +343,10 @@ class WebhookRead(BaseModel):
 
 @router.get("/tenant/webhooks", response_model=list[WebhookRead])
 def list_webhooks(
-    auth: AuthContext = Depends(require_tech_or_above),
+    auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    require_tenant_integration_management(session, auth)
     rows = session.exec(
         select(TenantWebhookSubscription)
         .where(TenantWebhookSubscription.tenant_id == auth.tenant_id)
@@ -353,9 +358,10 @@ def list_webhooks(
 @router.post("/tenant/webhooks", response_model=WebhookRead, status_code=201)
 def create_webhook(
     payload: WebhookCreateRequest,
-    auth: AuthContext = Depends(require_manager_or_above),
+    auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    require_tenant_integration_management(session, auth)
     try:
         safe_url = validate_webhook_url(payload.url)
     except WebhookUrlError as exc:
@@ -375,9 +381,10 @@ def create_webhook(
 @router.delete("/tenant/webhooks/{hook_id}", status_code=204)
 def delete_webhook(
     hook_id: UUID,
-    auth: AuthContext = Depends(require_manager_or_above),
+    auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
+    require_tenant_integration_management(session, auth)
     row = session.get(TenantWebhookSubscription, hook_id)
     if not row or row.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Webhook not found")

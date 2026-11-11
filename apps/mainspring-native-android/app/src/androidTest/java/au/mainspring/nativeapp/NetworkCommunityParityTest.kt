@@ -34,7 +34,7 @@ class NetworkCommunityParityTest {
                 val body = if(request.method == "POST") request.body.readUtf8().also { writes += path to it } else ""
                 return when {
                     path == "/v1/network-community/networks" -> json.setBody("""[{"id":"$network","name":"Minit","own_state":"VIC","can_post":true}]""")
-                    path == "/v1/network-community/$network/hubs" -> json.setBody("""[{"code":"VIC","name":"Victoria","mine":true,"accessible":true,"can_post":true,"unread":${if(hubRead) 0 else 2}},{"code":"NSW","name":"New South Wales","mine":false,"accessible":false,"can_post":false,"unread":0}]""")
+                    path == "/v1/network-community/$network/hubs" -> json.setBody("""[{"code":"VIC","name":"Victoria","mine":true,"accessible":true,"can_post":true,"unread":${if(hubRead) 0 else 2}},{"code":"NSW","name":"New South Wales","mine":false,"accessible":false,"can_post":false,"unread":0},{"code":"QLD","name":"Queensland","mine":false,"accessible":true,"can_post":true,"unread":0}]""")
                     path == "/v1/network-messages/contacts" -> json.setBody("""[{"tenant_id":"other-shop","name":"Chadstone","network_role":"retail","state_code":"VIC","shop_number":"123"}]""")
                     path == "/v1/network-messages/conversations" -> json.setBody("""[{"id":"$conversation","parent_account_id":"$network","other_tenant_id":"other-shop","other_name":"Chadstone","last_body":"Ready for pickup","last_message_at":"2026-11-10T02:00:00Z","unread":${if(directRead) 0 else 3}}]""")
                     path == "/v1/network-community/unread" -> json.setBody("""{"count":${(if(hubRead) 0 else 2) + (if(announcementRead) 0 else 1)}}""")
@@ -57,6 +57,35 @@ class NetworkCommunityParityTest {
     }
     @After fun cleanup() { TokenStore.clear(); NetworkUnreadStore.clear(); server.shutdown() }
     private fun awaitTag(tag: String) = compose.waitUntil(10_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    @Test fun chatsPrioritisePrivateConversationsAndKeepTheFullHubListInItsOwnTab() {
+        compose.setContent { MainspringTheme { NetworkMessagesScreen({}) } }
+        awaitTag("network-conversation-$conversation"); awaitTag("network-hub-VIC")
+        val direct = compose.onNodeWithTag("network-conversation-$conversation").fetchSemanticsNode().boundsInRoot
+        val ownHub = compose.onNodeWithTag("network-hub-VIC").fetchSemanticsNode().boundsInRoot
+        Assert.assertTrue("Private conversations precede state hubs", direct.bottom < ownHub.top)
+        compose.onNodeWithTag("network-hub-QLD").assertDoesNotExist()
+        compose.onNodeWithTag("network-tab-hubs").performClick()
+        awaitTag("network-hub-QLD")
+        compose.onNodeWithTag("network-hub-NSW").assertIsNotEnabled()
+    }
+    @Test fun aHubPinnedFilterDoesNotHidePrivateMessagesAndPhoneComposerStaysBelowTheThread() {
+        val vm = NetworkMessagesViewModel()
+        compose.setContent { MainspringTheme { NetworkMessagesScreen({}, vm = vm) } }
+        awaitTag("network-hub-VIC"); compose.onNodeWithTag("network-hub-VIC").performClick(); awaitTag("network-post-h1")
+        compose.onNodeWithText("Pinned messages").performClick()
+        compose.onNodeWithTag("network-post-h1").assertDoesNotExist()
+        compose.runOnIdle { vm.openDirect("other-shop", "Chadstone", conversation) }
+        awaitTag("network-post-d1")
+        compose.onNodeWithTag("network-send").assertIsNotEnabled()
+        compose.onNodeWithTag("network-draft").performTextInput("Can you help?")
+        compose.onNodeWithTag("network-send").assertIsEnabled().performClick()
+        awaitTag("network-post-d2")
+        val incoming = compose.onNodeWithTag("network-post-d1").fetchSemanticsNode().boundsInRoot
+        val outgoing = compose.onNodeWithTag("network-post-d2").fetchSemanticsNode().boundsInRoot
+        val composer = compose.onNodeWithTag("network-draft").fetchSemanticsNode().boundsInRoot
+        Assert.assertTrue("Outgoing bubbles align to the right", outgoing.center.x > incoming.center.x)
+        Assert.assertTrue("Composer is anchored below messages", composer.top > outgoing.bottom)
+    }
     @Test fun hubMarksTheVisibleMessageReadAndSendsAPost() {
         compose.setContent { MainspringTheme { NetworkMessagesScreen({}) } }
         awaitTag("network-hub-VIC"); compose.onNodeWithTag("network-hub-VIC").performClick()

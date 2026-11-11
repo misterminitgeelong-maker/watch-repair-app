@@ -22,6 +22,7 @@ import au.mainspring.nativeapp.ui.*
 /** Shop API keys and outbound webhooks, mirroring the web Settings "Notifications & integrations" cards. */
 @Composable fun IntegrationsScreen(onBack: () -> Unit, viewModel: IntegrationsViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    if(!state.allowed) { HqIntegrationAccessRequiredScreen(onBack); return }
     val context = LocalContext.current
     var keyName by rememberSaveable { mutableStateOf("") }
     var hookUrl by rememberSaveable { mutableStateOf("") }
@@ -103,5 +104,14 @@ import au.mainspring.nativeapp.ui.*
             text = { Text("${hook?.url ?: "This address"} will stop receiving events.") },
             confirmButton = { TextButton({ removeId = null; viewModel.removeWebhook(id) }, Modifier.testTag("webhook-remove-confirm")) { Text("Remove") } },
             dismissButton = { TextButton({ removeId = null }) { Text("Cancel") } })
+    }
+}
+
+@Composable fun HqIntegrationAccessRequiredScreen(onBack: () -> Unit) {
+    Scaffold(topBar = { BackLargeHeader("More", "HQ account", "API keys & webhooks", onBack) }) { padding ->
+        Column(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("HQ account required", style = MaterialTheme.typography.titleLarge)
+            Text("Sign in to your own HQ account to manage its API keys and webhooks. Shop accounts do not have this tool.")
+        }
     }
 }

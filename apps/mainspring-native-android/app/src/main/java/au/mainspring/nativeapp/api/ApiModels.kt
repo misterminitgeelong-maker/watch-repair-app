@@ -48,6 +48,7 @@ data class SessionResponse(
     @SerializedName("available_sites") val sites: List<SessionSite> = emptyList(),
     @SerializedName("is_minit_hq_ui") val hqConsole: Boolean = false,
     @SerializedName("is_platform_console") val platformConsole: Boolean = false,
+    @SerializedName("can_manage_integrations") val canManageIntegrations: Boolean = false,
     @SerializedName("signup_payment_pending") val signupPaymentPending: Boolean = false,
     /** Stripe status: trialing, active, past_due, canceled, or null. */
     @SerializedName("subscription_status") val subscriptionStatus: String? = null,

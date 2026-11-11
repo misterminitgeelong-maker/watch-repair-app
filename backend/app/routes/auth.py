@@ -294,8 +294,9 @@ def _create_default_owner(session: Session, tenant: Tenant) -> User:
     return owner
 
 
-def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -> AuthSessionResponse:
+def _build_auth_session_response(session: Session, tenant: Tenant, user: User, auth: AuthContext | None = None) -> AuthSessionResponse:
     from ..minit_branding import ensure_minit_tenant_plan, effective_plan_code, is_minit_hq_ui, tenant_product
+    from ..integration_access import can_manage_tenant_integrations
 
     before_plan = tenant.plan_code
     tenant = ensure_minit_tenant_plan(session, tenant)
@@ -323,6 +324,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User) -
         tenant_abn=tenant.abn,
         tenant_shop_phone=tenant.shop_phone,
         product=product,
+        can_manage_integrations=auth is not None and can_manage_tenant_integrations(session, auth),
         is_minit_hq_ui=is_minit_hq_ui(tenant),
         is_platform_console=(
             user.role == "platform_admin"
@@ -1099,7 +1101,7 @@ def get_session_info(
     if not tenant or not user or user.tenant_id != tenant.id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    return _build_auth_session_response(session, tenant, user)
+    return _build_auth_session_response(session, tenant, user, auth)
 
 
 @router.get("/sessions", summary="List known sessions for current user")
@@ -1348,4 +1350,4 @@ def update_session_plan(
     session.commit()
     session.refresh(tenant)
 
-    return _build_auth_session_response(session, tenant, user)
+    return _build_auth_session_response(session, tenant, user, auth)
