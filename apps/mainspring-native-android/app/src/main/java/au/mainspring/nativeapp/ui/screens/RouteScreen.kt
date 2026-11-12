@@ -167,7 +167,7 @@ import java.util.Locale
     }
 }
 
-@Composable private fun NativeStopMap(addresses: List<String>,modifier: Modifier) {
+@Composable internal fun NativeStopMap(addresses: List<String>,modifier: Modifier) {
     val context=LocalContext.current
     val lifecycle=LocalLifecycleOwner.current.lifecycle
     val view=remember { MapView(context).apply {onCreate(null)} }

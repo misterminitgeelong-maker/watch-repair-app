@@ -145,10 +145,10 @@ Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCor
             state.info?.let {Text(it,Modifier.padding(12.dp))}
             if(state.uncertain) Column(Modifier.padding(12.dp)) {Text(model.pendingMove());Text("Review the latest job booking before clearing the interrupted move.");OutlinedButton(model::reviewMove,enabled=state.reviewed && !state.loading && !state.busy) {Text("I have reviewed the booking")}}
             if(state.total>state.jobs.size) Text("Showing ${state.jobs.size} of ${state.total} bookings. Narrow the schedule from the job list.",Modifier.padding(12.dp),style=MaterialTheme.typography.bodySmall)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=12.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                au.mainspring.nativeapp.ui.AtelierChip(technician.isBlank(),{technician=""},label={Text("All technicians")})
-                au.mainspring.nativeapp.ui.AtelierChip(technician=="unassigned",{technician="unassigned"},label={Text("Unassigned")})
-                state.technicians.filter {it.active || state.jobs.any {job->job.assignedUserId==it.id}}.forEach {user->au.mainspring.nativeapp.ui.AtelierChip(technician==user.id,{technician=user.id},label={Text(user.name)})}
+            Row(Modifier.fillMaxWidth().padding(horizontal=12.dp)) {
+                au.mainspring.nativeapp.ui.FilterDropdown("Technician",
+                    listOf<Pair<String?,String>>("" to "All technicians","unassigned" to "Unassigned")+state.technicians.filter {it.active || state.jobs.any {job->job.assignedUserId==it.id}}.map {user->user.id to user.name},
+                    technician,{technician=it ?: ""})
             }
             selecting?.let {job->Row(Modifier.fillMaxWidth().padding(12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {Text("Move ${job.jobNumber}",style=MaterialTheme.typography.titleSmall);Text("Choose a time slot, then confirm.",style=MaterialTheme.typography.bodySmall)}

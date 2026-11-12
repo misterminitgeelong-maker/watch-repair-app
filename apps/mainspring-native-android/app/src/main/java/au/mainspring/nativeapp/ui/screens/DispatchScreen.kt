@@ -76,8 +76,13 @@ fun DispatchScreen(
         item { LargeHeader("Mobile services · Today", "Dispatch", onAdd = if(TokenStore.canWorkJobs()) onNew else null, addDescription = "New job") }
         item {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                RouteArt(Modifier, onOpenRoute)
-                if(LocalCalibre.current) MonoLabel("Illustrative area diagram")
+                val mapAddresses = shown.mapNotNull { it.jobAddress?.takeIf { a -> a.isNotBlank() } }
+                if(au.mainspring.nativeapp.BuildConfig.MAPS_CONFIGURED && mapAddresses.isNotEmpty()) {
+                    androidx.compose.material3.Surface(Modifier.fillMaxWidth().height(210.dp), shape = MaterialTheme.shapes.medium) {
+                        NativeStopMap(mapAddresses, Modifier.fillMaxSize())
+                    }
+                }
+                SecondaryAction(onOpenRoute, Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = "Open today's route" }) { Text(if(mapAddresses.isEmpty()) "Open today's route" else "Open full route · " + countLabel(mapAddresses.size, "stop")) }
             }
         }
         if(onOpenBookingRequests != null) item { PendingBookingsBanner(onOpenBookingRequests, Modifier.padding(horizontal = 20.dp)) }
@@ -108,15 +113,13 @@ fun DispatchScreen(
         }
         if(extra.technicians.isNotEmpty() || riskFirst || dayJobs.any { it.assignedUserId == null }) stickyHeader(key = "lanes", contentType = "lanes") {
             Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal = 20.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PillChip("All lanes", lane == "all", { lane = "all" })
-                    extra.technicians.forEach { t -> PillChip(t.name, lane == t.id, { lane = t.id }) }
-                    PillChip("Unassigned", lane == "none", { lane = "none" })
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilterDropdown("Lane", listOf<Pair<String?, String>>("all" to "All lanes") + extra.technicians.map { t -> t.id to t.name } + listOf("none" to "Unassigned"), lane, { lane = it ?: "all" })
                     PillChip(if(riskFirst) "Risk first: on" else "Risk first", riskFirst, { riskFirst = !riskFirst })
                 }
             }
         }
-        if(dayLoading && dayJobs.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
+        if(dayLoading && dayJobs.isEmpty()) item { SkeletonRows(count = 3) }
         dayError?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = { model.refresh(); if(viewDay != null) dayModel.refresh() }) } }
         if(!dayLoading && dayError == null && shown.isEmpty()) item { EmptyState(if(dayJobs.isEmpty()) "No appointments " + (if(viewDay == null) "today" else "on this day") else "Nothing in this lane", if(dayJobs.isEmpty()) "Check the pool for nearby work, or plan the week." else "Pick another lane to see the rest of the day.") }
         items(shown, key = { it.id }) { job ->
@@ -226,26 +229,6 @@ fun DispatchScreen(
                 if(!reference.isNullOrBlank()) MonoLabel(reference)
                 if(!status.isNullOrBlank()) TonePill(status, if(urgent) StatusTone.Late else statusTone(statusKey ?: status))
             }
-        }
-    }
-}
-
-/** Stylised route card (roads, water, dotted route) standing in for the live map. Tap opens today's route list. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RouteArt(modifier: Modifier, onClick: () -> Unit) {
-    val calibre = LocalCalibre.current
-    val routeColor = MaterialTheme.colorScheme.primary; val pinColor = MaterialTheme.colorScheme.onSurface
-    Surface(onClick, modifier.fillMaxWidth().height(210.dp).semantics { contentDescription = "Open today's route" }, shape = if(calibre) androidx.compose.ui.graphics.RectangleShape else MaterialTheme.shapes.medium, color = if(calibre) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFE5E9DD)) {
-        Canvas(Modifier.fillMaxSize()) {
-            val u = size.width / 354f
-            if(!calibre) drawRoundRect(Color(0xFFC9DCE4), Offset(size.width * 0.72f, 0f), Size(size.width * 0.28f, size.height), CornerRadius(60f * u))
-            val road = Color.White
-            fun r(x1: Float, y1: Float, x2: Float, y2: Float, w: Float = 13f) = drawLine(road, Offset(x1 * u, y1 * u), Offset(x2 * u, y2 * u), w * u)
-            r(0f, 60f, 354f, 20f); r(0f, 130f, 300f, 80f); r(60f, 0f, 20f, 210f); r(140f, 0f, 190f, 210f, 15f); r(250f, 0f, 220f, 210f, 10f)
-            val path = Path().apply { moveTo(75f * u, 160f * u); cubicTo(110f * u, 90f * u, 140f * u, 60f * u, 170f * u, 70f * u); cubicTo(210f * u, 85f * u, 230f * u, 50f * u, 236f * u, 52f * u) }
-            drawPath(path, if(calibre) routeColor else Color(0xFF2453D4), style = Stroke(5f * u, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f * u, 9f * u))))
-            drawCircle(if(calibre) pinColor else Color(0xFF17202C), 9f * u, Offset(75f * u, 160f * u)); drawCircle(if(calibre) routeColor else Color(0xFF2453D4), 10f * u, Offset(140f * u, 72f * u)); drawCircle(if(calibre) pinColor else Color(0xFF16734F), 10f * u, Offset(236f * u, 52f * u))
         }
     }
 }
