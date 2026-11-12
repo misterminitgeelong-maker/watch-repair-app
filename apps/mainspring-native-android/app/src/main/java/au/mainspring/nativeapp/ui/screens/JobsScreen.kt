@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -99,7 +98,6 @@ fun JobsScreen(
 
     val header: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ServiceTitle("Watch Repairs", Modifier.padding(top = 8.dp))
             androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextToggle(listOf(ToggleOption("board", "Board", "view-board"), ToggleOption("list", "List", "view-list")),
                     if (state.board) "board" else "list", { viewModel.setBoard(it == "board") })
@@ -114,13 +112,18 @@ fun JobsScreen(
                 SandSegmented(listOf(ToggleOption("active", "Active (${state.activeCount})", "segment-active"), ToggleOption("completed", "Completed (${state.completedCount})", "segment-completed")),
                     if (state.showCompleted) "completed" else "active", { viewModel.setShowCompleted(it == "completed") })
                 SearchFiltersRow(state.query, viewModel::setQuery, "Search jobs…", { filtersOpen = true }, state.activeFilterCount, onSearch = viewModel::refresh)
-                if (state.loading && state.jobs.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (state.loading && state.jobs.isEmpty()) au.mainspring.nativeapp.ui.SkeletonRows(Modifier.fillMaxWidth(), count = 4)
                 state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = { viewModel.refresh() }) }
                 if (!state.loading && state.error == null) Text(
                     if (state.canLoadMore) "Showing the first ${state.jobs.size} jobs for this filter." else "All matching jobs are loaded for this filter (${state.jobs.size} rows).",
                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = muted, modifier = Modifier.testTag("jobs-loaded-note"))
                 if (!state.loading && state.error == null && state.visibleJobs.isEmpty()) {
-                    au.mainspring.nativeapp.ui.EmptyState("No repairs found", "Try a different search or filter, or start a new repair.")
+                    au.mainspring.nativeapp.ui.EmptyState(title = "No repairs found", hint = "Try a different search or filter, or start a new repair.",
+                        actionLabel = if (state.activeFilterCount > 0 || state.query.isNotBlank()) "Clear filters" else null,
+                        onAction = {
+                            viewModel.setQuery(""); viewModel.setSort(JobSort.NEWEST); viewModel.filterMinDays(null); viewModel.filterStatus(null); viewModel.filterTechnician(null)
+                            viewModel.setSortDescending(true); viewModel.setCostOutliersOnly(false); viewModel.setPastCollectionOnly(false)
+                        })
                 }
             }
         }

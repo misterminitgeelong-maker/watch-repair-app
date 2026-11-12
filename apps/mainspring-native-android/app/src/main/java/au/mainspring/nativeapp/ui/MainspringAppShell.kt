@@ -173,7 +173,8 @@ fun MainspringAppShell(
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 if (showBottomBar && !wide) AppHeader({ navController.navigate("search") { launchSingleTop = true } }, shopName = selectedSite?.name,
-                    onSwitchShop = if(sites.map { it.tenantId }.distinct().size > 1) ({ switchOpen = true }) else null)
+                    onSwitchShop = if(sites.map { it.tenantId }.distinct().size > 1) ({ switchOpen = true }) else null,
+                    title = tabRootTitle(currentRoute))
                 else if (wide && showBottomBar) androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.dp)) {
                         androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { au.mainspring.nativeapp.ui.CalibreWordmark(selectedSite?.name, Modifier.padding(0.dp), null) }
@@ -506,6 +507,12 @@ fun MainspringAppShell(
             Text("Unsaved drafts remain tied to the shop and account that opened them.")
             sites.forEach { site -> TextButton(onClick = { switchOpen = false; onSwitchSite(site.tenantId) }, enabled = site.tenantId != activeSiteId) { Text(site.name) } }
         } }, confirmButton = { TextButton(onClick = { switchOpen = false }) { Text("Cancel") } })
+}
+
+/** Header title for the tab-root screens only (the seamless-pass header); every other screen keeps its own title. */
+internal fun tabRootTitle(route: String?): String? = when(route) {
+    "today", "home" -> "Home"; "inbox" -> "Inbox"; "watch_jobs" -> "Watch jobs"; "auto_jobs" -> "Mobile jobs"; "shoe_jobs" -> "Shoe repairs"
+    else -> null
 }
 
 private fun mainTitle(route: String?) = when(route) {

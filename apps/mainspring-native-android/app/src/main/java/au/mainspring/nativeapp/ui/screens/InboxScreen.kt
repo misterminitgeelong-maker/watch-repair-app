@@ -84,12 +84,7 @@ fun InboxScreen(
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         containerColor = if (embedded) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.background,
-        topBar = {
-            if (!embedded) {
-                if (au.mainspring.nativeapp.ui.LocalCalibre.current) au.mainspring.nativeapp.ui.PageTitle("Inbox")
-                else au.mainspring.nativeapp.ui.LargeHeader("Messages · Activity", "Inbox")
-            }
-        },
+        // The tab header now carries the "Inbox" title.
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {

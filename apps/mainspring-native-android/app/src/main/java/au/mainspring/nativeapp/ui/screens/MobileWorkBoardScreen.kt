@@ -35,7 +35,6 @@ import java.time.*
         ) {padding->
     Column(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            ServiceTitle("Mobile Services",Modifier.padding(top=8.dp))
             var menuOpen by remember {mutableStateOf(false)}
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
                 Box {

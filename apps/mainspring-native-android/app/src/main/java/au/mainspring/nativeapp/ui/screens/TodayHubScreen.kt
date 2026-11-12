@@ -309,7 +309,6 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
     val financials = summary?.financials as au.mainspring.nativeapp.api.ReportsFinancials?
     fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column { PageTitle("Operations Dashboard") }
         Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Last refreshed " + java.time.Instant.ofEpochMilli(refreshedAt).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("h:mm:ss a", Locale.US)),
                 Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
