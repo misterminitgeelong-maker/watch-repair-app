@@ -183,12 +183,14 @@ def unread_total(auth: AuthContext = Depends(get_auth_context), session: Session
 def hubs(parent_id: UUID, auth: AuthContext = Depends(get_auth_context), session: Session = Depends(unscoped_session)):
     _, _, own, allowed, admin, manager, can_post = _context(session, auth, parent_id)
     out = []
+    reads = {}
+    for row in session.exec(select(StateHubRead).where(
+        StateHubRead.parent_account_id == parent_id, StateHubRead.tenant_id == auth.tenant_id,
+    )).all():
+        reads.setdefault(row.state_code, row)
     for code, name in STATES.items():
         accessible = code in allowed
-        read = session.exec(select(StateHubRead).where(
-            StateHubRead.parent_account_id == parent_id, StateHubRead.state_code == code,
-            StateHubRead.tenant_id == auth.tenant_id,
-        )).first() if accessible else None
+        read = reads.get(code) if accessible else None
         unread = 0
         if accessible:
             stmt = select(func.count()).select_from(StateHubMessage).where(
