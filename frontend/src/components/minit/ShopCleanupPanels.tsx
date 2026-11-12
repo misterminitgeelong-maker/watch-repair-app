@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   applyEntitlementBackfill,
@@ -14,7 +14,9 @@ import { PARENT_ACCOUNT_SITES_QUERY_KEY } from '@/hooks/useParentAccountSites'
 import { Button, Input } from '@/components/ui'
 
 /** Fold a mobile-service record (van) into its franchisee's shop site. Nothing is deleted. */
-export function VanMergePanel() {
+export type VanMergePreset = { shopId: string; vanId: string; label: string }
+
+export function VanMergePanel({ preset }: { preset?: VanMergePreset | null }) {
   const qc = useQueryClient()
   const [shopNumber, setShopNumber] = useState('')
   const [vanNumber, setVanNumber] = useState('')
@@ -26,11 +28,18 @@ export function VanMergePanel() {
   const [notice, setNotice] = useState('')
 
   const load = useMutation({
-    mutationFn: () =>
-      getVanMergePreview({ shop_number: shopNumber.trim(), van_number: vanNumber.trim(), allow_other_networks: allowOther })
+    mutationFn: (ids?: VanMergePreset | null) =>
+      getVanMergePreview(ids
+        ? { shop_tenant_id: ids.shopId, van_tenant_id: ids.vanId, allow_other_networks: allowOther }
+        : { shop_number: shopNumber.trim(), van_number: vanNumber.trim(), allow_other_networks: allowOther })
         .then(r => r.data),
-    onSuccess: p => { setPreview(p); setNotice(''); setMvNumber(vanNumber.trim()) },
+    onSuccess: (p, ids) => {
+      setPreview(p); setNotice('')
+      setMvNumber(ids ? '' : vanNumber.trim())
+    },
   })
+  // Opened from the duplicate list: both records share a number, so they are picked by id.
+  useEffect(() => { if (preset) load.mutate(preset) }, [preset?.shopId, preset?.vanId, allowOther]) // eslint-disable-line react-hooks/exhaustive-deps
   const merge = useMutation({
     mutationFn: (p: VanMergePreview) =>
       runVanMerge({
@@ -59,6 +68,7 @@ export function VanMergePanel() {
         For a franchisee whose mobile service is a separate record. The shop keeps its number and gains mobile services
         (paid by the network) plus the van&rsquo;s MV number. Lead routing and base move across. Refused if the van holds jobs or customers.
       </p>
+      {preset && <p className="text-xs"><strong>From the duplicate list:</strong> {preset.label}</p>}
       <div className="flex flex-wrap gap-2 items-end">
         <label className="text-xs">Shop #<Input value={shopNumber} onChange={e => setShopNumber(e.target.value)} aria-label="Shop number" /></label>
         <label className="text-xs">Van #<Input value={vanNumber} onChange={e => setVanNumber(e.target.value)} aria-label="Van number" /></label>
@@ -66,7 +76,7 @@ export function VanMergePanel() {
           <input type="checkbox" checked={allowOther} onChange={e => setAllowOther(e.target.checked)} />
           Van is also in another network; fold it anyway
         </label>
-        <Button variant="secondary" disabled={!shopNumber.trim() || !vanNumber.trim() || load.isPending} onClick={() => load.mutate()}>
+        <Button variant="secondary" disabled={!shopNumber.trim() || !vanNumber.trim() || load.isPending} onClick={() => load.mutate(null)}>
           Preview
         </Button>
       </div>
