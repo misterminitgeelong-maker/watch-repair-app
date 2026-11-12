@@ -87,8 +87,7 @@ import androidx.compose.ui.platform.testTag
                         val accounts = state.accounts.filter { it.active && vm.field("customerId") in it.customerIds }
                         if(accounts.isNotEmpty() || vm.field("accountId").isNotBlank()) {
                             Text("Billing account (optional)")
-                            au.mainspring.nativeapp.ui.AtelierChip(vm.field("accountId").isBlank(),{ vm.set("accountId","") },enabled = !locked,label = { Text("No account") })
-                            accounts.forEach { account -> au.mainspring.nativeapp.ui.AtelierChip(vm.field("accountId") == account.id,{ vm.set("accountId",account.id) },enabled = !locked,label = { Text(account.name) }) }
+                            au.mainspring.nativeapp.ui.FilterDropdown("Billing account",listOf<Pair<String?,String>>("" to "No account")+accounts.map { it.id to it.name },vm.field("accountId"),{ if(!locked) vm.set("accountId",it ?: "") },Modifier.testTag("intake-account"))
                         }
                     }
             if(vm.showLastVehicle()) state.lastJob?.let {job ->
@@ -121,17 +120,12 @@ import androidx.compose.ui.platform.testTag
             state.addressSuggestions.forEachIndexed {i,address -> SelectableCard(selected=false,onClick={vm.pickAddress(address)},modifier=Modifier.testTag("intake-address-suggestion-$i"),enabled=!locked) {Text(address,style=MaterialTheme.typography.bodyMedium)}}
             field("scheduled","Booking (DD/MM/YYYY HH:mm)")
             Text("Times use ${TokenStore.calendarTimezone()}",style=MaterialTheme.typography.bodySmall)
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                au.mainspring.nativeapp.ui.AtelierChip(vm.field("technician").isBlank(),{vm.set("technician","")},enabled=!locked,label={Text("Unassigned")})
-                state.technicians.filter {it.active && it.role in listOf("tech","manager","owner")}.forEach {user->au.mainspring.nativeapp.ui.AtelierChip(vm.field("technician")==user.id,{vm.set("technician",user.id)},enabled=!locked,label={Text(user.name)})}
-            }
+            au.mainspring.nativeapp.ui.FilterDropdown("Technician",listOf<Pair<String?,String>>("" to "Unassigned")+state.technicians.filter {it.active && it.role in listOf("tech","manager","owner")}.map {it.id to it.name},vm.field("technician"),{ if(!locked) vm.set("technician",it ?: "") },Modifier.testTag("intake-technician"))
             SectionLabel("Job source (commission tier)")
-            FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                MOBILE_COMMISSION_SOURCES.forEach {(value,label)->au.mainspring.nativeapp.ui.AtelierChip(vm.field("commission").ifBlank {DEFAULT_COMMISSION_SOURCE}==value,{vm.set("commission",value)},modifier=Modifier.testTag("intake-commission-$value"),enabled=!locked,label={Text(label)})}
-            }
+            au.mainspring.nativeapp.ui.FilterDropdown("Job source",MOBILE_COMMISSION_SOURCES.map {(value,label)->value to label},vm.field("commission").ifBlank {DEFAULT_COMMISSION_SOURCE},{ if(!locked && it != null) vm.set("commission",it) },Modifier.testTag("intake-commission"))
             field("salesperson","Salesperson")
             SectionLabel("Priority")
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("low","normal","high","urgent").forEach {value->au.mainspring.nativeapp.ui.AtelierChip(vm.field("priority").ifBlank {"normal"}==value,{vm.set("priority",value)},enabled=!locked,label={Text(value.replaceFirstChar {it.uppercase()})})}}
+            au.mainspring.nativeapp.ui.FilterDropdown("Priority",listOf("low","normal","high","urgent").map {it to it.replaceFirstChar {c->c.uppercase()}},vm.field("priority").ifBlank {"normal"},{ if(!locked && it != null) vm.set("priority",it) },Modifier.testTag("intake-priority"))
             SectionLabel("Work details")
             field("description","Requested work");field("keyType","Key type");field("quantity","Key quantity (default 1)");field("notes","Technician notes");field("deposit","Deposit ($)")
             SectionLabel("Suggested quote")
@@ -152,7 +146,7 @@ import androidx.compose.ui.platform.testTag
             vm.field("pricingLabel").takeIf(String::isNotBlank)?.let { Text("Catalogue: $it${if(vm.field("callout") == "true") " · Callout included" else " · Plus callout"}") }
             OutlinedButton({ pricingOpen = true }, enabled = !locked) { Text("Browse pricing catalogue") }
             SectionLabel("Initial status")
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {listOf("awaiting_quote","go_ahead","pending_booking","booked").forEach {value->au.mainspring.nativeapp.ui.AtelierChip(vm.field("status").ifBlank {"awaiting_quote"}==value,{vm.set("status",value)},enabled=!locked,label={Text(au.mainspring.nativeapp.ui.statusLabel(value))})}}
+            au.mainspring.nativeapp.ui.FilterDropdown("Initial status",listOf("awaiting_quote","go_ahead","pending_booking","booked").map {it to au.mainspring.nativeapp.ui.statusLabel(it)},vm.field("status").ifBlank {"awaiting_quote"},{ if(!locked && it != null) vm.set("status",it) },Modifier.testTag("intake-status"))
             au.mainspring.nativeapp.ui.LabeledCheckbox(vm.field("bookingSms")=="true",{vm.set("bookingSms",it.toString())},enabled=!locked) {Text("Send booking SMS to customer")}
             Text("Creation may also send the customer's tracking message according to shop settings.",style=MaterialTheme.typography.bodySmall)
         }

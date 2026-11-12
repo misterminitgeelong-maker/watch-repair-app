@@ -34,23 +34,13 @@ import au.mainspring.nativeapp.api.MOBILE_PRIORITIES
    val editable = !state.loading && !state.busy
    au.mainspring.nativeapp.ui.SectionLabel("Job type")
    val currentType = state.fields["job_type"].orEmpty()
-   FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-    (MOBILE_JOB_TYPES + listOfNotNull(currentType.takeIf { it.isNotBlank() && it !in MOBILE_JOB_TYPES })).forEach { type ->
-     au.mainspring.nativeapp.ui.AtelierChip(currentType == type, { vm.set("job_type", if(currentType == type) "" else type) }, enabled = editable, label = { Text(type) })
-    }
-   }
+   au.mainspring.nativeapp.ui.FilterDropdown("Job type", listOf<Pair<String?, String>>("" to "Not set") + (MOBILE_JOB_TYPES + listOfNotNull(currentType.takeIf { it.isNotBlank() && it !in MOBILE_JOB_TYPES })).map { it to it }, currentType, { if(editable) vm.set("job_type", it ?: "") })
    au.mainspring.nativeapp.ui.SectionLabel("Priority")
-   FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-    MOBILE_PRIORITIES.forEach { p -> au.mainspring.nativeapp.ui.AtelierChip(state.fields["priority"] == p, { vm.set("priority", p) }, enabled = editable, label = { Text(au.mainspring.nativeapp.ui.statusLabel(p)) }) }
-   }
+   au.mainspring.nativeapp.ui.FilterDropdown("Priority", MOBILE_PRIORITIES.map { it to au.mainspring.nativeapp.ui.statusLabel(it) }, state.fields["priority"], { if(editable && it != null) vm.set("priority", it) })
    au.mainspring.nativeapp.ui.AtelierTextField(state.fields["deposit"].orEmpty(), { vm.set("deposit", it) }, label = { Text("Deposit ($)") }, modifier = Modifier.fillMaxWidth(), enabled = editable)
    au.mainspring.nativeapp.ui.SectionLabel("Job source (commission tier)")
    val currentSource = state.fields["commission_lead_source"].orEmpty()
-   FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-    (MOBILE_LEAD_SOURCES + listOfNotNull(currentSource.takeIf { s -> s.isNotBlank() && MOBILE_LEAD_SOURCES.none { it.first == s } }?.let { it to au.mainspring.nativeapp.ui.statusLabel(it) })).forEach { (value, label) ->
-     au.mainspring.nativeapp.ui.AtelierChip(currentSource == value, { vm.set("commission_lead_source", value) }, enabled = editable, label = { Text(label) })
-    }
-   }
+   au.mainspring.nativeapp.ui.FilterDropdown("Job source", (MOBILE_LEAD_SOURCES + listOfNotNull(currentSource.takeIf { s -> s.isNotBlank() && MOBILE_LEAD_SOURCES.none { it.first == s } }?.let { it to au.mainspring.nativeapp.ui.statusLabel(it) })).map { (value, label) -> value to label }, currentSource, { if(editable && it != null) vm.set("commission_lead_source", it) })
    Text("Billing account", style = MaterialTheme.typography.titleMedium)
    val selectedAccount = state.fields["customer_account_id"].orEmpty()
    Text(if(selectedAccount.isBlank()) "No billing account" else state.accounts.firstOrNull { it.id == selectedAccount }?.name ?: "Current billing account")
