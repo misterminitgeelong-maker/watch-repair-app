@@ -14,7 +14,7 @@ def localFile = rootProject.file('local.properties')
 if (localFile.exists()) {
     localFile.withInputStream { localProperties.load(it) }
 }
-def mapsKey = (localProperties.getProperty('maps.api.key') ?: '').trim()
+def mapsKey = (System.getenv('MAPS_API_KEY') ?: localProperties.getProperty('maps.api.key') ?: '').trim()
 def sentryDsn = (System.getenv('NATIVE_SENTRY_DSN') ?: localProperties.getProperty('sentry.dsn') ?: '').trim()
 
 // Release signing: the Play upload key lives OUTSIDE the repo (the same file the Capacitor app uses). Without it the release build is simply unsigned.

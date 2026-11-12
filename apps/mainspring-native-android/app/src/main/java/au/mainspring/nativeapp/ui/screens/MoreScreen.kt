@@ -99,13 +99,12 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
 /**
  * More tab, as on the web phone view: a compact popup sheet anchored above the bottom bar over a dimmed page, with a
  * four-column grid of icon tiles (every tool that fits the shop's plan and role, plus Settings), a divider and a red
- * Sign out row. A small search field sits at the top of the sheet. Settings opens the settings and appearance panels.
+ * Sign out row. A small search field sits at the top of the sheet. Settings opens the settings panels.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun MoreScreen(shop: String?, summary: String?, features: Set<String>, canSwitch: Boolean,
     onSwitch: () -> Unit, onNavigate: (String) -> Unit, onLogout: () -> Unit, onDismiss: () -> Unit = {}) {
     val fieldNavigation by DesignPreferences.fieldNavigation.collectAsState()
-    val appearance by DesignPreferences.appearance.collectAsState()
     var signOut by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -157,8 +156,8 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             LazyColumn(Modifier.statusBarsPadding().testTag("settings-list"), contentPadding = PaddingValues(bottom = 48.dp)) {
                 item { TextButton({ settingsOpen = false }, Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp)) { Text("\u2039 More") } }
-                item { PageTitle("Settings & appearance") }
-                item(key = "settings") { SettingsPanels(shop, summary, features, canSwitch, onSwitch, fieldNavigation, appearance, owner) }
+                item { PageTitle("Settings") }
+                item(key = "settings") { SettingsPanels(shop, summary, features, canSwitch, onSwitch, fieldNavigation, owner) }
             }
         }
     }
@@ -221,7 +220,7 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
 }
 
 @Composable private fun SettingsPanels(shop: String?, summary: String?, features: Set<String>, canSwitch: Boolean, onSwitch: () -> Unit,
-    fieldNavigation: Boolean, appearance: AppAppearance, owner: Boolean) {
+    fieldNavigation: Boolean, owner: Boolean) {
     Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if("auto_key" in features && owner) FlatPanel {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -231,17 +230,6 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
         }
         AppLockSetting()
         FlatPanel { au.mainspring.nativeapp.ui.PushSettingRow() }
-        SectionLabel("Appearance")
-        AppAppearance.entries.chunked(2).forEach { pair ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                pair.forEach { option ->
-                    SelectableCard(appearance == option, { DesignPreferences.select(option) }, Modifier.weight(1f).semantics { selected = appearance == option; role = Role.RadioButton }) {
-                        Text(option.label, style = MaterialTheme.typography.labelLarge)
-                        Text(if(appearance == option) "Selected" else "Use theme", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
         SectionLabel("Enabled modules")
         FlatPanel {
             listOf("auto_key" to "Mobile services", "watch" to "Watch repairs", "shoe" to "Shoe repairs").forEach { (key, label) -> DetailRow(label, if(key in features) "Enabled" else "Not enabled") }

@@ -104,13 +104,14 @@ class DesignWorkspaceTest {
         Assert.assertEquals(0,exits)
         saveNativeQaImage(compose.onNodeWithTag("quote-editor"),"design-quote-sheet.png")
     }
-    @Test fun ownerCanReachMoreAndThemeChoicePersistsAcrossComposition() {
+    @Test fun settingsHasNoAppearancePickerAndMainspringIsTheOnlyLook() {
+        InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("mainspring_appearance",0).edit().putString("appearance","NIGHT").commit()
+        DesignPreferences.init(InstrumentationRegistry.getInstrumentation().targetContext)
         compose.setContent {MainspringTheme {MainspringAppShell("Native QA",server.url("/").toString(),{},setOf("auto_key","watch","shoe"))}}
-        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasTestTag("more-group-settings"));compose.onNodeWithTag("more-group-settings").performClick();compose.onNodeWithTag("settings-list").performScrollToNode(hasText("Atelier"))
-        compose.onNodeWithText("Atelier").assertExists()
-        compose.onNodeWithText("Night Workshop").performScrollTo().performClick();Assert.assertEquals(AppAppearance.NIGHT,DesignPreferences.appearance.value)
-        Assert.assertEquals("NIGHT",InstrumentationRegistry.getInstrumentation().targetContext.getSharedPreferences("mainspring_appearance",0).getString("appearance",null))
-        saveNativeQaImage(compose.onNodeWithTag("settings-list"),"design-more-night.png")
+        compose.onNodeWithTag("nav-more").performClick();compose.onNodeWithTag("more-list").performScrollToNode(hasTestTag("more-group-settings"));compose.onNodeWithTag("more-group-settings").performClick()
+        compose.onNodeWithTag("settings-list").assertExists()
+        compose.onAllNodesWithText("Night Workshop").assertCountEquals(0);compose.onAllNodesWithText("Atelier").assertCountEquals(0)
+        Assert.assertEquals(AppAppearance.MAINSPRING,DesignPreferences.appearance.value)
     }
     @Test fun technicianNavigationHasMapPoolPosAndHidesTeamManagement() {
         TokenStore.setSessionRole("tech")
