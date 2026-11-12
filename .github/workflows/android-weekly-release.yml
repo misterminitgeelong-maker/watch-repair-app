@@ -117,6 +117,7 @@ jobs:
           if [ "$code" -le "$min_code" ]; then echo "::error::Version code $code is not above the production code $min_code; check the runner clock."; exit 1; fi
           name="$(date -u +%Y.%m.%d)"
           echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
           chmod +x gradlew
           ./gradlew bundleRelease -PversionCode="$code" -PversionName="$name" -PplayRelease=true
 
@@ -160,7 +161,7 @@ jobs:
           serviceAccountJson: ${{ steps.gcp-auth.outputs.credentials_file_path }}
           packageName: au.mainspring.app
           releaseFiles: apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab
-          track: ${{ inputs.track || 'internal' }}
+          tracks: ${{ inputs.track || 'internal' }}
           status: completed
           whatsNewDirectory: whatsnew
 
@@ -169,11 +170,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NAME: ${{ steps.build.outputs.name }}
+          CODE: ${{ steps.build.outputs.code }}
         run: |
           tag="android-v$NAME"
+          # A second release on the same day gets the version code appended so the tag never collides.
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then tag="$tag-$CODE"; fi
           git tag "$tag"
           git push origin "$tag"
           gh release create "$tag" \
-            --title "Android $NAME" \
+            --title "Android $NAME ($CODE)" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab
