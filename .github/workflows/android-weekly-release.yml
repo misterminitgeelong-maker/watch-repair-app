@@ -2,8 +2,9 @@ name: Android weekly release
 
 # Every Thursday afternoon (Melbourne time) build ONE Android bundle containing
 # everything merged to main since the last release and upload it to the Play
-# *internal testing* track. Promote it to production by hand in Play Console
-# after review. Nothing here publishes to production.
+# *internal testing* track. Auth to Google is keyless (Workload Identity Federation), no JSON key.
+# Scheduled runs only ever use internal. A manual run can choose the production track, but only
+# when someone selects it on purpose. Otherwise promote to production by hand in Play Console.
 on:
   schedule:
     # GitHub cron is UTC: 05:00 UTC = 3pm AEST / 4pm AEDT.
@@ -14,11 +15,19 @@ on:
         description: "Release even if no native Android code changed since the last release"
         type: boolean
         default: false
+      track:
+        description: "Play track to upload to. Scheduled runs always use internal. Production publishes to all users."
+        type: choice
+        options:
+          - internal
+          - production
+        default: internal
 
 concurrency: android-weekly-release
 
 permissions:
   contents: write # tag + GitHub Release (the changelog record)
+  id-token: write # GitHub OIDC token for keyless Google auth (Workload Identity Federation)
 
 jobs:
   release:
@@ -136,30 +145,22 @@ jobs:
           path: apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
 
-      - name: Check for Play upload credentials
+      - name: Authenticate to Google (keyless)
         if: steps.changes.outputs.release == 'true'
-        id: play
-        env:
-          PLAY_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: |
-          if [ -n "$PLAY_KEY" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            # Fail loudly so a missed release is never reported as a success. The signed bundle is
-            # already saved as the mainspring-android-bundle artifact above; nothing is tagged.
-            echo "::error::PLAY_SERVICE_ACCOUNT_JSON is not set, so nothing was uploaded to Play. Download the signed bundle from this run's artifacts and upload it in Play Console, or add the secret."
-            exit 1
-          fi
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/807925254673/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: github-play-release@mainspring-play-release.iam.gserviceaccount.com
 
-      - name: Upload to Play internal testing
-        if: steps.changes.outputs.release == 'true' && steps.play.outputs.enabled == 'true'
+      - name: Upload to Play
+        if: steps.changes.outputs.release == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ steps.gcp-auth.outputs.credentials_file_path }}
           packageName: au.mainspring.app
           releaseFiles: apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab
-          track: internal
+          track: ${{ inputs.track || 'internal' }}
           status: completed
           whatsNewDirectory: whatsnew
 
