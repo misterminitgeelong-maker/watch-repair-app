@@ -124,7 +124,7 @@ import androidx.compose.ui.unit.dp
 }
 
 /** A calm "nothing here" state with one next action. Empty is not an error: no red. */
-@Composable fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+@Composable fun CalmEmptyState(title: String, body: String, modifier: Modifier = Modifier, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
     Column(modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
             ToolIcon("search", size = 32.dp, color = MaterialTheme.colorScheme.primary)
