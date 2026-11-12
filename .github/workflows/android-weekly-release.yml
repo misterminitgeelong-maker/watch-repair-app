@@ -124,8 +124,24 @@ jobs:
           sed -i 's/^ *//' whatsnew/whatsnew-en-AU
           test "$(wc -c < whatsnew/whatsnew-en-AU)" -le 500
 
-      - name: Upload to Play internal testing
+      - name: Keep the signed bundle as a workflow artifact
         if: steps.changes.outputs.release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mainspring-android-bundle
+          path: apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Check for Play upload credentials
+        if: steps.changes.outputs.release == 'true'
+        id: play
+        env:
+          PLAY_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$PLAY_KEY" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; else echo "enabled=false" >> "$GITHUB_OUTPUT"; echo "::warning::PLAY_SERVICE_ACCOUNT_JSON is not set; skipping Play upload. Download the signed bundle from this run's artifacts and upload it in Play Console."; fi
+
+      - name: Upload to Play internal testing
+        if: steps.changes.outputs.release == 'true' && steps.play.outputs.enabled == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
