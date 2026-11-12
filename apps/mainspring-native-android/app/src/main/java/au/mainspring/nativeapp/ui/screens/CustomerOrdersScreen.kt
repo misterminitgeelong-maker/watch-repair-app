@@ -58,7 +58,7 @@ import au.mainspring.nativeapp.ui.*
                 }
                 PrimaryAction({ creating = true }, Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("New order") }
                 SecondaryAction({ importing = true }, Modifier.fillMaxWidth().padding(top = 8.dp).testTag("customer-order-import")) { Text("Import from CSV or Excel") }
-                if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+                if(state.loading && state.orders.isEmpty()) au.mainspring.nativeapp.ui.SkeletonRows() else if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
             state.error?.let { item { ErrorBanner(it, onRetry = viewModel::refresh) } }
             if(!state.loading && state.error == null && state.orders.isEmpty()) item {

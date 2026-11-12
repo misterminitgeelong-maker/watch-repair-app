@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -46,50 +49,50 @@ fun deletionConfirmationPhrase(scope: DeletionScope, shopId: String) = if(scope 
 fun deletionConfirmed(scope: DeletionScope, shopId: String, typed: String) =
     typed.trim().equals(deletionConfirmationPhrase(scope, shopId), ignoreCase = true)
 
-/** Owner-only dialog; callers must show it only to the owner. Does not sign out: deletion happens after support verifies the request. */
+/** Owner-only bottom sheet; callers must show it only to the owner. Does not sign out: deletion happens after support verifies the request. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AccountDeletionDialog(shopName: String?, shopId: String, accountEmail: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var scope by remember { mutableStateOf(DeletionScope.OwnLogin) }
     var typed by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf<String?>(null) }
     val phrase = deletionConfirmationPhrase(scope, shopId)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Delete account or shop") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("This sends a deletion request to Mainspring support. We verify it is really you and act within 30 days. Nothing is deleted until then.",
-                    style = MaterialTheme.typography.bodySmall)
-                au.mainspring.nativeapp.ui.LabeledRadio(scope == DeletionScope.OwnLogin, { scope = DeletionScope.OwnLogin; typed = "" }) {
-                    Text("Only my own login and personal details", style = MaterialTheme.typography.bodyMedium)
-                }
-                au.mainspring.nativeapp.ui.LabeledRadio(scope == DeletionScope.WholeShop, { scope = DeletionScope.WholeShop; typed = "" }) {
-                    Text("The whole shop", style = MaterialTheme.typography.bodyMedium)
-                }
-                if(scope == DeletionScope.WholeShop) Text(
-                    "The shop's customers, jobs, photos and files will be deleted and this cannot be undone. Export anything you need first. Invoices and payment records may be kept for the period the law requires.",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), singleLine = true,
-                    label = { Text("Type $phrase to confirm") })
-                notice?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
-                TextButton({
-                    val url = ApiClient.getEffectiveBaseUrl().trimEnd('/') + "/delete-account"
-                    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                    catch(_: ActivityNotFoundException) { notice = "No browser is available on this device." }
-                }) { Text("Read the web deletion page") }
+    val confirmed = deletionConfirmed(scope, shopId, typed)
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Delete account or shop", style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Text("This sends a deletion request to Mainspring support. We verify it is really you and act within 30 days. Nothing is deleted until then.",
+                style = MaterialTheme.typography.bodySmall)
+            au.mainspring.nativeapp.ui.LabeledRadio(scope == DeletionScope.OwnLogin, { scope = DeletionScope.OwnLogin; typed = "" }) {
+                Text("Only my own login and personal details", style = MaterialTheme.typography.bodyMedium)
             }
-        },
-        confirmButton = {
-            TextButton(enabled = deletionConfirmed(scope, shopId, typed), onClick = {
-                val send = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
-                    putExtra(Intent.EXTRA_EMAIL, arrayOf(DELETION_CONTACT_EMAIL))
-                    putExtra(Intent.EXTRA_SUBJECT, DELETION_SUBJECT)
-                    putExtra(Intent.EXTRA_TEXT, deletionRequestBody(scope, shopName, shopId, accountEmail))
-                }
-                try { context.startActivity(send); onDismiss() }
-                catch(_: ActivityNotFoundException) { notice = "No email app is available. Email $DELETION_CONTACT_EMAIL from $accountEmail with the subject \"$DELETION_SUBJECT\"." }
-            }) { Text("Send request") }
-        },
-        dismissButton = { TextButton(onDismiss) { Text("Cancel") } },
-    )
+            au.mainspring.nativeapp.ui.LabeledRadio(scope == DeletionScope.WholeShop, { scope = DeletionScope.WholeShop; typed = "" }) {
+                Text("The whole shop", style = MaterialTheme.typography.bodyMedium)
+            }
+            if(scope == DeletionScope.WholeShop) Text(
+                "The shop's customers, jobs, photos and files will be deleted and this cannot be undone. Export anything you need first. Invoices and payment records may be kept for the period the law requires.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            OutlinedTextField(typed, { typed = it }, Modifier.fillMaxWidth(), singleLine = true,
+                label = { Text("Type $phrase to confirm") })
+            if(!confirmed) Text("Type $phrase above to enable Send request.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            notice?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+            TextButton({
+                val url = ApiClient.getEffectiveBaseUrl().trimEnd('/') + "/delete-account"
+                try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                catch(_: ActivityNotFoundException) { notice = "No browser is available on this device." }
+            }, Modifier.heightIn(min = 48.dp)) { Text("Read the web deletion page") }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                TextButton(onDismiss, Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
+                TextButton(enabled = confirmed, modifier = Modifier.heightIn(min = 48.dp), onClick = {
+                    val send = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
+                        putExtra(Intent.EXTRA_EMAIL, arrayOf(DELETION_CONTACT_EMAIL))
+                        putExtra(Intent.EXTRA_SUBJECT, DELETION_SUBJECT)
+                        putExtra(Intent.EXTRA_TEXT, deletionRequestBody(scope, shopName, shopId, accountEmail))
+                    }
+                    try { context.startActivity(send); onDismiss() }
+                    catch(_: ActivityNotFoundException) { notice = "No email app is available. Email $DELETION_CONTACT_EMAIL from $accountEmail with the subject \"$DELETION_SUBJECT\"." }
+                }) { Text("Send request") }
+            }
+        }
+    }
 }
