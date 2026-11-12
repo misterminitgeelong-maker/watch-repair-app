@@ -102,6 +102,10 @@ jobs:
         working-directory: apps/mainspring-native-android
         run: |
           code=$(( $(date +%s) / 60 ))
+          # Version codes here are minutes since 1970, so each build is higher than the last.
+          # Production 1.1.0 is 29905801 (12 Nov 2026); never ship a code at or below it.
+          min_code=29905801
+          if [ "$code" -le "$min_code" ]; then echo "::error::Version code $code is not above the production code $min_code; check the runner clock."; exit 1; fi
           name="$(date -u +%Y.%m.%d)"
           echo "name=$name" >> "$GITHUB_OUTPUT"
           chmod +x gradlew
@@ -124,8 +128,32 @@ jobs:
           sed -i 's/^ *//' whatsnew/whatsnew-en-AU
           test "$(wc -c < whatsnew/whatsnew-en-AU)" -le 500
 
-      - name: Upload to Play internal testing
+      - name: Keep the signed bundle as a workflow artifact
         if: steps.changes.outputs.release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mainspring-android-bundle
+          path: apps/mainspring-native-android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Check for Play upload credentials
+        if: steps.changes.outputs.release == 'true'
+        id: play
+        env:
+          PLAY_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$PLAY_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            # Fail loudly so a missed release is never reported as a success. The signed bundle is
+            # already saved as the mainspring-android-bundle artifact above; nothing is tagged.
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON is not set, so nothing was uploaded to Play. Download the signed bundle from this run's artifacts and upload it in Play Console, or add the secret."
+            exit 1
+          fi
+
+      - name: Upload to Play internal testing
+        if: steps.changes.outputs.release == 'true' && steps.play.outputs.enabled == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
