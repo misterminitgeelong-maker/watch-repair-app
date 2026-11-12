@@ -72,7 +72,7 @@ fun CustomersScreen(
                 }
             }
         }
-        if (state.loading && state.customers.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
+        if (state.loading && state.customers.isEmpty()) item { au.mainspring.nativeapp.ui.SkeletonRows() }
         state.error?.let { item { ErrorBanner(it, Modifier.padding(horizontal = 20.dp), onRetry = { viewModel.refresh() }) } }
         if (!state.loading && state.error == null && state.customers.isEmpty()) item { EmptyState("No customers found", "Try a different name, or add a new customer with the + button.", icon = "customers") }
         if (state.customers.isNotEmpty() && !calibre) item(key = "count") {

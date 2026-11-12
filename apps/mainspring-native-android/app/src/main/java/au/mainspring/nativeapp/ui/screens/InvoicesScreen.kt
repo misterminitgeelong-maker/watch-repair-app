@@ -74,7 +74,7 @@ fun InvoicesScreen(
                     FinSegmentRow(listOf(null to "All types", "watch" to "Watch", "mobile" to "Mobile"), type, { type = it })
                 }
             }
-            if(state.loading && state.invoices.isEmpty()) item { androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            if(state.loading && state.invoices.isEmpty()) item { au.mainspring.nativeapp.ui.SkeletonRows() }
             state.error?.let { e -> item { au.mainspring.nativeapp.ui.ErrorBanner(e, onRetry = viewModel::refresh) } }
             (state.notice ?: printError)?.let { n -> item { au.mainspring.nativeapp.ui.ErrorBanner(n, onRetry = { viewModel.clearNotice(); printError = null }) } }
             if(!state.loading && state.error == null && shown.isEmpty()) item {
