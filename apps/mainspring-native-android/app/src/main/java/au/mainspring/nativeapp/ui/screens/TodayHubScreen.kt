@@ -146,7 +146,7 @@ fun TodayHubScreen(
         }
         if(summary != null) item { PulsePanels(summary, widgets, hub.jobs.count { it.active && it.urgent }, Modifier.padding(horizontal = 20.dp)) }
         if(canWork && !calibre) item {
-            PrimaryAction(onClick = onNewIntake, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
+            PrimaryAction(onClick = onNewIntake, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 44.dp)) {
                 Text("New intake", style = MaterialTheme.typography.titleMedium)
             }
         }

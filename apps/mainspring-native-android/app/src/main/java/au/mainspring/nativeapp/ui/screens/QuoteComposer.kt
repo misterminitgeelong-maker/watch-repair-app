@@ -87,8 +87,8 @@ import au.mainspring.nativeapp.ui.formatCents
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(if(draft.inclusive) "Included GST" else "GST",style=MaterialTheme.typography.bodySmall);Text(formatCents(total.tax.toInt(),currency!!),style=MaterialTheme.typography.bodySmall)}
   } }
 
-  Button(onClick = { try { if(outcomesOn) { val split=quoteOutcomeSplit(draft); onSaveOutcomes!!(split.shared, split.options, draft.gst, draft.inclusive) } else onSave(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines,modifier=Modifier.fillMaxWidth().heightIn(min=52.dp).testTag("quote-save")) { Text(buttonLabel) }
-  if(secondaryLabel != null && onSecondary != null && !outcomesOn) OutlinedButton(onClick = { try { onSecondary(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(secondaryLabel) }
+  Button(onClick = { try { if(outcomesOn) { val split=quoteOutcomeSplit(draft); onSaveOutcomes!!(split.shared, split.options, draft.gst, draft.inclusive) } else onSave(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines,modifier=Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("quote-save")) { Text(buttonLabel) }
+  if(secondaryLabel != null && onSecondary != null && !outcomesOn) OutlinedButton(onClick = { try { onSecondary(quoteLinesFromDraft(draft.lines), draft.gst, draft.inclusive) } catch(e: Exception) { error = e.userMessage() } }, enabled = enabled && validLines, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text(secondaryLabel) }
  }
  Column(modifier) {
  Column(if(sheetLayout) Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=16.dp) else Modifier,verticalArrangement = Arrangement.spacedBy(10.dp)) {

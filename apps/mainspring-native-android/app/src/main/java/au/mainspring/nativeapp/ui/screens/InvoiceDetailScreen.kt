@@ -142,7 +142,7 @@ fun InvoiceDetailScreen(
                             if (canRecordPayment) Button(
                                 onClick = { amountDraft = ""; refDraft = ""; paymentOpen = true },
                                 enabled = !state.paymentBusy,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                             ) { Text(if (state.paymentBusy) "Saving…" else "Record payment", style = MaterialTheme.typography.titleMedium) }
                             if(calibre) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if(au.mainspring.nativeapp.TokenStore.canManageInvoices()) FinOutlinedLabel(if(state.sendBusy) "Sending…" else "Email invoice", { sendOpen = true }, Modifier.weight(1f), enabled = !state.sendBusy)

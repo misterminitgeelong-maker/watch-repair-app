@@ -168,7 +168,7 @@ fun DispatchScreen(
             }
         }
         item {
-            PrimaryAction(onClick = onOpenPool, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) { Text("Open available job pool", style = MaterialTheme.typography.titleMedium) }
+            PrimaryAction(onClick = onOpenPool, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 44.dp)) { Text("Open available job pool", style = MaterialTheme.typography.titleMedium) }
         }
     } }
     if(pickerOpen) {

@@ -64,10 +64,10 @@ fun QuoteDetailScreen(
             val openInvoice = state.invoiceId
             if (showSend || showInvoice || openInvoice != null || canResend) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 2.dp) {
                 Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    if (showSend) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { confirmSend = true }, enabled = !state.sendBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (state.sendBusy) "Sending…" else "Send to customer", style = MaterialTheme.typography.titleMedium) }
-                    if (canResend) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { confirmResend = true }, enabled = !state.resendBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (state.resendBusy) "Resending\u2026" else "Resend to customer", style = MaterialTheme.typography.titleMedium) }
-                    if (showInvoice) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { confirmInvoice = true }, enabled = !state.invoiceBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(if (state.invoiceBusy) "Creating…" else "Create invoice", style = MaterialTheme.typography.titleMedium) }
-                    if (openInvoice != null) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { onOpenInvoice(openInvoice) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Open invoice", style = MaterialTheme.typography.titleMedium) }
+                    if (showSend) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { confirmSend = true }, enabled = !state.sendBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text(if (state.sendBusy) "Sending…" else "Send to customer", style = MaterialTheme.typography.titleMedium) }
+                    if (canResend) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { confirmResend = true }, enabled = !state.resendBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text(if (state.resendBusy) "Resending\u2026" else "Resend to customer", style = MaterialTheme.typography.titleMedium) }
+                    if (showInvoice) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { confirmInvoice = true }, enabled = !state.invoiceBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text(if (state.invoiceBusy) "Creating…" else "Create invoice", style = MaterialTheme.typography.titleMedium) }
+                    if (openInvoice != null) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { onOpenInvoice(openInvoice) }, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("Open invoice", style = MaterialTheme.typography.titleMedium) }
                 }
             }
         },
@@ -145,7 +145,7 @@ fun QuoteDetailScreen(
                     },
                     enabled = !state.sendBusy,
                 ) {
-                    Text("Send")
+                    Text("Send to customer")
                 }
             },
             dismissButton = {

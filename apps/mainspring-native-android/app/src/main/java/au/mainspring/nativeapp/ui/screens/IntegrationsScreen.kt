@@ -42,7 +42,7 @@ import au.mainspring.nativeapp.ui.*
             if(state.allowed) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     AtelierTextField(keyName, { keyName = it }, Modifier.weight(1f).testTag("api-key-name"), enabled = enabled, label = { Text("Key name") }, singleLine = true)
-                    SecondaryAction({ viewModel.createKey(keyName); keyName = "" }, Modifier.heightIn(min = 52.dp).testTag("api-key-create"), enabled = enabled && keyName.isNotBlank()) { Text("Create") }
+                    SecondaryAction({ viewModel.createKey(keyName); keyName = "" }, Modifier.heightIn(min = 44.dp).testTag("api-key-create"), enabled = enabled && keyName.isNotBlank()) { Text("Create") }
                 }
             }
             state.createdKey?.let { created ->
@@ -77,7 +77,7 @@ import au.mainspring.nativeapp.ui.*
                     AtelierTextField(hookUrl, { hookUrl = it }, Modifier.fillMaxWidth().testTag("webhook-url"), enabled = enabled, label = { Text("Address (https://…)") }, singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri))
                     AtelierTextField(hookEvents, { hookEvents = it }, Modifier.fillMaxWidth().testTag("webhook-events"), enabled = enabled, label = { Text("Events, comma separated") }, singleLine = true)
-                    PrimaryAction({ viewModel.addWebhook(hookUrl, hookEvents); hookUrl = "" }, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("webhook-add"), enabled = enabled && hookUrl.isNotBlank()) { Text("Add webhook") }
+                    PrimaryAction({ viewModel.addWebhook(hookUrl, hookEvents); hookUrl = "" }, Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("webhook-add"), enabled = enabled && hookUrl.isNotBlank()) { Text("Add webhook") }
                 }
             }
             if(state.webhooks.isEmpty() && !state.loading) item { Text("No webhooks yet.", style = MaterialTheme.typography.bodySmall) }

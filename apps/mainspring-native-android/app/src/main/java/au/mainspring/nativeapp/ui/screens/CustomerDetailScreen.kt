@@ -108,12 +108,12 @@ fun CustomerDetailScreen(customerId: String, onBack: () -> Unit, onOpenWatchJob:
                         val services = listOf("watch" in features, "shoe" in features, "auto_key" in features)
                         val first = customer.fullName.substringBefore(' ')
                         if(services.count { it } == 1) au.mainspring.nativeapp.ui.PrimaryAction(onClick = { if(services[0]) onNewRepair(customerId) else if(services[1]) onNewShoe(customerId) else onNewMobile(customerId) },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Start a new job for $first", style = MaterialTheme.typography.titleMedium) }
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("Start a new job for $first", style = MaterialTheme.typography.titleMedium) }
                         else au.mainspring.nativeapp.ui.SectionLabel("Start a new job for $first")
                         Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if("watch" in features) OutlinedButton(onClick = { onNewRepair(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("New watch repair") }
-                            if("shoe" in features) OutlinedButton(onClick = { onNewShoe(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("New shoe repair") }
-                            if("auto_key" in features) OutlinedButton(onClick = { onNewMobile(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("New mobile job") }
+                            if("watch" in features) OutlinedButton(onClick = { onNewRepair(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("New watch repair") }
+                            if("shoe" in features) OutlinedButton(onClick = { onNewShoe(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("New shoe repair") }
+                            if("auto_key" in features) OutlinedButton(onClick = { onNewMobile(customerId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text("New mobile job") }
                         }
                     }
                     if(tab == "jobs") item {

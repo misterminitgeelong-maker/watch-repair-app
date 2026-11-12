@@ -61,7 +61,7 @@ fun NewIntakeScreen(features: Set<String>, onBack: () -> Unit, onStart: (String)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PrimaryAction(onClick = { current?.let { onStart(it.route) } }, enabled = current != null,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("intake-continue")) {
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("intake-continue")) {
                         Text("Continue", style = MaterialTheme.typography.titleMedium)
                     }
                     Text("Draft saved on this device", Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -86,7 +86,7 @@ fun NewIntakeScreen(features: Set<String>, onBack: () -> Unit, onStart: (String)
             }
         }
         PrimaryAction(onClick = { current?.let { onStart(it.route) } }, enabled = current != null,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 52.dp)) {
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 44.dp)) {
             Text("Continue", style = MaterialTheme.typography.titleMedium)
         }
         Spacer(Modifier.height(120.dp))

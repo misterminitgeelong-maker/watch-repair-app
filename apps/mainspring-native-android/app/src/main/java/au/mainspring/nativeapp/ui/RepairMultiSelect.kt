@@ -76,7 +76,7 @@ fun filterRepairs(options: List<RepairOption>, query: String): List<RepairOption
         Surface(
             onClick = { open = true }, enabled = enabled, shape = RoundedCornerShape(6.dp),
             color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("repair-select-field")
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("repair-select-field")
                 .semantics { contentDescription = "Repairs. $summary" },
         ) {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -114,7 +114,7 @@ fun filterRepairs(options: List<RepairOption>, query: String): List<RepairOption
                     items(shown, key = { it.key }) { item ->
                         val checked = item.key in selectedKeys
                         Row(
-                            Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("repair-option-${item.key}")
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("repair-option-${item.key}")
                                 .clickable(enabled = enabled, role = Role.Checkbox) { onToggle(item.key) },
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {

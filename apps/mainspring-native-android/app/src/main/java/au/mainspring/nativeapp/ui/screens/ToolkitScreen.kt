@@ -25,7 +25,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
   if(!s.loaded) return@Column
   if(!s.canEditNotifications) Text("Only an owner or manager can change these settings.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
   au.mainspring.nativeapp.ui.FlatPanel {
-   Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+   Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
     Column(Modifier.weight(1f)) {
      Text("Customer SMS", style = MaterialTheme.typography.bodyLarge)
      Text("Text customers when a technician is on the way or has arrived.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -40,7 +40,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
   au.mainspring.nativeapp.ui.SectionLabel("POS catalogue categories")
   if(!s.canEditCatalogue) Text("Only the owner can change the catalogue categories.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
   s.availableCategories.forEach { category ->
-   Row(Modifier.fillMaxWidth().clickable(enabled = s.canEditCatalogue && !s.busy, role = androidx.compose.ui.semantics.Role.Button) { vm.toggleCategory(category.key) }.heightIn(min = 56.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+   Row(Modifier.fillMaxWidth().clickable(enabled = s.canEditCatalogue && !s.busy, role = androidx.compose.ui.semantics.Role.Button) { vm.toggleCategory(category.key) }.heightIn(min = 48.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
     Checkbox(category.key in s.enabledCategories, { vm.toggleCategory(category.key) }, enabled = s.canEditCatalogue && !s.busy, modifier = Modifier.semantics { contentDescription = category.label })
     Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
      Text(category.label.ifBlank { category.key }, style = MaterialTheme.typography.bodyLarge)
@@ -60,8 +60,8 @@ import au.mainspring.nativeapp.ToolkitViewModel
   bottomBar = { if(dirty) Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = if(au.mainspring.nativeapp.ui.LocalCalibre.current) 0.dp else 2.dp) {
    if(au.mainspring.nativeapp.ui.LocalCalibre.current) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
    Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-    OutlinedButton(onClick = vm::discard, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Discard draft") }
-    Button(onClick = vm::save, enabled = !state.loading && !state.busy, modifier = Modifier.weight(1.5f).heightIn(min = 52.dp)) { Text("Save selection") }
+    OutlinedButton(onClick = vm::discard, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) { Text("Discard draft") }
+    Button(onClick = vm::save, enabled = !state.loading && !state.busy, modifier = Modifier.weight(1.5f).heightIn(min = 44.dp)) { Text("Save selection") }
    } } }) { padding ->
   LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
    item {
@@ -91,7 +91,7 @@ import au.mainspring.nativeapp.ToolkitViewModel
      item { au.mainspring.nativeapp.ui.SectionLabel("${group.label} · ${group.tools.count {it.key in state.selected}} of ${group.tools.size}") }
      items(tools, key = { it.key }) { tool -> val calibre = au.mainspring.nativeapp.ui.LocalCalibre.current
       val body: @Composable () -> Unit = {
-      Row(Modifier.fillMaxWidth().clickable(enabled = !state.busy, role = androidx.compose.ui.semantics.Role.Button) { vm.toggle(tool.key) }.heightIn(min = 56.dp).padding(end = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+      Row(Modifier.fillMaxWidth().clickable(enabled = !state.busy, role = androidx.compose.ui.semantics.Role.Button) { vm.toggle(tool.key) }.heightIn(min = 48.dp).padding(end = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
        Checkbox(tool.key in state.selected, { vm.toggle(tool.key) }, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = tool.name })
        Column(Modifier.weight(1f).padding(vertical = 8.dp)) { Text(tool.name, style = MaterialTheme.typography.bodyLarge); tool.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
       } }
