@@ -354,45 +354,22 @@ fun JobDetailScreen(
         { id -> accountPicker = false; vm.assignAccount(id) }, { accountPicker = false })
 
     if (statusPicker) {
-        AlertDialog(
-            onDismissRequest = { statusPicker = false },
-            title = { Text("Change status") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    au.mainspring.nativeapp.ui.AtelierTextField(
-                        value = statusChangeNote,
-                        onValueChange = { statusChangeNote = it },
-                        label = { Text("Note (optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        maxLines = 3,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    au.mainspring.nativeapp.ui.AtelierTextField(
-                        value = statusCustomerNote,
-                        onValueChange = { statusCustomerNote = it.take(JobDetailViewModel.CUSTOMER_NOTE_MAX) },
-                        label = { Text("Note for customer (optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        maxLines = 3,
-                    )
-                    Text("Shown on their status page \u00b7 ${statusCustomerNote.length}/${JobDetailViewModel.CUSTOMER_NOTE_MAX}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
-                    watchPickerOptions(job?.status).forEach { s ->
-                        val current = s == job?.status
-                        TextButton(
-                            onClick = {
-                                vm.setStatus(s, statusChangeNote.trim().takeIf { t -> t.isNotEmpty() }, statusCustomerNote.trim().takeIf { t -> t.isNotEmpty() })
-                                statusChangeNote = ""; statusCustomerNote = ""
-                                statusPicker = false
-                            },
-                            enabled = !current,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) { Text(watchStatusLabel(s) + if (current) " (current)" else "", Modifier.fillMaxWidth()) }
-                    }
-                }
+        au.mainspring.nativeapp.ui.StatusChangeSheet(
+            subtitle = "Currently " + (job?.status?.let { watchStatusLabel(it) } ?: "unknown"),
+            options = watchPickerOptions(job?.status).map { it to watchStatusLabel(it) },
+            current = job?.status,
+            note = statusChangeNote,
+            onNote = { statusChangeNote = it },
+            customerNote = statusCustomerNote,
+            onCustomerNote = { statusCustomerNote = it.take(JobDetailViewModel.CUSTOMER_NOTE_MAX) },
+            customerNoteLabel = "Note for customer (optional)",
+            customerNoteHint = "Shown on their status page \u00b7 ${statusCustomerNote.length}/${JobDetailViewModel.CUSTOMER_NOTE_MAX}",
+            onConfirm = { s ->
+                vm.setStatus(s, statusChangeNote.trim().takeIf { t -> t.isNotEmpty() }, statusCustomerNote.trim().takeIf { t -> t.isNotEmpty() })
+                statusChangeNote = ""; statusCustomerNote = ""
+                statusPicker = false
             },
-            confirmButton = { TextButton(onClick = { statusPicker = false }) { Text("Close") } },
+            onDismiss = { statusPicker = false },
         )
     }
 
@@ -473,23 +450,18 @@ fun JobDetailScreen(
     }
 
     if (assignPicker) {
-        AlertDialog(
-            onDismissRequest = { assignPicker = false },
-            title = { Text("Assign technician") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    if (state.usersLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    if (!state.usersLoading && state.users.isEmpty()) Text("No team members loaded.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    state.users.forEach { u ->
-                        val current = u.id == job?.assignedUserId
-                        TextButton(onClick = { vm.assignTechnician(u.id); assignPicker = false }, enabled = !current, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Text(u.name + if (current) " (assigned)" else "", Modifier.fillMaxWidth())
-                        }
-                    }
-                    if (job?.assignedUserId != null) TextButton(onClick = { vm.assignTechnician(null); assignPicker = false }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Unassign", Modifier.fillMaxWidth()) }
-                }
+        val assignOptions: List<Pair<String?, String>> = state.users.map { u -> Pair<String?, String>(u.id, u.name) } +
+            (if (job?.assignedUserId != null) listOf(Pair<String?, String>(null, "Unassign")) else emptyList())
+        au.mainspring.nativeapp.ui.PickerSheet<String?>(
+            title = "Assign technician",
+            options = assignOptions,
+            selected = job?.assignedUserId,
+            onSelect = { id ->
+                if (id == null || id != job?.assignedUserId) vm.assignTechnician(id)
+                assignPicker = false
             },
-            confirmButton = { TextButton(onClick = { assignPicker = false }) { Text("Close") } },
+            onDismiss = { assignPicker = false },
+            subtitle = if (state.usersLoading) "Loading team members…" else if (state.users.isEmpty()) "No team members loaded." else null,
         )
     }
 
