@@ -146,7 +146,7 @@ fun CustomersScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             )
             Box {
-                SecondaryAction({ open = true }, Modifier.heightIn(min = 56.dp).testTag("customer-sort"), shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)) {
+                SecondaryAction({ open = true }, Modifier.heightIn(min = 48.dp).testTag("customer-sort"), shape = androidx.compose.foundation.shape.RoundedCornerShape(2.dp)) {
                     Text((CUSTOMER_SORTS.firstOrNull { it.first == sort }?.second ?: "Sort") + " ▾", maxLines = 1)
                 }
                 DropdownMenu(open, { open = false }) {

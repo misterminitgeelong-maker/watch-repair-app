@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
     elevation: ButtonElevation?=if(LocalCalibre.current) ButtonDefaults.buttonElevation(3.dp,1.dp,1.dp,4.dp,0.dp) else ButtonDefaults.buttonElevation(0.dp,0.dp,0.dp,0.dp,0.dp),
     border: BorderStroke?=null,contentPadding: PaddingValues=if(LocalCalibre.current) PaddingValues(horizontal=24.dp,vertical=12.dp) else ButtonDefaults.ContentPadding,interactionSource: MutableInteractionSource?=null,content: @Composable RowScope.()->Unit) {
     // Calibre: the primary action is the one solid, taller, softly lifted shape on the screen.
-    Button(onClick,if(LocalCalibre.current) modifier.heightIn(min=52.dp) else modifier,enabled,shape,colors,elevation,border,contentPadding,interactionSource,content)
+    Button(onClick,if(LocalCalibre.current) modifier.heightIn(min = 44.dp) else modifier,enabled,shape,colors,elevation,border,contentPadding,interactionSource,content)
 }
 @Composable fun SecondaryAction(onClick: () -> Unit,modifier: Modifier=Modifier,enabled: Boolean=true,
     shape: Shape=MaterialTheme.shapes.small,colors: ButtonColors=ButtonDefaults.outlinedButtonColors(containerColor=MaterialTheme.colorScheme.surface,contentColor=MaterialTheme.colorScheme.onSurface),elevation: ButtonElevation?=null,

@@ -140,7 +140,7 @@ fun LoginScreen(
                 Button(
                     onClick = { submit() },
                     enabled = !state.loading && email.isNotBlank() && password.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
                     shape = square,
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = accent, contentColor = androidx.compose.ui.graphics.Color.White,
                         disabledContainerColor = accent.copy(alpha = 0.45f), disabledContentColor = androidx.compose.ui.graphics.Color.White),

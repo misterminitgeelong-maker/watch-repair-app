@@ -71,7 +71,7 @@ private fun LazyListScope.section(title: String, hits: List<SearchHit>, onOpenRo
 
 @Composable private fun HitRow(hit: SearchHit, onOpenRoute: (String) -> Unit) {
         Column(
-            Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { searchRoute(hit)?.let { au.mainspring.nativeapp.RecentSearches.push(hit); onOpenRoute(it) } }.heightIn(min = 56.dp).padding(horizontal = 20.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) { searchRoute(hit)?.let { au.mainspring.nativeapp.RecentSearches.push(hit); onOpenRoute(it) } }.heightIn(min = 48.dp).padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

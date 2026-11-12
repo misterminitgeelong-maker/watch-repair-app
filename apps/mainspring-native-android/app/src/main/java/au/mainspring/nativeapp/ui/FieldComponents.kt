@@ -225,7 +225,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 /** A full-width pick-one row for wizards: outlined, tinted and ticked when selected. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun SelectableCard(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
-    Surface(onClick, modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled, shape = MaterialTheme.shapes.medium,
+    Surface(onClick, modifier.fillMaxWidth().heightIn(min = 48.dp), enabled = enabled, shape = MaterialTheme.shapes.medium,
         color = if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         border = if(selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else if(LocalCalibre.current) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -325,8 +325,8 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
             Text("Step ${step + 1} of $steps · $stepTitle", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LinearProgressIndicator(progress = { (step + 1f) / steps }, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if(onPrevious != null) SecondaryAction(onClick = onPrevious, enabled = previousEnabled, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Previous") }
-                PrimaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.weight(if(onPrevious != null) 1.5f else 1f).heightIn(min = 52.dp)) { Text(primaryLabel, style = MaterialTheme.typography.titleMedium) }
+                if(onPrevious != null) SecondaryAction(onClick = onPrevious, enabled = previousEnabled, modifier = Modifier.weight(1f).heightIn(min = 44.dp)) { Text("Previous") }
+                PrimaryAction(onClick = onPrimary, enabled = primaryEnabled, modifier = Modifier.weight(if(onPrevious != null) 1.5f else 1f).heightIn(min = 44.dp)) { Text(primaryLabel, style = MaterialTheme.typography.titleMedium) }
             }
         }
     }

@@ -92,7 +92,7 @@ import au.mainspring.nativeapp.api.*
                     Column(Modifier.fillMaxWidth().then(if(embedded) Modifier else Modifier.navigationBarsPadding()).padding(horizontal=16.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                         if(!compactHeader) Text(activeJourney.title,style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         Button({ if(activeJourney.targetStatus!=null) pendingStep=activeJourney.targetStatus else tab="finance" },
-                            modifier=Modifier.fillMaxWidth().heightIn(min=52.dp).testTag("job-next-action"),
+                            modifier=Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("job-next-action"),
                             enabled=!state.loading && !state.statusBusy && !state.statusReviewRequired && !state.offlineSnapshot && TokenStore.canWorkJobs()) {
                             Text(if(state.statusBusy) "Saving…" else activeJourney.action)
                         }

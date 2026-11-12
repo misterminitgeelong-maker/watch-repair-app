@@ -31,7 +31,7 @@ fun BusinessAccountsScreen(onBack: () -> Unit, onOpenAccount: (String) -> Unit, 
                 if(state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it) }
                 androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = !state.loading) { Text("Refresh") }
-                if(TokenStore.canManageInvoices()) Button(onClick = onCreate, modifier = if(au.mainspring.nativeapp.ui.LocalCalibre.current) Modifier.fillMaxWidth().heightIn(min = 52.dp) else Modifier) { Text("New business account") }
+                if(TokenStore.canManageInvoices()) Button(onClick = onCreate, modifier = if(au.mainspring.nativeapp.ui.LocalCalibre.current) Modifier.fillMaxWidth().heightIn(min = 44.dp) else Modifier) { Text("New business account") }
                 au.mainspring.nativeapp.ui.AtelierTextField(search, { search = it }, label = { Text("Find an account") }, modifier = Modifier.fillMaxWidth())
                 if(!state.loading && state.accounts.isEmpty() && state.error == null) Text("No business accounts yet.")
             }

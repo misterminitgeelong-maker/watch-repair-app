@@ -192,7 +192,7 @@ Surface(Modifier.fillMaxWidth().testTag("board-card-${job.id}"),shape=RoundedCor
                 Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                     unscheduled.forEach {job->Box(Modifier.width(150.dp)) {FlatPanel {
                         Text(job.title,style=MaterialTheme.typography.titleSmall);StatusPill(job.status)
-                        Row {TextButton({onJob(job.id)}) {Text("Open")};if(TokenStore.canWorkJobs()) TextButton({selecting=job;scope.launch {vertical.animateScrollTo(0)}},enabled=!state.busy && !state.uncertain) {Text("Move")}}
+                        Row {TextButton({onJob(job.id)}) {Text("Open job")};if(TokenStore.canWorkJobs()) TextButton({selecting=job;scope.launch {vertical.animateScrollTo(0)}},enabled=!state.busy && !state.uncertain) {Text("Move")}}
                     } } }
                 }
             }

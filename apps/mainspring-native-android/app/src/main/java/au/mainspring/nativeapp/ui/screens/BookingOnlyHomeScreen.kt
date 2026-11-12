@@ -27,7 +27,7 @@ import au.mainspring.nativeapp.ui.*
             Text("Book a mobile locksmith", style = MaterialTheme.typography.headlineSmall)
             Text("Send your customer’s details to your network operator, then follow the booking here.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
-            Button({ onNavigate("newBookingRequest") }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("booking-home-new")) { Text("New booking request") }
+            Button({ onNavigate("newBookingRequest") }, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("booking-home-new")) { Text("New booking request") }
         }
         if(s.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         s.error?.let { item { ErrorBanner(it, onRetry = vm::refresh) } }
@@ -53,7 +53,7 @@ import au.mainspring.nativeapp.ui.*
         item {
             bookingOnlyDestinations(TokenStore.isOwner()).filter { it.first != "bookingRequests" }.forEach { (route, label) ->
                 val count = when(route) { "networkMessages" -> messages; "inbox" -> alerts; else -> 0 }
-                OutlinedButton({ onNavigate(route) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("booking-home-$route")) { Text(label + if(count > 0) " ($count)" else "") }
+                OutlinedButton({ onNavigate(route) }, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).testTag("booking-home-$route")) { Text(label + if(count > 0) " ($count)" else "") }
                 Spacer(Modifier.height(8.dp))
             }
         }

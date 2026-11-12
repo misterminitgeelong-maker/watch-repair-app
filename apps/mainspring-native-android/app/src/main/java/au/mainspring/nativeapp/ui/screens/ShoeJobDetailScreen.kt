@@ -278,7 +278,7 @@ fun ShoeJobDetailScreen(
         confirmButton = { TextButton(onClick = { resendPicker = false }) { Text("Close") } })
     if (confirmQuote) AlertDialog(onDismissRequest = { confirmQuote = false }, title = { Text("Send quote?") },
         text = { Text("Send the saved repair quote to the customer's phone for approval.") },
-        confirmButton = { TextButton(onClick = { confirmQuote = false; vm.sendQuote() }) { Text("Send") } },
+        confirmButton = { TextButton(onClick = { confirmQuote = false; vm.sendQuote() }) { Text("Send quote") } },
         dismissButton = { TextButton(onClick = { confirmQuote = false }) { Text("Cancel") } })
     if (confirmDelete) DeleteJobDialog(j?.let { "${it.jobNumber} · ${it.title}" } ?: "this job", { confirmDelete = false; vm.deleteJob() }, { confirmDelete = false })
     if (confirmDuplicate) DuplicateJobDialog({ confirmDuplicate = false; vm.duplicateJob() }, { confirmDuplicate = false })

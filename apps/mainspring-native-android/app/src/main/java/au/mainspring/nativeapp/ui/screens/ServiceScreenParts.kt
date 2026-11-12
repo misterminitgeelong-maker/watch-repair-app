@@ -137,7 +137,7 @@ private fun Modifier.androidx_size(): Modifier = this.then(Modifier.size(18.dp))
         au.mainspring.nativeapp.ui.AtelierTextField(query, onQuery, Modifier.weight(1f).testTag("service-search"), singleLine = true, placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch?.invoke() }))
-        SecondaryAction(onFilters, Modifier.heightIn(min = 56.dp).testTag("filters-button"), shape = RoundedCornerShape(10.dp)) { Text(if(activeCount > 0) "Filters ($activeCount)" else "Filters") }
+        SecondaryAction(onFilters, Modifier.heightIn(min = 48.dp).testTag("filters-button"), shape = RoundedCornerShape(10.dp)) { Text(if(activeCount > 0) "Filters ($activeCount)" else "Filters") }
     }
 }
 
@@ -215,7 +215,7 @@ internal fun shortDaysInShop(days: Int): String = "${days}d in shop"
 @Composable internal fun NewJobFab(onClick: () -> Unit, modifier: Modifier = Modifier, label: String = "New Job") {
     Surface(onClick, modifier.testTag("new-job-fab").semantics { role = Role.Button }, shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 6.dp) {
-        Row(Modifier.heightIn(min = 52.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.heightIn(min = 44.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("+", style = MaterialTheme.typography.titleLarge)
             Text(label, style = MaterialTheme.typography.titleSmall)
         }

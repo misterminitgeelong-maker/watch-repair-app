@@ -144,7 +144,7 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
                     item(key = "divider") { HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.outlineVariant) }
                     item(key = "signout") {
                         val red = MaterialTheme.colorScheme.primary
-                        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { signOut = true }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { signOut = true }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             SignOutGlyph(red); Spacer(Modifier.width(8.dp))
                             Text("Sign out", style = MaterialTheme.typography.titleSmall, color = red)
                         }

@@ -30,7 +30,7 @@ import au.mainspring.nativeapp.CustomFieldsViewModel
     val count = state.fields.size
     if(!open && state.error == null) {
         if(!canEdit && count == 0) return
-        androidx.compose.foundation.layout.Row(modifier.fillMaxWidth().heightIn(min = 56.dp)
+        androidx.compose.foundation.layout.Row(modifier.fillMaxWidth().heightIn(min = 48.dp)
             .clickable(role = androidx.compose.ui.semantics.Role.Button) { open = true }, verticalAlignment = Alignment.CenterVertically) {
             Text(if(count > 0) "Custom fields \u00b7 $count" else "Custom fields", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
             Text("+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
