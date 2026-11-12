@@ -297,45 +297,22 @@ fun ShoeJobDetailScreen(
         confirmButton = { TextButton(onClick = { removePairId = null; vm.removePair(id) }) { Text("Remove") } },
         dismissButton = { TextButton(onClick = { removePairId = null }) { Text("Cancel") } }) }
     if (statusPicker) {
-        AlertDialog(
-            onDismissRequest = { statusPicker = false },
-            title = { Text("Change status") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    au.mainspring.nativeapp.ui.AtelierTextField(
-                        value = statusChangeNote,
-                        onValueChange = { statusChangeNote = it },
-                        label = { Text("Note (optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        maxLines = 3,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    au.mainspring.nativeapp.ui.AtelierTextField(
-                        value = statusCustomerNote,
-                        onValueChange = { statusCustomerNote = it.take(ShoeJobDetailViewModel.SHOE_CUSTOMER_NOTE_MAX) },
-                        label = { Text("Message for customer (optional)") },
-                        supportingText = { Text("Shown on their status page \u00b7 ${statusCustomerNote.length}/${ShoeJobDetailViewModel.SHOE_CUSTOMER_NOTE_MAX}") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        maxLines = 3,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    SHOE_JOB_STATUS_OPTIONS.forEach { s ->
-                        val current = s == j?.status
-                        TextButton(
-                            onClick = {
-                                vm.setStatus(s, statusChangeNote.trim().takeIf { it.isNotEmpty() }, statusCustomerNote)
-                                statusChangeNote = ""; statusCustomerNote = ""
-                                statusPicker = false
-                            },
-                            enabled = !current,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) { Text(statusLabel(s) + if (current) " (current)" else "", Modifier.fillMaxWidth()) }
-                    }
-                }
+        au.mainspring.nativeapp.ui.StatusChangeSheet(
+            subtitle = "Currently " + (j?.status?.let { statusLabel(it) } ?: "unknown"),
+            options = SHOE_JOB_STATUS_OPTIONS.map { it to statusLabel(it) },
+            current = j?.status,
+            note = statusChangeNote,
+            onNote = { statusChangeNote = it },
+            customerNote = statusCustomerNote,
+            onCustomerNote = { statusCustomerNote = it.take(ShoeJobDetailViewModel.SHOE_CUSTOMER_NOTE_MAX) },
+            customerNoteLabel = "Message for customer (optional)",
+            customerNoteHint = "Shown on their status page \u00b7 ${statusCustomerNote.length}/${ShoeJobDetailViewModel.SHOE_CUSTOMER_NOTE_MAX}",
+            onConfirm = { s ->
+                vm.setStatus(s, statusChangeNote.trim().takeIf { it.isNotEmpty() }, statusCustomerNote)
+                statusChangeNote = ""; statusCustomerNote = ""
+                statusPicker = false
             },
-            confirmButton = { TextButton(onClick = { statusPicker = false }) { Text("Close") } },
+            onDismiss = { statusPicker = false },
         )
     }
 
