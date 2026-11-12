@@ -77,9 +77,17 @@ fun BusinessAccountScreen(accountId: String, onBack: () -> Unit, onOpenCustomer:
                 androidx.compose.material3.TextButton(onClick = vm::refresh, enabled = enabled) { Text("Refresh") }
                 if(manager) OutlinedButton(onClick = onEdit, enabled = enabled) { Text("Edit account details") }
                 state.account?.let { account ->
-                    Text("${if(account.active) "Active" else "Inactive"} · ${account.terms} day payment terms")
-                    listOfNotNull(account.code, account.contactName, account.phone, account.email, account.address, account.type, account.billingCycle, account.notes).filter { it.isNotBlank() }.forEach { Text(it) }
-                    account.fleetSize?.let { Text("Fleet size: $it") }
+                    FinCard(Modifier.fillMaxWidth()) {
+                        Text("${if(account.active) "Active" else "Inactive"} · ${account.terms} day payment terms", style = MaterialTheme.typography.titleSmall)
+                        listOf("Code" to account.code, "Contact" to account.contactName, "Phone" to account.phone, "Email" to account.email, "Address" to account.address,
+                            "Type" to account.type, "Billing cycle" to account.billingCycle, "Fleet size" to account.fleetSize?.toString(), "Notes" to account.notes)
+                            .filter { !it.second.isNullOrBlank() }.forEach { (label, value) ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(label, Modifier.weight(0.35f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(value ?: "", Modifier.weight(0.65f), style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                    }
                 }
                 Text("Linked customers", style = MaterialTheme.typography.titleLarge)
             }

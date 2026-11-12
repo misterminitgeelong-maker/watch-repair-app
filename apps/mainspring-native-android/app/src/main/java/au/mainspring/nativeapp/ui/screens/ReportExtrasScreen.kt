@@ -77,6 +77,9 @@ private fun money(cents: Long) = "$" + BigDecimal.valueOf(cents, 2).toPlainStrin
                     viewModel.selectPeriod(p); if(p == ReportRange.CUSTOM) rangeOpen = true
                 })
             }
+            if(state.period != ReportRange.CUSTOM) item {
+                Text("Showing: this ${state.period}", Modifier.testTag("report-period-label"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if(state.period == ReportRange.CUSTOM) item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     SecondaryAction({ rangeOpen = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("range-pick")) {
