@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -71,10 +72,19 @@ internal fun tabFor(route: String?, features: Set<String>): String {
     }
 }
 
-/** Persistent top app bar for the main tab screens: wordmark left, search right, hairline below. */
-@Composable fun AppHeader(onSearch: () -> Unit, modifier: Modifier = Modifier, shopName: String? = null, onSwitchShop: (() -> Unit)? = null) {
+/**
+ * Persistent top app bar for the main tab screens. With a [title] it is the seamless-pass header: serif title left, shop switcher
+ * chip and search right, hairline below. Without one it keeps the wordmark.
+ */
+@Composable fun AppHeader(onSearch: () -> Unit, modifier: Modifier = Modifier, shopName: String? = null, onSwitchShop: (() -> Unit)? = null, title: String? = null) {
     Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).testTag("app-header")) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if(title != null) {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f).semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge), color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                if(onSwitchShop != null) ShopSwitchButton(shopName, onSwitchShop)
+                SearchIconButton(onSearch)
+            }
+        } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { CalibreWordmark(null, Modifier.padding(bottom = 8.dp)) }
             if(onSwitchShop != null) ShopSwitchButton(shopName, onSwitchShop, Modifier.statusBarsPadding().padding(top = 6.dp))
             SearchIconButton(onSearch, Modifier.statusBarsPadding().padding(end = 8.dp, top = 6.dp))
@@ -83,21 +93,23 @@ internal fun tabFor(route: String?, features: Set<String>): String {
     }
 }
 
-/** The active shop is an explicit chooser whenever this sign-in can reach multiple shops. */
+/** The active shop is an explicit chooser whenever this sign-in can reach multiple shops: a small chip with the shop name. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable fun ShopSwitchButton(shopName: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    androidx.compose.material3.TextButton(onClick, modifier.widthIn(max = 156.dp).testTag("app-switch-shop")) {
-        Column {
-            Text("Switch shop ▾", style = MaterialTheme.typography.labelMedium)
-            shopName?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+    androidx.compose.material3.Surface(onClick, modifier.heightIn(min = 40.dp).widthIn(max = 156.dp).padding(vertical = 2.dp).testTag("app-switch-shop")
+        .semantics { contentDescription = "Switch shop, current ${shopName ?: "shop"}" },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(shopName?.takeIf { it.isNotBlank() } ?: "Switch shop", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Text(" \u25BE", style = MaterialTheme.typography.labelMedium)
         }
     }
 }
 
-/** Large display-serif page title with a short accent underline, as on the web. */
+/** Large display-serif page title (no accent underline, as in the seamless-pass designs). */
 @Composable fun PageTitle(text: String, modifier: Modifier = Modifier, horizontalPadding: androidx.compose.ui.unit.Dp = 20.dp) {
-    Column(modifier.fillMaxWidth().padding(start = horizontalPadding, end = horizontalPadding, top = 16.dp, bottom = 12.dp)) {
-        Text(text, Modifier.semantics { heading() }, style = if(LocalCalibre.current) calibreDisplayStyle(MaterialTheme.typography.headlineLarge) else MaterialTheme.typography.headlineLarge,
+    Column(modifier.fillMaxWidth().padding(start = horizontalPadding, end = horizontalPadding, top = 12.dp, bottom = 8.dp)) {
+        Text(text, Modifier.semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge),
             color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
-        Box(Modifier.padding(top = 8.dp).width(28.dp).height(3.dp).background(MaterialTheme.colorScheme.primary))
     }
 }

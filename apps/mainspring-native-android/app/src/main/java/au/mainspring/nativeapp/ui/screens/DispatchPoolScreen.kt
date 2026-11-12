@@ -39,7 +39,10 @@ fun DispatchPoolScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit, onOpenBo
             item {
                 Text("Nearby unclaimed work, closest first. Claiming one adds it to your mobile job board.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if(state.loading || state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = vm::refresh) }
+                state.error?.let { err ->
+                    if(err.contains("invite is accepted", ignoreCase = true)) au.mainspring.nativeapp.ui.EmptyState("Waiting for your invite", "Dispatch opens once your account invite is accepted. Check your email for the invite.")
+                    else au.mainspring.nativeapp.ui.ErrorBanner(err, onRetry = vm::refresh)
+                }
                 if(state.unresolvedId.isNotBlank()) {
                     Text("An earlier claim needs review. Refresh, then check the mobile job board before trying again.")
                     TextButton(onClick = onOpenBoard) { Text("Check mobile job board") }

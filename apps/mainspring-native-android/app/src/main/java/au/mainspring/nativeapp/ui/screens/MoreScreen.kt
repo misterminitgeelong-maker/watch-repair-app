@@ -99,13 +99,12 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
 /**
  * More tab, as on the web phone view: a compact popup sheet anchored above the bottom bar over a dimmed page, with a
  * four-column grid of icon tiles (every tool that fits the shop's plan and role, plus Settings), a divider and a red
- * Sign out row. A small search field sits at the top of the sheet. Settings opens the settings and appearance panels.
+ * Sign out row. A small search field sits at the top of the sheet. Settings opens the settings panels.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun MoreScreen(shop: String?, summary: String?, features: Set<String>, canSwitch: Boolean,
     onSwitch: () -> Unit, onNavigate: (String) -> Unit, onLogout: () -> Unit, onDismiss: () -> Unit = {}) {
     val fieldNavigation by DesignPreferences.fieldNavigation.collectAsState()
-    val appearance by DesignPreferences.appearance.collectAsState()
     var signOut by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -119,33 +118,37 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
     val shown = if(q.isEmpty()) items + MoreItem("Settings", "settings") else everyTool.filter { it.label.contains(q, true) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss))
-        Surface(Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 10.dp).widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight * 0.92f),
-            color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), shadowElevation = 14.dp,
+        Surface(Modifier.align(Alignment.BottomCenter).padding(horizontal = 8.dp, vertical = 8.dp).widthIn(max = 480.dp).fillMaxWidth().heightIn(max = maxHeight * 0.94f),
+            color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp), shadowElevation = 14.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-            val cols = moreColumns()
-            LazyColumn(Modifier.testTag("more-list"), contentPadding = PaddingValues(top = 12.dp)) {
-                item {
-                    au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool") }, shape = RoundedCornerShape(8.dp),
+            LazyColumn(Modifier.testTag("more-list"), contentPadding = PaddingValues(top = 12.dp, bottom = 8.dp)) {
+                item(key = "shop-card") {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(TokenStore.shopValue("name") ?: shop ?: "Current shop", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            summary?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+                        }
+                        if(canSwitch) OutlinedButton(onSwitch, Modifier.heightIn(min = 40.dp).testTag("more-switch-shop")) { Text("Switch shop") }
+                    }
+                }
+                item(key = "search") {
+                    au.mainspring.nativeapp.ui.AtelierTextField(query, { query = it }, singleLine = true, placeholder = { Text("Find a tool") }, shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 6.dp).testTag("more-search"),
                         colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = MaterialTheme.colorScheme.background, focusedContainerColor = MaterialTheme.colorScheme.background,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedBorderColor = MaterialTheme.colorScheme.primary))
                 }
                 if(q.isNotEmpty() && shown.isEmpty()) item { Text("No tool matches \u201c$q\u201d.", Modifier.padding(horizontal = 20.dp, vertical = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                items(shown.chunked(cols), key = { row -> "row/" + row.first().route }) { row ->
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
-                        row.forEach { tool ->
-                            val tag = if(tool.route == "settings") Modifier.testTag("more-group-settings") else Modifier
-                            MoreTile(if(tool.route == "networkMessages" && networkUnread > 0) "Messages ($networkUnread)" else tool.label, tool.route, Modifier.weight(1f).then(tag), plain = true) { if(tool.route == "settings") settingsOpen = true else onNavigate(tool.route) }
-                        }
-                        repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
-                    }
+                items(shown, key = { tool -> "row/" + tool.route }) { tool ->
+                    val tag = if(tool.route == "settings") Modifier.testTag("more-group-settings") else Modifier
+                    MoreRow(if(tool.route == "networkMessages" && networkUnread > 0) "Messages ($networkUnread)" else tool.label, tool.route, Modifier.then(tag)) { if(tool.route == "settings") settingsOpen = true else onNavigate(tool.route) }
                 }
                 if(q.isEmpty()) {
                     item(key = "divider") { HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.outlineVariant) }
                     item(key = "signout") {
                         val red = MaterialTheme.colorScheme.primary
-                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { signOut = true }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                            SignOutGlyph(red); Spacer(Modifier.width(8.dp))
+                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { signOut = true }.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.Start, verticalAlignment = Alignment.CenterVertically) {
+                            SignOutGlyph(red); Spacer(Modifier.width(12.dp))
                             Text("Sign out", style = MaterialTheme.typography.titleSmall, color = red)
                         }
                     }
@@ -157,8 +160,8 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             LazyColumn(Modifier.statusBarsPadding().testTag("settings-list"), contentPadding = PaddingValues(bottom = 48.dp)) {
                 item { TextButton({ settingsOpen = false }, Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp)) { Text("\u2039 More") } }
-                item { PageTitle("Settings & appearance") }
-                item(key = "settings") { SettingsPanels(shop, summary, features, canSwitch, onSwitch, fieldNavigation, appearance, owner) }
+                item { PageTitle("Settings") }
+                item(key = "settings") { SettingsPanels(shop, summary, features, canSwitch, onSwitch, fieldNavigation, owner) }
             }
         }
     }
@@ -172,6 +175,16 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
         val s = size.width / 24f; val w = 1.8f * s
         fun l(a: Float, b: Float, c: Float, d: Float) = drawLine(color, androidx.compose.ui.geometry.Offset(a * s, b * s), androidx.compose.ui.geometry.Offset(c * s, d * s), w, cap = androidx.compose.ui.graphics.StrokeCap.Round)
         l(10f, 4f, 5f, 4f); l(5f, 4f, 5f, 20f); l(5f, 20f, 10f, 20f); l(10f, 12f, 21f, 12f); l(17f, 8f, 21f, 12f); l(17f, 16f, 21f, 12f)
+    }
+}
+
+/** One list row: tool icon, label, chevron. At least 48dp tall. */
+@Composable internal fun MoreRow(label: String, route: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ToolIcon(route, size = 24.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f))
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -221,7 +234,7 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
 }
 
 @Composable private fun SettingsPanels(shop: String?, summary: String?, features: Set<String>, canSwitch: Boolean, onSwitch: () -> Unit,
-    fieldNavigation: Boolean, appearance: AppAppearance, owner: Boolean) {
+    fieldNavigation: Boolean, owner: Boolean) {
     Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if("auto_key" in features && owner) FlatPanel {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -231,17 +244,6 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
         }
         AppLockSetting()
         FlatPanel { au.mainspring.nativeapp.ui.PushSettingRow() }
-        SectionLabel("Appearance")
-        AppAppearance.entries.chunked(2).forEach { pair ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                pair.forEach { option ->
-                    SelectableCard(appearance == option, { DesignPreferences.select(option) }, Modifier.weight(1f).semantics { selected = appearance == option; role = Role.RadioButton }) {
-                        Text(option.label, style = MaterialTheme.typography.labelLarge)
-                        Text(if(appearance == option) "Selected" else "Use theme", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
         SectionLabel("Enabled modules")
         FlatPanel {
             listOf("auto_key" to "Mobile services", "watch" to "Watch repairs", "shoe" to "Shoe repairs").forEach { (key, label) -> DetailRow(label, if(key in features) "Enabled" else "Not enabled") }

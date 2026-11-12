@@ -109,6 +109,9 @@ jobs:
         if: steps.changes.outputs.release == 'true'
         id: build
         working-directory: apps/mainspring-native-android
+        env:
+          # Android-restricted Maps SDK key; when empty the route screen falls back to the OpenStreetMap view.
+          MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
         run: |
           code=$(( $(date +%s) / 60 ))
           # Version codes here are minutes since 1970, so each build is higher than the last.

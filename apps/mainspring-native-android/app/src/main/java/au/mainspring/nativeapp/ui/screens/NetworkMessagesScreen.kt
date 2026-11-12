@@ -2,6 +2,7 @@ package au.mainspring.nativeapp.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun NetworkMessagesScreen(onBack: () -> Unit, conversation: String? = null, initialTab: String? = null,
     network: String? = null, hub: String? = null, vm: NetworkMessagesViewModel = viewModel()) {
@@ -47,6 +48,8 @@ fun NetworkMessagesScreen(onBack: () -> Unit, conversation: String? = null, init
     var deleting by remember { mutableStateOf<NetworkPost?>(null) }
     var pendingFile by remember { mutableStateOf<ChatAttachment?>(null) }
     var networkMenu by remember { mutableStateOf(false) }
+    var overflowMenu by remember { mutableStateOf(false) }
+    var actionPost by remember { mutableStateOf<NetworkPost?>(null) }
     val threadList = rememberLazyListState()
     val threadKey = "${s.network}/${s.hub ?: s.recipient ?: s.conversation.orEmpty()}"
     var displayedThread by remember { mutableStateOf("") }
@@ -79,7 +82,15 @@ fun NetworkMessagesScreen(onBack: () -> Unit, conversation: String? = null, init
     }
     LaunchedEffect(Unit) { vm.start(conversation, initialTab, network, hub) }
     LaunchedEffect(owner) { owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { while(true) { kotlinx.coroutines.delay(15_000); vm.refresh() } } }
-    Scaffold(topBar = { AtelierTopAppBar(title = { Text(s.title) }, navigationIcon = { BackButton(onClick = { if(s.inThread) vm.closeThread() else onBack() }) }, actions = { TextButton(vm::refresh, enabled = !s.loading && !s.busy) { Text("Refresh") } }) }) { padding ->
+    Scaffold(topBar = { AtelierTopAppBar(title = { Text(s.title) }, navigationIcon = { BackButton(onClick = { if(s.inThread) vm.closeThread() else onBack() }) }, actions = {
+        TextButton(vm::refresh, enabled = !s.loading && !s.busy) { Text("Refresh") }
+        if(!s.inThread) Box {
+            TextButton({ overflowMenu = true }, Modifier.heightIn(min = 48.dp).testTag("network-overflow")) { Text("⋮", style = MaterialTheme.typography.titleLarge) }
+            DropdownMenu(overflowMenu, { overflowMenu = false }) {
+                DropdownMenuItem(text = { Text("Shop directory") }, onClick = { overflowMenu = false; vm.tab("directory") }, modifier = Modifier.testTag("network-tab-directory"))
+            }
+        }
+    }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if(s.loading || s.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             s.error?.let { ErrorBanner(it, Modifier.padding(12.dp), onRetry = vm::refresh) }
@@ -98,8 +109,18 @@ fun NetworkMessagesScreen(onBack: () -> Unit, conversation: String? = null, init
                         selected.ownState?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
-                ScrollableTabRow(listOf("chats", "directory", "announcements", "hubs").indexOf(s.tab).coerceAtLeast(0), edgePadding = 0.dp) {
-                    listOf("chats" to "Chats", "directory" to "Directory", "announcements" to "Announcements", "hubs" to "State hubs").forEach { (key, label) -> Tab(s.tab == key, { vm.tab(key) }, modifier = Modifier.testTag("network-tab-$key"), text = { Text(label, maxLines = 1) }) }
+                if(s.tab == "directory") {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton({ vm.tab("chats") }, Modifier.heightIn(min = 48.dp).testTag("network-tab-chats")) { Text("‹ Chats") }
+                        Text("Shop directory", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                } else {
+                    TabRow(listOf("chats", "hubs", "announcements").indexOf(s.tab).coerceAtLeast(0)) {
+                        listOf("chats" to "Chats", "hubs" to "State hubs", "announcements" to "Announcements").forEach { (key, label) ->
+                            Tab(s.tab == key, { vm.tab(key) }, modifier = Modifier.heightIn(min = 48.dp).testTag("network-tab-$key"), text = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge) })
+                        }
+                    }
                 }
             } else {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -118,17 +139,9 @@ fun NetworkMessagesScreen(onBack: () -> Unit, conversation: String? = null, init
                         PhoneChatBubble(outgoing = post.mine, body = post.body, timestamp = phoneChatTime(post.createdAt),
                             sender = if(post.mine) null else listOfNotNull(post.senderName, post.shopName.takeIf { s.hub != null }).distinct().joinToString(" · ").ifBlank { null },
                             status = listOfNotNull("Pinned".takeIf { post.pinned }, (if(post.resolvedAt != null) "Stock request · resolved" else "Stock request · open").takeIf { post.kind == "stock_request" }).joinToString(" · ").ifBlank { null },
-                            modifier = Modifier.testTag("network-post-${post.id}")) {
+                            modifier = Modifier.testTag("network-post-${post.id}").then(if(s.hub != null) Modifier.combinedClickable(onClick = {}, onLongClick = { actionPost = post }, onLongClickLabel = "Message actions") else Modifier)) {
                             post.replyPreview?.let { Text("Reply to: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             post.attachments.forEach { file -> TextButton({ pendingFile = file; saveFile.launch(file.filename) }) { Text("${file.filename} · ${(file.size + 1023) / 1024} KB ↓") } }
-                            if(s.hub != null) {
-                                Row(Modifier.horizontalScroll(rememberScrollState())) {
-                                    TextButton({ vm.reply(post) }, enabled = !s.busy) { Text("Reply") }
-                                    if(post.canModerate) TextButton({ vm.updateHub(post, pinned = !post.pinned) }, enabled = !s.busy) { Text(if(post.pinned) "Unpin" else "Pin") }
-                                    if(post.kind == "stock_request" && (post.mine || post.canModerate)) TextButton({ vm.updateHub(post, resolved = post.resolvedAt == null) }, enabled = !s.busy) { Text(if(post.resolvedAt == null) "Resolve" else "Reopen") }
-                                    if(post.mine || post.canModerate) TextButton({ deleting = post }, enabled = !s.busy) { Text("Delete") }
-                                }
-                            }
                         }
                     }
                 } else when(s.tab) {
@@ -216,6 +229,14 @@ fun NetworkMessagesScreen(onBack: () -> Unit, conversation: String? = null, init
                 }
             }
         }
+    }
+    actionPost?.let { post ->
+        BubbleActionsSheet(post.body, buildList {
+            add(BubbleAction("reply", "Reply") { vm.reply(post) })
+            if(post.canModerate) add(BubbleAction("pin", if(post.pinned) "Unpin" else "Pin") { vm.updateHub(post, pinned = !post.pinned) })
+            if(post.kind == "stock_request" && (post.mine || post.canModerate)) add(BubbleAction("resolve", if(post.resolvedAt == null) "Resolve" else "Reopen") { vm.updateHub(post, resolved = post.resolvedAt == null) })
+            if(post.mine || post.canModerate) add(BubbleAction("delete", "Delete", destructive = true) { deleting = post })
+        }, { actionPost = null })
     }
     deleting?.let { post -> AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Delete message?") }, text = { Text(post.body) }, confirmButton = { TextButton({ deleting = null; vm.deleteHub(post) }) { Text("Delete") } }, dismissButton = { TextButton({ deleting = null }) { Text("Cancel") } }) }
     s.receipts?.let { report -> AlertDialog(onDismissRequest = vm::dismissReceipts, title = { Text("Announcement receipts") }, text = {

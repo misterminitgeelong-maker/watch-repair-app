@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -86,19 +87,23 @@ internal val FinSand = Color(0xFFF2E8DC)
 @Composable internal fun finBorderColor(): Color =
     if(LocalCalibrePalette.current.appearance == AppAppearance.MAINSPRING) Mainspring.BorderStrong else MaterialTheme.colorScheme.outlineVariant
 
-/** Title (display serif) with the short accent underline. [onBack] adds a slim back row, [insets] pads for the status bar. */
+/** Title. With [onBack] or [actions] it is the compact sub-screen bar (back, sans title, actions, hairline); otherwise a serif page title. [insets] pads for the status bar. */
 @Composable internal fun FinTitle(text: String, modifier: Modifier = Modifier, onBack: (() -> Unit)? = null, insets: Boolean = false, gutter: Dp = FinGutter, actions: (@Composable RowScope.() -> Unit)? = null) {
-    Column(modifier.fillMaxWidth()) {
-        if(onBack != null || actions != null) Row(Modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            if(onBack != null) BackButton(onBack)
-            Spacer(Modifier.weight(1f))
-            actions?.invoke(this)
+    if(onBack != null || actions != null) {
+        Column(modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            Row(Modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(horizontal = 4.dp).heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+                if(onBack != null) BackButton(onBack)
+                Text(text, Modifier.weight(1f).padding(horizontal = if(onBack != null) 8.dp else 12.dp).semantics { heading() }, style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                actions?.invoke(this)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
-        Column(Modifier.fillMaxWidth().then(if(insets && onBack == null && actions == null) Modifier.statusBarsPadding() else Modifier).padding(start = gutter, end = gutter, top = 16.dp, bottom = 12.dp)) {
-            Text(text, Modifier.semantics { heading() }, style = (if(LocalCalibre.current) calibreDisplayStyle(MaterialTheme.typography.headlineLarge) else MaterialTheme.typography.headlineLarge).copy(fontSize = 30.sp, lineHeight = 36.sp),
-                color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
-            Box(Modifier.padding(top = 8.dp).width(28.dp).height(3.dp).background(MaterialTheme.colorScheme.primary))
-        }
+        return
+    }
+    Column(modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(start = gutter, end = gutter, top = 12.dp, bottom = 8.dp)) {
+        Text(text, Modifier.semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge).copy(fontSize = 30.sp),
+            color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
     }
 }
 

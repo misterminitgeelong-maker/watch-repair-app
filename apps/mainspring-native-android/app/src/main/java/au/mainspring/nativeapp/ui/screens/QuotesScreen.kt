@@ -69,7 +69,7 @@ fun QuotesScreen(
                     }
                 }
             }
-            if(state.loading && state.quotes.isEmpty()) item { androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            if(state.loading && state.quotes.isEmpty()) item { au.mainspring.nativeapp.ui.SkeletonRows() }
             state.error?.let { e -> item { au.mainspring.nativeapp.ui.ErrorBanner(e, onRetry = viewModel::refresh) } }
             if(!state.loading && state.error == null && shown.isEmpty()) item {
                 FinEmptyCard(if(filter == null && query.isBlank() && olderDays == 0) "No quotes yet." else "No quotes match these filters.")

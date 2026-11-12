@@ -95,7 +95,6 @@ fun ShoeJobsScreen(
 
     val header: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            ServiceTitle("Shoe Repairs", Modifier.padding(top = 8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 if (onOpenQueue != null) WebButton("Queue", onOpenQueue, icon = "list", tag = "queue-button")
                 WebButton("New Job", onNewJob, primary = true, icon = "plus", tag = "new-job-ticket")
@@ -123,10 +122,11 @@ fun ShoeJobsScreen(
                 WebSelect(if (minDays == 0) "Any age" else "$minDays+ days in shop",
                     listOf("0" to "Any age", "7" to "7+ days in shop", "14" to "14+ days in shop", "21" to "21+ days in shop"),
                     { minDays = it.toInt() }, tag = "age-filter", description = "Filter by age in shop")
-                if (state.loading && state.jobs.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (state.loading && state.jobs.isEmpty()) au.mainspring.nativeapp.ui.SkeletonRows(Modifier.fillMaxWidth(), count = 4)
                 state.error?.let { au.mainspring.nativeapp.ui.ErrorBanner(it, onRetry = { viewModel.refresh() }) }
                 if (!state.loading && state.error == null && state.jobs.isEmpty()) au.mainspring.nativeapp.ui.EmptyState("No shoe repairs yet", "Tap New Job to book in a pair.")
-                if (!state.loading && state.error == null && state.jobs.isNotEmpty() && rows.isEmpty() && !state.board) au.mainspring.nativeapp.ui.EmptyState("No repairs match", "Try a different search or filter.")
+                if (!state.loading && state.error == null && state.jobs.isNotEmpty() && rows.isEmpty() && !state.board) au.mainspring.nativeapp.ui.EmptyState(title = "No repairs match", hint = "Try a different search or filter.", actionLabel = "Clear filters",
+                    onAction = { viewModel.setQuery(""); viewModel.setStatusFilter("all"); minDays = 0; costOutliers = false })
             }
         }
     }

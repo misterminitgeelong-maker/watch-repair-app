@@ -8,7 +8,7 @@ enum class AppAppearance(val label: String) {
     MAINSPRING("Mainspring"), CALIBRE("Calibre"), WARM("Atelier"), NIGHT("Night Workshop"), STEEL("Steel & Amber"), MINIT("Mister Minit")
 }
 
-/** Appearance for a fresh install (no stored choice). A stored choice, including Calibre, always wins. */
+/** The one appearance the app ships with. Older stored choices (Calibre, Atelier, Night, Steel, Minit) are ignored and cleared. */
 val DEFAULT_APPEARANCE = AppAppearance.MAINSPRING
 
 /** Device appearance only. Entitlements and shop configuration remain server-owned. */
@@ -22,7 +22,8 @@ object DesignPreferences {
         if(preferences != null) return
         preferences = context.applicationContext.getSharedPreferences("mainspring_appearance", Context.MODE_PRIVATE)
         field.value = preferences?.getBoolean("field_navigation",false) ?: false
-        selected.value = AppAppearance.entries.firstOrNull { it.name == preferences?.getString("appearance", null) } ?: DEFAULT_APPEARANCE
+        selected.value = DEFAULT_APPEARANCE
+        if(preferences?.contains("appearance") == true) preferences?.edit()?.remove("appearance")?.apply()
     }
     fun fieldNavigation(value: Boolean) {field.value=value;preferences?.edit()?.putBoolean("field_navigation",value)?.apply()}
     fun select(value: AppAppearance) {

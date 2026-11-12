@@ -203,8 +203,13 @@ val CalibreCardShape: androidx.compose.ui.graphics.Shape @Composable get() = and
     }
 }
 
-/** Horizontally scrolling filter chips. `options` maps a stored key (null = all) to its label. */
+/** Filter chips (up to four options) or a dropdown (five or more). `options` maps a stored key (null = all) to its label. */
 @Composable fun FilterRow(options: List<Pair<String?, String>>, selected: String?, onSelect: (String?) -> Unit, modifier: Modifier = Modifier) {
+    // Long lists of chips are hard to scan on a phone: five or more options become one dropdown.
+    if(options.size > 4) {
+        Row(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) { FilterDropdown(options.first().second, options, selected, onSelect) }
+        return
+    }
     if(LocalCalibre.current) {
         Column(modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -376,13 +381,10 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     }
 }
 
-/** Atelier large-title header: small uppercase eyebrow, big bold title, optional round "+" button. */
+/** Tab-root title header: serif title, optional trailing content and round "+" button. The eyebrow is no longer shown (seamless-pass designs). */
 @Composable fun LargeHeader(eyebrow: String?, title: String, modifier: Modifier = Modifier, onAdd: (() -> Unit)? = null, addDescription: String = "New", trailing: (@Composable () -> Unit)? = null, insets: Boolean = true) {
-    Row(modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
-        Column(Modifier.weight(1f)) {
-            if(eyebrow != null) { if(LocalCalibre.current) MonoLabel(eyebrow) else Text(eyebrow.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Text(title, Modifier.semantics { heading() }, style = if(LocalCalibre.current) calibreDisplayStyle(MaterialTheme.typography.headlineLarge) else MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
-        }
+    Row(modifier.fillMaxWidth().then(if(insets) Modifier.statusBarsPadding() else Modifier).padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f).semantics { heading() }, style = calibreDisplayStyle(MaterialTheme.typography.headlineLarge), color = MaterialTheme.colorScheme.onSurface, maxLines = 2)
         trailing?.invoke()
         if(onAdd != null) RoundPlusButton(onAdd, addDescription)
     }
@@ -509,7 +511,7 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     }
 }
 
-/** Top bar for sub-screens: transparent over the Atelier background, same slots as [TopAppBar]. */
+/** Top bar for sub-screens: one compact row (back, title, actions) on the surface colour with a hairline below, as in the seamless-pass designs. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AtelierTopAppBar(
     title: @Composable () -> Unit,
@@ -519,15 +521,16 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
 ) {
-    Column(modifier.fillMaxWidth().background(colors.containerColor)) {
-        Row(Modifier.fillMaxWidth().windowInsetsPadding(windowInsets).padding(horizontal = 4.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+    val bar = if(colors.containerColor == Color.Transparent || colors.containerColor == Color.Unspecified) MaterialTheme.colorScheme.surface else colors.containerColor
+    Column(modifier.fillMaxWidth().background(bar)) {
+        Row(Modifier.fillMaxWidth().windowInsetsPadding(windowInsets).padding(horizontal = 4.dp).heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
             navigationIcon()
-            Spacer(Modifier.weight(1f))
+            Box(Modifier.weight(1f).padding(horizontal = 8.dp).semantics(mergeDescendants = true) { heading() }) {
+                CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)) { title() }
+            }
             actions()
         }
-        Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 10.dp).semantics(mergeDescendants = true) { heading() }) {
-            CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurface)) { title() }
-        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -572,13 +575,17 @@ fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstCha
 ) = OutlinedTextField(value, onValueChange, modifier, enabled, readOnly, textStyle, label, placeholder, leadingIcon, trailingIcon, prefix, suffix, supportingText,
     isError, visualTransformation, keyboardOptions, keyboardActions, singleLine, maxLines, minLines, null, shape, colors)
 
-/** Sub-screen header: blue "‹ Back" link above an eyebrow + large title (used where the screen has no Atelier tab frame). */
+/** Sub-screen header: compact bar with a back arrow, the title and a small breadcrumb ([eyebrow]), hairline below. */
 @Composable fun BackLargeHeader(backLabel: String, eyebrow: String?, title: String, onBack: () -> Unit, backEnabled: Boolean = true) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack, enabled = backEnabled, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Back" }) { Text("\u2039 $backLabel", style = MaterialTheme.typography.titleSmall) }
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp).heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+            BackButton(onBack, backEnabled)
+            Column(Modifier.weight(1f).padding(horizontal = 8.dp).semantics(mergeDescendants = true) { heading() }) {
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                if(eyebrow != null) Text(eyebrow, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
         }
-        LargeHeader(eyebrow, title, insets = false)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
