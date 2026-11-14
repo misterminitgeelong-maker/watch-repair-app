@@ -646,9 +646,14 @@ if _static and _static.is_dir():
     async def spa_fallback(request: Request, full_path: str):
         # Never intercept API or docs paths
         if full_path.startswith("v1/") or full_path in ("docs", "openapi.json", "redoc"):
-            from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "Not Found"}, status_code=404)
-        file_path = _static / full_path
+        # Scanner probes (/.env, /joomla/.env, *.php, wp-*) get a real 404, never index.html.
+        if seo.is_junk_path(full_path):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        file_path = (_static / full_path).resolve()
+        # Never serve anything outside the built frontend folder (e.g. via ../ segments).
+        if full_path and not file_path.is_relative_to(_static.resolve()):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
         if full_path and file_path.is_file():
             headers = None
             if full_path == "sw.js":

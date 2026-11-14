@@ -107,6 +107,32 @@ def normalise_path(full_path: str) -> str:
     return full_path.strip("/").lower()
 
 
+# Scanner bait: dotfiles (.env, .git, ...), server-side script/backup/config extensions and
+# well-known CMS admin paths. None of these are SPA routes, so the fallback answers 404 instead
+# of handing back index.html with a 200 (which makes scanners think a real file exists).
+_JUNK_EXTENSIONS = {
+    "php", "php3", "php4", "php5", "phtml", "asp", "aspx", "jsp", "jspx", "cgi", "pl", "py", "sh",
+    "env", "git", "svn", "sql", "bak", "old", "orig", "swp", "log", "ini", "conf", "cfg", "yml",
+    "yaml", "toml", "pem", "key", "crt", "db", "sqlite", "zip", "tar", "gz", "7z", "rar",
+}
+_JUNK_PREFIXES = ("wp-", "wordpress", "joomla", "phpmyadmin", "pma", "cgi-bin", "xmlrpc", "vendor", "node_modules")
+
+
+def is_junk_path(full_path: str) -> bool:
+    """True for scanner probes that must get a real 404 rather than the SPA shell."""
+    segments = [seg for seg in full_path.strip("/").lower().split("/") if seg]
+    for seg in segments:
+        if seg.startswith(".") or seg in ("..",):
+            return True
+        if seg.startswith(_JUNK_PREFIXES):
+            return True
+    if segments:
+        name = segments[-1]
+        if "." in name and name.rsplit(".", 1)[1] in _JUNK_EXTENSIONS:
+            return True
+    return False
+
+
 def robots_header(full_path: str) -> str | None:
     """X-Robots-Tag value for a request path, or None when it may be indexed."""
     path = normalise_path(full_path)
