@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare, Copy } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowRight, Clock, Paperclip, History, FileText, Plus, Download, Upload, Camera, Pencil, Printer, MessageSquare, Copy, Trash2 } from 'lucide-react'
 import {
   DEFAULT_PAGE_SIZE,
   getJob, quickStatusAction, updateJobStatus, updateJob, listQuotes,
@@ -15,7 +15,7 @@ import {
   getApiErrorMessage,
   getUploadErrorMessage,
   listUsers,
-  createQuote, sendQuote, cloneRepairJob,
+  createQuote, sendQuote, cloneRepairJob, deleteJob,
   type JobStatus, type RepairJob, type CustomerAccount, type TenantUser, type Watch, type Customer,
 } from '@/lib/api'
 import { useToast } from '@/lib/toast'
@@ -556,6 +556,8 @@ export default function JobDetailPage() {
   )
   const [showStatus, setShowStatus] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [showLogWork, setShowLogWork] = useState(false)
   const [showCreateQuote, setShowCreateQuote] = useState(false)
   const [pendingStepStatus, setPendingStepStatus] = useState<JobStatus | null>(null)
@@ -638,6 +640,17 @@ export default function JobDetailPage() {
         ? updateJob(id!, { assigned_user_id: userId })
         : updateJob(id!, { clear_assigned_user: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['job', id] }),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: () => deleteJob(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      qc.invalidateQueries({ queryKey: ['quotes'] })
+      toast.success('Job deleted')
+      navigate('/jobs')
+    },
+    onError: (e: unknown) => setDeleteError(getApiErrorMessage(e, 'Failed to delete job.')),
   })
 
   const resendMut = useMutation({
@@ -807,6 +820,9 @@ export default function JobDetailPage() {
             >
               <Copy size={15} /><span className="hidden sm:inline">Duplicate</span>
             </Button>
+            <Button variant="secondary" onClick={() => { setDeleteError(''); setShowDeleteConfirm(true) }}>
+              <Trash2 size={15} /><span className="hidden sm:inline">Delete job</span>
+            </Button>
             </div>
             {nextStatus && (
               <Button className="sm:hidden" variant="secondary" onClick={() => setShowStatus(true)}>
@@ -835,10 +851,33 @@ export default function JobDetailPage() {
                   }).catch((error: unknown) => toast.error(getApiErrorMessage(error, 'Duplicate failed')))
                 },
               },
+              { label: 'Delete job', icon: <Trash2 size={16} />, danger: true, onClick: () => { setDeleteError(''); setShowDeleteConfirm(true) } },
             ]} />
           </div>
         }
       />
+      {showDeleteConfirm && (
+        <Modal
+          title="Delete job"
+          onClose={() => { if (!deleteMut.isPending) { setShowDeleteConfirm(false); setDeleteError('') } }}
+        >
+          <div className="space-y-4">
+            <p className="text-sm" style={{ color: 'var(--ms-text)' }}>
+              Are you sure you want to delete this job? This also deletes its quotes, invoices, payments, photos and history. This cannot be undone.
+            </p>
+            <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--ms-border)', backgroundColor: 'var(--ms-bg)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--ms-text)' }}>#{job.job_number} · {job.title}</p>
+            </div>
+            {deleteError && <p className="text-sm" style={{ color: 'var(--ms-error)' }}>{deleteError}</p>}
+            <div className="flex gap-2 pt-2">
+              <Button variant="secondary" className="flex-1" onClick={() => { setShowDeleteConfirm(false); setDeleteError('') }} disabled={deleteMut.isPending}>Cancel</Button>
+              <Button variant="danger" className="flex-1" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>
+                {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {showStatus && <StatusModal job={job} onClose={() => setShowStatus(false)} />}
       {showEdit && <EditTicketModal job={job} watch={watch} customer={customer} onClose={() => setShowEdit(false)} />}
       {showLogWork && <LogWorkModal jobId={id!} onClose={() => setShowLogWork(false)} />}
