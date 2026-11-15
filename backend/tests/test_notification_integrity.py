@@ -396,7 +396,7 @@ def test_redelivery_sweep_skips_exhausted_rows(live_email, monkeypatch):
 def test_redelivery_sweep_resends_failed_sms(live_sms, monkeypatch):
     from app import sms as sms_mod
     from app.services.notification_redelivery import redeliver_failed_notifications
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
 
     class _FakeMessage:
         sid = "SM-retry"
@@ -415,7 +415,8 @@ def test_redelivery_sweep_resends_failed_sms(live_sms, monkeypatch):
                 event="quote_sent",
                 status="failed",
                 attempt_count=1,
-                last_attempt_at=datetime.now(timezone.utc),
+                last_attempt_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+                created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
             )
         )
         session.commit()

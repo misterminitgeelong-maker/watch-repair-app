@@ -106,9 +106,9 @@ def _suppression(phone: str) -> SmsSuppression | None:
         ).first()
 
 
-def _send(tenant_id: UUID, phone: str, event: str = "test") -> tuple[str | None, str]:
+def _send(tenant_id: UUID, phone: str, event: str = "test", body: str | None = None) -> tuple[str | None, str]:
     with Session(engine) as session:
-        result = sms._logged_send(session, tenant_id=tenant_id, repair_job_id=None, to_phone=phone, body="hi", event=event)
+        result = sms._logged_send(session, tenant_id=tenant_id, repair_job_id=None, to_phone=phone, body=body or f"hi {uuid4().hex}", event=event)
         session.commit()
         return result
 
@@ -422,3 +422,45 @@ def test_usage_endpoint_platform_admin_sees_any_tenant(client: TestClient):
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     res = client.get("/v1/sms/usage", params={"tenant_id": str(target)}, headers=headers)
     assert res.status_code == 200, res.text
+
+
+# ── Duplicate-send guard ─────────────────────────────────────────────────────
+
+def test_identical_text_inside_window_is_sent_once(client: TestClient):
+    _from, stored = _unique_phone()
+    _headers, tenant_id, _ = _bootstrap_tenant(client)
+    assert _send(tenant_id, stored, event="job_live", body="same")[1] in ("dry_run", "sent")
+    assert _send(tenant_id, stored, event="job_live", body="same") == (None, "duplicate_skipped")
+    # A different message, or a different event, still goes out.
+    assert _send(tenant_id, stored, event="job_live", body="other")[1] in ("dry_run", "sent")
+    assert _send(tenant_id, stored, event="work_started", body="same")[1] in ("dry_run", "sent")
+    with Session(engine) as session:
+        rows = session.exec(select(SmsLog).where(SmsLog.tenant_id == tenant_id).where(SmsLog.body == "same")).all()
+        assert len(rows) == 2
+
+
+def test_redelivery_sweep_skips_rows_still_in_flight(client: TestClient):
+    from app.services.notification_redelivery import redeliver_failed_notifications
+
+    _from, stored = _unique_phone()
+    _headers, tenant_id, _ = _bootstrap_tenant(client)
+    with Session(engine) as session:
+        row = SmsLog(tenant_id=tenant_id, to_phone=stored, body="in flight", event="job_live", status="failed", attempt_count=0)
+        session.add(row)
+        session.commit()
+        row_id = row.id
+        redeliver_failed_notifications(session)
+        assert session.get(SmsLog, row_id).status == "failed"
+
+
+def test_double_submitted_custom_message_creates_one_thread_message(client: TestClient):
+    _from, stored = _unique_phone()
+    _headers, tenant_id, _ = _bootstrap_tenant(client)
+    with Session(engine) as session:
+        first = sms.send_custom_job_message(session, tenant_id=tenant_id, to_phone=stored, body="Hello twice")
+        session.commit()
+        second = sms.send_custom_job_message(session, tenant_id=tenant_id, to_phone=stored, body="Hello twice")
+        session.commit()
+        assert first.id == second.id
+        rows = session.exec(select(JobMessage).where(JobMessage.tenant_id == tenant_id)).all()
+        assert len(rows) == 1

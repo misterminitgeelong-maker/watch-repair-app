@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
@@ -65,6 +66,8 @@ def redeliver_failed_notifications(session: Session, batch_size: int = 200) -> d
         select(SmsLog)
         .where(SmsLog.status == "failed")
         .where(SmsLog.attempt_count < cap)
+        # A row is written as "failed" before the provider call; skip ones still in flight.
+        .where(SmsLog.created_at < datetime.now(timezone.utc) - timedelta(minutes=5))
         .order_by(SmsLog.created_at)
         .limit(batch_size)
     ).all()

@@ -7,7 +7,7 @@ This keeps the app fully functional in development without a Twilio account.
 """
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from uuid import UUID
 
@@ -154,6 +154,32 @@ def _finish_sms_log(session: Session, log_id: UUID, **fields) -> None:
         log_session.commit()
 
 
+# Identical text to the same number for the same event inside this window is treated
+# as an accidental repeat (double tap, client retry, two code paths) and not re-sent.
+DUPLICATE_SEND_WINDOW_SECONDS = 90
+
+
+def _recent_duplicate_exists(session: Session, *, tenant_id: UUID, to_phone: str, body: str, event: str) -> bool:
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=DUPLICATE_SEND_WINDOW_SECONDS)
+    try:
+        rows = session.exec(
+            select(SmsLog)
+            .where(SmsLog.tenant_id == tenant_id)
+            .where(SmsLog.to_phone == to_phone)
+            .where(SmsLog.event == event)
+            .where(SmsLog.body == body)
+            .where(SmsLog.created_at >= cutoff)
+        ).all()
+    except Exception:  # noqa: BLE001 - never block a send because the guard failed
+        logger.exception("[SMS DEDUPE] lookup failed")
+        return False
+    for row in rows:
+        in_flight = row.status == "failed" and row.attempt_count == 0
+        if row.status in ("sent", "dry_run") or in_flight:
+            return True
+    return False
+
+
 def _logged_send(
     session: Session,
     *,
@@ -191,6 +217,9 @@ def _logged_send(
             _finish_sms_log(session, log_id, status="suppressed", last_attempt_at=now)
         return None, "suppressed"
     if log_id is None:
+        if _recent_duplicate_exists(session, tenant_id=tenant_id, to_phone=to_phone, body=body, event=event):
+            logger.warning("[SMS DUPLICATE SKIPPED] tenant=%s event=%s to=%s", tenant_id, event, mask_phone(to_phone))
+            return None, "duplicate_skipped"
         log_id = _begin_sms_log(
             session,
             tenant_id=tenant_id,
@@ -295,6 +324,20 @@ def send_custom_job_message(
             status_code=409,
             detail="This customer has opted out of text messages (replied STOP), so the message was not sent.",
         )
+    if sms_status == "duplicate_skipped":
+        # Same text was just sent (double submit): return that thread message, add nothing.
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=DUPLICATE_SEND_WINDOW_SECONDS)
+        existing = session.exec(
+            select(JobMessage)
+            .where(JobMessage.tenant_id == tenant_id)
+            .where(JobMessage.direction == "outbound")
+            .where(JobMessage.to_phone == to_phone)
+            .where(JobMessage.body == body)
+            .where(JobMessage.created_at >= cutoff)
+            .order_by(JobMessage.created_at.desc())
+        ).first()
+        if existing is not None:
+            return existing
     msg = JobMessage(
         tenant_id=tenant_id,
         repair_job_id=repair_job_id,
