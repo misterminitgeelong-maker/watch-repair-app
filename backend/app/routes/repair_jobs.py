@@ -15,6 +15,9 @@ from ..list_page import query_total, set_total_count
 from ..tenant_helpers import get_tenant_repair_job
 from ..models import (
     Approval,
+    ImportLogDetail,
+    JobMessage,
+    PointsLedger,
     Attachment,
     Customer,
     SmsLogRead,
@@ -861,6 +864,17 @@ def delete_repair_job(
         .where(Attachment.repair_job_id == job_id)
     )
     session.exec(
+        delete(JobMessage)
+        .where(JobMessage.tenant_id == auth.tenant_id)
+        .where(JobMessage.repair_job_id == job_id)
+    )
+    # Keep the import audit row, just drop its link to the deleted job.
+    session.exec(
+        update(ImportLogDetail)
+        .where(ImportLogDetail.created_repair_job_id == job_id)
+        .values(created_repair_job_id=None)
+    )
+    session.exec(
         delete(JobStatusHistory)
         .where(JobStatusHistory.tenant_id == auth.tenant_id)
         .where(JobStatusHistory.repair_job_id == job_id)
@@ -894,6 +908,12 @@ def delete_repair_job(
         )
 
     if invoice_ids:
+        # Loyalty history stays; it just no longer points at the deleted invoice.
+        session.exec(
+            update(PointsLedger)
+            .where(PointsLedger.source_invoice_id.in_(invoice_ids))
+            .values(source_invoice_id=None)
+        )
         session.exec(
             delete(Payment)
             .where(Payment.tenant_id == auth.tenant_id)
