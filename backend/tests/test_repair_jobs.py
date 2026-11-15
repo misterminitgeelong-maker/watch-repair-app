@@ -377,3 +377,26 @@ def test_edit_job_number_same_value_is_allowed_and_other_shop_may_reuse():
     headers2, job_c, _ = _setup_two_jobs("other")
     res = client.patch(f"/v1/repair-jobs/{job_c['id']}", headers=headers2, json={"job_number": job_a["job_number"]})
     assert res.status_code == 200
+
+
+def test_delete_job_with_text_messages_and_linked_history():
+    """Regression: deleting a watch job returned 500 when it had SMS thread messages."""
+    from app.models import JobMessage
+
+    suffix = uuid4().hex[:8]
+    token = _bootstrap_and_login(f"repair-del-msg-{suffix}", f"owner-{suffix}@repair.test", "pass123456")
+    headers = {"Authorization": f"Bearer {token}"}
+    watch_id = _create_watch(headers)
+    job = _create_repair_job(headers, watch_id, "Has messages")
+    job_id = UUID(job["id"])
+    tenant_id = UUID(job["tenant_id"])
+
+    with Session(engine) as session:
+        session.add(JobMessage(tenant_id=tenant_id, repair_job_id=job_id, direction="inbound", body="hi", from_phone="+61400000000"))
+        session.commit()
+
+    assert client.delete(f"/v1/repair-jobs/{job['id']}", headers=headers).status_code == 204
+    assert client.get(f"/v1/repair-jobs/{job['id']}", headers=headers).status_code == 404
+    with Session(engine) as session:
+        from sqlmodel import select
+        assert session.exec(select(JobMessage).where(JobMessage.repair_job_id == job_id)).first() is None
