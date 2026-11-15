@@ -324,6 +324,20 @@ def send_custom_job_message(
             status_code=409,
             detail="This customer has opted out of text messages (replied STOP), so the message was not sent.",
         )
+    if sms_status == "duplicate_skipped":
+        # Same text was just sent (double submit): return that thread message, add nothing.
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=DUPLICATE_SEND_WINDOW_SECONDS)
+        existing = session.exec(
+            select(JobMessage)
+            .where(JobMessage.tenant_id == tenant_id)
+            .where(JobMessage.direction == "outbound")
+            .where(JobMessage.to_phone == to_phone)
+            .where(JobMessage.body == body)
+            .where(JobMessage.created_at >= cutoff)
+            .order_by(JobMessage.created_at.desc())
+        ).first()
+        if existing is not None:
+            return existing
     msg = JobMessage(
         tenant_id=tenant_id,
         repair_job_id=repair_job_id,

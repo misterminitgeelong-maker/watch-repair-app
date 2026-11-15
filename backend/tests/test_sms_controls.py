@@ -451,3 +451,16 @@ def test_redelivery_sweep_skips_rows_still_in_flight(client: TestClient):
         row_id = row.id
         redeliver_failed_notifications(session)
         assert session.get(SmsLog, row_id).status == "failed"
+
+
+def test_double_submitted_custom_message_creates_one_thread_message(client: TestClient):
+    _from, stored = _unique_phone()
+    _headers, tenant_id, _ = _bootstrap_tenant(client)
+    with Session(engine) as session:
+        first = sms.send_custom_job_message(session, tenant_id=tenant_id, to_phone=stored, body="Hello twice")
+        session.commit()
+        second = sms.send_custom_job_message(session, tenant_id=tenant_id, to_phone=stored, body="Hello twice")
+        session.commit()
+        assert first.id == second.id
+        rows = session.exec(select(JobMessage).where(JobMessage.tenant_id == tenant_id)).all()
+        assert len(rows) == 1

@@ -68,8 +68,13 @@ export default function JobMessageThread({
     enabled: !!jobId,
   })
 
+  // Synchronous lock: state-based isPending lags a render, so a fast Enter + click
+  // (or key repeat) could otherwise post the same text twice.
+  const sendingRef = useRef(false)
+
   const sendMut = useMutation({
     mutationFn: (body: string) => postMessage(jobId, body).then(r => r.data),
+    onSettled: () => { sendingRef.current = false },
     onSuccess: (sent) => {
       setText('')
       toast.success('Message sent')
@@ -85,7 +90,8 @@ export default function JobMessageThread({
 
   function handleSend() {
     const trimmed = text.trim()
-    if (!trimmed || sendMut.isPending) return
+    if (!trimmed || sendMut.isPending || sendingRef.current) return
+    sendingRef.current = true
     sendMut.mutate(trimmed)
   }
 
