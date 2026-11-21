@@ -10,7 +10,7 @@ import {
 import { PARENT_ACCOUNT_QUERY_KEY } from '@/hooks/useParentAccount'
 import { PARENT_ACCOUNT_SITES_QUERY_KEY } from '@/hooks/useParentAccountSites'
 import { Button, Modal, Spinner } from '@/components/ui'
-import { EntitlementsPanel, VanMergePanel } from '@/components/minit/ShopCleanupPanels'
+import { EntitlementsPanel, VanMergePanel, type VanMergePreset } from '@/components/minit/ShopCleanupPanels'
 
 function describe(m: DuplicateShopMember) {
   const bits = [m.is_member ? (m.network_role === 'operator' ? 'Operator site' : 'Retail site') : 'Reporting link only']
@@ -28,6 +28,7 @@ export function DuplicateShopsModal({ onClose }: { onClose: () => void }) {
   const [moveUsers, setMoveUsers] = useState<Set<string>>(new Set())
   const [emails, setEmails] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
+  const [vanPreset, setVanPreset] = useState<VanMergePreset | null>(null)
   const keepIds = Object.values(keepByNumber).sort()
   const { data, isLoading, error } = useQuery({
     queryKey: ['duplicate-shops', keepIds],
@@ -98,6 +99,10 @@ export function DuplicateShopsModal({ onClose }: { onClose: () => void }) {
                           </div>
                         ))}
                         <Button variant="secondary" className="text-xs px-3 py-1.5"
+                          onClick={() => setVanPreset({ shopId: keep, vanId: m.tenant_id, label: `${m.name} folds into the record kept for shop #${g.shop_number}` })}>
+                          Fold into kept shop as a van
+                        </Button>
+                        <Button variant="secondary" className="text-xs px-3 py-1.5"
                           disabled={retire.isPending || m.blockers.length > 0 || !m.preview_token}
                           onClick={() => {
                             if (window.confirm(`Retire "${m.name}" into the record you kept for shop #${g.shop_number}? Nothing is deleted.`))
@@ -113,7 +118,7 @@ export function DuplicateShopsModal({ onClose }: { onClose: () => void }) {
             )
           })}
         </div>
-        <VanMergePanel />
+        <VanMergePanel preset={vanPreset} />
         <EntitlementsPanel />
         <div className="flex justify-end"><Button onClick={onClose}>Close</Button></div>
       </div>

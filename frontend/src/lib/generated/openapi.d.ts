@@ -26465,9 +26465,11 @@ export interface operations {
     };
     preview_van_merge_v1_parent_accounts_me_van_merge_preview_get: {
         parameters: {
-            query: {
-                shop_number: string;
-                van_number: string;
+            query?: {
+                shop_number?: string | null;
+                van_number?: string | null;
+                shop_tenant_id?: string | null;
+                van_tenant_id?: string | null;
                 allow_other_networks?: boolean;
             };
             header?: never;

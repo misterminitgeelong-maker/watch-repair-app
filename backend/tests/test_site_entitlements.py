@@ -260,3 +260,21 @@ def test_chadstone_owner_pro_is_complimentary(network):
                          name="Mister Minit Chadstone")
     rows = [r for r in plan_backfill(db, parent)["rows"] if r["tenant_id"] == str(tenant.id)]
     assert {(r["kind"], r["payer"]) for r in rows} == {("booking", "parent"), ("pro", "comp")}
+
+
+def test_same_number_van_folds_by_id_and_plain_retire_is_blocked(pair):
+    """Chadstone shape: shop and van share one number, so records are picked by id."""
+    from app.shop_duplicates import duplicate_blockers
+    db, parent, shop, van, actor, dave, shop_site, n1, n2 = pair
+    van.shop_number = shop.shop_number
+    db.add(van); db.commit()
+    with pytest.raises(MvMergeError, match="more than one record"):
+        van_preview(db, parent, n1, n1)
+    assert any("mobile services seat" in b for b in duplicate_blockers(db, parent.id, shop, van))
+    pv = van_preview(db, parent, None, None, allow_other_networks=True, shop_tenant_id=shop.id, van_tenant_id=van.id)
+    assert pv["blockers"] == []
+    retire_duplicate(db, parent=parent, keep_tenant_id=shop.id, retire_tenant_id=van.id, actor=actor,
+                     expected_preview_token=pv["preview_token"], van_mode=True, allow_other_networks=True)
+    db.refresh(van); db.refresh(shop_site)
+    assert not van.is_active and shop_site.mv_number is None
+    assert usage(db, parent.id)["mobile_services"] == {"parent": 1}

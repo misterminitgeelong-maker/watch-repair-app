@@ -104,8 +104,16 @@ def find_duplicate_groups(session: Session, parent: ParentAccount, keep_ids: set
     return groups
 
 
+def _holds_mobile_seat(session: Session, parent_id: UUID, tenant_id: UUID) -> bool:
+    from .site_entitlements import mobile_services_tenant_ids
+
+    return tenant_id in mobile_services_tenant_ids(session, parent_id)
+
+
 def duplicate_blockers(session: Session, parent_id: UUID, keep: Tenant, retire: Tenant) -> list[str]:
     blockers = merge_blockers(session, parent_id, keep, retire, require_placeholder=False)
+    if _holds_mobile_seat(session, parent_id, retire.id):
+        blockers.append("Holds a mobile services seat; use Fold van into shop so the seat moves to the kept shop")
     blockers.extend(_support_office_blockers(keep, retire))
     if _number(keep.shop_number) != _number(retire.shop_number) or not _number(keep.shop_number):
         blockers.append("The two records must have the same shop number")
@@ -152,10 +160,20 @@ def tenant_by_number(session: Session, parent_id: UUID, number: str) -> Tenant:
     return found[0]
 
 
-def van_preview(session: Session, parent: ParentAccount, shop_number: str, van_number: str,
-                *, allow_other_networks: bool = False) -> dict:
+def van_preview(session: Session, parent: ParentAccount, shop_number: str | None, van_number: str | None,
+                *, allow_other_networks: bool = False,
+                shop_tenant_id: UUID | None = None, van_tenant_id: UUID | None = None) -> dict:
+    """Preview folding a van into a shop. Records are found by id when given (needed when both share a number)."""
     members = members_for_parent(session, parent.id)
-    shop, van = tenant_by_number(session, parent.id, shop_number), tenant_by_number(session, parent.id, van_number)
+
+    def pick(tenant_id: UUID | None, number: str | None) -> Tenant:
+        if tenant_id is not None:
+            if tenant_id not in members:
+                raise MvMergeError("That record is not an active member of this network")
+            return members[tenant_id]["tenant"]
+        return tenant_by_number(session, parent.id, number or "")
+
+    shop, van = pick(shop_tenant_id, shop_number), pick(van_tenant_id, van_number)
     if shop.id == van.id:
         raise MvMergeError("Shop and van are the same record")
     blockers = van_blockers(session, parent.id, shop, van, allow_other_networks=allow_other_networks)
