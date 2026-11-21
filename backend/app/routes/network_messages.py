@@ -22,6 +22,7 @@ from ..models.network_community import NetworkMessageAttachment
 from ..parent_network import site_for_tenant_in_parent
 from ..parent_network import sites_for_parent, sites_for_tenant
 from ..shop_number import format_tenant_label
+from ..network_site_classification import display_network_role, excluded_site_reason
 
 router = APIRouter(prefix="/v1/network-messages", tags=["network-messages"])
 
@@ -137,7 +138,7 @@ def list_contacts(
 ):
     """Every other active site in the networks this site belongs to."""
     _own_context(auth)
-    found: dict[UUID, str] = {}
+    found = {}
     mine_sites = sites_for_tenant(session, auth.tenant_id)
     if parent_account_id and not any(s.parent_account_id == parent_account_id for s in mine_sites):
         raise HTTPException(status_code=403, detail="Network not available")
@@ -146,15 +147,18 @@ def list_contacts(
             continue
         for site in sites_for_parent(session, mine.parent_account_id):
             if site.tenant_id != auth.tenant_id:
-                found.setdefault(site.tenant_id, site.network_role)
+                found.setdefault(site.tenant_id, (mine.parent_account_id, site))
     live_ids = set(session.exec(select(User.tenant_id).where(User.is_active == True, col(User.tenant_id).in_(list(found)))).all())  # noqa: E712
+    tenants = {t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_(list(found)))).all()} if found else {}
+    region_ids = {site.region_id for _, site in found.values() if site.region_id}
+    regions = {r.id: r for r in session.exec(select(Region).where(col(Region.id).in_(region_ids))).all()} if region_ids else {}
     out: list[ContactRead] = []
-    for tid, role in found.items():
-        t = session.get(Tenant, tid)
-        if t and t.is_active and not t.merged_into_tenant_id and tid in live_ids:
+    for tid, (network_id, site) in found.items():
+        t = tenants.get(tid)
+        if t and t.is_active and not t.merged_into_tenant_id and tid in live_ids and not excluded_site_reason(network_id, t):
             from ..messaging_hubs import hub_for
-            site = site_for_tenant_in_parent(session, parent_account_id, tid) if parent_account_id else None
-            region = session.get(Region, site.region_id) if site and site.region_id else None
+            region = regions.get(site.region_id)
+            role = display_network_role(network_id, site, t)
             out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role, shop_number=t.shop_number, state_code=hub_for(site, t, region)))
     out.sort(key=lambda c: c.name.lower())
     return out
@@ -311,4 +315,3 @@ def send_message(
         id=msg.id, sender_tenant_id=auth.tenant_id, mine=True,
         sender_name=(user.full_name or user.email) if user else None, body=msg.body, created_at=msg.created_at, conversation_id=msg.conversation_id, attachments=_attachments(session, msg.id),
     )
-

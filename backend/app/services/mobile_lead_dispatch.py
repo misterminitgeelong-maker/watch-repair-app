@@ -14,7 +14,8 @@ from sqlmodel import Session, func, select
 
 from ..config import settings
 from ..minit_mobile_routing import rank_mobile_operator_candidates, suburb_in_operator_territory
-from ..models import AutoKeyJob, ParentAccount, ParentAccountEventLog, ProspectLead, Tenant
+from ..models import AutoKeyJob, ParentAccount, ParentAccountEventLog, ProspectLead, Tenant, TenantEventLog
+from ..support_office_intake import testing_inbox_tenant_id
 from ..parent_network import tenant_is_operator
 from .. import email_client
 from .. import sms as sms_service
@@ -71,6 +72,10 @@ def route_website_lead_to_prospect(
         state_code=st,
     )
     tenant_id: UUID | None = None
+    if force_hq:
+        tenant_id = testing_inbox_tenant_id(session, parent.id)
+        if not tenant_id:
+            raise ValueError("testing_mode_requires_one_active_support_office")
     if in_territory:
         candidates = rank_mobile_operator_candidates(
             session, parent_id=parent.id, suburb=suburb, state_code=st, max_candidates=1,
@@ -110,7 +115,12 @@ def route_website_lead_to_prospect(
     session.flush()
 
     tenant = session.get(Tenant, tenant_id)
-    if tenant:
+    if force_hq:
+        session.add(TenantEventLog(
+            tenant_id=tenant_id, event_type="mobile_lead_quote_needed", entity_type="prospect_lead", entity_id=lead.id,
+            event_summary=f"Website enquiry in testing mode: {customer_name}, {suburb.strip()} {st}",
+        ))
+    if tenant and not force_hq:
         inbox_url = f"{settings.public_base_url.rstrip('/')}/auto-key/prospects/inbox"
         phone = sms_service.operator_dispatch_phone(tenant)
         if phone:

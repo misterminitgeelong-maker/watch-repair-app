@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { listParentAccountActivity } from '@/lib/api'
 import WebsiteLeadRoutingPanel from '@/components/minit/WebsiteLeadRoutingPanel'
+import MobileRouteReview from '@/components/minit/MobileRouteReview'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 
 export default function MinitLeadRoutingPage() {
@@ -29,6 +30,7 @@ export default function MinitLeadRoutingPage() {
       )}
 
       <WebsiteLeadRoutingPanel hqMode onError={setError} />
+      <MobileRouteReview />
 
       <Card className="mt-6">
         <div className="px-5 py-3.5" style={{ borderBottom: '1px solid var(--ms-border)' }}>

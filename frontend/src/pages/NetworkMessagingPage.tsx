@@ -96,18 +96,18 @@ export default function NetworkMessagingPage() {
       </nav>
       <ErrorNotice error={hubQuery.error} />
       {tab === 'hubs' && <section>
-        <div className="nc-state-hero"><div><span className="nc-eyebrow">YOUR SHOP’S HUB</span><h2>{network.own_state ? stateNames[network.own_state] : 'Choose a state hub'}</h2><p>{network.own_state ? 'Share stock, ask for advice and catch up with shops in your state.' : 'HQ and state managers can open the hubs available to their role.'}</p></div>
-          {hubs.find(h => h.mine && h.accessible) && <button className="nc-button" onClick={() => navigate({ hub: network.own_state! })}>Open my state hub</button>}</div>
+        <div className="nc-state-hero"><div><span className="nc-eyebrow">STATE CONVERSATIONS</span><h2>{network.allowed_states.length > 1 ? 'Support office state hubs' : network.own_state ? stateNames[network.own_state] : 'Available state hubs'}</h2><p>{network.allowed_states.length > 1 ? 'Open any state hub available to your Support office role.' : network.own_state ? 'Share stock, ask for advice and catch up with shops in your state.' : 'State hubs cover Australia and New Zealand. You can still send direct messages and receive network announcements.'}</p></div>
+          {network.allowed_states.length <= 1 && hubs.find(h => h.mine && h.accessible) && <button className="nc-button" onClick={() => navigate({ hub: network.own_state! })}>Open my state hub</button>}</div>
         <h2>Around the network</h2><p className="nc-muted">Each state has its own conversation. Shops join their assigned state automatically.</p>
         <div className="nc-hub-grid">{hubs.map(h => <button key={h.code} className={'nc-hub-card nc-state-' + h.code} disabled={!h.accessible} onClick={() => navigate({ hub: h.code })}>
-          <span className="nc-state-tag">{h.code}</span><strong>{h.name}</strong><span>{h.mine ? 'Your hub' : h.accessible ? 'Open state hub' : 'For shops in this state'} {h.accessible ? <Badge count={h.unread} /> : <LockKeyhole size={13} />}</span>
+          <span className="nc-state-tag">{h.code}</span><strong>{h.name}</strong><span>{h.mine && network.allowed_states.length <= 1 ? 'Your hub' : h.accessible ? 'Open state hub' : 'For shops in this state'} {h.accessible ? <Badge count={h.unread} /> : <LockKeyhole size={13} />}</span>
         </button>)}</div><p className="nc-muted">Need someone interstate? Find any participating shop in the Shop directory.</p>
       </section>}
       {tab === 'directory' && <Directory contacts={contacts.data ?? []} error={contacts.error} loading={contacts.isPending} ownState={network.own_state} onMessage={id => navigate({ to: id })} />}
       {tab === 'announcements' && <Announcements key={network.id} network={network} onHub={code => navigate({ hub: code })} />}
       {tab === 'chats' && <div className={'nc-chat-layout' + (convId || newTo || params.get('hub') ? ' nc-thread-open' : '')}>
         <aside className="nc-conversations"><label className="nc-search"><Search size={16} /><input aria-label="Search conversations" placeholder="Search conversations…" value={chatSearch} onChange={e => setChatSearch(e.target.value)} /></label>
-          <h2>MY STATE HUB</h2>{hubs.filter(h => h.accessible && h.name.toLowerCase().includes(chatSearch.toLowerCase())).map(h => <button key={h.code} className={'nc-chat-row nc-state-' + h.code + (selectedHub?.code === h.code && !convId && !newTo ? ' selected' : '')} onClick={() => navigate({ hub: h.code })}>
+          <h2>STATE HUBS</h2>{hubs.filter(h => h.accessible && h.name.toLowerCase().includes(chatSearch.toLowerCase())).map(h => <button key={h.code} className={'nc-chat-row nc-state-' + h.code + (selectedHub?.code === h.code && !convId && !newTo ? ' selected' : '')} onClick={() => navigate({ hub: h.code })}>
             <span className="nc-avatar"><Hash size={15} /></span><span className="nc-row-copy"><strong>{h.name}</strong><small>Stock, advice and local updates</small></span><Badge count={h.unread} />
           </button>)}
           {!hubs.some(h => h.accessible) && <p className="nc-help">Your shop needs a state assignment to join a hub. You can still message other shops.</p>}
@@ -139,9 +139,10 @@ function Directory({ contacts, ownState, onMessage, error, loading }: { contacts
   return <section><div className="nc-directory-filters"><label className="nc-search"><Search size={16} /><input aria-label="Search shops" placeholder="Search shop name, number or location…" value={q} onChange={e => setQ(e.target.value)} /></label>
     <label>State<select value={state} onChange={e => setState(e.target.value)}><option value="all">All states</option>{Object.entries(stateNames).map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
     <label>Site type<select value={role} onChange={e => setRole(e.target.value)}><option value="all">All sites</option><option value="retail">Retail shops</option><option value="operator">Mobile operators</option><option value="hq">Support Office</option></select></label></div>
-    <ErrorNotice error={error} /><p className="nc-eyebrow">{loading ? 'Loading shops…' : filtered.length + ' PARTICIPATING SITES'} · Your state shown first</p>
-    <div className="nc-directory">{filtered.map(c => <div key={c.tenant_id} className={'nc-shop-row nc-state-' + c.state_code}><span className="nc-state-tag">{stateNames[c.state_code ?? ''] ?? 'Unassigned'}</span><strong>{c.name}</strong><span className="nc-muted">{c.network_role === 'hq' ? 'Support Office' : c.network_role === 'operator' ? 'Mobile operator' : 'Retail shop'}</span><button className="nc-button" onClick={() => onMessage(c.tenant_id)}>Message shop</button></div>)}</div>
-    {!loading && !filtered.length && <p className="nc-empty">No signed-up sites match these filters.</p>}
+    <ErrorNotice error={error} /><p className="nc-eyebrow">{loading ? 'Loading shops…' : filtered.length + ' LINKED SITES'} · Your state shown first</p>
+    <p className="nc-muted">Includes real shops awaiting an invitation. This list does not show who is online. Singapore and Malaysia shops can use direct messages and network announcements; state hubs cover Australia and New Zealand.</p>
+    <div className="nc-directory">{filtered.map(c => <div key={c.tenant_id} className={'nc-shop-row nc-state-' + c.state_code}><span className="nc-state-tag">{stateNames[c.state_code ?? ''] ?? 'No state hub'}</span><strong>{c.name}</strong><span className="nc-muted">{c.network_role === 'hq' ? 'Support Office' : c.network_role === 'operator' ? 'Mobile operator' : 'Retail shop'}</span><button className="nc-button" onClick={() => onMessage(c.tenant_id)}>Message shop</button></div>)}</div>
+    {!loading && !filtered.length && <p className="nc-empty">No linked sites match these filters.</p>}
   </section>
 }
 
@@ -322,4 +323,3 @@ function Announcements({ network, onHub }: { network: MessagingNetwork; onHub: (
     </div><aside className="nc-announcement-info"><span className="nc-eyebrow">YOUR UPDATES</span><h2>Network{network.own_state ? ' + ' + stateNames[network.own_state] : ''}</h2><p>You receive network announcements and updates for states available to your account.</p><span className="nc-state-tag">{rows.filter(a => !a.read).length} unread in loaded updates</span><h3>Posted by</h3><p>Support Office → All shops<br />State managers → Their state</p><h3>Keep the chat flowing</h3><p>Announcements stay easy to find. Questions continue in your state hub.</p>{network.own_state && <button className="nc-button" onClick={() => onHub(network.own_state!)}>Open my state hub</button>}</aside></div>
   </section>
 }
-

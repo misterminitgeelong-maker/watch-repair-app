@@ -15,6 +15,7 @@ import {
 } from '@/lib/api'
 import { useParentLeadIngest } from '@/hooks/useParentLeadIngest'
 import { LoadError } from '@/components/minit/LoadError'
+import WebsiteEnquiryPreview from '@/components/minit/WebsiteEnquiryPreview'
 import { Button, Card, EmptyState, Input, PageHeader, Spinner, Textarea } from '@/components/ui'
 
 function formatDate(s: string) {
@@ -333,6 +334,7 @@ export default function MinitInboxPage() {
       <PageHeader title="Inbox" />
       <p className="text-sm mb-5" style={{ color: 'var(--ms-text-muted)', marginTop: '-12px' }}>
         HQ triage for website mobile key leads, BCC email enquiries, and escalated dispatch alerts.
+        {' '}The navigation badge counts all new email leads plus network alerts; the lists below show up to 500 entries each.
       </p>
 
       {alertsFailed && (
@@ -416,6 +418,7 @@ export default function MinitInboxPage() {
                     <p className="text-xs mt-1 capitalize" style={{ color: 'var(--ms-text-muted)' }}>
                       {ev.event_type.replace(/_/g, ' ')} · {formatDate(ev.created_at)}
                     </p>
+                    {ev.entity_type === 'prospect_lead' && ev.entity_id && <WebsiteEnquiryPreview id={ev.entity_id} />}
                   </div>
                   {ev.entity_type === 'auto_key_job' && ev.entity_id && (
                     <Link

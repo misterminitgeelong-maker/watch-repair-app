@@ -281,6 +281,18 @@ def list_inbound_emails(
     return rows
 
 
+@hq_router.get("/me/inbound-email-count", response_model=dict[str, int])
+def count_inbound_emails(
+    auth: AuthContext = Depends(require_owner),
+    session: Session = Depends(unscoped_session),
+):
+    """Exact new-email count for the Support office badge, independent of pagination."""
+    _, parent, _ = _parent_for_read(session, auth)
+    count = session.exec(select(func.count()).select_from(InboundEmail).where(
+        InboundEmail.parent_account_id == parent.id, InboundEmail.status == "new")).one()
+    return {"count": int(count)}
+
+
 @hq_router.get("/me/inbound-emails/{inbound_email_id}", response_model=InboundEmailDetail)
 def get_inbound_email(
     inbound_email_id: UUID,
