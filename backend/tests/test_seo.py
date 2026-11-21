@@ -59,3 +59,12 @@ def test_nonmarketing_pages_keep_noindex_in_html_as_well_as_header():
         assert 'name="robots" content="noindex, nofollow"' in seo.render_index(INDEX, path)
         assert seo.robots_header(path) == "noindex, nofollow"
         assert "<h1>x</h1>" not in seo.render_index(INDEX, path)
+
+
+def test_scanner_probes_are_junk_but_app_routes_are_not():
+    for path in (".env", "joomla/.env", "wp-login.php", "wp-admin/setup.php", "backup.sql",
+                 ".git/config", "a/b/shell.php", "phpmyadmin/index.php", "../etc/passwd", "config.yml"):
+        assert seo.is_junk_path(path), path
+    for path in ("", "login", "pricing", "jobs/123", "approve/abc123", "track/xyz", "sitemap.xml",
+                 "robots.txt", "mobile-services", "engraving", "assets/index-abc.js"):
+        assert not seo.is_junk_path(path), path
