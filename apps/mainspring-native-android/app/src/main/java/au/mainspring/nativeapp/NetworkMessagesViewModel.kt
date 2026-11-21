@@ -27,6 +27,8 @@ data class NetworkMessagesState(
     val historyPages: Int = 1,
 ) { val inThread get() = hub != null || recipient != null || conversation != null }
 
+private data class RefreshParts(val hubs: List<StateHub>, val conversations: List<NetworkConversation>, val announcements: AnnouncementPage?)
+
 class NetworkMessagesViewModel(private val api: NetworkApi = ApiClient.service(NetworkApi::class.java)) : ViewModel() {
     private val mutable = MutableStateFlow(NetworkMessagesState())
     val state = mutable.asStateFlow()
@@ -52,7 +54,7 @@ class NetworkMessagesViewModel(private val api: NetworkApi = ApiClient.service(N
             } catch(e: CancellationException) { throw e } catch(e: Exception) { mutable.update { it.copy(loading = false, error = e.userMessage()) } }
         }
     }
-    fun selectNetwork(id: String) { if(mutable.value.busy) return; closeThread(); request?.cancel(); targetGeneration++; mutable.update { it.copy(network = id, posts = emptyList(), contacts = emptyList(), hubs = emptyList(), conversations = emptyList(), announcements = emptyList()) }; refresh() }
+    fun selectNetwork(id: String) { if(mutable.value.busy) return; closeThread(); request?.cancel(); contactsJob?.cancel(); targetGeneration++; mutable.update { it.copy(network = id, posts = emptyList(), contacts = emptyList(), hubs = emptyList(), conversations = emptyList(), announcements = emptyList()) }; refresh() }
     fun tab(value: String) { if(mutable.value.busy) return; closeThread(); mutable.update { it.copy(tab = value) }; refresh() }
     fun refresh() { if(mutable.value.busy || mutable.value.loading) return; if(mutable.value.network.isBlank()) { start(); return }; request?.cancel(); request = viewModelScope.launch { refreshData() } }
     private suspend fun refreshData() {
@@ -60,14 +62,19 @@ class NetworkMessagesViewModel(private val api: NetworkApi = ApiClient.service(N
         val generation = targetGeneration
         mutable.update { it.copy(loading = true, error = null) }
         try {
-            val hubs = api.hubs(s.network); val conversations = api.conversations(s.network)
-            val contacts = api.contacts(s.network)
-            val announcements = if(s.tab == "announcements") {
-                var page = api.announcements(s.network)
-                val rows = page.announcements.toMutableList()
-                while(page.hasMore && rows.size < s.announcements.size) { page = api.announcements(s.network, rows.size); rows += page.announcements }
-                AnnouncementPage(rows, page.hasMore)
-            } else null
+            // Independent calls run together. The contact list is large (hundreds of shops), so it loads in
+            // the background after the screen is up and is kept until the network changes.
+            val (hubs, conversations, announcements) = coroutineScope {
+                val h = async { api.hubs(s.network) }
+                val c = async { api.conversations(s.network) }
+                val an = if(s.tab == "announcements") async {
+                    var page = api.announcements(s.network)
+                    val rows = page.announcements.toMutableList()
+                    while(page.hasMore && rows.size < s.announcements.size) { page = api.announcements(s.network, rows.size); rows += page.announcements }
+                    AnnouncementPage(rows, page.hasMore)
+                } else null
+                RefreshParts(h.await(), c.await(), an?.await())
+            }
             val page = s.hub?.let { code ->
                 var current = api.hubMessages(s.network, code)
                 val rows = current.messages.toMutableList()
@@ -79,12 +86,21 @@ class NetworkMessagesViewModel(private val api: NetworkApi = ApiClient.service(N
             val conversation = s.conversation ?: s.recipient?.let { recipient -> conversations.firstOrNull { it.otherTenantId == recipient }?.id }
             val posts = page?.messages ?: conversation?.let { api.directMessages(it) }
             if(generation != targetGeneration) return
-            mutable.update { it.copy(loading = false, hubs = hubs, contacts = contacts, conversations = conversations,
+            mutable.update { it.copy(loading = false, hubs = hubs, conversations = conversations,
                 posts = posts ?: it.posts, nextBefore = page?.nextBefore, conversation = conversation, historyChecked = true,
                 announcements = announcements?.announcements ?: it.announcements, moreAnnouncements = announcements?.hasMore ?: it.moreAnnouncements) }
             if(page != null) markHubRead(s.network, s.hub!!, page.messages.lastOrNull()?.id)
+            loadContacts(s.network)
             refreshCounts()
         } catch(e: CancellationException) { throw e } catch(e: Exception) { if(generation == targetGeneration) mutable.update { it.copy(loading = false, error = e.userMessage()) } }
+    }
+    private var contactsJob: Job? = null
+    private fun loadContacts(network: String) {
+        if(mutable.value.contacts.isNotEmpty() || contactsJob?.isActive == true) return
+        contactsJob = viewModelScope.launch {
+            try { val rows = api.contacts(network); if(mutable.value.network == network) mutable.update { it.copy(contacts = rows) } }
+            catch(e: CancellationException) { throw e } catch(_: Exception) {}
+        }
     }
     private suspend fun markHubRead(network: String, hub: String, id: String?) {
         if(id == null) return
@@ -166,6 +182,6 @@ class NetworkMessagesViewModel(private val api: NetworkApi = ApiClient.service(N
 object NetworkUnreadStore {
     private val mutable = MutableStateFlow(0)
     val count = mutable.asStateFlow()
-    suspend fun refresh() { val generation = TokenStore.sessionGeneration(); try { val api = ApiClient.service(NetworkApi::class.java); val total = api.unread().count + api.conversations().sumOf { it.unread }; if(generation == TokenStore.sessionGeneration()) mutable.value = total } catch(e: CancellationException) { throw e } catch(_: Exception) {} }
+    suspend fun refresh() { val generation = TokenStore.sessionGeneration(); try { val api = ApiClient.service(NetworkApi::class.java); val total = coroutineScope { val u = async { api.unread().count }; val c = async { api.conversations().sumOf { it.unread } }; u.await() + c.await() }; if(generation == TokenStore.sessionGeneration()) mutable.value = total } catch(e: CancellationException) { throw e } catch(_: Exception) {} }
     fun clear() { mutable.value = 0 }
 }

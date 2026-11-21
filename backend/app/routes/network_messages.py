@@ -147,14 +147,25 @@ def list_contacts(
         for site in sites_for_parent(session, mine.parent_account_id):
             if site.tenant_id != auth.tenant_id:
                 found.setdefault(site.tenant_id, site.network_role)
-    live_ids = set(session.exec(select(User.tenant_id).where(User.is_active == True, col(User.tenant_id).in_(list(found)))).all())  # noqa: E712
+    if not found:
+        return []
+    from ..messaging_hubs import hub_for
+    ids = list(found)
+    live_ids = set(session.exec(select(User.tenant_id).where(User.is_active == True, col(User.tenant_id).in_(ids))).all())  # noqa: E712
+    # Load tenants, sites and regions in bulk: one query each, not three per contact.
+    tenants = {t.id: t for t in session.exec(select(Tenant).where(col(Tenant.id).in_(ids))).all()}
+    site_by_tenant: dict = {}
+    if parent_account_id:
+        for site in sites_for_parent(session, parent_account_id):
+            site_by_tenant.setdefault(site.tenant_id, site)
+    region_ids = {s.region_id for s in site_by_tenant.values() if s.region_id}
+    regions = {r.id: r for r in session.exec(select(Region).where(col(Region.id).in_(list(region_ids)))).all()} if region_ids else {}
     out: list[ContactRead] = []
     for tid, role in found.items():
-        t = session.get(Tenant, tid)
+        t = tenants.get(tid)
         if t and t.is_active and not t.merged_into_tenant_id and tid in live_ids:
-            from ..messaging_hubs import hub_for
-            site = site_for_tenant_in_parent(session, parent_account_id, tid) if parent_account_id else None
-            region = session.get(Region, site.region_id) if site and site.region_id else None
+            site = site_by_tenant.get(tid)
+            region = regions.get(site.region_id) if site and site.region_id else None
             out.append(ContactRead(tenant_id=tid, name=_label(t), network_role=role, shop_number=t.shop_number, state_code=hub_for(site, t, region)))
     out.sort(key=lambda c: c.name.lower())
     return out
