@@ -79,7 +79,10 @@ internal fun isPastCollection(collectionDate: String?, today: java.time.LocalDat
 internal fun sortDirParam(sort: JobSort, descending: Boolean): String = if (sort == JobSort.OLDEST || (sort.hasDirection && !descending)) "asc" else "desc"
 
 internal fun daysInShop(createdAt: String?, now: java.time.Instant = java.time.Instant.now()): Int {
-    val created = try { java.time.OffsetDateTime.parse(createdAt).toInstant() } catch (_: Exception) { return 0 }
+    // The server sends created_at as UTC, often without an offset ("2026-11-01T03:00:00"), which OffsetDateTime rejects.
+    val created = try { java.time.OffsetDateTime.parse(createdAt).toInstant() } catch (_: Exception) {
+        try { java.time.LocalDateTime.parse(createdAt).toInstant(java.time.ZoneOffset.UTC) } catch (_: Exception) { return 0 }
+    }
     return java.time.Duration.between(created, now).toDays().toInt().coerceAtLeast(0)
 }
 
