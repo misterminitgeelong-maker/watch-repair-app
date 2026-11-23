@@ -108,7 +108,9 @@ def test_prospect_visit_time_normalised_and_serialised_utc(client, headers):
     assert res.json()["visit_scheduled_at"].endswith(("Z", "+00:00"))
     with Session(engine) as s:
         stored = s.get(ProspectLead, __import__("uuid").UUID(lead["id"]))
-        assert stored.visit_scheduled_at.tzinfo is None and stored.visit_scheduled_at.hour == 0
+        from app.datetime_utils import naive_utc_from_any
+        # Postgres returns tz-aware UTC, SQLite naive: compare the normalised UTC value
+        assert naive_utc_from_any(stored.visit_scheduled_at).hour == 0
     web = client.patch(f"/v1/prospects/leads/{lead['id']}", headers=headers,
                        json={"visit_scheduled_at": "2026-10-02T00:00:00Z"})
     assert web.status_code == 200, web.text

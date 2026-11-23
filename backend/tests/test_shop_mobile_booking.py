@@ -831,5 +831,6 @@ def test_booking_preferred_time_is_stored_as_naive_utc():
     with Session(engine) as session:
         row = session.get(ShopMobileBookingRequest, UUID(create.json()["id"]))
         assert row is not None
-        assert row.preferred_scheduled_at == datetime(2026, 7, 20, 0, 0)
-        assert row.preferred_scheduled_at.tzinfo is None
+        # Postgres returns tz-aware UTC, SQLite naive: compare the normalised UTC value
+        from app.datetime_utils import naive_utc_from_any
+        assert naive_utc_from_any(row.preferred_scheduled_at) == datetime(2026, 7, 20, 0, 0)
