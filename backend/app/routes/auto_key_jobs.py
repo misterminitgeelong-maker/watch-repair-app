@@ -523,6 +523,16 @@ def _send_mobile_invoice_notifications(
     return sent, None if sent else "send_failed", err, sms_sent, sms_skipped_reason
 
 
+def _job_read_with_customer(session: Session, job: AutoKeyJob) -> AutoKeyJobRead:
+    """AutoKeyJobRead enriched with customer_name/customer_phone (same as list routes)."""
+    customer = session.get(Customer, job.customer_id)
+    return AutoKeyJobRead(
+        **job.model_dump(),
+        customer_name=customer.full_name if customer else None,
+        customer_phone=customer.phone if customer else None,
+    )
+
+
 @router.post("", response_model=AutoKeyJobRead, status_code=201)
 def create_auto_key_job(
     payload: AutoKeyJobCreate,
@@ -659,7 +669,7 @@ def create_auto_key_job(
         except Exception as exc:
             logger.warning("auto_key_job.booking_sms_failed tenant=%s job=%s err=%s", auth.tenant_id, job.id, exc)
 
-    return job
+    return _job_read_with_customer(session, job)
 
 
 @router.post("/quick-intake", response_model=AutoKeyJobRead, status_code=201)
@@ -1071,7 +1081,7 @@ def get_auto_key_job(
     job = session.get(AutoKeyJob, job_id)
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Auto key job not found")
-    return job
+    return _job_read_with_customer(session, job)
 
 
 @router.post("/{job_id}/status", response_model=AutoKeyJobStatusUpdateResult)
@@ -1249,6 +1259,9 @@ def update_auto_key_job_status(
                 logger.exception("auto_key_job.work_completed_sms_failed tenant=%s job=%s", auth.tenant_id, job.id)
 
     result = AutoKeyJobStatusUpdateResult.model_validate(job, from_attributes=True)
+    _cust = session.get(Customer, job.customer_id)
+    result.customer_name = _cust.full_name if _cust else None
+    result.customer_phone = _cust.phone if _cust else None
     result.invoice_created = invoice_created
     result.invoice_skip_reason = invoice_skip_reason
     return result
@@ -1293,7 +1306,7 @@ def update_auto_key_job_fields(
         )
     session.commit()
     session.refresh(job)
-    return job
+    return _job_read_with_customer(session, job)
 
 
 @router.delete("/{job_id}", status_code=204, response_class=Response)

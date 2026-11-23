@@ -174,7 +174,7 @@ import au.mainspring.nativeapp.ui.formatCents
 
 private fun centsText(cents: Int) = java.math.BigDecimal(cents).movePointLeft(2).setScale(2).toPlainString()
 private fun sumText(a: String, b: String): String {
- fun c(x: String) = x.trim().removePrefix("$").replace(",", "").toBigDecimalOrNull()
+ fun c(x: String) = au.mainspring.nativeapp.stripThousandsCommas(x.trim().removePrefix("$").trim()).toBigDecimalOrNull()
  val x = c(a); val y = c(b)
  return if(x != null && y != null) (x + y).setScale(2, java.math.RoundingMode.HALF_UP).toPlainString() else ""
 }

@@ -66,7 +66,7 @@ import java.util.Locale
     val filtersActive=techFilter!=null || statusFilter!=null
     val canReorder=TokenStore.canWorkJobs() && !filtersActive && stops.size>=2
     LaunchedEffect(dayOffset,techFilter,statusFilter) {draft=null}
-    LaunchedEffect(dayOffset) {if(dayOffset!=0) dayModel.setDay(java.time.LocalDate.now().plusDays(dayOffset.toLong()))}
+    LaunchedEffect(dayOffset) {if(dayOffset!=0) dayModel.setDay(au.mainspring.nativeapp.shopToday().plusDays(dayOffset.toLong()))}
     RefreshOnResume(refreshAll)
     LaunchedEffect(order.message,order.error) {if(order.changed>0) {draft=null;refreshAll()}}
     fun move(from: Int,to: Int) {draft=moveItem(stops.map {it.id},from,to)}
@@ -222,7 +222,7 @@ import java.util.Locale
 
 internal fun routeDayLabel(offset: Int): String = when(offset) {
     0 -> "Today"; 1 -> "Tomorrow"; -1 -> "Yesterday"
-    else -> java.time.LocalDate.now().plusDays(offset.toLong()).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM",Locale.getDefault()))
+    else -> au.mainspring.nativeapp.shopToday().plusDays(offset.toLong()).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM",Locale.getDefault()))
 }
 
 /** Move up / Move down buttons (accessible) plus a vertical drag handle that swaps a stop each time it is dragged past one row. */

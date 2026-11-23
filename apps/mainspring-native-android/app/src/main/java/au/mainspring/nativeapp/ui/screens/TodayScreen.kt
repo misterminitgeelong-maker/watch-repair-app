@@ -73,12 +73,12 @@ import java.util.Locale
                     (run.error ?: contactError)?.let {item {ErrorBanner(it)}}
                     if(state.tab=="active") item {
                         Column(Modifier.fillMaxWidth().testTag("needs-action"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                            SectionLabel("Needs action · ${attentionTotal(run.counts)}")
+                            SectionLabel("Needs action · ${attentionTotalLabel(run.counts)}")
                             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                                 NEEDS_ACTION_QUEUES.forEach {(key,label)->
                                     val count=run.counts[key] ?: 0
                                     OutlinedButton(onDirectory,modifier=Modifier.weight(1f).heightIn(min=48.dp).testTag("needs-action-$key"),contentPadding=PaddingValues(horizontal=4.dp)) {
-                                        Text("$label $count",style=MaterialTheme.typography.labelMedium,maxLines=1,color=if(count>0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("$label ${needsActionCountLabel(run.counts,key)}",style=MaterialTheme.typography.labelMedium,maxLines=1,color=if(count>0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }

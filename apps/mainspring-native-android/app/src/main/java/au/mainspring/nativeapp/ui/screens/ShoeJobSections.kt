@@ -51,7 +51,7 @@ fun ShoeServiceRow(item: ShoeJobItemRead, currency: String, onRemove: () -> Unit
             Column(Modifier.weight(1f)) {
                 Text(item.name, style = MaterialTheme.typography.titleMedium)
                 val qty = if(item.quantity == 1.0) "" else "×${item.quantity.toString().removeSuffix(".0")} "
-                Text(qty + (item.price?.let { formatCents((it * item.quantity).toInt(), currency) } ?: "Price after inspection"),
+                Text(qty + (item.price?.let { formatCents(au.mainspring.nativeapp.ui.lineTotalCents(it, item.quantity), currency) } ?: "Price after inspection"),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 item.notes?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }

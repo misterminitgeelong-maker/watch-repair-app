@@ -25,7 +25,7 @@ sealed class SubscriptionNotice {
 fun subscriptionNotice(subscriptionStatus: String?, trialEnd: String?, role: String?, now: Instant = Instant.now()): SubscriptionNotice? {
     if(subscriptionStatus.isNullOrBlank() || role == "platform_admin") return null
     if(subscriptionStatus == "trialing" && !trialEnd.isNullOrBlank()) {
-        val end = try { Instant.parse(trialEnd) } catch(_: Exception) { return null }
+        val end = au.mainspring.nativeapp.parseServerInstant(trialEnd) ?: return null
         val seconds = end.epochSecond - now.epochSecond
         val days = Math.floorDiv(seconds + 86_399, 86_400L).toInt() // ceil, like the web banner
         return if(days <= 0) null else SubscriptionNotice.TrialEnding(days)

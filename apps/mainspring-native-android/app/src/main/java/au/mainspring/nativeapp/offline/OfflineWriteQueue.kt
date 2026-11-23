@@ -68,6 +68,18 @@ object OfflineKinds {
     val ALLOWED = setOf(WATCH_STATUS, SHOE_STATUS, MOBILE_STATUS, WATCH_NOTE, SHOE_NOTE, MOBILE_NOTE)
 }
 
+/** Sign-out dialog body. Signing out wipes this device's storage, including unsent drafts and queued offline changes. */
+fun signOutWarning(pending: Int, needsAttention: Int): String {
+    val unsynced = pending + needsAttention
+    val base = "Signing out removes data saved on this device, including unsent drafts."
+    if (unsynced == 0) return base
+    val what = buildList {
+        if (pending > 0) add("$pending offline change${if (pending == 1) "" else "s"} not yet synced")
+        if (needsAttention > 0) add("$needsAttention change${if (needsAttention == 1) "" else "s"} needing review")
+    }.joinToString(" and ")
+    return "$base You have $what. Those will be lost. Reconnect and let them sync first if you can."
+}
+
 /** 5s, 10s, 20s ... capped at 5 minutes. */
 fun replayBackoffMillis(attempts: Int): Long = (5_000L shl (attempts.coerceIn(1, 7) - 1)).coerceAtMost(300_000L)
 
@@ -163,9 +175,13 @@ class OfflineWriteQueue(
                 code == 401 -> return@withLock ReplayResult.AuthStopped
                 code == 408 || code == 429 || code >= 500 -> { markAttempt(next.id); return@withLock ReplayResult.RetryLater }
                 else -> synchronized(lock) {
+                    // Later status changes to the same mobile job were made on top of this one: sending them alone would skip the stale guard.
+                    val dependents = if (next.kind == OfflineKinds.MOBILE_STATUS) all.pending.filter { it.id != next.id && it.jobId == next.jobId && it.kind == OfflineKinds.MOBILE_STATUS } else emptyList()
+                    val moved = dependents.map { NeedsAttention(it, DEPENDENT_REASON, null, clock()) }
+                    val dropped = dependents.map { it.id }.toSet() + next.id
                     all = all.copy(
-                        pending = all.pending.filterNot { it.id == next.id },
-                        attention = (listOf(NeedsAttention(next, reasonFor(next, code), code, clock())) + all.attention).take(maxAttention),
+                        pending = all.pending.filterNot { it.id in dropped },
+                        attention = (listOf(NeedsAttention(next, reasonFor(next, code), code, clock())) + moved + all.attention).take(maxAttention),
                     ); persist()
                 }
             }
@@ -177,6 +193,7 @@ class OfflineWriteQueue(
     private fun markAttempt(id: String) = synchronized(lock) {
         all = all.copy(pending = all.pending.map { if (it.id == id) it.copy(attempts = it.attempts + 1) else it }); persist()
     }
+    private companion object { const val DEPENDENT_REASON = "An earlier change to this job needed review, so this one was not sent. Redo it if it is still needed." }
     private fun reasonFor(w: QueuedWrite, code: Int) = when (code) {
         403 -> "Your account cannot make this change."
         404 -> "This job no longer exists."

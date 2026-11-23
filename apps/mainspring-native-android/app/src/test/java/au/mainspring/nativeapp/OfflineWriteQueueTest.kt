@@ -92,4 +92,21 @@ class OfflineWriteQueueTest {
         assertEquals(5_000, replayBackoffMillis(1)); assertEquals(10_000, replayBackoffMillis(2))
         assertEquals(300_000, replayBackoffMillis(20)); assertEquals(5_000, replayBackoffMillis(0))
     }
+
+    private fun OfflineWriteQueue.addMobile(job: String, status: String) =
+        enqueue(OfflineKinds.MOBILE_STATUS, "v1/auto-key-jobs/$job/status", "POST", """{"status":"$status"}""", job, "Mobile job: $status", "2026-01-01T00:00:00Z", null, status)
+
+    @Test fun refusedMobileStatusMovesLaterStatusesForSameJobToNeedsAttention() = runBlocking {
+        val q = queue(); q.addMobile("j1", "en_route"); q.addMobile("j1", "on_site"); q.addMobile("j2", "en_route")
+        val sent = mutableListOf<String>()
+        val r = q.replay { sent += "${it.jobId}:${it.targetStatus}"; if (it.jobId == "j1") 409 else 200 }
+        assertEquals(ReplayResult.Done, r)
+        assertEquals(listOf("j1:en_route", "j2:en_route"), sent)
+        assertTrue(q.state.value.pending.isEmpty())
+        val att = q.state.value.attention
+        assertEquals(2, att.count { it.item.jobId == "j1" })
+        val dependent = att.first { it.item.targetStatus == "on_site" }
+        assertNull(dependent.code); assertFalse(dependent.canApplyAnyway)
+        assertEquals(409, att.first { it.item.targetStatus == "en_route" && it.item.jobId == "j1" }.code)
+    }
 }

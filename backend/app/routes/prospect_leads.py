@@ -3,10 +3,11 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from sqlmodel import Session, select
 
 from ..database import get_session
+from ..datetime_utils import as_utc_for_json, naive_utc_from_any
 from ..dependencies import AuthContext, get_auth_context
 from ..models import CustomerAccount, ProspectLead
 
@@ -37,6 +38,10 @@ class ProspectLeadOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_serializer("visit_scheduled_at", "created_at", "updated_at")
+    def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
+        return as_utc_for_json(v) if v is not None else None
+
 
 class SaveLeadBody(BaseModel):
     place_id: Optional[str] = None
@@ -62,7 +67,10 @@ def _apply_details(lead: ProspectLead, body: UpdateLeadBody) -> None:
     # Explicit null clears a field; omitted fields remain unchanged.
     for field in ("contact_name", "contact_email", "notes", "visit_scheduled_at"):
         if field in body.model_fields_set:
-            setattr(lead, field, getattr(body, field))
+            value = getattr(body, field)
+            if field == "visit_scheduled_at":
+                value = naive_utc_from_any(value)
+            setattr(lead, field, value)
 
 
 def _ensure_account(lead: ProspectLead, session: Session) -> None:

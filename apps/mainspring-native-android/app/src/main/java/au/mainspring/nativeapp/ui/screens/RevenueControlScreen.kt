@@ -25,6 +25,13 @@ private val kindLabels = linkedMapOf(
     "quote_draft" to "Quotes to prepare", "booking_confirmation" to "Unconfirmed bookings",
     "unscheduled" to "Needs scheduling", "unassigned" to "Needs a technician", "blocked" to "Bookings on hold",
 )
+/** Bucket amount for display: the server only prices AUD rows, so unpriced rows are called out instead of rendering a plausible $0. */
+internal fun revenueAmountLabel(amountCents: Int, unknownCount: Int, format: (Int) -> String): String = when {
+    unknownCount <= 0 -> format(amountCents)
+    amountCents <= 0 -> "$unknownCount unpriced"
+    else -> "${format(amountCents)} + $unknownCount unpriced"
+}
+
 private val queues = listOf("due" to "Due now", "scheduled" to "Scheduled", "all" to "All open")
 
 @Composable fun RevenueControlScreen(onBack: () -> Unit, onOpenJob: (String) -> Unit = {}, viewModel: RevenueControlViewModel = viewModel()) {
@@ -47,8 +54,8 @@ private val queues = listOf("due" to "Due now", "scheduled" to "Scheduled", "all
             }
             if(state.buckets.isNotEmpty()) {
                 val open = state.buckets.sumOf { it.count }; val due = state.buckets.sumOf { it.dueCount }
-                val unpaid = state.buckets.firstOrNull { it.kind == "unpaid" }?.amountCents ?: 0
-                item { Spacer(Modifier.height(8.dp)); MetricStrip(listOf("OPEN" to open.toString(), "DUE NOW" to due.toString(), "UNPAID" to formatCents(unpaid, currency))) }
+                val unpaidBucket = state.buckets.firstOrNull { it.kind == "unpaid" }
+                item { Spacer(Modifier.height(8.dp)); MetricStrip(listOf("OPEN" to open.toString(), "DUE NOW" to due.toString(), "UNPAID" to revenueAmountLabel(unpaidBucket?.amountCents ?: 0, unpaidBucket?.unknownAmountCount ?: 0) { formatCents(it, currency) })) }
                 item {
                     SectionLabel("Categories")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {

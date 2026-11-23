@@ -22,7 +22,8 @@ enum class StatusTone { Waiting, Ready, Progress, Late, Neutral }
 
 private val LATE = setOf("no_go", "failed_job", "job_delayed", "declined", "overdue", "urgent", "cancelled", "canceled", "failed", "rejected", "expired", "void", "lost", "refused", "late")
 private val READY = setOf("ready", "awaiting_collection", "work_completed", "completed", "complete", "collected", "paid", "invoice_paid", "delivered", "done", "accepted", "signed", "won", "active", "approved", "converted")
-private val PROGRESS = setOf("in_progress", "working_on", "work_in_progress", "go_ahead", "en_route", "on_the_way", "started", "arrived", "in_repair", "working", "scheduled", "assigned", "contacted", "booked", "repairing")
+private val WAITING = setOf("booking_on_hold", "at_third_party_for_quoting", "at_third_party_repairer", "third_party_quote_approved", "sent_to_labanda", "quoted_by_labanda", "moved_to_pool", "unpaid")
+private val PROGRESS = setOf("in_progress", "working_on", "work_in_progress", "go_ahead", "en_route", "on_the_way", "started", "arrived", "in_repair", "working", "scheduled", "assigned", "contacted", "booked", "repairing", "on_site", "booking_confirmed")
 
 /** Maps any status string (API snake_case or spaced display text) to a [StatusTone]. Unknown values are neutral. */
 fun statusTone(status: String): StatusTone {
@@ -31,6 +32,7 @@ fun statusTone(status: String): StatusTone {
         s.isEmpty() -> StatusTone.Neutral
         s in LATE -> StatusTone.Late
         s in READY -> StatusTone.Ready
+        s in WAITING -> StatusTone.Waiting
         s.startsWith("awaiting") || s.startsWith("quote") || s.startsWith("waiting") || s.startsWith("pending") || s.startsWith("parts") || s == "on_hold" || s == "sent" || s == "partially_paid" || s == "part_paid" -> StatusTone.Waiting
         s in PROGRESS -> StatusTone.Progress
         s.contains("overdue") || s.contains("urgent") || s.contains("delayed") -> StatusTone.Late

@@ -81,7 +81,7 @@ private fun datePart(value: String?): LocalDate? =
     value?.trim()?.takeIf { it.length >= 10 }?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
 
 /** 0 overdue, 1 due today, 2 due tomorrow, 3 later or no date (web `getCollectionUrgency`). */
-fun collectionUrgency(collectionDate: String?, today: LocalDate = LocalDate.now()): Int {
+fun collectionUrgency(collectionDate: String?, today: LocalDate = shopToday()): Int {
     val d = datePart(collectionDate) ?: return 3
     return when {
         d.isBefore(today) -> 0
@@ -103,7 +103,7 @@ fun queueEpochMillis(value: String?): Long {
 }
 
 /** Queue order: collection urgency, then priority, then oldest first (web `sortQueue`), ties by due date and number. */
-fun sortQueueRows(rows: List<QueueRow>, today: LocalDate = LocalDate.now()): List<QueueRow> = rows.sortedWith(
+fun sortQueueRows(rows: List<QueueRow>, today: LocalDate = shopToday()): List<QueueRow> = rows.sortedWith(
     compareBy<QueueRow> { collectionUrgency(it.collectionDate, today) }
         .thenBy { PRIORITY_ORDER[it.priority] ?: 99 }
         .thenBy { queueEpochMillis(it.createdAt) }
@@ -111,7 +111,7 @@ fun sortQueueRows(rows: List<QueueRow>, today: LocalDate = LocalDate.now()): Lis
 )
 
 /** Keep the saved queue position, drop removed jobs and append any new ones in sort order (web `mergeQueueOrder`). */
-fun mergeQueueOrder(existing: List<String>?, rows: List<QueueRow>, today: LocalDate = LocalDate.now()): List<String> {
+fun mergeQueueOrder(existing: List<String>?, rows: List<QueueRow>, today: LocalDate = shopToday()): List<String> {
     val sortedIds = sortQueueRows(rows, today).map { it.id }
     if (existing.isNullOrEmpty()) return sortedIds
     val known = sortedIds.toSet()
@@ -123,7 +123,7 @@ fun mergeQueueOrder(existing: List<String>?, rows: List<QueueRow>, today: LocalD
 }
 
 /** Apply [filters]; "due today" keeps overdue and due-today jobs (web `filterDueToday`). */
-fun filterQueueRows(rows: List<QueueRow>, filters: QueueFilters, today: LocalDate = LocalDate.now()): List<QueueRow> = rows.filter { r ->
+fun filterQueueRows(rows: List<QueueRow>, filters: QueueFilters, today: LocalDate = shopToday()): List<QueueRow> = rows.filter { r ->
     (filters.statuses.isEmpty() || r.status in filters.statuses) &&
         (filters.priorities.isEmpty() || r.priority in filters.priorities) &&
         (!filters.dueTodayOnly || collectionUrgency(r.collectionDate, today) <= 1)

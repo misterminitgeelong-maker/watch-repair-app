@@ -129,7 +129,7 @@ fun DispatchScreen(
                 CalibreRow({ onOpenJob(job.id) },
                     listOfNotNull(listOfNotNull(job.vehicleMake, job.vehicleModel).joinToString(" ").takeIf { it.isNotBlank() }, job.title).joinToString(" · "),
                     listOfNotNull(whenText, job.jobAddress?.takeIf { it.isNotBlank() }, job.customerName).joinToString(" · "),
-                    statusLabel(job.status) + (if(job.priority == "urgent") " · Urgent" else "") + (sla?.let { " · ${it.label}" } ?: ""), job.priority == "urgent" || sla == au.mainspring.nativeapp.SlaKind.LATE, Modifier.padding(horizontal = 20.dp),
+                    mobileStatusLabel(job.status) + (if(job.priority == "urgent") " · Urgent" else "") + (sla?.let { " · ${it.label}" } ?: ""), job.priority == "urgent" || sla == au.mainspring.nativeapp.SlaKind.LATE, Modifier.padding(horizontal = 20.dp),
                     service = "auto_key", jobId = job.id, statusKey = job.status)
                 return@items
             }
@@ -137,7 +137,7 @@ fun DispatchScreen(
                 Text(listOfNotNull(listOfNotNull(job.vehicleMake, job.vehicleModel).joinToString(" ").takeIf { it.isNotBlank() }, job.title).joinToString(" · "), style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text(listOfNotNull(whenText, job.jobAddress?.takeIf { it.isNotBlank() }, job.customerName).joinToString(" · "), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(statusLabel(job.status) + if(job.priority == "urgent") " · Urgent" else "", style = MaterialTheme.typography.labelMedium,
+                    Text(mobileStatusLabel(job.status) + if(job.priority == "urgent") " · Urgent" else "", style = MaterialTheme.typography.labelMedium,
                         color = if(job.priority == "urgent") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                     sla?.let { SlaChip(it) }
                 }
@@ -156,7 +156,7 @@ fun DispatchScreen(
                     Text(listOfNotNull(listOfNotNull(job.vehicleMake, job.vehicleModel).joinToString(" ").takeIf { it.isNotBlank() }, job.title).joinToString(" · "), style = MaterialTheme.typography.titleMedium, maxLines = 1)
                     Text(listOfNotNull(job.jobAddress?.takeIf { it.isNotBlank() }, job.customerName).joinToString(" · ").ifBlank { job.jobNumber }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(statusLabel(job.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(mobileStatusLabel(job.status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         sla?.let { SlaChip(it) }
                     }
                 }

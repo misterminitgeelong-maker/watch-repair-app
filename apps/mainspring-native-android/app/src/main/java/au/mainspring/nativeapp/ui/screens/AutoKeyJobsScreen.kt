@@ -128,7 +128,7 @@ fun AutoKeyJobsScreen(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 if(state.selecting) androidx.compose.material3.Checkbox(picked, { viewModel.toggleSelected(j.id) },
                     Modifier.size(48.dp).testTag("bulk-check-${j.id}").semantics { contentDescription = (if(picked) "Deselect job " else "Select job ") + j.jobNumber })
-                ServiceJobCard({ if(state.selecting) viewModel.toggleSelected(j.id) else onOpenJob(j.id) }, j.jobNumber, j.title, detail.ifBlank { null }, au.mainspring.nativeapp.ui.statusLabel(j.status), j.status, when_,
+                ServiceJobCard({ if(state.selecting) viewModel.toggleSelected(j.id) else onOpenJob(j.id) }, j.jobNumber, j.title, detail.ifBlank { null }, au.mainspring.nativeapp.ui.mobileStatusLabel(j.status), j.status, when_,
                     j.jobAddress?.takeIf { it.isNotBlank() }, thumb = { au.mainspring.nativeapp.ui.JobThumb("auto_key", j.id, size = 56.dp) },
                     modifier = Modifier.weight(1f),
                     badges = {

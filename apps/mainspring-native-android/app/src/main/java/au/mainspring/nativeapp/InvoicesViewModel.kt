@@ -36,7 +36,7 @@ data class ListedInvoice(
 fun mergedInvoices(state: InvoicesUiState, type: String?, status: String?, query: String): List<ListedInvoice> {
     val watch = state.invoices.map { inv ->
         val job = state.jobs[inv.repairJobId]
-        ListedInvoice(inv.id, inv.invoiceNumber, inv.status, inv.totalCents, inv.currency, inv.createdAt, job?.customerName, job?.title ?: "Repair invoice", false, inv.repairJobId, inv.subtotalCents, inv.taxCents)
+        ListedInvoice(inv.id, inv.invoiceNumber, inv.status, inv.totalCents, inv.currency, inv.createdAt, inv.customerName ?: job?.customerName, job?.title ?: "Repair invoice", false, inv.repairJobId, inv.subtotalCents, inv.taxCents)
     }
     val mobile = state.mobile.map {
         ListedInvoice(it.id, it.number, it.status, it.totalCents, it.currency, it.createdAt, it.customerName, it.jobNumber?.let { n -> "Mobile job $n" } ?: "Mobile invoice", true, it.jobId, it.subtotal, it.tax)

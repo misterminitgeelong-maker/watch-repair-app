@@ -227,6 +227,10 @@ val CalibreCardShape: androidx.compose.ui.graphics.Shape @Composable get() = and
 /** "awaiting_go_ahead" -> "Awaiting go ahead". */
 fun statusLabel(value: String): String = value.replace('_', ' ').replaceFirstChar { it.uppercase() }
 
+/** Canonical Mobile Services label for any stored status, so legacy aliases read like the web ("working_on" -> "On Site"). */
+fun mobileStatusLabel(value: String): String =
+    au.mainspring.nativeapp.api.MOBILE_STATUS_PICKER.firstOrNull { it.first == au.mainspring.nativeapp.api.canonicalMobileStatus(value) }?.second ?: statusLabel(value)
+
 /** A full-width pick-one row for wizards: outlined, tinted and ticked when selected. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun SelectableCard(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable ColumnScope.() -> Unit) {

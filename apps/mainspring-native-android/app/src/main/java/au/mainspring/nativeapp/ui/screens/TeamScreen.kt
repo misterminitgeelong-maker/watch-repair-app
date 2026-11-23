@@ -85,7 +85,7 @@ private fun commissionAmount(value: com.google.gson.JsonObject,key: String) = ja
     var password by remember {mutableStateOf("")};var role by remember {mutableStateOf(original?.role ?: "tech")};var active by remember {mutableStateOf(original?.active ?: true)}
     val parsed=remember {try {original?.commissionRules?.let {JsonParser.parseString(it).asJsonObject}} catch(_: Exception) {null}}
     var comm by remember {mutableStateOf(parsed?.get("enabled")?.asBoolean ?: false)}
-    var retainer by remember {mutableStateOf(java.math.BigDecimal.valueOf(parsed?.get("retainer_cents_per_period")?.asLong ?: 0,2).toPlainString())}
+    var retainer by remember {mutableStateOf(java.math.BigDecimal.valueOf(parsed?.get("retainer_cents_per_period")?.takeIf { it.isJsonPrimitive }?.asLong ?: 36_000,2).toPlainString())}
     var shop by remember {mutableStateOf(java.math.BigDecimal.valueOf(parsed?.getAsJsonObject("rates_bp")?.get("shop_referred")?.asLong ?: 3000,2).toPlainString())}
     var self by remember {mutableStateOf(java.math.BigDecimal.valueOf(parsed?.getAsJsonObject("rates_bp")?.get("tech_sourced")?.asLong ?: 5000,2).toPlainString())}
     var minit by remember {mutableStateOf(java.math.BigDecimal.valueOf(parsed?.getAsJsonObject("rates_bp")?.get("minit_sourced")?.asLong ?: 4000,2).toPlainString())}

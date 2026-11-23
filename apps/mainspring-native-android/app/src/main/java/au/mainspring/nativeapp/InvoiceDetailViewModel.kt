@@ -124,7 +124,7 @@ class InvoiceDetailViewModel(
     companion object {
         /** Parses amounts like "12", "12.50", "$12.50" into cents, or null if invalid. */
         fun parseDollarsToCents(input: String): Int? {
-            val t = input.trim().removePrefix("$").replace(",", "").trim()
+            val t = stripThousandsCommas(input.trim().removePrefix("$").trim())
             if (t.isEmpty()) return null
             return try { dollarsToCentsChecked(t).takeIf { it > 0 } } catch (_: Exception) { null }
         }

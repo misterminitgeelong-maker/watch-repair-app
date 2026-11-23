@@ -21,6 +21,8 @@ fun bookingInstant(value: String?): Instant? = value?.let {
     }
 }
 
+private const val RUN_SHEET_EXTRAS_ERROR = "Some needs-action counts could not be loaded. Pull to refresh to retry."
+
 class TodayViewModel : ViewModel() {
     private val api = ApiClient.api
     private val drafts=TokenStore.bindDrafts()
@@ -42,7 +44,9 @@ class TodayViewModel : ViewModel() {
             late?.let { put("late", it.total) }; unassigned?.let { put("unassigned", it.total) }; onHold?.let { put("on_hold", it.total) }
             mutable.value.unscheduledCount?.let { put("unscheduled", it) }
         }
-        runMutable.update { it.copy(field = (inField?.items.orEmpty() + late?.items.orEmpty()).distinctBy { j -> j.id }, lateIds = late?.items.orEmpty().map { j -> j.id }.toSet(), counts = counts) }
+        val incomplete = late == null || inField == null || unassigned == null || onHold == null
+        runMutable.update { it.copy(field = (inField?.items.orEmpty() + late?.items.orEmpty()).distinctBy { j -> j.id }, lateIds = late?.items.orEmpty().map { j -> j.id }.toSet(), counts = counts,
+            error = if(incomplete) RUN_SHEET_EXTRAS_ERROR else it.error?.takeIf { e -> e != RUN_SHEET_EXTRAS_ERROR }) }
     }
     /** One-tap Start trip / Arrived / Complete. Uses the same versioned status endpoint as the job screen; a network failure is queued. */
     fun advance(jobId: String, target: String) {

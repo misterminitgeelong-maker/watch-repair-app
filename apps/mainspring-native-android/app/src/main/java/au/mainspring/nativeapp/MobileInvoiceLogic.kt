@@ -25,10 +25,15 @@ fun invoiceSendFeedback(r: MobileInvoiceSend, channel: String): String {
     return if(parts.isEmpty()) "Invoice not sent: customer has no phone or email on file." else "Invoice ${parts.joinToString(", ")}."
 }
 
+private val GROUPED_THOUSANDS = Regex("""\d{1,3}(,\d{3})+(\.\d*)?""")
+
+/** Drops commas only when they are thousands separators ("1,250.00"); a decimal comma ("12,50") is left in so parsing rejects it rather than reading $1250. */
+fun stripThousandsCommas(text: String): String = if(GROUPED_THOUSANDS.matches(text)) text.replace(",", "") else text
+
 /** Parses the three edit fields (dollars) into cents; returns null with a reason when invalid. */
 fun parseInvoiceAmounts(subtotal: String, tax: String, total: String): Pair<MobileInvoiceAmounts?, String?> {
     fun cents(s: String): Int? {
-        val t = s.trim().removePrefix("$").replace(",", "").trim()
+        val t = stripThousandsCommas(s.trim().removePrefix("$").trim())
         if(t.isEmpty()) return null
         return try { java.math.BigDecimal(t).movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).intValueExact().takeIf { it >= 0 } } catch(_: Exception) { null }
     }

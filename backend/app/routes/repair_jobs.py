@@ -104,6 +104,12 @@ def _repair_job_to_read(session: Session, job: RepairJob) -> RepairJobRead:
     data["customer_email"] = customer_email
     data["watch_brand"] = watch.brand if watch else None
     data["watch_model"] = watch.model if watch else None
+    data["claimed_by_name"] = None
+    if job.claimed_by_user_id:
+        from ..models import User as UserModel
+
+        claimer = session.get(UserModel, job.claimed_by_user_id)
+        data["claimed_by_name"] = (claimer.full_name or "") if claimer else None
     return RepairJobRead(**data)
 
 
@@ -272,8 +278,19 @@ def list_repair_jobs(
         query = query.where(RepairJob.assigned_user_id == assigned_user_id)
     if q:
         pattern = f"%{q.lower()}%"
+        matching_watch_ids = (
+            select(Watch.id)
+            .join(Customer, Watch.customer_id == Customer.id)
+            .where(Customer.tenant_id == auth.tenant_id)
+            .where(
+                func.lower(func.coalesce(Customer.full_name, "")).like(pattern)
+                | func.coalesce(Customer.phone, "").like(f"%{q}%")
+            )
+        )
         query = query.where(
-            func.lower(RepairJob.title).like(pattern) | func.lower(RepairJob.job_number).like(pattern)
+            func.lower(RepairJob.title).like(pattern)
+            | func.lower(RepairJob.job_number).like(pattern)
+            | RepairJob.watch_id.in_(matching_watch_ids)
         )
     if cost_outlier:
         query = query.where(RepairJob.cost_cents > 5_000_000)
@@ -345,7 +362,7 @@ def get_repair_job(
     job = get_tenant_repair_job(session, job_id, auth.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
-    return job
+    return _repair_job_to_read(session, job)
 
 
 @router.post("/{job_id}/status", response_model=RepairJobRead)
@@ -410,7 +427,7 @@ def update_repair_job_status(
         from ..services.portal_status_notify import notify_repair_job_status, shop_name_for
         notify_repair_job_status(session, job, previous_status, shop_name_for(session, auth.tenant_id))
         session.commit()
-    return job
+    return _repair_job_to_read(session, job)
 
 
 @router.post("/{job_id}/quick-status", response_model=RepairJobRead)
@@ -535,7 +552,7 @@ def submit_job_intake(
 
     session.commit()
     session.refresh(job)
-    return job
+    return _repair_job_to_read(session, job)
 
 
 @router.patch("/{job_id}", response_model=RepairJobRead)
@@ -597,7 +614,7 @@ def update_repair_job_fields(
     session.add(job)
     session.commit()
     session.refresh(job)
-    return job
+    return _repair_job_to_read(session, job)
 
 
 @router.get("/{job_id}/sms-log", response_model=list[SmsLogRead])
@@ -789,14 +806,7 @@ def claim_repair_job(
     session.add(job)
     session.commit()
     session.refresh(job)
-    data = job.model_dump()
-    data['customer_name'] = None
-    data['claimed_by_name'] = None
-    if auth.user_id:
-        from ..models import User as UserModel
-        u = session.get(UserModel, auth.user_id)
-        data['claimed_by_name'] = u.full_name if u else None
-    return RepairJobRead(**data)
+    return _repair_job_to_read(session, job)
 
 
 @router.post("/{job_id}/release", response_model=RepairJobRead)
@@ -813,10 +823,7 @@ def release_repair_job(
     session.add(job)
     session.commit()
     session.refresh(job)
-    data = job.model_dump()
-    data['customer_name'] = None
-    data['claimed_by_name'] = None
-    return RepairJobRead(**data)
+    return _repair_job_to_read(session, job)
 
 
 @router.get("/{job_id}/status-history", response_model=list[JobStatusHistoryRead])

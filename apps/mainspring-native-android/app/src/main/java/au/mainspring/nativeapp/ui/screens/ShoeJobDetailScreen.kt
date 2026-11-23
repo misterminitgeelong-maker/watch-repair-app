@@ -87,7 +87,7 @@ fun ShoeJobDetailScreen(
         backLabel = "Shoe Repairs", title = (if (j.jobNumber.startsWith("#")) j.jobNumber else "#" + j.jobNumber) + " · " + j.title,
         facts = run {
             val days = au.mainspring.nativeapp.daysInShop(j.createdAt)
-            val quoteTotal = j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }
+            val quoteTotal = j.items.mapNotNull { it.price?.let { p -> au.mainspring.nativeapp.ui.lineTotalCents(p, it.quantity) } }.sum().takeIf { it > 0 }
             listOfNotNull(
                 DetailFact("Status", statusLabel(j.status), pillStatus = j.status),
                 DetailFact("Priority", j.priority.replace('_', ' ').replaceFirstChar { it.uppercase() }),
@@ -189,7 +189,7 @@ fun ShoeJobDetailScreen(
                 }
             }
             "money" -> {
-                SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> p * it.quantity.toInt() } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
+                SummaryCard("Quote and invoice", j.items.mapNotNull { it.price?.let { p -> au.mainspring.nativeapp.ui.lineTotalCents(p, it.quantity) } }.sum().takeIf { it > 0 }?.let { "${formatCents(it, currency)} ${if (j.quoteStatus == "approved") "approved" else "quoted"}" } ?: "Quote ${j.quoteStatus.replace('_', ' ')}",
                     "View services, pricing and payment")
                 if (j.quoteStatus != "approved") SecondaryAction(onClick = { confirmQuote = true }, enabled = !state.quoteBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Send quote to customer") }
                 if (j.depositCents > 0) SummaryCard("Deposit", formatCents(j.depositCents, currency), null)

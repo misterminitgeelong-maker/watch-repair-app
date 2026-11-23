@@ -34,7 +34,7 @@ data class RouteDayState(val day: LocalDate, val jobs: List<AutoKeyJobRead> = em
 /** Jobs scheduled on a chosen day, for the route/map day filter. Today itself is served by TodayViewModel (offline snapshot). */
 class RouteDayViewModel : ViewModel() {
     private val api = ApiClient.api
-    private val mutable = MutableStateFlow(RouteDayState(LocalDate.now()))
+    private val mutable = MutableStateFlow(RouteDayState(shopToday()))
     val state = mutable.asStateFlow()
     private var request: Job? = null
     init { loadTechnicians() }

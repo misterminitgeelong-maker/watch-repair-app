@@ -20,6 +20,7 @@ from sqlmodel import Session, col, func, select
 
 from ..config import settings
 from ..database import get_session, unscoped_session
+from ..datetime_utils import isoformat_z_utc
 from ..dependencies import (
     AuthContext,
     LOWEST_PLAN_CODE,
@@ -338,11 +339,7 @@ def _build_auth_session_response(session: Session, tenant: Tenant, user: User, a
         shop_calendar_today_ymd=shop_today,
         signup_payment_pending=bool(getattr(tenant, "signup_payment_pending", False)),
         subscription_status=getattr(tenant, "subscription_status", None),
-        trial_end=(
-            getattr(tenant, "trial_end", None).isoformat()
-            if getattr(tenant, "trial_end", None) is not None
-            else None
-        ),
+        trial_end=isoformat_z_utc(getattr(tenant, "trial_end", None)),
         mobile_services_customer_sms_enabled=bool(getattr(tenant, "mobile_services_customer_sms_enabled", True)),
         tenant_business_address=getattr(tenant, "business_address", None),
     )

@@ -63,7 +63,9 @@ fun InvoiceDetailScreen(
     }
 
     val paidCents = state.data?.payments?.sumOf { it.amountCents } ?: 0
-    val remainingCents = (inv?.totalCents ?: 0) - paidCents
+    val inactive = inv != null && !au.mainspring.nativeapp.isLiveInvoice(inv.status)
+    val remainingCents = if(inactive) 0 else (inv?.totalCents ?: 0) - paidCents
+    val balanceLabel = if(inactive) inv?.status.orEmpty().uppercase() else if(remainingCents > 0) "OUTSTANDING" else "PAID IN FULL"
     val canRecordPayment = inv != null && remainingCents > 0 && inv.status == "unpaid" && !state.paymentUnknown && au.mainspring.nativeapp.TokenStore.canManageInvoices()
 
     Scaffold(
@@ -86,14 +88,14 @@ fun InvoiceDetailScreen(
                     item {
                         if(calibre) FinCard(contentPadding = 20.dp) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                Text(if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.8.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(balanceLabel, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.8.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 FinStatusPill(d.invoice.status)
                             }
                             Text(formatCents(remainingCents.coerceAtLeast(0), currency), style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, fontSize = 34.sp))
                             Text("Total ${formatCents(d.invoice.totalCents, currency)} · Paid ${formatCents(paidCents, currency)} · ${formatShopDate(d.invoice.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("Subtotal ${formatCents(d.invoice.subtotalCents, currency)} · Tax ${formatCents(d.invoice.taxCents, currency)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } else au.mainspring.nativeapp.ui.HeroCard {
-                            Text((if (remainingCents > 0) "OUTSTANDING" else "PAID IN FULL"), style = MaterialTheme.typography.labelSmall)
+                            Text(balanceLabel, style = MaterialTheme.typography.labelSmall)
                             Text(formatCents(remainingCents.coerceAtLeast(0), currency), style = MaterialTheme.typography.displaySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Light))
                             Text("Total ${formatCents(d.invoice.totalCents, currency)} · Paid ${formatCents(paidCents, currency)} · ${formatShopDate(d.invoice.createdAt).substringBefore(' ')}", style = MaterialTheme.typography.bodyMedium)
                         }
@@ -164,7 +166,7 @@ fun InvoiceDetailScreen(
                                             Text(line.description ?: "(line)", style = MaterialTheme.typography.bodyLarge)
                                             Text("${java.math.BigDecimal.valueOf(line.quantity).stripTrailingZeros().toPlainString()} × ${formatCents(line.unitPriceCents, currency)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                        Text(formatCents((line.unitPriceCents * line.quantity).toInt(), currency), style = MaterialTheme.typography.bodyLarge)
+                                        Text(formatCents(au.mainspring.nativeapp.ui.lineTotalCents(line.unitPriceCents, line.quantity), currency), style = MaterialTheme.typography.bodyLarge)
                                     }
                                 }
                             }

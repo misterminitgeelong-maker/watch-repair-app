@@ -11,6 +11,7 @@ from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
+from ..datetime_utils import naive_utc_from_any
 from ..config import settings
 from ..parent_network import (
     dispatch_operators_for_parent,
@@ -851,7 +852,7 @@ async def create_booking(
         job_suburb=_normalize_suburb(suburb)[:200],
         job_state_code=state_code[:8],
         operator_routing_rule=routing_rule,
-        preferred_scheduled_at=body.preferred_scheduled_at,
+        preferred_scheduled_at=naive_utc_from_any(body.preferred_scheduled_at),
         job_type=body.job_type.strip()[:120] if body.job_type else None,
         notes=body.notes.strip()[:4000] if body.notes else None,
         offer_expires_at=datetime.now(timezone.utc) + timedelta(minutes=_offer_timeout_minutes()),
@@ -1111,7 +1112,7 @@ def accept_booking(
         registration_plate=row.registration_plate,
         job_address=row.job_address,
         job_type=row.job_type or "Diagnostic",
-        scheduled_at=row.preferred_scheduled_at,
+        scheduled_at=naive_utc_from_any(row.preferred_scheduled_at),
         status="awaiting_quote",
         priority="normal",
         key_quantity=1,

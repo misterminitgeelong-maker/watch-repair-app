@@ -5,6 +5,7 @@ import au.mainspring.nativeapp.TokenStore
 import au.mainspring.nativeapp.api.ApiClient
 import au.mainspring.nativeapp.api.JobNotePayload
 import au.mainspring.nativeapp.api.OfflineReplayApi
+import au.mainspring.nativeapp.api.SessionChangedException
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,9 @@ object OfflineSync {
 
     private val sender = HttpWriteSender { ApiClient.service(OfflineReplayApi::class.java) }
 
+    /** Only a genuine network failure is queued; a changed sign-in (SessionChangedException is an IOException) must not be replayed later under another session. */
+    internal fun isQueueable(e: Throwable): Boolean = e is IOException && e !is SessionChangedException
+
     // ---- helpers for the view models: return true when the failure was a network failure and the write is now queued ----
 
     fun queueStatus(
@@ -67,7 +71,7 @@ object OfflineSync {
         /** Mobile jobs: the `updated_at` the user saw. Watch/shoe jobs: pass [baseStatus] (the status the user saw) instead. */
         expectedUpdatedAt: String? = null, baseStatus: String? = null,
     ): Boolean {
-        if (e !is IOException) return false
+        if (!isQueueable(e)) return false
         val base = when (kind) {
             OfflineKinds.WATCH_STATUS -> "v1/repair-jobs"
             OfflineKinds.SHOE_STATUS -> "v1/shoe-repair-jobs"
@@ -81,7 +85,7 @@ object OfflineSync {
     }
 
     fun queueNote(e: Throwable, kind: String, jobId: String, note: String, label: String): Boolean {
-        if (e !is IOException) return false
+        if (!isQueueable(e)) return false
         val base = when (kind) {
             OfflineKinds.WATCH_NOTE -> "v1/repair-jobs"
             OfflineKinds.SHOE_NOTE -> "v1/shoe-repair-jobs"
@@ -92,7 +96,7 @@ object OfflineSync {
 
     /** Queue an edit of a mobile job's technician notes. The server refuses it (409) if the job changed since [expectedUpdatedAt], and it then needs review. */
     fun queueMobileNote(e: Throwable, jobId: String, notes: String, label: String, expectedUpdatedAt: String?): Boolean {
-        if (e !is IOException) return false
+        if (!isQueueable(e)) return false
         val body = Gson().toJson(mapOf("tech_notes" to notes))
         val ok = queue.enqueue(OfflineKinds.MOBILE_NOTE, "v1/auto-key-jobs/$jobId", "PATCH", body, jobId, "$label: update technician notes", expectedUpdatedAt)
         if (ok) requestReplay()

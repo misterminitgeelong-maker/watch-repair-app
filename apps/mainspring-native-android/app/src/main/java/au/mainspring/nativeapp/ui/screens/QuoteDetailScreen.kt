@@ -117,7 +117,7 @@ fun QuoteDetailScreen(
                                         Text(line.description ?: "(line)", style = MaterialTheme.typography.bodyLarge)
                                         Text("${java.math.BigDecimal.valueOf(line.quantity).stripTrailingZeros().toPlainString()} \u00d7 ${formatCents(line.unitPriceCents, q?.currency ?: "AUD")}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    Text(formatCents((line.unitPriceCents * line.quantity).toInt(), q?.currency ?: "AUD"), style = MaterialTheme.typography.bodyLarge)
+                                    Text(formatCents(au.mainspring.nativeapp.ui.lineTotalCents(line.unitPriceCents, line.quantity), q?.currency ?: "AUD"), style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
                         }

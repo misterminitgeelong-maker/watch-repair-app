@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import au.mainspring.nativeapp.HubJob
 import au.mainspring.nativeapp.JobsHubViewModel
+import au.mainspring.nativeapp.shopToday
 import au.mainspring.nativeapp.ui.*
 import java.time.LocalDate
 
@@ -34,7 +35,7 @@ internal fun HubJob.reference() = listOfNotNull(number, customer?.takeIf { it.is
 
 /** Blue status line, e.g. "Awaiting collection · Due today". */
 internal fun HubJob.statusLine(): String {
-    val today = LocalDate.now().toString()
+    val today = shopToday().toString()
     val due = dueDate?.take(10)?.let { d -> when { d == today -> "Due today"; d < today -> "Overdue"; else -> "Due ${formatShopDate(d)}" } }
     return listOfNotNull(statusLabel(status), if(urgent) "Urgent" else null, due).joinToString(" · ")
 }
@@ -87,7 +88,7 @@ fun AtelierJobsScreen(
     }
     val shown = state.visible
     var filtersOpen by remember { mutableStateOf(false) }
-    val today = LocalDate.now().toString()
+    val today = shopToday().toString()
     val dueToday = shown.filter { it.dueDate?.take(10)?.let { d -> d <= today } == true }
     val rest = shown - dueToday.toSet()
     val filterCount = (if(state.sort != "default") 1 else 0) + (if(state.service != "all") 1 else 0)

@@ -72,20 +72,20 @@ fun QuotesScreen(
             if(state.loading && state.quotes.isEmpty()) item { au.mainspring.nativeapp.ui.SkeletonRows() }
             state.error?.let { e -> item { au.mainspring.nativeapp.ui.ErrorBanner(e, onRetry = viewModel::refresh) } }
             if(!state.loading && state.error == null && shown.isEmpty()) item {
-                FinEmptyCard(if(filter == null && query.isBlank() && olderDays == 0) "No quotes yet." else "No quotes match these filters.")
+                FinEmptyCard(if(filter == null && query.isBlank() && olderDays == 0) "No quotes yet." else if(state.truncated) "No quotes match these filters in the newest ${au.mainspring.nativeapp.QUOTES_PAGE_LIMIT} quotes." else "No quotes match these filters.")
             }
             items(shown, key = { it.id }) { q ->
                 val job = state.jobs[q.repairJobId]
                 FinCard(onClick = { onOpenQuote(q.id) }) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        FinDocNumber(job?.jobNumber ?: "Quote")
+                        FinDocNumber(q.jobNumber ?: job?.jobNumber ?: "Quote")
                         au.mainspring.nativeapp.ui.StatusPill(q.status)
                         androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                         Text(formatCents(q.totalCents, q.currency), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                     }
                     Text(au.mainspring.nativeapp.ui.formatShopDate(q.createdAt).substringBefore(' '), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(job?.title ?: "Repair quote", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
-                    job?.customerName?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    (q.customerName ?: job?.customerName)?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text("Subtotal ${formatCents(q.subtotalCents, q.currency)} · Tax ${formatCents(q.taxCents, q.currency)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

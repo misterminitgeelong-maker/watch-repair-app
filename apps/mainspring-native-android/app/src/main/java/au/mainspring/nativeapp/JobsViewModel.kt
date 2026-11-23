@@ -70,7 +70,7 @@ enum class JobSort(val label: String) {
 private val PRIORITY_RANK = listOf("urgent", "high", "normal", "low")
 
 /** True when [collectionDate] (date or timestamp) is before [today]; no date is never past (web `collection_date < today`). */
-internal fun isPastCollection(collectionDate: String?, today: java.time.LocalDate = java.time.LocalDate.now()): Boolean {
+internal fun isPastCollection(collectionDate: String?, today: java.time.LocalDate = shopToday()): Boolean {
     val d = collectionDate?.takeIf { it.length >= 10 }?.let { runCatching { java.time.LocalDate.parse(it.take(10)) }.getOrNull() } ?: return false
     return d.isBefore(today)
 }
@@ -80,9 +80,7 @@ internal fun sortDirParam(sort: JobSort, descending: Boolean): String = if (sort
 
 internal fun daysInShop(createdAt: String?, now: java.time.Instant = java.time.Instant.now()): Int {
     // The server sends created_at as UTC, often without an offset ("2026-11-01T03:00:00"), which OffsetDateTime rejects.
-    val created = try { java.time.OffsetDateTime.parse(createdAt).toInstant() } catch (_: Exception) {
-        try { java.time.LocalDateTime.parse(createdAt).toInstant(java.time.ZoneOffset.UTC) } catch (_: Exception) { return 0 }
-    }
+    val created = parseServerInstant(createdAt) ?: return 0
     return java.time.Duration.between(created, now).toDays().toInt().coerceAtLeast(0)
 }
 

@@ -114,13 +114,16 @@ def _next_invoice_number(session: Session, tenant_id: UUID) -> str:
 def list_invoices(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    repair_job_id: UUID | None = Query(default=None, description="Only invoices for this repair job"),
     auth: AuthContext = Depends(get_auth_context),
     session: Session = Depends(get_session),
 ):
     base = select(Invoice).where(Invoice.tenant_id == auth.tenant_id)
-    total = int(
-        session.exec(select(func.count()).select_from(Invoice).where(Invoice.tenant_id == auth.tenant_id)).one()
-    )
+    count_q = select(func.count()).select_from(Invoice).where(Invoice.tenant_id == auth.tenant_id)
+    if repair_job_id is not None:
+        base = base.where(Invoice.repair_job_id == repair_job_id)
+        count_q = count_q.where(Invoice.repair_job_id == repair_job_id)
+    total = int(session.exec(count_q).one())
     invoices = session.exec(
         base.order_by(Invoice.created_at.desc()).offset(offset).limit(limit)
     ).all()
