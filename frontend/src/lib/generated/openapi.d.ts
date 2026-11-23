@@ -13659,16 +13659,10 @@ export interface components {
             visit_scheduled_at: string | null;
             /** Customer Account Id */
             customer_account_id: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
+            /** Created At */
+            created_at: string | null;
+            /** Updated At */
+            updated_at: string | null;
         };
         /** ProspectLeadRead */
         ProspectLeadRead: {
@@ -13721,16 +13715,10 @@ export interface components {
             visit_scheduled_at?: string | null;
             /** Customer Account Id */
             customer_account_id?: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
+            /** Created At */
+            created_at: string | null;
+            /** Updated At */
+            updated_at: string | null;
         };
         /** ProspectLeadUpdate */
         ProspectLeadUpdate: {
@@ -18392,6 +18380,8 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                /** @description Only invoices for this repair job */
+                repair_job_id?: string | null;
             };
             header?: never;
             path?: never;
