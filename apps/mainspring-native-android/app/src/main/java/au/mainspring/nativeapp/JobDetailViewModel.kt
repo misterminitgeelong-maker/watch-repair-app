@@ -50,6 +50,8 @@ data class JobDetailUiState(
     val statusUnknown: Boolean = false, val statusReviewed: Boolean = false, val statusRequest: String = "",
     /** Invoices raised for this job; the deposit alone does not show whether the customer has paid. */
     val invoiceTotalCents: Int = 0, val invoicePaidCents: Int = 0,
+    /** Set when invoices could not be loaded, so the screen does not claim "No invoice raised yet". */
+    val invoiceError: String? = null,
     /** Watch movements for "Set quote from movement". */
     val movements: List<au.mainspring.nativeapp.api.CatalogueMovement> = emptyList(),
     val movementsLoading: Boolean = false, val movementBusy: Boolean = false,
@@ -57,6 +59,17 @@ data class JobDetailUiState(
     /** What the customer still owes: unpaid invoice amounts when invoiced, otherwise quote less deposit. */
     fun outstandingCents(job: RepairJobRead): Int =
         if (invoiceTotalCents > 0) (invoiceTotalCents - invoicePaidCents).coerceAtLeast(0) else (watchQuoteCents(job) - job.depositCents).coerceAtLeast(0)
+}
+
+/** Invoices that still count toward what the customer owes: void and refunded invoices are excluded, as in the backend reports. */
+internal fun isLiveInvoice(status: String): Boolean = !status.equals("void", true) && !status.equals("refunded", true)
+
+/** Total invoiced and total paid across live invoices; paid per invoice is the sum of its payments (partial payments count) capped at its total. */
+internal fun invoiceTotals(invoices: List<au.mainspring.nativeapp.api.InvoiceWithPayments>): Pair<Int, Int> {
+    val live = invoices.filter { isLiveInvoice(it.invoice.status) }
+    val total = live.sumOf { it.invoice.totalCents }
+    val paid = live.sumOf { d -> if(d.invoice.status.equals("paid", true)) d.invoice.totalCents else d.payments.sumOf { p -> p.amountCents }.coerceIn(0, d.invoice.totalCents.coerceAtLeast(0)) }
+    return total to paid
 }
 
 /** Body for `PATCH repair-jobs/{id}` that sets both the job cost and the pre-quote (web `updateJob`). */
@@ -108,10 +121,14 @@ class JobDetailViewModel(
                     emptyList()
                 }
                 val watch = if(job.watchId.isNullOrBlank()) null else try { api.getWatch(job.watchId) } catch (e: CancellationException) { throw e } catch (_: Exception) { _state.value.watch }
-                val invoices = try { api.listInvoices().items.filter { it.repairJobId == jobId } } catch (e: CancellationException) { throw e } catch (_: Exception) { emptyList() }
+                var invoiceError: String? = null
+                val invoiceDetails = try {
+                    api.listInvoices(limit = 500, repairJobId = jobId).items.filter { it.repairJobId == jobId && isLiveInvoice(it.status) }.map { api.getInvoice(it.id) }
+                } catch (e: CancellationException) { throw e } catch (e: Exception) { invoiceError = "Could not load invoices. ${e.userMessage()}"; null }
+                val (invoicedCents, paidCents) = if(invoiceDetails != null) invoiceTotals(invoiceDetails) else (_state.value.invoiceTotalCents to _state.value.invoicePaidCents)
                 _state.update {
                     it.copy(loading = false, job = job, watch = watch, history = history, attachments = attachments, smsLog = smsLog, statusReviewed = true,
-                        invoiceTotalCents = invoices.sumOf { i -> i.totalCents }, invoicePaidCents = invoices.filter { i -> i.status.equals("paid", true) }.sumOf { i -> i.totalCents })
+                        invoiceTotalCents = invoicedCents, invoicePaidCents = paidCents, invoiceError = invoiceError)
                 }
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -144,7 +161,7 @@ class JobDetailViewModel(
                 _state.update { it.copy(statusRequest = statusCheckpoint.description) }
                 val job = api.postRepairJobStatus(jobId, RepairJobStatusUpdate(newStatus, message, visibleNote))
                 statusCheckpoint.clear()
-                _state.update { it.copy(statusBusy = false, job = job, statusUnknown = false, statusRequest = "") }
+                _state.update { it.copy(statusBusy = false, job = job.copy(claimedByName = job.claimedByName ?: current.claimedByName.takeIf { job.claimedByUserId == current.claimedByUserId }), statusUnknown = false, statusRequest = "") }
                 load()
             } catch(e: CancellationException) { throw e }
             catch (e: Exception) {

@@ -21,7 +21,7 @@ class PendingBookingsViewModel : ViewModel() {
         request = viewModelScope.launch {
             try {
                 val tenant = TokenStore.currentTenantId()
-                mutable.value = api.bookingRequests(limit = 100).items.count { it.status == "pending" && it.targetTenant == tenant }
+                mutable.value = api.bookingRequests(limit = 100, status = "pending").items.count { it.status == "pending" && it.targetTenant == tenant }
             } catch(e: CancellationException) { throw e }
             catch(_: Exception) { /* the badge is a hint: an unavailable feature or a flaky network just hides it */ }
         }

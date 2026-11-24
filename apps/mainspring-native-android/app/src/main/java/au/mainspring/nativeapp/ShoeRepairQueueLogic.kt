@@ -23,7 +23,7 @@ fun previousShoeQueueStatus(status: String): String? {
 fun ShoeRepairJobRead.toQueueRow() = QueueRow(id, status, priority, collectionDate, createdAt)
 
 /** Shoe jobs the queue can triage: on the lane and not yet collected, in queue order (urgency, priority, age). */
-fun shoeQueueEligibleJobs(jobs: List<ShoeRepairJobRead>, today: LocalDate = LocalDate.now()): List<ShoeRepairJobRead> {
+fun shoeQueueEligibleJobs(jobs: List<ShoeRepairJobRead>, today: LocalDate = shopToday()): List<ShoeRepairJobRead> {
     val eligible = jobs.filter { it.status in SHOE_QUEUE_SEQUENCE && it.status != "collected" }
     val byId = eligible.associateBy { it.id }
     return sortQueueRows(eligible.map { it.toQueueRow() }, today).mapNotNull { byId[it.id] }

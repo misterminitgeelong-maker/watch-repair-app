@@ -130,7 +130,7 @@ class QueueEngine<J : Any>(
     private val store: QueueDayStore,
     private val isOnline: () -> Boolean,
     private val offlineMessage: String,
-    private val today: () -> LocalDate = { LocalDate.now() },
+    private val today: () -> LocalDate = { shopToday() },
     private val saveDelayMs: Long = 450,
     private val noticeMs: Long = 2500,
 ) {

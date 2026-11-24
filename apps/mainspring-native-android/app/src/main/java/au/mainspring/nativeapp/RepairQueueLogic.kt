@@ -24,7 +24,7 @@ fun previewQueueSwipe(status: String, direction: String): String? {
 fun RepairJobRead.toQueueRow() = QueueRow(id, status, priority, collectionDate, createdAt)
 
 /** Jobs the queue can triage: on the lane and not yet collected, in queue order (urgency, priority, age; web `sortQueue`). */
-fun queueEligibleJobs(jobs: List<RepairJobRead>, today: LocalDate = LocalDate.now()): List<RepairJobRead> {
+fun queueEligibleJobs(jobs: List<RepairJobRead>, today: LocalDate = shopToday()): List<RepairJobRead> {
     val eligible = jobs.filter { it.status in WATCH_QUEUE_SEQUENCE && it.status != "collected" }
     val byId = eligible.associateBy { it.id }
     return sortQueueRows(eligible.map { it.toQueueRow() }, today).mapNotNull { byId[it.id] }

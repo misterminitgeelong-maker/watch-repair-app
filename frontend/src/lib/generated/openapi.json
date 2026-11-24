@@ -2884,6 +2884,25 @@
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "repair_job_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only invoices for this repair job",
+              "title": "Repair Job Id"
+            },
+            "description": "Only invoices for this repair job"
           }
         ],
         "responses": {
@@ -41964,13 +41983,27 @@
             "title": "Customer Account Id"
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Created At"
           },
           "updated_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Updated At"
           }
         },
@@ -42192,13 +42225,27 @@
             "title": "Customer Account Id"
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Created At"
           },
           "updated_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Updated At"
           }
         },

@@ -30,6 +30,14 @@ class JobWorkflowTest {
         assertEquals("1 day in shop", daysInShopText(1)); assertEquals("3 days in shop", daysInShopText(3))
     }
 
+    @Test fun daysInShopParsesTimestampsWithAndWithoutOffset() {
+        val now = java.time.Instant.parse("2026-11-23T00:00:00Z")
+        assertEquals(10, au.mainspring.nativeapp.daysInShop("2026-11-13T00:00:00Z", now))
+        assertEquals(10, au.mainspring.nativeapp.daysInShop("2026-11-13T00:00:00", now))
+        assertEquals(10, au.mainspring.nativeapp.daysInShop("2026-11-12T23:00:00.123456", now))
+        assertEquals(0, au.mainspring.nativeapp.daysInShop(null, now))
+    }
+
     @Test fun navNeighbours() {
         JobNavContext.set("watch", listOf("a", "b", "c"))
         assertEquals(null to "b", JobNavContext.neighbors("watch", "a"))

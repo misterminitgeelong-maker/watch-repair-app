@@ -51,3 +51,10 @@ fun directionsUri(address: String?): String? = address?.trim()?.takeIf { it.isNo
 
 /** One-line summary of the badge numbers: "N action flags". */
 fun attentionTotal(counts: Map<String, Int>): Int = NEEDS_ACTION_QUEUES.sumOf { counts[it.first] ?: 0 }
+
+/** A queue count for display: an em dash when that count could not be loaded, never a false 0. */
+fun needsActionCountLabel(counts: Map<String, Int>, key: String): String = counts[key]?.toString() ?: "\u2014"
+
+/** The header total, or an em dash when any queue count is missing. */
+fun attentionTotalLabel(counts: Map<String, Int>): String =
+    if(NEEDS_ACTION_QUEUES.any { it.first !in counts }) "\u2014" else attentionTotal(counts).toString()

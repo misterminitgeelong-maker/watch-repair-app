@@ -75,9 +75,9 @@ private class MobileStage(val key: String,val label: String,val statuses: Set<St
 private val MOBILE_STAGES=listOf(
     MobileStage("awaiting_quote","Awaiting Quote",setOf("awaiting_quote","awaiting_customer_details"),androidx.compose.ui.graphics.Color(0xFF9A5F10),androidx.compose.ui.graphics.Color(0xFFFAEEDB)),
     MobileStage("quote_sent","Quote Sent",setOf("quote_sent","awaiting_go_ahead"),androidx.compose.ui.graphics.Color(0xFF2A5FA0),androidx.compose.ui.graphics.Color(0xFFEDF3FA)),
-    MobileStage("awaiting_booking_confirmation","Awaiting Booking Confirmation",setOf("awaiting_booking_confirmation","pending_booking"),androidx.compose.ui.graphics.Color(0xFF3E6FB0),androidx.compose.ui.graphics.Color(0xFFE7F0FA)),
-    MobileStage("booking_confirmed","Booking Confirmed",setOf("booking_confirmed","booked","go_ahead"),androidx.compose.ui.graphics.Color(0xFFB06010),androidx.compose.ui.graphics.Color(0xFFFFF0E0)),
-    MobileStage("booking_on_hold","Booking on Hold",setOf("booking_on_hold","job_delayed","awaiting_parts"),androidx.compose.ui.graphics.Color(0xFFA84F1A),androidx.compose.ui.graphics.Color(0xFFFDE8D8)),
+    MobileStage("awaiting_booking_confirmation","Awaiting Booking Confirmation",setOf("awaiting_booking_confirmation","pending_booking","go_ahead"),androidx.compose.ui.graphics.Color(0xFF3E6FB0),androidx.compose.ui.graphics.Color(0xFFE7F0FA)),
+    MobileStage("booking_confirmed","Booking Confirmed",setOf("booking_confirmed","booked"),androidx.compose.ui.graphics.Color(0xFFB06010),androidx.compose.ui.graphics.Color(0xFFFFF0E0)),
+    MobileStage("booking_on_hold","Booking on Hold",setOf("booking_on_hold","job_delayed","awaiting_parts","parts_to_order","sent_to_labanda","quoted_by_labanda","at_third_party_for_quoting","third_party_quote_approved","at_third_party_repairer"),androidx.compose.ui.graphics.Color(0xFFA84F1A),androidx.compose.ui.graphics.Color(0xFFFDE8D8)),
     MobileStage("in_field","In the Field",setOf("en_route","on_site","working_on","service"),androidx.compose.ui.graphics.Color(0xFF6A3FC9),androidx.compose.ui.graphics.Color(0xFFEDE5F5)),
     MobileStage("work_completed","Work Completed",setOf("work_completed","completed","booking_completed","awaiting_collection"),androidx.compose.ui.graphics.Color(0xFF1E7040),androidx.compose.ui.graphics.Color(0xFFE8F5ED)),
 )
@@ -88,7 +88,10 @@ private val MOBILE_STAGES=listOf(
     val state by model.state.collectAsStateWithLifecycle()
     LaunchedEffect(model) {model.directory("active")}
     val byId=state.jobs.associateBy {it.id}
-    val stages=MOBILE_STAGES.map {st->WebKanbanColumn(st.key,st.label,st.color,st.tint,state.jobs.filter {it.status in st.statuses}.map {BoardCard(it.id,it.title,it.customerName.orEmpty(),it.status)})}
+    val staged=MOBILE_STAGES.map {st->WebKanbanColumn(st.key,st.label,st.color,st.tint,state.jobs.filter {it.status in st.statuses}.map {BoardCard(it.id,it.title,it.customerName.orEmpty(),it.status)})}
+    // Active jobs with a status no stage knows about still get a card (same "Other" column as the shoe board).
+    val orphans=state.jobs.filter {j->MOBILE_STAGES.none {j.status in it.statuses}}.map {BoardCard(it.id,it.title,it.customerName.orEmpty(),it.status)}
+    val stages=if(orphans.isEmpty()) staged else staged+WebKanbanColumn("other","Other",androidx.compose.ui.graphics.Color(0xFF596068),androidx.compose.ui.graphics.Color(0xFFEEF1F4),orphans)
     val active=stages.sumOf {it.cards.size}
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom=96.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {

@@ -3,12 +3,13 @@ from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from sqlmodel import Session, func, select
 from typing import Optional
 
 from ..config import settings
 from ..database import get_session
+from ..datetime_utils import as_utc_for_json, naive_utc_from_any
 from ..dependencies import AuthContext, get_auth_context, require_manager_or_above
 from ..models import CustomerAccount, ProspectBusiness, ProspectLead, Suburb
 
@@ -400,7 +401,7 @@ async def list_regions(
 # Pipeline statuses. `won` is set automatically when a lead is converted to a
 # customer account; `lost` lets the operator archive dead leads.
 VALID_LEAD_STATUSES: frozenset[str] = frozenset(
-    {"new", "quote_needed", "contacted", "follow_up_due", "won", "lost"}
+    {"new", "quote_needed", "contacted", "visited", "onboarded", "follow_up_due", "won", "lost"}
 )
 
 
@@ -462,6 +463,10 @@ class ProspectLeadRead(BaseModel):
     customer_account_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("visit_scheduled_at", "created_at", "updated_at")
+    def _serialize_dt_as_utc(self, v: Optional[datetime]) -> Optional[datetime]:
+        return as_utc_for_json(v) if v is not None else None
 
 
 @router.post("/leads", response_model=ProspectLeadRead, status_code=201)
@@ -531,6 +536,8 @@ def update_prospect_lead(
     if "status" in updates and updates["status"] is not None:
         if updates["status"] not in VALID_LEAD_STATUSES:
             raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {', '.join(sorted(VALID_LEAD_STATUSES))}")
+    if updates.get("visit_scheduled_at") is not None:
+        updates["visit_scheduled_at"] = naive_utc_from_any(updates["visit_scheduled_at"])
     for field, value in updates.items():
         setattr(lead, field, value)
     lead.updated_at = datetime.now(timezone.utc)

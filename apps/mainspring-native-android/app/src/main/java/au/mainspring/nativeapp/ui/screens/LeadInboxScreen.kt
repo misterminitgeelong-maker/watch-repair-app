@@ -24,8 +24,8 @@ import java.time.temporal.ChronoUnit
 
 private fun leadAge(createdAt: String?): String {
     val days = try {
-        val created = runCatching { OffsetDateTime.parse(createdAt!!).toLocalDate() }.getOrElse { LocalDate.parse(createdAt!!.take(10)) }
-        ChronoUnit.DAYS.between(created, LocalDate.now()).coerceAtLeast(0)
+        val created = serverShopDate(createdAt) ?: return ""
+        ChronoUnit.DAYS.between(created, shopToday()).coerceAtLeast(0)
     } catch(_: Exception) { return "" }
     return if(days == 0L) "Today" else "${days}d old"
 }

@@ -16,6 +16,15 @@ data class AutoKeyJobsUiState(val loading: Boolean = false, val error: String? =
 fun mobileViewOf(directory: String, focus: String?, query: String, name: String = "") =
  SavedJobView(name, statusFilter = focus, sort = directory, query = query.ifBlank { null })
 fun mobileViewToSaved(v: SavedJobView): MobileSavedView = sanitizeSavedView(MobileSavedView(v.sort ?: "active", v.statusFilter, v.mobileStatus, v.technicianId, v.mobileCategory))
+/** Canonical mobile statuses the backend treats as final (AUTO_KEY_FINAL_STATUSES): they only appear in the completed directory. */
+val MOBILE_CLOSED_STATUSES = setOf("work_completed", "invoice_paid", "failed_job", "no_go")
+
+/** The directory a status filter needs: a closed status can't match under "active" and an open one can't under "completed" ("all" fits both). */
+fun directoryForStatus(directory: String, status: String?): String {
+ if(status == null || directory == "all") return directory
+ val closed = canonicalMobileStatus(status) in MOBILE_CLOSED_STATUSES
+ return when { closed && directory == "active" -> "completed"; !closed && directory == "completed" -> "active"; else -> directory }
+}
 class AutoKeyJobsViewModel(private val persistView: Boolean = false): ViewModel() {
  companion object { fun listFactory() = object: androidx.lifecycle.ViewModelProvider.Factory {
   @Suppress("UNCHECKED_CAST") override fun <T: ViewModel> create(modelClass: Class<T>): T = AutoKeyJobsViewModel(true) as T
@@ -67,7 +76,7 @@ class AutoKeyJobsViewModel(private val persistView: Boolean = false): ViewModel(
  fun query(text: String) { mutable.update { it.copy(query = text.take(200)) }; fetch(false, true) }
  fun directory(value: String) { require(value in listOf("active", "completed", "all")); mutable.update { it.copy(directory = value, focus = null) }; rememberView(); fetch(false) }
  fun focus(value: String?) { require(value == null || value in MOBILE_FOCUS_OPTIONS); mutable.update { it.copy(focus = value, day = null) }; rememberView(); fetch(false) }
- fun status(value: String?) { mutable.update { it.copy(statusFilter = value) }; rememberView(); fetch(false) }
+ fun status(value: String?) { mutable.update { it.copy(statusFilter = value, directory = directoryForStatus(it.directory, value)) }; rememberView(); fetch(false) }
  fun technician(value: String?) { mutable.update { it.copy(technicianFilter = value) }; rememberView(); fetch(false) }
  fun category(value: String?) { require(value == null || value in MOBILE_REPORT_CATEGORIES); mutable.update { it.copy(categoryFilter = value) }; rememberView(); fetch(false) }
  fun resetFilters() { mutable.update { it.copy(statusFilter = null, technicianFilter = null, categoryFilter = null, focus = null, day = null, directory = "active") }; rememberView(); fetch(false) }

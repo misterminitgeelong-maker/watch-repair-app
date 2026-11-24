@@ -47,14 +47,16 @@ class DashboardViewModel : ViewModel() {
                         try {
                             api.getReportsSummary()
                         } catch (e: Exception) {
-                            err = e.userMessage()
+                            // Only people who can see the money tiles need to hear that the summary failed.
+                            if (TokenStore.canManageInvoices()) err = e.userMessage()
                             null
                         }
                     }
                     val w = async {
                         try {
                             api.getReportsWidgets()
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            if (err == null) err = "Some dashboard figures could not be loaded. ${e.userMessage()}"
                             null
                         }
                     }

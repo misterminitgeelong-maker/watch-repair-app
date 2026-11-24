@@ -115,6 +115,7 @@ fun TodayHubScreen(
             }
         }
         if(hub.error != null) item { ErrorBanner(hub.error.orEmpty(), Modifier.padding(horizontal = 20.dp), onRetry = jobs::refresh) }
+        if(dash.error != null) item { ErrorBanner(dash.error.orEmpty(), Modifier.padding(horizontal = 20.dp), onRetry = dashboard::refresh) }
         item {
             if(calibre) Box(Modifier.padding(horizontal = 20.dp)) { BlockHeader("Needs your attention", count = attentionAll.size + actions.size + (dash.inboxCount?.takeIf { it > 0 }?.let { 1 } ?: 0), onSeeAll = onViewAll, seeAllDescription = "See all jobs needing attention") }
             else Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -124,6 +125,7 @@ fun TodayHubScreen(
         }
         if(attention.isEmpty() && actions.isEmpty()) item {
             if(hub.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp))
+            else if(hub.error != null || dash.error != null) Text("Some figures could not be loaded, so we can't confirm nothing needs attention.", Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else EmptyState("You're all caught up", "Nothing is overdue or waiting on you right now.", icon = "check")
         }
         items(attention, key = { "${it.service}/${it.id}" }) { job -> HubJobCard(job, { onOpenJob(job) }, Modifier.padding(horizontal = 20.dp)) }
@@ -158,9 +160,9 @@ fun TodayHubScreen(
     fun money(c: Int) = String.format(Locale.US, "$%,.2f", c / 100.0)
     val f = s.financials as au.mainspring.nativeapp.api.ReportsFinancials?
     if(f == null) return
-    val approval = (s.salesFunnel as au.mainspring.nativeapp.api.SalesFunnelSummary?)?.approvalRatePercent?.toInt() ?: 0
+    val approval = ((s.salesFunnel as au.mainspring.nativeapp.api.SalesFunnelSummary?)?.approvalRatePercent ?: 0.0).let { if(it % 1.0 == 0.0) it.toInt().toString() else String.format(Locale.US, "%.1f", it) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if(showLabel) MonoLabel("Business this period")
+        if(showLabel) MonoLabel("Business, all time")
         MetricStrip(listOf("Revenue" to money(f.revenueCents), "Gross profit" to money(f.grossProfitCents), "Approval rate" to "$approval%"))
         MetricStrip(listOf("Outstanding" to money(f.outstandingCents), "Billed" to money(f.billedCents)))
     }
@@ -356,8 +358,8 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
         val tiles = buildList<@Composable (Modifier) -> Unit> {
             add { m -> HomeTile("Active jobs", hub.activeCount.toString(), caption, "jobs", m, onViewAll) }
             add { m -> HomeTile("Customers", "All", "Directory and history", "customers", m) { onOpenRoute("people") } }
-            add { m -> HomeTile("Quotes", (widgets?.quotesPending7dCount ?: 0).toString(), "waiting 7+ days", "quotes", m, onOpenQuotes) }
-            add { m -> HomeTile("Invoices", (widgets?.overdueInvoicesCount ?: 0).toString(), "overdue", "invoices", m, onOpenInvoices) }
+            add { m -> HomeTile("Quotes", widgets?.quotesPending7dCount?.toString() ?: "\u2014", "waiting 7+ days", "quotes", m, onOpenQuotes) }
+            add { m -> HomeTile("Invoices", widgets?.overdueInvoicesCount?.toString() ?: "\u2014", "overdue", "invoices", m, onOpenInvoices) }
             if(canMoney) add { m -> HomeTile("Work value", revenue ?: "Reports", "Outstanding work", "money", m) { onOpenRoute("reports") } }
             if(isOwner) add { m -> HomeTile("Team", "Manage", "Staff and roles", "team", m) { onOpenRoute("team") } }
         }
@@ -392,7 +394,7 @@ private fun checklistPrefs() = TokenStore.context()?.getSharedPreferences("mains
             DetailRow("Watch OK wait", (s.jobsByStatus["awaiting_go_ahead"] ?: 0).toString())
             DetailRow("Quotes pending", au.mainspring.nativeapp.quotesPendingCount(s.quotesByStatus).toString())
             DetailRow("Urgent jobs", urgentJobs.toString())
-            DetailRow("Unpaid invoices", (w?.overdueInvoicesCount ?: 0).toString())
+            DetailRow("Unpaid invoices", w?.overdueInvoicesCount?.toString() ?: "\u2014")
         }
         HomeCard(Modifier.fillMaxWidth().testTag("pulse-data-health")) {
             Text("Financial Data Health", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)

@@ -443,7 +443,7 @@ private fun Modifier.background6(color: Color): Modifier = this.then(Modifier.ba
         Text("Work log", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         w.logs.asReversed().take(5).forEach { log ->
             val note = runCatching { log.note }.getOrNull().orEmpty()
-            val date = runCatching { log.createdAt.take(10) }.getOrDefault("")
+            val date = runCatching { au.mainspring.nativeapp.ui.formatShopDate(log.createdAt) }.getOrDefault("")
             Text(listOf(note.ifBlank { "(no note)" }, if (log.minutes > 0) "${log.minutes}m" else "", date).filter { it.isNotBlank() }.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall)
         }

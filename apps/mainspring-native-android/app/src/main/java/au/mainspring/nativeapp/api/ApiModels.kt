@@ -169,6 +169,8 @@ data class QuoteRead(
     @SerializedName("approval_token") val approvalToken: String? = null,
     @SerializedName("sent_at") val sentAt: String? = null,
     @SerializedName("created_at") val createdAt: String,
+    @SerializedName("customer_name") val customerName: String? = null,
+    @SerializedName("job_number") val jobNumber: String? = null,
 )
 
 data class QuoteLineItemRead(
@@ -310,6 +312,7 @@ data class InvoiceRead(
     @SerializedName("total_cents") val totalCents: Int,
     val currency: String,
     @SerializedName("created_at") val createdAt: String,
+    @SerializedName("customer_name") val customerName: String? = null,
 )
 
 data class PaymentRead(

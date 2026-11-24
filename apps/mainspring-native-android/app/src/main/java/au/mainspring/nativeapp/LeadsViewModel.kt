@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.*
 import java.time.LocalDate
 
 /** Active pipeline stages, in the order the web Lead inbox shows them. */
-val LEAD_PIPELINE = listOf("new" to "New", "quote_needed" to "Quote needed", "contacted" to "Contacted", "follow_up_due" to "Follow-up due")
+val LEAD_PIPELINE = listOf("new" to "New", "quote_needed" to "Quote needed", "contacted" to "Contacted", "visited" to "Visited", "onboarded" to "Onboarded", "follow_up_due" to "Follow-up due")
 val LEAD_STATUS_OPTIONS = LEAD_PIPELINE + listOf("won" to "Won", "lost" to "Lost")
 
 data class LeadsState(
@@ -24,7 +24,7 @@ data class LeadsState(
     val overdue: Int get() = all.count { it.isOverdueFollowUp() }
 }
 
-fun InboundLead.isOverdueFollowUp(today: LocalDate = LocalDate.now()): Boolean =
+fun InboundLead.isOverdueFollowUp(today: LocalDate = shopToday()): Boolean =
     status == "follow_up_due" && nextFollowUpOn?.let { runCatching { LocalDate.parse(it.take(10)).isBefore(today) }.getOrDefault(false) } == true
 
 class LeadsViewModel : ViewModel() {
@@ -52,7 +52,7 @@ class LeadsViewModel : ViewModel() {
     }
 
     fun setStatus(lead: InboundLead, status: String) = update(lead) { addProperty("status", status) }
-    fun followUpIn(lead: InboundLead, days: Long) = update(lead) { addProperty("status", "follow_up_due"); addProperty("next_follow_up_on", LocalDate.now().plusDays(days).toString()) }
+    fun followUpIn(lead: InboundLead, days: Long) = update(lead) { addProperty("status", "follow_up_due"); addProperty("next_follow_up_on", shopToday().plusDays(days).toString()) }
     fun saveNotes(lead: InboundLead, notes: String) = update(lead) { addProperty("notes", notes.trim()) }
 
     private fun update(lead: InboundLead, build: JsonObject.() -> Unit) {

@@ -268,6 +268,7 @@ fun JobDetailScreen(
                     Text("Balance", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatCents(state.outstandingCents(job), currency) + " outstanding", style = MaterialTheme.typography.titleMedium)
                     if (state.invoiceTotalCents > 0) Text("Invoiced ${formatCents(state.invoiceTotalCents, currency)} · paid ${formatCents(state.invoicePaidCents, currency)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else if (state.invoiceError != null) Text(state.invoiceError.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
                     else Text("No invoice raised yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if(TokenStore.canManageInvoices()) SecondaryAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("job-quote-payment")) {
@@ -285,7 +286,7 @@ fun JobDetailScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             MonoLabel(if(paid) "Payment recorded" else "Outstanding")
-                            Text((if(currency == "AUD") String.format(java.util.Locale.US, "A$%.2f", outstandingCents / 100.0) else formatCents(outstandingCents, currency)) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text(webMoney(outstandingCents, currency) + if(paid) " outstanding" else "", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
                             if(paid) Text("Payment does not close the job. Confirm collection only when the customer receives the watch.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         AccentAction(onClick = { onQuotes(shownId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open invoice & payment") }
@@ -329,9 +330,9 @@ fun JobDetailScreen(
                         Column(Modifier.weight(1f)) {
                             Text("Assigned to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             val assignedName = job.assignedUserId?.let { id -> state.users.firstOrNull { it.id == id }?.name ?: job.claimedByName ?: if (id == TokenStore.currentUserId()) "You" else "Assigned" }
-                            Text(assignedName ?: job.claimedByName ?: "Nobody yet", style = MaterialTheme.typography.titleMedium)
+                            Text(assignedName ?: job.claimedByName ?: (if (job.claimedByUserId != null && job.claimedByUserId == TokenStore.currentUserId()) "You" else if (job.claimedByUserId != null) "Claimed" else "Nobody yet"), style = MaterialTheme.typography.titleMedium)
                         }
-                        if (job.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Claim for me") }
+                        if (job.claimedByUserId == null && job.claimedByName == null) SecondaryAction(onClick = { vm.claimJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Claim for me") }
                         else SecondaryAction(onClick = { vm.releaseJob() }, enabled = !state.claimBusy, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (state.claimBusy) "…" else "Release") }
                     }
                 }
@@ -493,7 +494,7 @@ internal fun launchContact(context: android.content.Context, intent: Intent): St
 
 /** The web shows the quote as "$95.00" (no currency suffix) for AUD shops; other currencies keep the suffix. */
 internal fun webMoney(cents: Int, currency: String): String =
-    if (currency == "AUD") String.format(java.util.Locale.US, "$%.2f", cents / 100.0) else formatCents(cents, currency)
+    if (currency == "AUD") au.mainspring.nativeapp.ui.formatMoney(cents, currency) else formatCents(cents, currency)
 
 /** Shop-timezone date without the time of day, as the web's job header and ticket show it. */
 internal fun shopDateOnly(value: String): String = formatShopDate(value).substringBefore(' ')

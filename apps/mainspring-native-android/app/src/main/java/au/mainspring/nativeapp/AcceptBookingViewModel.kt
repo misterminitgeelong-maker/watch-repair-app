@@ -31,7 +31,8 @@ class AcceptBookingViewModel(private val bookingId: String) : ViewModel() {
         mutable.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             try {
-                val found = ApiClient.api.bookingRequests(limit = 100).items.firstOrNull { it.id == bookingId }
+                val found = ApiClient.api.bookingRequests(limit = 100, status = "pending").items.firstOrNull { it.id == bookingId }
+                    ?: ApiClient.api.bookingRequests(limit = 100).items.firstOrNull { it.id == bookingId }
                 mutable.update { it.copy(loading = false, booking = found) }
             } catch(e: CancellationException) { throw e }
             catch(_: Exception) { mutable.update { it.copy(loading = false) } } // the summary is optional; the accept call is authoritative

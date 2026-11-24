@@ -33,7 +33,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-private fun money(cents: Long) = "$" + BigDecimal.valueOf(cents, 2).toPlainString()
+private fun money(cents: Long) = formatMoney(cents, au.mainspring.nativeapp.TokenStore.shopValue("currency"))
 
 /** Sales by category (calendar period or custom range) with CSV export, GST, technician and trend breakdowns, plus the shop audit log. */
 @OptIn(ExperimentalMaterial3Api::class)

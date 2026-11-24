@@ -813,3 +813,24 @@ def test_reoffer_on_decline_can_be_switched_off(monkeypatch):
     _geocode_booking(bid, op_tid)
     declined = client.post(f"/v1/shop-mobile-bookings/{bid}/decline", headers=op_h, json={})
     assert declined.json()["status"] == "declined"
+
+
+def test_booking_preferred_time_is_stored_as_naive_utc():
+    suffix = uuid4().hex[:8]
+    shop_h, _op_h, _shop_tid, _op_tid = _setup_parent_network(suffix)
+    create = client.post(
+        "/v1/shop-mobile-bookings",
+        headers=shop_h,
+        json=_booking_payload(
+            customer_name="Offset Time",
+            job_address="10 George St, Sydney NSW",
+            preferred_scheduled_at="2026-07-20T10:00:00+10:00",
+        ),
+    )
+    assert create.status_code == 201, create.text
+    with Session(engine) as session:
+        row = session.get(ShopMobileBookingRequest, UUID(create.json()["id"]))
+        assert row is not None
+        # Postgres returns tz-aware UTC, SQLite naive: compare the normalised UTC value
+        from app.datetime_utils import naive_utc_from_any
+        assert naive_utc_from_any(row.preferred_scheduled_at) == datetime(2026, 7, 20, 0, 0)

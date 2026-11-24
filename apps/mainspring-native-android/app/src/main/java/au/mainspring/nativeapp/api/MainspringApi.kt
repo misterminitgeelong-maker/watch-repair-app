@@ -46,7 +46,7 @@ interface MainspringApi {
     @retrofit2.http.PATCH("v1/shoe-repair-jobs/{id}") suspend fun updateCounterShoe(@Path("id") id: String, @Body fields: com.google.gson.JsonObject): ShoeRepairJobRead
     @GET("v1/work-logs") suspend fun workLogs(@Query("repair_job_id") jobId: String): List<WorkLogRead>
     @POST("v1/work-logs") suspend fun createWorkLog(@Body body: WorkLogCreate): WorkLogRead
-    @GET("v1/shop-mobile-bookings") suspend fun bookingRequests(@Query("offset") offset: Int = 0, @Query("limit") limit: Int = 100): BookingPage
+    @GET("v1/shop-mobile-bookings") suspend fun bookingRequests(@Query("offset") offset: Int = 0, @Query("limit") limit: Int = 100, @Query("status") status: String? = null): BookingPage
     @GET("v1/shop-mobile-bookings/operators") suspend fun bookingOperators(): List<BookingOperator>
     @POST("v1/shop-mobile-bookings") suspend fun createBookingRequest(@Body fields: com.google.gson.JsonObject): BookingRequest
     @POST("v1/shop-mobile-bookings/{id}/{action}") suspend fun bookingAction(@Path("id") id: String, @Path("action") action: String, @Body fields: com.google.gson.JsonObject): BookingRequest
@@ -256,7 +256,7 @@ interface MainspringApi {
     suspend fun postQuoteSend(@Path("quoteId") quoteId: String): QuoteSendResponse
 
     @GET("v1/invoices")
-    suspend fun listInvoices(@Query("limit") limit: Int = 100, @Query("offset") offset: Int = 0): InvoicePage
+    suspend fun listInvoices(@Query("limit") limit: Int = 100, @Query("offset") offset: Int = 0, @Query("repair_job_id") repairJobId: String? = null): InvoicePage
 
     @POST("v1/invoices/{id}/send")
     suspend fun sendInvoice(@Path("id") id: String): InvoiceSendResponse

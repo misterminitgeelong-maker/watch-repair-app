@@ -165,8 +165,12 @@ internal fun moreToolGroup(route: String, features: Set<String>, owner: Boolean,
             }
         }
     }
-    if(signOut) AlertDialog(onDismissRequest = { signOut = false }, title = { Text("Sign out?") }, text = { Text("Saved drafts remain tied to this shop and account on this device.") },
-        confirmButton = { TextButton({ signOut = false; onLogout() }) { Text("Sign out") } }, dismissButton = { TextButton({ signOut = false }) { Text("Cancel") } })
+    if(signOut) {
+        val queued by au.mainspring.nativeapp.offline.OfflineSync.queue.state.collectAsState()
+        val unsynced = queued.pending.size + queued.attention.size
+        AlertDialog(onDismissRequest = { signOut = false }, title = { Text("Sign out?") }, text = { Text(au.mainspring.nativeapp.offline.signOutWarning(queued.pending.size, queued.attention.size)) },
+        confirmButton = { TextButton({ signOut = false; onLogout() }) { Text(if(unsynced > 0) "Sign out anyway" else "Sign out") } }, dismissButton = { TextButton({ signOut = false }) { Text("Cancel") } })
+    }
 }
 
 /** Exit glyph: a door bracket with an arrow leaving it. */
