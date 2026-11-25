@@ -1847,7 +1847,7 @@
           "repair-jobs"
         ],
         "summary": "Repair Job Queue Swipe",
-        "description": "Advance or rewind job status along the watch queue lane \u2014 no SMS or email.",
+        "description": "Advance or rewind job status along the watch queue lane. Moving forward texts/emails the customer like the normal status change.",
         "operationId": "repair_job_queue_swipe_v1_repair_jobs__job_id__queue_swipe_post",
         "security": [
           {
@@ -12949,6 +12949,7 @@
           "auto-key-jobs"
         ],
         "summary": "Send Day Before Reminders",
+        "description": "Manual button: send tomorrow's reminders now. The nightly sweep does the same\nautomatically, and a job already texted is not texted twice.",
         "operationId": "send_day_before_reminders_v1_auto_key_jobs_day_before_reminders_post",
         "responses": {
           "200": {
@@ -35612,6 +35613,11 @@
               }
             ],
             "title": "Email Error Detail"
+          },
+          "sms_sent": {
+            "type": "boolean",
+            "title": "Sms Sent",
+            "default": false
           }
         },
         "type": "object",
