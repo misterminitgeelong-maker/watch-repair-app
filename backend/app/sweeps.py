@@ -110,6 +110,11 @@ def all_sweeps() -> list[Sweep]:
 
         return run_mobile_kpi_close
 
+    def _mobile_day_before() -> SweepFn:
+        from .services.mobile_day_before import send_day_before_reminders
+
+        return send_day_before_reminders
+
     def _notification_redelivery() -> SweepFn:
         from .services.notification_redelivery import redeliver_failed_notifications
 
@@ -126,7 +131,7 @@ def all_sweeps() -> list[Sweep]:
             enabled=settings.quote_reminder_enabled,
             interval_minutes=settings.quote_reminder_check_interval_minutes,
             load=_quote_reminders,
-            notable_keys=("watch_sent", "mobile_sent"),
+            notable_keys=("watch_sent", "mobile_sent", "shoe_sent"),
         ),
         Sweep(
             name="shop_owner_invite_reminders",
@@ -183,6 +188,13 @@ def all_sweeps() -> list[Sweep]:
             interval_minutes=settings.mobile_kpi_close_check_interval_minutes,
             load=_mobile_kpi_close,
             notable_keys=("daily_compiled", "weekly_compiled", "sent"),
+        ),
+        Sweep(
+            name="mobile_day_before",
+            enabled=settings.mobile_day_before_enabled,
+            interval_minutes=settings.mobile_day_before_check_interval_minutes,
+            load=_mobile_day_before,
+            notable_keys=("sent",),
         ),
         Sweep(
             name="notification_redelivery",

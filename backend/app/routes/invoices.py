@@ -267,8 +267,45 @@ def send_invoice(
         if watch:
             customer = session.get(Customer, watch.customer_id)
 
-    if not customer or not (customer.email or "").strip():
-        raise HTTPException(status_code=400, detail="Customer has no email address on file")
+    if not customer or not ((customer.email or "").strip() or (customer.phone or "").strip()):
+        raise HTTPException(status_code=400, detail="Customer has no email address or phone number on file")
+
+    if not (customer.email or "").strip():
+        # Phone-only customer: text the invoice and pay link instead.
+        from .. import sms as sms_service
+
+        _tenant = session.get(Tenant, auth.tenant_id)
+        sent = sms_service.notify_invoice_sent(
+            session,
+            tenant_id=auth.tenant_id,
+            repair_job_id=job.id,
+            customer_name=customer.full_name or "there",
+            to_phone=customer.phone.strip(),
+            invoice_number=invoice.invoice_number,
+            job_number=job.job_number,
+            total_cents=invoice.total_cents,
+            currency=invoice.currency,
+            shop_name=(_tenant.name if _tenant else None) or "Your repair shop",
+            pay_url=invoice.xero_online_invoice_url,
+        )
+        if sent:
+            session.add(
+                TenantEventLog(
+                    tenant_id=auth.tenant_id,
+                    actor_user_id=auth.user_id,
+                    entity_type="invoice",
+                    entity_id=invoice.id,
+                    event_type="invoice_sent_sms",
+                    event_summary=f"Invoice {invoice.invoice_number} texted to customer",
+                )
+            )
+        session.commit()
+        return InvoiceSendResponse(
+            invoice_id=invoice.id,
+            email_sent=False,
+            sms_sent=sent,
+            email_skipped_reason=None if sent else "send_failed",
+        )
 
     if not settings.enable_email_notifications:
         return InvoiceSendResponse(
@@ -369,6 +406,53 @@ def get_invoice_line_items(
     return items
 
 
+def _send_payment_receipt(session: Session, invoice: Invoice) -> None:
+    """Tell the customer their invoice is paid: email if they have one, otherwise a text.
+    Never raises: the payment is already saved."""
+    try:
+        job = session.get(RepairJob, invoice.repair_job_id)
+        watch = session.get(Watch, job.watch_id) if job and job.watch_id else None
+        customer = session.get(Customer, watch.customer_id) if watch else None
+        if not job or not customer:
+            return
+        tenant = session.get(Tenant, invoice.tenant_id)
+        shop_name = (tenant.name if tenant else None) or "Your repair shop"
+        name = customer.full_name or "there"
+        if (customer.email or "").strip():
+            from ..email_client import send_payment_receipt_email
+
+            send_payment_receipt_email(
+                to_email=customer.email,
+                customer_name=name,
+                invoice_number=invoice.invoice_number,
+                job_number=job.job_number,
+                total_cents=invoice.total_cents,
+                currency=invoice.currency,
+                shop_name=shop_name,
+                session=session,
+                tenant_id=invoice.tenant_id,
+            )
+        elif (customer.phone or "").strip():
+            from .. import sms as sms_service
+
+            sms_service.notify_payment_receipt(
+                session,
+                tenant_id=invoice.tenant_id,
+                repair_job_id=job.id,
+                customer_name=name,
+                to_phone=customer.phone.strip(),
+                invoice_number=invoice.invoice_number,
+                job_number=job.job_number,
+                total_cents=invoice.total_cents,
+                currency=invoice.currency,
+                shop_name=shop_name,
+            )
+        session.commit()
+    except Exception:
+        session.rollback()
+        _logger.exception("payment receipt failed invoice=%s", invoice.id)
+
+
 @router.post("/{invoice_id}/payments", response_model=PaymentRead, status_code=201)
 def create_payment(
     invoice_id: UUID,
@@ -436,6 +520,8 @@ def create_payment(
 
     session.commit()
     session.refresh(payment)
+    if newly_paid:
+        _send_payment_receipt(session, invoice)
     return PaymentRead(
         id=payment.id,
         tenant_id=payment.tenant_id,

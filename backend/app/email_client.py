@@ -149,6 +149,50 @@ def send_quote_sent_email(
     )
 
 
+def send_payment_receipt_email(
+    *,
+    to_email: str,
+    customer_name: str,
+    invoice_number: str,
+    job_number: str,
+    total_cents: int,
+    currency: str = "AUD",
+    shop_name: str = "Your repair shop",
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+) -> tuple[bool, str | None]:
+    """Receipt email when an invoice has been paid in full."""
+    if not (to_email or "").strip():
+        return False, None
+    amount = format_cents(total_cents, currency)
+    subject = f"Payment received – Invoice {invoice_number}"
+    body_plain = (
+        f"Hi {customer_name},\n\n"
+        f"Thanks - we've received your payment of {amount} for invoice {invoice_number} (job #{job_number}).\n\n"
+        f"{shop_name}"
+    )
+    body_html = render_transactional_email(
+        title=f"Payment received · Invoice {invoice_number}",
+        preheader=f"Payment of {amount} received",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"Thanks - we've received your payment of <strong>{_html.escape(amount)}</strong> for invoice "
+            f"{_html.escape(invoice_number)} (job #{_html.escape(job_number)})."
+        ),
+        shop=_customer_shop_info(shop_name, session, tenant_id),
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        event="payment_receipt",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
 def send_invoice_email(
     *,
     to_email: str,
@@ -869,6 +913,98 @@ def send_job_ready_email(
         body_html=body_html,
         shop_name=shop_name,
         event="job_ready",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
+def send_shoe_job_ready_email(
+    *,
+    to_email: str,
+    customer_name: str,
+    job_number: str,
+    status_token: str,
+    shop_name: str = "Your repair shop",
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+) -> tuple[bool, str | None]:
+    """Email when a shoe job is ready for collection."""
+    if not (to_email or "").strip():
+        return False, None
+    status_url = customer_portal_job_url("shoe", status_token)
+    subject = f"Your shoes are ready for collection – Job #{job_number}"
+    body_plain = (
+        f"Hi {customer_name},\n\n"
+        f"Your shoes (job #{job_number}) are ready for collection. "
+        f"Check status: {status_url}\n\n"
+        f"Thanks,\n{shop_name}"
+    )
+    body_html = render_transactional_email(
+        title=f"Ready for collection · Job #{job_number}",
+        preheader="Your shoes are ready for collection",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"Good news — your shoes (<strong>job #{_html.escape(job_number)}</strong>) are ready for collection."
+        ),
+        shop=_customer_shop_info(shop_name, session, tenant_id),
+        cta_label="Check job status",
+        cta_url=status_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        event="shoe_job_ready",
+        session=session,
+        tenant_id=tenant_id,
+    )
+
+
+def send_shoe_quote_email(
+    *,
+    to_email: str,
+    customer_name: str,
+    total_cents: int,
+    approval_token: str,
+    job_number: str,
+    shop_name: str = "Your repair shop",
+    reminder: bool = False,
+    session: Session | None = None,
+    tenant_id: UUID | None = None,
+) -> tuple[bool, str | None]:
+    """Email a shoe repair quote (or its reminder) with the approve/decline link."""
+    if not (to_email or "").strip():
+        return False, None
+    approval_url = f"{settings.public_base_url.rstrip('/')}/shoe-approve/{approval_token}"
+    lead = "A reminder: your" if reminder else "Your"
+    subject = f"{'Reminder: ' if reminder else ''}Your shoe repair quote – Job #{job_number}"
+    body_plain = (
+        f"Hi {customer_name},\n\n"
+        f"{lead} shoe repair quote for job #{job_number} is {format_cents(total_cents)}.\n"
+        f"Open this link to approve or decline:\n{approval_url}\n\n"
+        f"Thanks,\n{shop_name}"
+    )
+    body_html = render_transactional_email(
+        title=f"Quote · Job #{job_number}",
+        preheader=f"Your shoe repair quote is {format_cents(total_cents)}",
+        greeting=f"Hi {customer_name},",
+        intro_html=(
+            f"{lead} quote for <strong>shoe repair job #{_html.escape(job_number)}</strong> is "
+            f"<strong>{_html.escape(format_cents(total_cents))}</strong>. Tap below to approve or decline."
+        ),
+        shop=_customer_shop_info(shop_name, session, tenant_id),
+        cta_label="Review quote",
+        cta_url=approval_url,
+    )
+    return _send_email(
+        to_email=to_email.strip(),
+        subject=subject,
+        body_plain=body_plain,
+        body_html=body_html,
+        shop_name=shop_name,
+        event="shoe_quote_reminder" if reminder else "shoe_quote_sent",
         session=session,
         tenant_id=tenant_id,
     )

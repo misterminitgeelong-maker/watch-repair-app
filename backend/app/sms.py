@@ -518,6 +518,65 @@ def notify_auto_key_quote_reminder(
     )
 
 
+def notify_invoice_sent(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    invoice_number: str,
+    job_number: str,
+    total_cents: int,
+    currency: str,
+    shop_name: str,
+    pay_url: str | None = None,
+) -> bool:
+    """Text a watch invoice to a customer who has no email. Returns True if the provider accepted it."""
+    body = (
+        f"Hi {customer_name}, your invoice {invoice_number} from {shop_name} for job #{job_number} "
+        f"is {format_cents(total_cents, currency)}."
+    )
+    body += f" Pay online: {pay_url}" if pay_url else " Please contact us to arrange payment or collection."
+    sid, _status = _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="invoice_sent",
+    )
+    return sid is not None
+
+
+def notify_payment_receipt(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    invoice_number: str,
+    job_number: str,
+    total_cents: int,
+    currency: str,
+    shop_name: str,
+) -> None:
+    """Thank-you / receipt text once an invoice is paid in full."""
+    body = (
+        f"Hi {customer_name}, thanks - we've received your payment of {format_cents(total_cents, currency)} "
+        f"for invoice {invoice_number} (job #{job_number}). {shop_name}"
+    )
+    _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="payment_receipt",
+    )
+
+
 def notify_job_status_changed(
     session: Session,
     *,
@@ -607,6 +666,7 @@ def notify_auto_key_customer_scheduled(
     job_number: str,
     scheduled_at: str | None,
     job_address: str | None,
+    auto_key_job_id: UUID | None = None,
 ) -> None:
     """Notify customer when their mobile Auto Key job is scheduled."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
@@ -632,6 +692,7 @@ def notify_auto_key_customer_scheduled(
         repair_job_id=None,
         to_phone=to_phone,
         body=body,
+        auto_key_job_id=auto_key_job_id,
         event="auto_key_customer_scheduled",
     )
 
@@ -645,6 +706,7 @@ def notify_auto_key_customer_day_before(
     job_number: str,
     scheduled_at: str | None,
     job_address: str | None,
+    auto_key_job_id: UUID | None = None,
 ) -> None:
     """Notify customer of tomorrow's scheduled mobile job."""
     if not mobile_services_customer_sms_enabled(session, tenant_id):
@@ -668,6 +730,7 @@ def notify_auto_key_customer_day_before(
         repair_job_id=None,
         to_phone=to_phone,
         body=body,
+        auto_key_job_id=auto_key_job_id,
         event="auto_key_customer_day_before",
     )
 
@@ -1478,6 +1541,36 @@ def notify_shoe_quote_sent(
     )
 
 
+def notify_shoe_quote_reminder(
+    session: Session,
+    *,
+    tenant_id: UUID,
+    shoe_repair_job_id: UUID,
+    customer_name: str,
+    to_phone: str,
+    total_cents: int,
+    approval_token: str,
+    job_number: str,
+    shop_name: str = "your shoe repair shop",
+) -> None:
+    """One gentle reminder that a shoe quote is still waiting for a decision."""
+    approval_url = f"{settings.public_base_url}/shoe-approve/{approval_token}"
+    body = (
+        f"Hi {customer_name}, a friendly reminder from {shop_name}: your shoe repair quote of "
+        f"{format_cents(total_cents)} for job #{job_number} is still waiting for your decision. "
+        f"Review it here: {approval_url}"
+    )
+    _logged_send(
+        session,
+        tenant_id=tenant_id,
+        repair_job_id=None,
+        shoe_repair_job_id=shoe_repair_job_id,
+        to_phone=to_phone,
+        body=body,
+        event="quote_reminder",
+    )
+
+
 def notify_shoe_job_status_changed(
     session: Session,
     *,
@@ -1538,6 +1631,7 @@ def notify_auto_key_schedule_changed(
     scheduled_at: str | None,
     job_address: str | None,
     job_type: str | None,
+    auto_key_job_id: UUID | None = None,
 ) -> None:
     """Notify assigned tech when an auto key job's schedule changes."""
     parts = [f"Auto key job #{job_number} schedule updated:"]
@@ -1562,6 +1656,7 @@ def notify_auto_key_schedule_changed(
         repair_job_id=None,
         to_phone=to_phone,
         body=body,
+        auto_key_job_id=auto_key_job_id,
         event="auto_key_schedule_changed",
     )
 

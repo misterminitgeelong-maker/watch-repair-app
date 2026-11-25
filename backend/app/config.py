@@ -230,6 +230,9 @@ class Settings(BaseSettings):
     notification_retry_backoff_seconds: float = 0.4
     notification_retry_backoff_cap_seconds: float = 4.0
     notification_redelivery_enabled: bool = True
+    # Day-before text to mobile services customers (sent from 4pm shop time, once per job).
+    mobile_day_before_enabled: bool = True
+    mobile_day_before_check_interval_minutes: int = 30
     notification_redelivery_check_interval_minutes: int = 15
 
     # Shop-to-shop live booking requests: assigned operator offer → timeout → shared Dispatch Pool.
@@ -369,6 +372,17 @@ def validate_runtime_config() -> None:
             "Invalid production config: JWT_SECRET is unset or using the default placeholder. "
             "Set a strong secret (for example, 32+ random bytes)."
         )
+
+    # Not fatal, but loud: these switch customer messages off without any error.
+    import logging as _logging
+
+    _warn = _logging.getLogger("mainspring.startup")
+    if not settings.enable_email_notifications:
+        _warn.warning("ENABLE_EMAIL_NOTIFICATIONS is off: every customer email is only logged, not sent.")
+    elif not (settings.sendgrid_api_key or "").strip():
+        _warn.warning("SENDGRID_API_KEY is not set: customer emails are only logged, not sent.")
+    if not (settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number):
+        _warn.warning("Twilio is not configured: customer texts are only logged, not sent.")
 
     cors_values = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
     if any(origin == "*" for origin in cors_values):

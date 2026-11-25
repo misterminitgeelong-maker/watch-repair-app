@@ -376,6 +376,63 @@ def _ready_sms_already_sent(session: Session, tenant_id: UUID, job_id: UUID) -> 
     return any(r.status in ("sent", "dry_run") for r in rows)
 
 
+def _send_customer_status_notifications(
+    session: Session, job: RepairJob, previous_status: str, tenant_id: UUID
+) -> None:
+    """Texts and emails the customer gets when a watch job changes status.
+
+    One place for every route that moves a watch job (status update, queue swipe),
+    so they cannot drift apart again.
+    """
+    if previous_status == job.status:
+        return
+    watch = session.get(Watch, job.watch_id)
+    customer = session.get(Customer, watch.customer_id) if watch else None
+    if not customer:
+        return
+    tenant = session.get(Tenant, tenant_id)
+    shop_name = (tenant.name if tenant else "") or ""
+    is_ready = job.status in ("completed", "awaiting_collection")
+    already_ready = previous_status in ("completed", "awaiting_collection")
+    if customer.phone:
+        if job.status == "working_on":
+            sms.notify_work_started(
+                session,
+                tenant_id=tenant_id,
+                repair_job_id=job.id,
+                customer_name=customer.full_name or "there",
+                to_phone=customer.phone,
+                job_number=job.job_number,
+            )
+        elif job.status in ("go_ahead", "collected") or (
+            is_ready and not _ready_sms_already_sent(session, tenant_id, job.id)
+        ):
+            sms.notify_job_status_changed(
+                session,
+                tenant_id=tenant_id,
+                repair_job_id=job.id,
+                customer_name=customer.full_name or "there",
+                to_phone=customer.phone,
+                job_number=job.job_number,
+                status_token=job.status_token,
+                new_status=job.status,
+                shop_name=shop_name or "your watch repair shop",
+            )
+    # completed -> awaiting_collection is the same "ready" news; one email only.
+    if customer.email and is_ready and not already_ready:
+        from ..email_client import send_job_ready_email
+
+        send_job_ready_email(
+            to_email=customer.email,
+            customer_name=customer.full_name,
+            job_number=job.job_number,
+            status_token=job.status_token,
+            shop_name=shop_name or "Your repair shop",
+            session=session,
+            tenant_id=tenant_id,
+        )
+
+
 @router.post("/{job_id}/status", response_model=RepairJobRead)
 def update_repair_job_status(
     job_id: UUID,
@@ -405,56 +462,7 @@ def update_repair_job_status(
     if payload.note and str(payload.note).strip():
         _append_shop_note_to_fault_report(job, str(payload.note))
 
-    watch = session.get(Watch, job.watch_id)
-    if watch:
-        customer = session.get(Customer, watch.customer_id)
-        if customer:
-            if customer.phone and job.status == "working_on":
-                sms.notify_work_started(
-                    session,
-                    tenant_id=auth.tenant_id,
-                    repair_job_id=job.id,
-                    customer_name=customer.full_name or "there",
-                    to_phone=customer.phone,
-                    job_number=job.job_number,
-                )
-            if (
-                customer.phone
-                and previous_status != job.status
-                and job.status in ("completed", "awaiting_collection")
-                and not _ready_sms_already_sent(session, auth.tenant_id, job.id)
-            ):
-                _ready_tenant = session.get(Tenant, auth.tenant_id)
-                sms.notify_job_status_changed(
-                    session,
-                    tenant_id=auth.tenant_id,
-                    repair_job_id=job.id,
-                    customer_name=customer.full_name or "there",
-                    to_phone=customer.phone,
-                    job_number=job.job_number,
-                    status_token=job.status_token,
-                    new_status=job.status,
-                    shop_name=(_ready_tenant.name if _ready_tenant else "") or "your watch repair shop",
-                )
-            if (
-                customer.email
-                and previous_status != job.status
-                # completed -> awaiting_collection is the same "ready" news; one email only.
-                and previous_status not in ("completed", "awaiting_collection")
-                and job.status in ("completed", "awaiting_collection")
-            ):
-                from ..email_client import send_job_ready_email
-                tenant = session.get(Tenant, auth.tenant_id)
-                shop_name = (tenant.name if tenant else None) or "Your repair shop"
-                send_job_ready_email(
-                    to_email=customer.email,
-                    customer_name=customer.full_name,
-                    job_number=job.job_number,
-                    status_token=job.status_token,
-                    shop_name=shop_name,
-                    session=session,
-                    tenant_id=auth.tenant_id,
-                )
+    _send_customer_status_notifications(session, job, previous_status, auth.tenant_id)
 
     session.commit()
     session.refresh(job)
@@ -487,7 +495,7 @@ def repair_job_queue_swipe(
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
-    """Advance or rewind job status along the watch queue lane — no SMS or email."""
+    """Advance or rewind job status along the watch queue lane. Moving forward texts/emails the customer like the normal status change."""
     job = get_tenant_repair_job(session, job_id, auth.tenant_id)
     if not job:
         raise HTTPException(status_code=404, detail="Repair job not found")
@@ -508,8 +516,14 @@ def repair_job_queue_swipe(
             change_note=f"Queue swipe ({payload.direction})",
         )
     )
+    if payload.direction == "right":
+        _send_customer_status_notifications(session, job, previous_status, auth.tenant_id)
     session.commit()
     session.refresh(job)
+    if payload.direction == "right":
+        from ..services.portal_status_notify import notify_repair_job_status, shop_name_for
+        notify_repair_job_status(session, job, previous_status, shop_name_for(session, auth.tenant_id))
+        session.commit()
     return _repair_job_to_read(session, job)
 
 

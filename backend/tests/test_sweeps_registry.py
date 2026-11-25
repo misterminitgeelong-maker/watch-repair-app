@@ -36,6 +36,8 @@ EXPECTED_SWEEPS = {
     "retention",
     # Added after the extraction: nudges unaccepted shop-owner invites before expiry.
     "shop_owner_invite_reminders",
+    # Added with the notification audit: texts mobile customers the day before.
+    "mobile_day_before",
 }
 
 

@@ -69,7 +69,7 @@ from .. import sms
 from ..sms import (
     notify_auto_key_arrival_window,
     notify_auto_key_booking_request,
-    notify_auto_key_customer_day_before,
+    notify_auto_key_customer_scheduled,
     notify_auto_key_customer_intake,
     notify_auto_key_en_route,
     notify_auto_key_invoice_ready,
@@ -669,6 +669,15 @@ def create_auto_key_job(
         except Exception as exc:
             logger.warning("auto_key_job.booking_sms_failed tenant=%s job=%s err=%s", auth.tenant_id, job.id, exc)
 
+    if not send_booking_sms:
+        _notify_schedule_or_assignment_change(
+            session,
+            job,
+            actor_user_id=auth.user_id,
+            schedule_changed=job.scheduled_at is not None,
+            assignee_changed=job.assigned_user_id is not None,
+        )
+
     return _job_read_with_customer(session, job)
 
 
@@ -946,43 +955,13 @@ def send_day_before_reminders(
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
-    # "Tomorrow" is the shop's tomorrow, not UTC's: a Melbourne 8am job is still
-    # "today" in UTC the evening before, so the UTC window missed early jobs.
-    from zoneinfo import ZoneInfo
-    from ..sms import _shop_tz
+    """Manual button: send tomorrow's reminders now. The nightly sweep does the same
+    automatically, and a job already texted is not texted twice."""
+    from ..services.mobile_day_before import send_day_before_reminders as _send
 
-    shop_zone = ZoneInfo(_shop_tz(session, auth.tenant_id))
-    local_tomorrow = datetime.now(shop_zone).date() + timedelta(days=1)
-    local_start = datetime.combine(local_tomorrow, datetime.min.time(), tzinfo=shop_zone)
-    start = local_start.astimezone(timezone.utc).replace(tzinfo=None)
-    end = (local_start + timedelta(days=1)).astimezone(timezone.utc).replace(tzinfo=None)
-    jobs = session.exec(
-        select(AutoKeyJob)
-        .where(AutoKeyJob.tenant_id == auth.tenant_id)
-        .where(AutoKeyJob.scheduled_at.is_not(None))
-        .where(AutoKeyJob.scheduled_at >= start)
-        .where(AutoKeyJob.scheduled_at < end)
-        .where(AutoKeyJob.status.notin_(AUTO_KEY_FINAL_STATUSES))
-    ).all()
-    sent = 0
-    for job in jobs:
-        customer = session.get(Customer, job.customer_id)
-        if not customer or not (customer.phone or "").strip():
-            continue
-        first_name = ((customer.full_name or "").strip().split() or ["there"])[0]
-        notify_auto_key_customer_day_before(
-            session,
-            tenant_id=auth.tenant_id,
-            to_phone=(customer.phone or "").strip(),
-            customer_name=first_name,
-            job_number=job.job_number,
-            scheduled_at=job.scheduled_at.isoformat() if job.scheduled_at else None,
-            job_address=job.job_address,
-        )
-        sent += 1
-    session.commit()
-    logger.info("auto_key_job.day_before_reminders_sent tenant=%s count=%s", auth.tenant_id, sent)
-    return {"sent": sent}
+    summary = _send(session, auth.tenant_id, ignore_hour=True)
+    logger.info("auto_key_job.day_before_reminders_sent tenant=%s count=%s", auth.tenant_id, summary["sent"])
+    return {"sent": summary["sent"]}
 
 
 @router.get("/invoices", response_model=list[AutoKeyInvoiceRead])
@@ -1274,6 +1253,53 @@ def update_auto_key_job_status(
     return result
 
 
+def _notify_schedule_or_assignment_change(
+    session: Session,
+    job: AutoKeyJob,
+    *,
+    actor_user_id: UUID | None,
+    schedule_changed: bool,
+    assignee_changed: bool,
+) -> None:
+    """Tell the customer their appointment time (once there is one) and the assigned tech
+    about a new assignment or time. Failures are logged, never raised: the save already happened."""
+    try:
+        if schedule_changed and job.scheduled_at and job.status not in AUTO_KEY_FINAL_STATUSES \
+                and job.status != "awaiting_booking_confirmation":
+            customer = session.get(Customer, job.customer_id)
+            if customer and (customer.phone or "").strip():
+                first = ((customer.full_name or "").strip().split() or ["there"])[0]
+                notify_auto_key_customer_scheduled(
+                    session,
+                    tenant_id=job.tenant_id,
+                    to_phone=customer.phone.strip(),
+                    customer_name=first,
+                    job_number=job.job_number,
+                    scheduled_at=job.scheduled_at.replace(tzinfo=timezone.utc).isoformat(),
+                    job_address=job.job_address,
+                    auto_key_job_id=job.id,
+                )
+        if (schedule_changed or assignee_changed) and job.assigned_user_id and job.assigned_user_id != actor_user_id:
+            tech = session.get(User, job.assigned_user_id)
+            if tech and (tech.mobile or "").strip():
+                from ..sms import notify_auto_key_schedule_changed
+
+                notify_auto_key_schedule_changed(
+                    session,
+                    tenant_id=job.tenant_id,
+                    to_phone=tech.mobile.strip(),
+                    job_number=job.job_number,
+                    scheduled_at=job.scheduled_at.replace(tzinfo=timezone.utc).isoformat() if job.scheduled_at else None,
+                    job_address=job.job_address,
+                    job_type=job.job_type,
+                    auto_key_job_id=job.id,
+                )
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception("auto_key_job.schedule_notice_failed job=%s", job.id)
+
+
 @router.patch("/{job_id}", response_model=AutoKeyJobRead)
 def update_auto_key_job_fields(
     job_id: UUID,
@@ -1294,6 +1320,8 @@ def update_auto_key_job_fields(
         account = session.get(CustomerAccount, update_data["customer_account_id"])
         if not account or account.tenant_id != auth.tenant_id:
             raise HTTPException(status_code=404, detail="Customer account not found")
+    old_scheduled_at = job.scheduled_at
+    old_assignee = job.assigned_user_id
     for field, value in update_data.items():
         setattr(job, field, value)
 
@@ -1313,6 +1341,13 @@ def update_auto_key_job_fields(
         )
     session.commit()
     session.refresh(job)
+    _notify_schedule_or_assignment_change(
+        session,
+        job,
+        actor_user_id=auth.user_id,
+        schedule_changed=job.scheduled_at != old_scheduled_at,
+        assignee_changed=job.assigned_user_id != old_assignee,
+    )
     return _job_read_with_customer(session, job)
 
 
