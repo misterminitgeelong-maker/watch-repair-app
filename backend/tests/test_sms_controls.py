@@ -464,3 +464,33 @@ def test_double_submitted_custom_message_creates_one_thread_message(client: Test
         assert first.id == second.id
         rows = session.exec(select(JobMessage).where(JobMessage.tenant_id == tenant_id)).all()
         assert len(rows) == 1
+
+
+# ── Ready-for-collection text on status change ───────────────────────────────
+
+def test_status_change_to_ready_sends_one_text(client: TestClient):
+    _from, stored = _unique_phone()
+    headers, tenant_id, _ = _bootstrap_tenant(client)
+    customer_id = _customer(client, headers, stored)
+    watch = client.post("/v1/watches", headers=headers, json={"customer_id": customer_id, "brand": "Omega"})
+    assert watch.status_code == 201, watch.text
+    job = client.post(
+        "/v1/repair-jobs", headers=headers, json={"watch_id": watch.json()["id"], "title": "Ready", "priority": "normal"}
+    )
+    assert job.status_code == 201, job.text
+    job_id = job.json()["id"]
+
+    def ready_events() -> list[str]:
+        with Session(engine) as session:
+            rows = session.exec(
+                select(SmsLog).where(SmsLog.tenant_id == tenant_id).where(SmsLog.event.like("status_%"))  # type: ignore[attr-defined]
+            ).all()
+            return [r.event for r in rows]
+
+    res = client.post(f"/v1/repair-jobs/{job_id}/status", headers=headers, json={"status": "awaiting_collection"})
+    assert res.status_code == 200, res.text
+    assert ready_events() == ["status_awaiting_collection"]
+
+    # Moving on to another ready status (or repeating) does not text the customer twice.
+    client.post(f"/v1/repair-jobs/{job_id}/status", headers=headers, json={"status": "completed"})
+    assert ready_events() == ["status_awaiting_collection"]

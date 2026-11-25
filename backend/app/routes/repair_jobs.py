@@ -365,6 +365,17 @@ def get_repair_job(
     return _repair_job_to_read(session, job)
 
 
+def _ready_sms_already_sent(session: Session, tenant_id: UUID, job_id: UUID) -> bool:
+    """True if a ready-for-collection text already went out for this job (avoids a second text on completed -> awaiting_collection)."""
+    rows = session.exec(
+        select(SmsLog)
+        .where(SmsLog.tenant_id == tenant_id)
+        .where(SmsLog.repair_job_id == job_id)
+        .where(SmsLog.event.in_(["status_completed", "status_awaiting_collection"]))  # type: ignore[attr-defined]
+    ).all()
+    return any(r.status in ("sent", "dry_run") for r in rows)
+
+
 @router.post("/{job_id}/status", response_model=RepairJobRead)
 def update_repair_job_status(
     job_id: UUID,
@@ -406,6 +417,24 @@ def update_repair_job_status(
                     customer_name=customer.full_name or "there",
                     to_phone=customer.phone,
                     job_number=job.job_number,
+                )
+            if (
+                customer.phone
+                and previous_status != job.status
+                and job.status in ("completed", "awaiting_collection")
+                and not _ready_sms_already_sent(session, auth.tenant_id, job.id)
+            ):
+                _ready_tenant = session.get(Tenant, auth.tenant_id)
+                sms.notify_job_status_changed(
+                    session,
+                    tenant_id=auth.tenant_id,
+                    repair_job_id=job.id,
+                    customer_name=customer.full_name or "there",
+                    to_phone=customer.phone,
+                    job_number=job.job_number,
+                    status_token=job.status_token,
+                    new_status=job.status,
+                    shop_name=(_ready_tenant.name if _ready_tenant else "") or "your watch repair shop",
                 )
             if customer.email and job.status in ("completed", "awaiting_collection"):
                 from ..email_client import send_job_ready_email
