@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta, timezone, datetime
 from uuid import UUID, uuid4
 
@@ -38,11 +39,14 @@ from ..models import (
     JobThreadMessage,
     SmsLog,
     SmsLogRead,
+    Tenant,
     TenantEventLog,
 )
 from .. import sms as sms_service
 from .. import sms
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/v1/shoe-repair-jobs",
@@ -337,6 +341,61 @@ def get_shoe_repair_job(
     return _job_to_read(job, session)
 
 
+def _ready_text_already_sent(session: Session, tenant_id: UUID, job_id: UUID) -> bool:
+    """True if a ready-for-collection text already went out for this shoe job."""
+    rows = session.exec(
+        select(SmsLog)
+        .where(SmsLog.tenant_id == tenant_id)
+        .where(SmsLog.shoe_repair_job_id == job_id)
+        .where(SmsLog.event.in_(["status_completed", "status_awaiting_collection"]))  # type: ignore[attr-defined]
+    ).all()
+    return any(r.status in ("sent", "dry_run") for r in rows)
+
+
+def _notify_customer_of_shoe_status(
+    session: Session, job: ShoeRepairJob, old_status: str, tenant_id: UUID
+) -> None:
+    """Text (and, for ready, email) the customer about a shoe status change, then honour
+    their portal "tell me about updates" choice. Never lets a failed send undo the save."""
+    try:
+        shoe = session.get(Shoe, job.shoe_id)
+        customer = session.get(Customer, shoe.customer_id) if shoe else None
+        tenant = session.get(Tenant, tenant_id)
+        shop_name = (tenant.name if tenant else None) or "Your repair shop"
+        is_ready = job.status in ("completed", "awaiting_collection")
+        if customer and customer.phone and not (is_ready and _ready_text_already_sent(session, tenant_id, job.id)):
+            sms_service.notify_shoe_job_status_changed(
+                session,
+                tenant_id=tenant_id,
+                shoe_repair_job_id=job.id,
+                customer_name=customer.full_name or "there",
+                to_phone=customer.phone,
+                job_number=job.job_number,
+                status_token=job.status_token,
+                new_status=job.status,
+            )
+        if customer and customer.email and is_ready and old_status not in ("completed", "awaiting_collection"):
+            from ..email_client import send_shoe_job_ready_email
+
+            send_shoe_job_ready_email(
+                to_email=customer.email,
+                customer_name=customer.full_name or "there",
+                job_number=job.job_number,
+                status_token=job.status_token,
+                shop_name=shop_name,
+                session=session,
+                tenant_id=tenant_id,
+            )
+        session.commit()
+        from ..services.portal_status_notify import notify_shoe_job_status
+
+        notify_shoe_job_status(session, job, old_status, shop_name)
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception("shoe status notification failed job=%s", job.id)
+
+
 @router.post("/{job_id}/status", response_model=ShoeRepairJobRead)
 def update_shoe_repair_job_status(
     job_id: UUID,
@@ -365,21 +424,8 @@ def update_shoe_repair_job_status(
     session.commit()
     session.refresh(job)
 
-    # SMS notification on milestone statuses
-    shoe = session.get(Shoe, job.shoe_id)
-    customer = session.get(Customer, shoe.customer_id) if shoe else None
-    if customer and customer.phone:
-        sms_service.notify_shoe_job_status_changed(
-            session,
-            tenant_id=auth.tenant_id,
-            shoe_repair_job_id=job.id,
-            customer_name=customer.full_name or "there",
-            to_phone=customer.phone,
-            job_number=job.job_number,
-            status_token=job.status_token,
-            new_status=payload.status,
-        )
-        session.commit()
+    if old_status != job.status:
+        _notify_customer_of_shoe_status(session, job, old_status, auth.tenant_id)
 
     return _job_to_read(job, session)
 
@@ -622,6 +668,12 @@ def send_shoe_quote(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
 
+    # Check there is someone to tell before marking the quote as sent.
+    _shoe = session.get(Shoe, job.shoe_id)
+    _cust = session.get(Customer, _shoe.customer_id) if _shoe else None
+    if not (_cust and (_cust.phone or _cust.email)):
+        raise HTTPException(status_code=422, detail="Customer has no phone number or email. Update the customer record first.")
+
     # Calculate total from items
     items = session.exec(
         select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job.id)
@@ -646,14 +698,13 @@ def send_shoe_quote(
     session.commit()
     session.refresh(job)
 
-    # Send SMS if customer has phone
+    # Tell the customer by text and/or email, whichever they have.
     shoe = session.get(Shoe, job.shoe_id)
     customer = session.get(Customer, shoe.customer_id) if shoe else None
+    from ..models import Tenant
+    tenant = session.get(Tenant, auth.tenant_id)
+    shop_name = (tenant.name if tenant else None) or "your shoe repair shop"
     if customer and customer.phone:
-        # Get tenant name for shop name
-        from ..models import Tenant
-        tenant = session.get(Tenant, auth.tenant_id)
-        shop_name = (tenant.name if tenant else None) or "your shoe repair shop"
         sms_service.notify_shoe_quote_sent(
             session,
             tenant_id=auth.tenant_id,
@@ -664,9 +715,20 @@ def send_shoe_quote(
             approval_token=job.quote_approval_token,
             shop_name=shop_name,
         )
-        session.commit()
-    elif not (customer and customer.phone):
-        raise HTTPException(status_code=422, detail="Customer has no phone number. Update the customer record first.")
+    if customer and customer.email:
+        from ..email_client import send_shoe_quote_email
+
+        send_shoe_quote_email(
+            to_email=customer.email,
+            customer_name=customer.full_name or "there",
+            total_cents=total_cents,
+            approval_token=job.quote_approval_token,
+            job_number=job.job_number,
+            shop_name=shop_name,
+            session=session,
+            tenant_id=auth.tenant_id,
+        )
+    session.commit()
 
     return _job_to_read(job, session)
 

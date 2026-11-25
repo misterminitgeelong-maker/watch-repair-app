@@ -1832,7 +1832,7 @@ export const getInvoiceLineItems = (invoiceId: string) =>
 export const recordPayment = (invoiceId: string, amount_cents: number) =>
   api.post(`/invoices/${invoiceId}/payments`, { amount_cents })
 export const sendWatchInvoice = (invoiceId: string) =>
-  api.post<{ invoice_id: string; email_sent: boolean; email_skipped_reason?: string | null }>(
+  api.post<{ invoice_id: string; email_sent: boolean; sms_sent?: boolean; email_skipped_reason?: string | null }>(
     `/invoices/${invoiceId}/send`,
   )
 export const retryInvoiceXeroSync = (invoiceId: string) =>

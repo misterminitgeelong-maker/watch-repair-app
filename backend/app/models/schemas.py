@@ -1441,6 +1441,8 @@ class InvoiceSendResponse(SQLModel):
     email_sent: bool
     email_skipped_reason: Optional[str] = None
     email_error_detail: Optional[str] = None
+    #: True when the invoice went out by text instead (customer has a phone but no email).
+    sms_sent: bool = False
 
 class ShoeCreate(SQLModel):
     customer_id: UUID

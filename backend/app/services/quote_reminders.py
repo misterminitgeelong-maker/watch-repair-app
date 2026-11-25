@@ -19,6 +19,10 @@ from ..models import (
     AutoKeyQuote,
     Customer,
     Quote,
+    Shoe,
+    ShoeRepairJob,
+    ShoeRepairJobItem,
+    TenantEventLog,
     Tenant,
     Watch,
 )
@@ -46,7 +50,7 @@ def send_due_quote_reminders(session: Session, tenant_id: UUID | None = None) ->
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=max(settings.quote_reminder_days, 1))
     shop_names: dict[UUID, str] = {}
-    summary = {"watch_sent": 0, "mobile_sent": 0, "skipped": 0}
+    summary = {"watch_sent": 0, "mobile_sent": 0, "shoe_sent": 0, "skipped": 0}
 
     # ── Watch repair quotes ──────────────────────────────────────────────────
     query = (
@@ -72,7 +76,7 @@ def send_due_quote_reminders(session: Session, tenant_id: UUID | None = None) ->
 
         watch = session.get(Watch, job.watch_id)
         customer = session.get(Customer, watch.customer_id) if watch else None
-        if not customer or not (customer.phone or "").strip():
+        if not customer or not ((customer.phone or "").strip() or (customer.email or "").strip()):
             quote.reminder_sent_at = now
             session.add(quote)
             summary["skipped"] += 1
@@ -85,17 +89,32 @@ def send_due_quote_reminders(session: Session, tenant_id: UUID | None = None) ->
         quote.reminder_sent_at = now
         session.add(quote)
 
-        sms.notify_quote_reminder(
-            session,
-            tenant_id=quote.tenant_id,
-            repair_job_id=job.id,
-            customer_name=customer.full_name,
-            to_phone=customer.phone.strip(),
-            total_cents=quote.total_cents,
-            approval_token=quote.approval_token,
-            job_number=job.job_number,
-            shop_name=_shop_name(session, shop_names, quote.tenant_id),
-        )
+        if (customer.phone or "").strip():
+            sms.notify_quote_reminder(
+                session,
+                tenant_id=quote.tenant_id,
+                repair_job_id=job.id,
+                customer_name=customer.full_name,
+                to_phone=customer.phone.strip(),
+                total_cents=quote.total_cents,
+                approval_token=quote.approval_token,
+                job_number=job.job_number,
+                shop_name=_shop_name(session, shop_names, quote.tenant_id),
+            )
+        else:
+            # Email-only customer: the same quote email again, so they are not left out.
+            from ..email_client import send_quote_sent_email
+
+            send_quote_sent_email(
+                to_email=customer.email.strip(),
+                customer_name=customer.full_name or "there",
+                total_cents=quote.total_cents,
+                approval_token=quote.approval_token,
+                job_number=job.job_number,
+                shop_name=_shop_name(session, shop_names, quote.tenant_id),
+                session=session,
+                tenant_id=quote.tenant_id,
+            )
         summary["watch_sent"] += 1
 
     # ── Mobile services (auto key) quotes ────────────────────────────────────
@@ -143,6 +162,79 @@ def send_due_quote_reminders(session: Session, tenant_id: UUID | None = None) ->
             quote_approval_token=quote.quote_approval_token,
         )
         summary["mobile_sent"] += 1
+
+    # ── Shoe repair quotes ───────────────────────────────────────────────────
+    # Shoe jobs do not store when the quote went out; the link expiry is that moment
+    # plus the TTL, so work backwards. One reminder per job, recorded in the inbox log.
+    ttl = timedelta(hours=max(settings.quote_approval_token_ttl_hours, 1))
+    shoe_query = (
+        select(ShoeRepairJob)
+        .where(ShoeRepairJob.quote_status == "sent")
+        .where(ShoeRepairJob.quote_approval_token_expires_at.isnot(None))
+        .where(ShoeRepairJob.status.in_(("awaiting_quote", "awaiting_go_ahead")))
+    )
+    if tenant_id:
+        shoe_query = shoe_query.where(ShoeRepairJob.tenant_id == tenant_id)
+    for job in session.exec(shoe_query).all():
+        expires = _as_utc(job.quote_approval_token_expires_at)
+        sent_at = expires - ttl if expires else None
+        if not sent_at or sent_at > cutoff or sent_at < now - timedelta(days=30):
+            continue
+        already = session.exec(
+            select(TenantEventLog.id)
+            .where(TenantEventLog.entity_id == job.id)
+            .where(TenantEventLog.event_type == "shoe_quote_reminder_sent")
+        ).first()
+        if already:
+            continue
+        shoe = session.get(Shoe, job.shoe_id)
+        customer = session.get(Customer, shoe.customer_id) if shoe else None
+        phone = ((customer.phone if customer else "") or "").strip()
+        email = ((customer.email if customer else "") or "").strip()
+        if not customer or not (phone or email):
+            summary["skipped"] += 1
+            continue
+        total_cents = int(sum(
+            (i.unit_price_cents or 0) * i.quantity
+            for i in session.exec(select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job.id)).all()
+        ))
+        shop = _shop_name(session, shop_names, job.tenant_id)
+        job.quote_approval_token_expires_at = now + ttl
+        session.add(job)
+        if phone:
+            sms.notify_shoe_quote_reminder(
+                session,
+                tenant_id=job.tenant_id,
+                shoe_repair_job_id=job.id,
+                customer_name=customer.full_name or "there",
+                to_phone=phone,
+                total_cents=total_cents,
+                approval_token=job.quote_approval_token,
+                job_number=job.job_number,
+                shop_name=shop,
+            )
+        if email:
+            from ..email_client import send_shoe_quote_email
+
+            send_shoe_quote_email(
+                to_email=email,
+                customer_name=customer.full_name or "there",
+                total_cents=total_cents,
+                approval_token=job.quote_approval_token,
+                job_number=job.job_number,
+                shop_name=shop,
+                reminder=True,
+                session=session,
+                tenant_id=job.tenant_id,
+            )
+        session.add(TenantEventLog(
+            tenant_id=job.tenant_id,
+            entity_type="shoe_repair_job",
+            entity_id=job.id,
+            event_type="shoe_quote_reminder_sent",
+            event_summary=f"Reminder sent for shoe quote on job #{job.job_number}",
+        ))
+        summary["shoe_sent"] += 1
 
     session.commit()
     return summary

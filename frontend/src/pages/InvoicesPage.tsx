@@ -375,6 +375,8 @@ export function InvoiceDetailPage() {
       const data = res.data
       if (data?.email_sent) {
         setSendFeedback('Invoice emailed to customer.')
+      } else if (data?.sms_sent) {
+        setSendFeedback('No email on file, so the invoice was texted to the customer.')
       } else if (data?.email_skipped_reason === 'email_disabled') {
         setSendFeedback('Email is disabled. Set ENABLE_EMAIL_NOTIFICATIONS=true in production.')
       } else if (data?.email_skipped_reason === 'sendgrid_not_configured') {

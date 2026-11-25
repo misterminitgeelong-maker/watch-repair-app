@@ -625,7 +625,7 @@ export interface paths {
         put?: never;
         /**
          * Repair Job Queue Swipe
-         * @description Advance or rewind job status along the watch queue lane — no SMS or email.
+         * @description Advance or rewind job status along the watch queue lane. Moving forward texts/emails the customer like the normal status change.
          */
         post: operations["repair_job_queue_swipe_v1_repair_jobs__job_id__queue_swipe_post"];
         delete?: never;
@@ -4155,7 +4155,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send Day Before Reminders */
+        /**
+         * Send Day Before Reminders
+         * @description Manual button: send tomorrow's reminders now. The nightly sweep does the same
+         *     automatically, and a job already texted is not texted twice.
+         */
         post: operations["send_day_before_reminders_v1_auto_key_jobs_day_before_reminders_post"];
         delete?: never;
         options?: never;
@@ -11384,6 +11388,11 @@ export interface components {
             email_skipped_reason?: string | null;
             /** Email Error Detail */
             email_error_detail?: string | null;
+            /**
+             * Sms Sent
+             * @default false
+             */
+            sms_sent: boolean;
         };
         /** InvoiceWithPayments */
         InvoiceWithPayments: {

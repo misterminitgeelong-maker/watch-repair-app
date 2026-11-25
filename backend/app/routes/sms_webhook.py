@@ -397,13 +397,14 @@ def _apply_keyword_quote_decision(
             return None
 
         job.quote_status = decision
-        if job.status == "awaiting_go_ahead":
+        old_shoe_status = job.status
+        if job.status in ("awaiting_quote", "awaiting_go_ahead"):
             job.status = "go_ahead" if decision == "approved" else "no_go"
         session.add(job)
         session.add(ShoeJobStatusHistory(
             tenant_id=job.tenant_id,
             shoe_repair_job_id=job.id,
-            old_status="awaiting_go_ahead",
+            old_status=old_shoe_status,
             new_status=job.status,
             changed_by_user_id=None,
             change_note=f"Customer {decision} quote via SMS reply",
