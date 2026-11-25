@@ -116,7 +116,6 @@ def _init_sentry() -> None:
         sentry_mod.init(
             dsn=dsn,
             traces_sample_rate=0.1,
-            profiles_sample_rate=0.0,
             environment=getattr(settings, "app_env", "production"),
             release=sentry_release(),
         )

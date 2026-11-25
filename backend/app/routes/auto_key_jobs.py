@@ -946,9 +946,16 @@ def send_day_before_reminders(
     auth: AuthContext = Depends(require_tech_or_above),
     session: Session = Depends(get_session),
 ):
-    tomorrow = datetime.now(timezone.utc).date() + timedelta(days=1)
-    start = datetime.combine(tomorrow, datetime.min.time(), tzinfo=timezone.utc).replace(tzinfo=None)
-    end = start + timedelta(days=1)
+    # "Tomorrow" is the shop's tomorrow, not UTC's: a Melbourne 8am job is still
+    # "today" in UTC the evening before, so the UTC window missed early jobs.
+    from zoneinfo import ZoneInfo
+    from ..sms import _shop_tz
+
+    shop_zone = ZoneInfo(_shop_tz(session, auth.tenant_id))
+    local_tomorrow = datetime.now(shop_zone).date() + timedelta(days=1)
+    local_start = datetime.combine(local_tomorrow, datetime.min.time(), tzinfo=shop_zone)
+    start = local_start.astimezone(timezone.utc).replace(tzinfo=None)
+    end = (local_start + timedelta(days=1)).astimezone(timezone.utc).replace(tzinfo=None)
     jobs = session.exec(
         select(AutoKeyJob)
         .where(AutoKeyJob.tenant_id == auth.tenant_id)

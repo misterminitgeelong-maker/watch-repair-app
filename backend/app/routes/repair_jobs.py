@@ -436,7 +436,13 @@ def update_repair_job_status(
                     new_status=job.status,
                     shop_name=(_ready_tenant.name if _ready_tenant else "") or "your watch repair shop",
                 )
-            if customer.email and job.status in ("completed", "awaiting_collection"):
+            if (
+                customer.email
+                and previous_status != job.status
+                # completed -> awaiting_collection is the same "ready" news; one email only.
+                and previous_status not in ("completed", "awaiting_collection")
+                and job.status in ("completed", "awaiting_collection")
+            ):
                 from ..email_client import send_job_ready_email
                 tenant = session.get(Tenant, auth.tenant_id)
                 shop_name = (tenant.name if tenant else None) or "Your repair shop"

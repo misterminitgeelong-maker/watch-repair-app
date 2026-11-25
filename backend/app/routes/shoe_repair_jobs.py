@@ -622,6 +622,12 @@ def send_shoe_quote(
     if not job or job.tenant_id != auth.tenant_id:
         raise HTTPException(status_code=404, detail="Shoe repair job not found")
 
+    # Check there is someone to tell before marking the quote as sent.
+    _shoe = session.get(Shoe, job.shoe_id)
+    _cust = session.get(Customer, _shoe.customer_id) if _shoe else None
+    if not (_cust and _cust.phone):
+        raise HTTPException(status_code=422, detail="Customer has no phone number. Update the customer record first.")
+
     # Calculate total from items
     items = session.exec(
         select(ShoeRepairJobItem).where(ShoeRepairJobItem.shoe_repair_job_id == job.id)
